@@ -1,3 +1,10 @@
+use crate::scanner::scan;
+
+mod scanner;
+mod parser;
+mod interpreter;
+
 fn main() {
-    println!("Hello, world!");
+    let tokens = scan("(1 2 345 foo bar)");
+    println!("{:?}", tokens);
 }
