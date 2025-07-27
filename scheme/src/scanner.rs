@@ -15,8 +15,6 @@ pub enum Token {
     Number(i32)
 }
 
-type ScanResult<T> = Result<T, ScanError>;
-
 struct Scanner<'a> {
     source_code: &'a str,
     chars: Peekable<std::str::Chars<'a>>,
@@ -34,20 +32,22 @@ impl<'a> Scanner<'a> {
         }
     }
     
-    pub fn scan(&mut self) -> Vec<Token> {
+    pub fn scan(&mut self) -> (Vec<Token>, Vec<ScanError>) {
         let mut tokens: Vec<Token> = Vec::new();
+        let mut errors: Vec<ScanError> = Vec::new();
 
-        while let Some(scan_result) = self.scan_token() {
-            match scan_result {
+        while let Some(token_result) = self.scan_token() {
+            match token_result {
                 Ok(token) => tokens.push(token),
-                Err(error) => eprintln!("{:?}", error)
+                Err(scan_error) => errors.push(scan_error)
             }
+
         }
 
-        tokens
+        (tokens, errors)
     }
 
-    pub fn scan_token(&mut self) -> Option<ScanResult<Token>> {
+    pub fn scan_token(&mut self) -> Option<Result<Token, ScanError>> {
         self.skip_whitespace();
 
         self.start = self.current;
@@ -65,13 +65,13 @@ impl<'a> Scanner<'a> {
         self.advance_while(char::is_ascii_whitespace)
     }
 
-    fn number(&mut self) -> ScanResult<Token> {
+    fn number(&mut self) -> Result<Token, ScanError> {
         self.advance_while(char::is_ascii_digit);
 
         Ok(Number(self.lexeme().parse().unwrap()))
     }
 
-    fn identifier(&mut self) -> ScanResult<Token> {
+    fn identifier(&mut self) -> Result<Token, ScanError> {
         self.advance_while(char::is_ascii_alphanumeric);
 
         Ok(Identifier(self.lexeme().to_string()))
@@ -94,7 +94,7 @@ impl<'a> Scanner<'a> {
     }
 }
 
-pub fn scan(source_code: &str) -> Vec<Token> {
+pub fn scan(source_code: &str) -> (Vec<Token>, Vec<ScanError>) {
     let mut scanner = Scanner::new(source_code);
     scanner.scan()
 }
