@@ -25,13 +25,26 @@ struct Scanner<'a> {
 }
 
 impl<'a> Scanner<'a> {
-    pub fn new(source_code: &'a str) -> Self {
+    fn new(source_code: &'a str) -> Self {
         Self {
             source_code,
             chars: source_code.chars().peekable(),
             start: 0,
             current: 0
         }
+    }
+    
+    pub fn scan(&mut self) -> Vec<Token> {
+        let mut tokens: Vec<Token> = Vec::new();
+
+        while let Some(scan_result) = self.scan_token() {
+            match scan_result {
+                Ok(token) => tokens.push(token),
+                Err(error) => eprintln!("{:?}", error)
+            }
+        }
+
+        tokens
     }
 
     pub fn scan_token(&mut self) -> Option<ScanResult<Token>> {
@@ -83,14 +96,5 @@ impl<'a> Scanner<'a> {
 
 pub fn scan(source_code: &str) -> Vec<Token> {
     let mut scanner = Scanner::new(source_code);
-    let mut tokens: Vec<Token> = Vec::new();
-
-    while let Some(scan_result) = scanner.scan_token() {
-        match scan_result {
-            Ok(token) => tokens.push(token),
-            Err(error) => eprintln!("{:?}", error)
-        }
-    }
-
-    tokens
+    scanner.scan()
 }
