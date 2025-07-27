@@ -27,22 +27,21 @@ impl Parser {
             .into_iter()
             .map(ParseError::ScanError)
             .collect();
-        
+
         Self { tokens, errors, current: 0 }
     }
 
     pub fn parse(&mut self) -> (Vec<Node>, Vec<ParseError>) {
         let mut nodes: Vec<Node> = Vec::new();
-        let mut errors: Vec<ParseError> = Vec::new();
-
+  
         while let Some(node_result) = self.parse_node() {
             match node_result {
                 Ok(node) => nodes.push(node),
-                Err(error) => errors.push(error)
+                Err(error) => self.errors.push(error)
             }
         }
 
-        (nodes, errors)
+        (nodes, self.errors.clone())
     }
 
     fn parse_node(&mut self) -> Option<Result<Node, ParseError>> {
