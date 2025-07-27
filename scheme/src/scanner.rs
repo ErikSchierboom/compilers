@@ -59,7 +59,7 @@ impl<'a> Scanner<'a> {
     }
 
     fn identifier(&mut self) -> ScanResult<Token> {
-        self.advance_while(char::is_ascii_alphabetic);
+        self.advance_while(char::is_ascii_alphanumeric);
 
         Ok(Identifier(self.lexeme().to_string()))
     }
