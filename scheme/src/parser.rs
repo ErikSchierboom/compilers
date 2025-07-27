@@ -1,8 +1,10 @@
+use crate::parser::Node::List;
 use crate::scanner::{scan, Token, ScanError};
 
 #[derive(Debug, Clone)]
 pub enum ParseError {
     ScanError(ScanError),
+    ExpectedToken(Token),
     UnexpectedToken(Token)
 }
 
@@ -38,9 +40,7 @@ impl Parser {
     }
 
     fn parse_node(&mut self) -> Option<Result<Node, ParseError>> {
-        let token = self.tokens.get(self.current)?;
-        self.current += 1;
-        match token {
+        match self.advance()? {
             Token::LParen => Some(self.list()),
             Token::RParen => Some(Err(ParseError::UnexpectedToken(Token::RParen))),
             Token::Identifier(identifier) => Some(Ok(Node::Symbol(identifier.to_string()))),
@@ -49,11 +49,43 @@ impl Parser {
     }
 
     fn list(&mut self) -> Result<Node, ParseError> {
-        let elements: Vec<Node> = Vec::new();
+        let mut elements: Vec<Node> = Vec::new();
 
-        // while let Some(Ok(element))
+        loop {
+            if self.advance_if(|token| matches!(token, Token::RParen)).is_some() {
+                return Ok(List(elements))
+            }
 
-        panic!("help")
+            match self.parse_node() {
+                Some(Ok(node)) => elements.push(node),
+                Some(Err(error)) => return Err(error),
+                None => return Err(ParseError::ExpectedToken(Token::RParen))
+            }
+        }
+    }
+
+    fn peek(&self) -> Option<&Token> {
+        self.tokens.get(self.current)
+    }
+
+    fn advance(&mut self) -> Option<&Token> {
+        self.advance_if(|_| true)
+    }
+
+    fn advance_if(&mut self, func: impl FnOnce(&Token) -> bool) -> Option<&Token> {
+        self.tokens.get(self.current)
+            .filter(|&token| func(token))
+            .inspect(|_| self.current += 1)
+    }
+
+    fn advance_while(&mut self, func: impl Fn(&Token) -> bool) -> Vec<Token> {
+        let mut tokens: Vec<Token> = Vec::new();
+
+        while let Some(token) = self.advance_if(|token| func(token)) {
+            tokens.push(token.clone());
+        }
+
+        tokens
     }
 }
 
