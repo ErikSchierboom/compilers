@@ -77,11 +77,11 @@ impl Parser {
 
 pub fn parse(source_code: &str) -> (Vec<Node>, Vec<ParseError>) {
     let (tokens, scan_errors) = scan(source_code);
-    
+
     if scan_errors.len() > 0 {
-        (Vec::new(), scan_errors.iter().map(|error| ParseError::ScanError(error.clone())).collect())
+        (Vec::new(), scan_errors.into_iter().map(ParseError::ScanError).collect())
     } else {
         let mut parser = Parser::new(tokens);
-        parser.parse()    
+        parser.parse()
     }
 }
