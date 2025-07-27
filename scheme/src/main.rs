@@ -1,3 +1,4 @@
+use crate::interpreter::interpret;
 use crate::parser::parse;
 
 mod scanner;
@@ -5,6 +6,6 @@ mod parser;
 mod interpreter;
 
 fn main() {
-    let parse_result = parse("(1 2 345 (foo bar))");
-    println!("{:?}", parse_result);
+    let result = interpret("(+ 1 2 3)");
+    println!("{:?}", result);
 }

@@ -55,8 +55,10 @@ impl<'a> Scanner<'a> {
         match self.advance()? {
             '(' => Some(Ok(Token::LParen)),
             ')' => Some(Ok(Token::RParen)),
-            c if c.is_ascii_alphabetic() => Some(self.identifier()),
+            '+' => Some(Ok(Identifier("+".to_string()))),
+            '-' => Some(Ok(Identifier("-".to_string()))),
             c if c.is_ascii_digit() => Some(self.number()),
+            c  if Self::initial(&c) => Some(self.identifier()),
             c => Some(Err(UnexpectedCharacter(c)))
         }
     }
@@ -72,7 +74,7 @@ impl<'a> Scanner<'a> {
     }
 
     fn identifier(&mut self) -> Result<Token, ScanError> {
-        self.advance_while(char::is_ascii_alphanumeric);
+        self.advance_while(Self::subsequent);
 
         Ok(Identifier(self.lexeme().to_string()))
     }
@@ -91,6 +93,18 @@ impl<'a> Scanner<'a> {
 
     fn advance_while(&mut self, func: impl Fn(&char) -> bool) {
         while self.advance_if(&func).is_some() {}
+    }
+
+    fn peek(&mut self) -> Option<&char> {
+        self.chars.peek()
+    }
+
+    fn initial(char: &char) -> bool {
+        char.is_ascii_alphabetic() || "!$%&*/:<=>?~_^".contains(*char)
+    }
+
+    fn subsequent(char: &char) -> bool {
+        Self::initial(char) || char.is_ascii_digit() ||  ".+-".contains(*char)
     }
 }
 
