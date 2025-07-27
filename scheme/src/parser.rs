@@ -64,10 +64,6 @@ impl Parser {
         }
     }
 
-    fn peek(&self) -> Option<&Token> {
-        self.tokens.get(self.current)
-    }
-
     fn advance(&mut self) -> Option<&Token> {
         self.advance_if(|_| true)
     }
@@ -76,16 +72,6 @@ impl Parser {
         self.tokens.get(self.current)
             .filter(|&token| func(token))
             .inspect(|_| self.current += 1)
-    }
-
-    fn advance_while(&mut self, func: impl Fn(&Token) -> bool) -> Vec<Token> {
-        let mut tokens: Vec<Token> = Vec::new();
-
-        while let Some(token) = self.advance_if(|token| func(token)) {
-            tokens.push(token.clone());
-        }
-
-        tokens
     }
 }
 
