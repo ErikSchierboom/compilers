@@ -17,12 +17,18 @@ pub enum Node {
 
 struct Parser {
     tokens: Vec<Token>,
+    errors: Vec<ParseError>,
     current: usize
 }
 
 impl Parser {
-    fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, current: 0 }
+    fn new(tokens: Vec<Token>, scan_errors: Vec<ScanError>) -> Self {
+        let errors = scan_errors
+            .into_iter()
+            .map(ParseError::ScanError)
+            .collect();
+        
+        Self { tokens, errors, current: 0 }
     }
 
     pub fn parse(&mut self) -> (Vec<Node>, Vec<ParseError>) {
@@ -78,10 +84,6 @@ impl Parser {
 pub fn parse(source_code: &str) -> (Vec<Node>, Vec<ParseError>) {
     let (tokens, scan_errors) = scan(source_code);
 
-    if scan_errors.len() > 0 {
-        (Vec::new(), scan_errors.into_iter().map(ParseError::ScanError).collect())
-    } else {
-        let mut parser = Parser::new(tokens);
-        parser.parse()
-    }
+    let mut parser = Parser::new(tokens, scan_errors);
+    parser.parse()
 }
