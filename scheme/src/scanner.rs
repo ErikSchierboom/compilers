@@ -96,10 +96,6 @@ impl<'a> Scanner<'a> {
         while self.advance_if(&func).is_some() {}
     }
 
-    fn peek(&mut self) -> Option<&char> {
-        self.chars.peek()
-    }
-
     fn initial(char: &char) -> bool {
         char.is_ascii_alphabetic() || "!$%&*/:<=>?~_^".contains(*char)
     }
