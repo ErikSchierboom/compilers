@@ -1,6 +1,6 @@
 use std::iter::Peekable;
 use crate::scanner::SyntaxError::UnexpectedCharacter;
-use crate::scanner::Token::{Identifier, Number};
+use crate::scanner::Token::{Identifier, Numeric};
 
 #[derive(Debug, Clone)]
 pub enum SyntaxError {
@@ -13,7 +13,7 @@ pub enum Token {
     LParen,
     RParen,
     Identifier(String),
-    Number(i32)
+    Numeric(String)
 }
 
 struct Scanner<'a> {
@@ -58,8 +58,10 @@ impl<'a> Scanner<'a> {
             ')' => Some(Ok(Token::RParen)),
             '+' => Some(Ok(Identifier("+".to_string()))),
             '-' => Some(Ok(Identifier("-".to_string()))),
+            '*' => Some(Ok(Identifier("*".to_string()))),
+            '/' => Some(Ok(Identifier("/".to_string()))),
             c if c.is_ascii_digit() => Some(self.number()),
-            c  if Self::initial(&c) => Some(self.identifier()),
+            c if c.is_ascii_alphabetic() => Some(self.identifier()),
             c => Some(Err(UnexpectedCharacter(c)))
         }
     }
@@ -70,12 +72,16 @@ impl<'a> Scanner<'a> {
 
     fn number(&mut self) -> Result<Token, SyntaxError> {
         self.advance_while(char::is_ascii_digit);
+        
+        if self.advance_if(|&c| c == '.').is_some() {
+            self.advance_while(char::is_ascii_digit);
+        }
 
-        Ok(Number(self.lexeme().parse().unwrap()))
+        Ok(Numeric(self.lexeme().to_string()))
     }
 
     fn identifier(&mut self) -> Result<Token, SyntaxError> {
-        self.advance_while(Self::subsequent);
+        self.advance_while(char::is_ascii_alphanumeric);
 
         Ok(Identifier(self.lexeme().to_string()))
     }
@@ -94,14 +100,6 @@ impl<'a> Scanner<'a> {
 
     fn advance_while(&mut self, func: impl Fn(&char) -> bool) {
         while self.advance_if(&func).is_some() {}
-    }
-
-    fn initial(char: &char) -> bool {
-        char.is_ascii_alphabetic() || "!$%&*/:<=>?~_^".contains(*char)
-    }
-
-    fn subsequent(char: &char) -> bool {
-        Self::initial(char) || char.is_ascii_digit() ||  ".+-".contains(*char)
     }
 }
 
