@@ -1,12 +1,5 @@
 use crate::parser::Node::List;
-use crate::scanner::{scan, Token, ScanError};
-
-#[derive(Debug, Clone)]
-pub enum ParseError {
-    ScanError(ScanError),
-    ExpectedToken(Token),
-    UnexpectedToken(Token)
-}
+use crate::scanner::{scan, Token, SyntaxError};
 
 #[derive(Debug, Clone)]
 pub enum Node {
@@ -17,21 +10,16 @@ pub enum Node {
 
 struct Parser {
     tokens: Vec<Token>,
-    errors: Vec<ParseError>,
+    errors: Vec<SyntaxError>,
     current: usize
 }
 
 impl Parser {
-    fn new(tokens: Vec<Token>, scan_errors: Vec<ScanError>) -> Self {
-        let errors = scan_errors
-            .into_iter()
-            .map(ParseError::ScanError)
-            .collect();
-
-        Self { tokens, errors, current: 0 }
+    fn new(tokens: Vec<Token>, scan_errors: Vec<SyntaxError>) -> Self {
+        Self { tokens, errors: scan_errors, current: 0 }
     }
 
-    pub fn parse(&mut self) -> (Vec<Node>, Vec<ParseError>) {
+    pub fn parse(&mut self) -> (Vec<Node>, Vec<SyntaxError>) {
         let mut nodes: Vec<Node> = Vec::new();
   
         while let Some(node_result) = self.parse_node() {
@@ -44,16 +32,16 @@ impl Parser {
         (nodes, self.errors.clone())
     }
 
-    fn parse_node(&mut self) -> Option<Result<Node, ParseError>> {
+    fn parse_node(&mut self) -> Option<Result<Node, SyntaxError>> {
         match self.advance()? {
             Token::LParen => Some(self.list()),
-            Token::RParen => Some(Err(ParseError::UnexpectedToken(Token::RParen))),
+            Token::RParen => Some(Err(SyntaxError::UnexpectedCharacter(')'))),
             Token::Identifier(identifier) => Some(Ok(Node::Symbol(identifier.to_string()))),
             Token::Number(value) => Some(Ok(Node::Number(value.clone())))
         }
     }
 
-    fn list(&mut self) -> Result<Node, ParseError> {
+    fn list(&mut self) -> Result<Node, SyntaxError> {
         let mut elements: Vec<Node> = Vec::new();
 
         loop {
@@ -64,7 +52,7 @@ impl Parser {
             match self.parse_node() {
                 Some(Ok(node)) => elements.push(node),
                 Some(Err(error)) => return Err(error),
-                None => return Err(ParseError::ExpectedToken(Token::RParen))
+                None => return Err(SyntaxError::ExpectedCharacter(')'))
             }
         }
     }
@@ -80,7 +68,7 @@ impl Parser {
     }
 }
 
-pub fn parse(source_code: &str) -> (Vec<Node>, Vec<ParseError>) {
+pub fn parse(source_code: &str) -> (Vec<Node>, Vec<SyntaxError>) {
     let (tokens, scan_errors) = scan(source_code);
 
     let mut parser = Parser::new(tokens, scan_errors);

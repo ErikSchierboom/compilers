@@ -1,10 +1,11 @@
 use std::iter::Peekable;
-use crate::scanner::ScanError::UnexpectedCharacter;
+use crate::scanner::SyntaxError::UnexpectedCharacter;
 use crate::scanner::Token::{Identifier, Number};
 
 #[derive(Debug, Clone)]
-pub enum ScanError {
-    UnexpectedCharacter(char)
+pub enum SyntaxError {
+    UnexpectedCharacter(char),
+    ExpectedCharacter(char)
 }
 
 #[derive(Debug, Clone)]
@@ -32,9 +33,9 @@ impl<'a> Scanner<'a> {
         }
     }
     
-    pub fn scan(&mut self) -> (Vec<Token>, Vec<ScanError>) {
+    pub fn scan(&mut self) -> (Vec<Token>, Vec<SyntaxError>) {
         let mut tokens: Vec<Token> = Vec::new();
-        let mut errors: Vec<ScanError> = Vec::new();
+        let mut errors: Vec<SyntaxError> = Vec::new();
 
         while let Some(token_result) = self.scan_token() {
             match token_result {
@@ -47,7 +48,7 @@ impl<'a> Scanner<'a> {
         (tokens, errors)
     }
 
-    pub fn scan_token(&mut self) -> Option<Result<Token, ScanError>> {
+    pub fn scan_token(&mut self) -> Option<Result<Token, SyntaxError>> {
         self.skip_whitespace();
 
         self.start = self.current;
@@ -67,13 +68,13 @@ impl<'a> Scanner<'a> {
         self.advance_while(char::is_ascii_whitespace)
     }
 
-    fn number(&mut self) -> Result<Token, ScanError> {
+    fn number(&mut self) -> Result<Token, SyntaxError> {
         self.advance_while(char::is_ascii_digit);
 
         Ok(Number(self.lexeme().parse().unwrap()))
     }
 
-    fn identifier(&mut self) -> Result<Token, ScanError> {
+    fn identifier(&mut self) -> Result<Token, SyntaxError> {
         self.advance_while(Self::subsequent);
 
         Ok(Identifier(self.lexeme().to_string()))
@@ -108,7 +109,7 @@ impl<'a> Scanner<'a> {
     }
 }
 
-pub fn scan(source_code: &str) -> (Vec<Token>, Vec<ScanError>) {
+pub fn scan(source_code: &str) -> (Vec<Token>, Vec<SyntaxError>) {
     let mut scanner = Scanner::new(source_code);
     scanner.scan()
 }

@@ -1,29 +1,25 @@
-use crate::parser::{parse, Node, ParseError};
-use crate::scanner::Token;
+use crate::parser::{parse, Node};
+use crate::scanner::{SyntaxError, Token};
 
 #[derive(Debug, Clone)]
-pub enum InterpretError {
-    ParseError(ParseError),
+pub enum RuntimeError {
     OperatorIsNotProcedure(Token)
 }
+
 struct Interpreter {
     nodes: Vec<Node>,
-    errors: Vec<InterpretError>,
+    syntax_errors: Vec<SyntaxError>,
+    errors: Vec<RuntimeError>,
     stack: Vec<Node>,
     current: usize,
 }
 
 impl Interpreter {
-    fn new(nodes: Vec<Node>, parse_errors: Vec<ParseError>) -> Self {
-        let errors = parse_errors
-            .into_iter()
-            .map(InterpretError::ParseError)
-            .collect();
-
-        Self { nodes, errors, stack: Vec::new(), current: 0 }
+    fn new(nodes: Vec<Node>, syntax_errors: Vec<SyntaxError>) -> Self {
+        Self { nodes, errors: Vec::new(), syntax_errors, stack: Vec::new(), current: 0 }
     }
 
-    pub fn interpret(&mut self) -> (Vec<Node>, Vec<InterpretError>) {
+    pub fn interpret(&mut self) -> (Vec<Node>, Vec<RuntimeError>) {
         while let Some(node) = self.nodes.pop() {
             let new_node = self.interpret_node(&node);
             self.stack.push(new_node)
@@ -64,7 +60,7 @@ impl Interpreter {
     }
 }
 
-pub fn interpret(source_code: &str) -> (Vec<Node>, Vec<InterpretError>) {
+pub fn interpret(source_code: &str) -> (Vec<Node>, Vec<RuntimeError>) {
     let (nodes, errors) = parse(source_code);
 
     let mut interpreter = Interpreter::new(nodes, errors);
