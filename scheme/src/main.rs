@@ -1,11 +1,10 @@
-// use crate::interpreter::interpret;
-use crate::parser::parse;
+use crate::interpreter::interpret;
 
 mod scanner;
 mod parser;
 mod interpreter;
 
 fn main() {
-    let result = parse("(+ 1 2 3)");
+    let result = interpret("(+ 1 2 (* 3 6))");
     println!("{:?}", result);
 }

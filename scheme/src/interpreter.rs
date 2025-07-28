@@ -1,74 +1,119 @@
+use crate::parser::{parse, Expression};
+use crate::scanner::SyntaxError;
 use std::collections::HashMap;
-use crate::parser::{parse, Atom, Expression, Number};
-use crate::scanner::{SyntaxError, Token};
 
 #[derive(Debug, Clone)]
 pub enum RuntimeError {
-    OperatorIsNotProcedure(Token)
+    MissingFunction,
+    ExpectedInteger,
+    UnknownFunction(String)
 }
 
 struct Interpreter {
     nodes: Vec<Expression>,
     syntax_errors: Vec<SyntaxError>,
-    errors: Vec<RuntimeError>,
+    runtime_errors: Vec<RuntimeError>,
     stack: Vec<Expression>,
     current: usize,
 }
 
-pub struct Env {
-    parent: Option<Box<Env>>,
-    variables: HashMap<String, Expression>
+pub enum Variable {
+    Expression(Expression),
+    BuiltInFunction(Box<dyn Fn(Vec<Expression>) -> Result<Expression, RuntimeError>>)
 }
 
-// impl Interpreter {
-//     fn new(nodes: Vec<Expression>, syntax_errors: Vec<SyntaxError>) -> Self {
-//         Self { nodes, errors: Vec::new(), syntax_errors, stack: Vec::new(), current: 0 }
-//     }
-//
-//     pub fn interpret(&mut self) -> (Vec<Expression>, Vec<RuntimeError>) {
-//         while let Some(node) = self.nodes.pop() {
-//             let new_node = self.interpret_node(&node);
-//             self.stack.push(new_node)
-//         }
-//
-//         (self.stack.clone(), self.errors.clone())
-//     }
-//
-//     pub fn interpret_node(&mut self, node: &Expression) -> Expression {
-//         match node {
-//             Expression::Atom(Atom::Symbol(_)) => node.clone(),
-//             Expression::Atom(Atom::Number(_)) => node.clone(),
-//             Expression::List(elements) => {
-//                 match &elements[..] {
-//                     [] => node.clone(),
-//                     [Expression::Atom(Atom::Symbol(s))] if s == "+"  || s == "*" || s == "-" || s == "/" => Expression::Number(0),
-//                     [Expression::Atom(Atom::Symbol(s)), args @ ..] => {
-//                         let inner: Vec<Expression> = args.into_iter().map(|arg| self.interpret_node(arg)).collect();
-//
-//                         match s.as_str() {
-//                             "+" => {
-//                                 let new_value = inner.iter().fold(0, |acc, node| {
-//                                     match node {
-//                                         Expression::Atom(Atom::Symbol(_)) => panic!("did not expect symbol"),
-//                                         Expression::Atom(Atom::Number(Number::Integer(value))) => acc + value,
-//                                         Expression::List(_) => panic!("did not expect list"),
-//                                     }
-//                                 });
-//                                 Expression::Number(new_value)
-//                             },
-//                             _ => panic!("unknown operator")
-//                         }
-//                     },
-//                 _ => node.clone()
-//                 }
-//             }
-//         }
-//     }
-// }
-//
-// pub fn interpret(source_code: &str) -> (Vec<Expression>, Vec<RuntimeError>) {
-//     let (nodes, errors) = parse(source_code);
-//
-//     let mut interpreter = Interpreter::new(nodes, errors);
-//     interpreter.interpret()
-// }
+
+pub struct Env {
+    parent: Option<Box<Env>>,
+    variables: HashMap<String, Variable>
+}
+
+impl Env {
+    pub fn default() -> Self {
+        Self { parent: None, variables: HashMap::from([
+                ("+".to_string(), Variable::BuiltInFunction(Box::new(|args: Vec<Expression>| {
+                    args.iter().fold(Ok(Expression::Integer(0)), |acc_result, arg| {
+                       match (acc_result, arg) {
+                           (Ok(Expression::Integer(acc)), Expression::Integer(i)) => Ok(Expression::Integer(acc + i)),
+                           (Ok(_), _) => Err(RuntimeError::ExpectedInteger),
+                           (result, _) => result
+                       }
+                    })
+                }))),
+                ("*".to_string(), Variable::BuiltInFunction(Box::new(|args: Vec<Expression>| {
+                    args.iter().fold(Ok(Expression::Integer(1)), |acc_result, arg| {
+                        match (acc_result, arg) {
+                            (Ok(Expression::Integer(acc)), Expression::Integer(i)) => Ok(Expression::Integer(acc * i)),
+                            (Ok(_), _) => Err(RuntimeError::ExpectedInteger),
+                            (result, _) => result
+                        }
+                    })
+                })))
+            ]) }
+    }
+}
+
+impl Interpreter {
+    fn new(nodes: Vec<Expression>, syntax_errors: Vec<SyntaxError>) -> Self {
+        Self { nodes, syntax_errors, runtime_errors: Vec::new(), stack: Vec::new(), current: 0 }
+    }
+
+    pub fn interpret(&mut self) -> (Vec<Expression>, Vec<SyntaxError>, Vec<RuntimeError>) {
+        if self.syntax_errors.len() > 0 {
+            return (self.stack.clone(), self.syntax_errors.clone(), self.runtime_errors.clone())
+        }
+
+        let env = Env::default();
+        
+        while let Some(node) = self.nodes.pop() {
+            let new_node = self.interpret_node(&node, &env);
+            self.stack.push(new_node)
+        }
+
+        (self.stack.clone(), self.syntax_errors.clone(), self.runtime_errors.clone())
+    }
+
+    pub fn interpret_node(&mut self, node: &Expression, env: &Env) -> Expression {
+        match node {
+            Expression::Symbol(_) |
+            Expression::Integer(_) => node.clone(),
+            Expression::List(elements) => {
+                match &elements[..] {
+                    [] => {
+                        self.runtime_errors.push(RuntimeError::MissingFunction);
+                        node.clone()
+                    },
+                    [Expression::Symbol(name), args @ ..] => {
+                        match env.variables.get(name) {
+                            None => {
+                                self.runtime_errors.push(RuntimeError::UnknownFunction(name.to_string()));
+                                node.clone()
+                            },
+                            Some(Variable::Expression(expression)) => expression.clone(),
+                            Some(Variable::BuiltInFunction(function)) => {
+                                let evaluated_args = args.into_iter().map(|arg| self.interpret_node(arg, env)).collect();
+                                match function(evaluated_args) {
+                                    Ok(result) => result,
+                                    Err(error) => {
+                                        self.runtime_errors.push(error);
+                                        node.clone()
+                                    }
+                                }
+                            }
+                        }
+
+
+                    },
+                _ => node.clone()
+                }
+            }
+        }
+    }
+}
+
+pub fn interpret(source_code: &str) -> (Vec<Expression>, Vec<SyntaxError>, Vec<RuntimeError>) {
+    let (nodes, errors) = parse(source_code);
+
+    let mut interpreter = Interpreter::new(nodes, errors);
+    interpreter.interpret()
+}

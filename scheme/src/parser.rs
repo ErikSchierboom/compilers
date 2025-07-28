@@ -1,20 +1,9 @@
-use crate::scanner::{scan, Token, SyntaxError};
-
-#[derive(Debug, Clone)]
-pub enum Atom {
-    Number(Number),
-    Symbol(String),
-}
-
-#[derive(Debug, Clone)]
-pub enum Number {
-    Integer(i64),
-    Float(f64)
-}
+use crate::scanner::{scan, SyntaxError, Token};
 
 #[derive(Debug, Clone)]
 pub enum Expression {
-    Atom(Atom),
+    Integer(i64),
+    Symbol(String),
     List(Vec<Expression>),
 }
 
@@ -47,14 +36,8 @@ impl Parser {
         match token {
             Token::LParen => Some(self.list()),
             Token::RParen => Some(Err(SyntaxError::UnexpectedCharacter(')'))),
-            Token::Identifier(identifier) => Some(Ok(Expression::Atom(Atom::Symbol(identifier.to_string())))),
-            Token::Numeric(lexeme) => {
-                if lexeme.contains('.') {
-                    Some(Ok(Expression::Atom(Atom::Number(Number::Float(lexeme.parse().unwrap())))))
-                } else {
-                    Some(Ok(Expression::Atom(Atom::Number(Number::Integer(lexeme.parse().unwrap())))))
-                }
-            }
+            Token::Identifier(identifier) => Some(Ok(Expression::Symbol(identifier.to_string()))),
+            Token::Number(lexeme) => Some(Ok(Expression::Integer(lexeme.parse().unwrap())))
         }
     }
 
