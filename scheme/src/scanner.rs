@@ -41,33 +41,33 @@ impl<'a> Scanner<'a> {
             match self.advance() {
                 Some(c) => match c {
                     ';' => self.skip_to_newline(),
-                    '(' => self.tokens.push(Token::OpenParen),
-                    ')' => self.tokens.push(Token::CloseParen),
-                    '.' => self.tokens.push(Identifier(c.to_string())),
+                    '(' => self.add_token(Token::OpenParen),
+                    ')' => self.add_token(Token::CloseParen),
+                    '.' => self.add_token(Identifier(c.to_string())),
                     '+' | '-' => {
                         match self.peek() {
                             Some('0'..='9') => {
                                 let integer = self.number()?;
                                 let sign = if c == '+' { 1 } else { 0 };
-                                self.tokens.push(Integer(sign * integer))
+                                self.add_token(Integer(sign * integer))
                             },
-                            _ => self.tokens.push(Identifier(c.to_string()))
+                            _ => self.add_token(Identifier(c.to_string()))
                         }
                     },
                     '0'..='9' => {
                         let integer = self.number()?;
-                        self.tokens.push(Integer(integer))
+                        self.add_token(Integer(integer))
                     },
                     '"' => {
                         let string = self.string()?;
-                        self.tokens.push(Token::String(string))
+                        self.add_token(Token::String(string))
                     }
                     '#' => {
                         match self.advance() {
-                            Some('t') => self.tokens.push(Bool(true)),
-                            Some('f') => self.tokens.push(Bool(false)),
+                            Some('t') => self.add_token(Bool(true)),
+                            Some('f') => self.add_token(Bool(false)),
                             Some('\\') => match self.advance() {
-                                Some(n) => self.tokens.push(Token::Char(n)),
+                                Some(n) => self.add_token(Token::Char(n)),
                                 None => return Err(UnexpectedCharacter(c))
                             }
                             _ => return Err(UnexpectedCharacter(c))
@@ -76,7 +76,7 @@ impl<'a> Scanner<'a> {
                     _ => {
                         if Self::initial(&c) {
                             let identifier = self.identifier()?;
-                            self.tokens.push(Token::Identifier(identifier));
+                            self.add_token(Token::Identifier(identifier));
                         } else {
                             return Err(UnexpectedCharacter(c))
                         }
@@ -89,6 +89,10 @@ impl<'a> Scanner<'a> {
         Ok(self.tokens.clone())
     }
 
+    fn add_token(&mut self, token: Token) {
+        self.tokens.push(token)
+    }
+    
     fn initial(c: &char) -> bool {
         c.is_ascii_alphabetic() || "!$%&*/:<=>?~_^".contains(*c)
     }
