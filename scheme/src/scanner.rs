@@ -48,8 +48,7 @@ impl<'a> Scanner<'a> {
                         match self.peek() {
                             Some('0'..='9') => {
                                 let integer = self.number()?;
-                                let sign = if c == '+' { 1 } else { 0 };
-                                self.add_token(Integer(sign * integer))
+                                self.add_token(Integer(integer))
                             },
                             _ => self.add_token(Identifier(c.to_string()))
                         }
@@ -92,7 +91,7 @@ impl<'a> Scanner<'a> {
     fn add_token(&mut self, token: Token) {
         self.tokens.push(token)
     }
-    
+
     fn initial(c: &char) -> bool {
         c.is_ascii_alphabetic() || "!$%&*/:<=>?~_^".contains(*c)
     }
