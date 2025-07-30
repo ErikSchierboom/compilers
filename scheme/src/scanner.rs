@@ -1,9 +1,10 @@
 use std::iter::Peekable;
-use crate::scanner::SyntaxError::{ExpectedCharacter, UnexpectedCharacter};
+use crate::scanner::SyntaxError::{ExpectedCharacter, MissingCharacter, UnexpectedCharacter};
 use crate::scanner::Token::{Bool, Float, Identifier, Integer};
 
 #[derive(Debug, Clone)]
 pub enum SyntaxError {
+    MissingCharacter,
     UnexpectedCharacter(char),
     ExpectedCharacter(char)
 }
@@ -40,7 +41,7 @@ impl<'a> Scanner<'a> {
 
             match self.advance() {
                 Some(c) => match c {
-                    ';' => self.skip_to_newline(),
+                    ';' => self.skip_comment(),
                     '(' => self.add_token(Token::OpenParen),
                     ')' => self.add_token(Token::CloseParen),
                     '.' => self.add_token(Identifier(c.to_string())),
@@ -59,15 +60,15 @@ impl<'a> Scanner<'a> {
                     },
                     '"' => {
                         let string = self.string()?;
-                        self.add_token(Token::String(string))
+                        self.add_token(string)
                     }
                     '#' => {
                         match self.advance() {
                             Some('t') => self.add_token(Bool(true)),
                             Some('f') => self.add_token(Bool(false)),
-                            Some('\\') => match self.advance() {
-                                Some(n) => self.add_token(Token::Char(n)),
-                                None => return Err(UnexpectedCharacter(c))
+                            Some('\\') => {
+                                let char = self.char()?;
+                                self.add_token(char);
                             }
                             _ => return Err(UnexpectedCharacter(c))
                         }
@@ -93,24 +94,24 @@ impl<'a> Scanner<'a> {
     }
 
     fn initial(c: &char) -> bool {
-        c.is_ascii_alphabetic() || "!$%&*/:<=>?~_^".contains(*c)
+        matches!(c, 'a'..='z' | 'A'..='Z' | '!' | '$' | '%' | '&' | '*' | '/' | ':' | '<' | '=' | '>' | '?' | '~' | '_' | '^')
     }
 
     fn subsequent(c: &char) -> bool {
-        Self::initial(c) || c.is_ascii_digit() || ".+-".contains(*c)
+        matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '.' | '+' | '-' | '!' | '$' | '%' | '&' | '*' | '/' | ':' | '<' | '=' | '>' | '?' | '~' | '_' | '^')
     }
 
     fn skip_whitespace(&mut self) {
         self.advance_while(char::is_ascii_whitespace)
     }
 
-    fn skip_to_newline(&mut self) {
+    fn skip_comment(&mut self) {
         self.advance_while(|&c| c != '\n')
     }
 
     fn number(&mut self) -> Result<Token, SyntaxError> {
         self.advance_while(char::is_ascii_digit);
-        
+
         if self.advance_if(|&c| c == '.').is_some() {
             self.advance_while(char::is_ascii_digit);
             Ok(Float(self.lexeme().parse().unwrap()))
@@ -125,7 +126,7 @@ impl<'a> Scanner<'a> {
         Ok(Identifier(self.lexeme().to_string()))
     }
 
-    fn string(&mut self) -> Result<String, SyntaxError> {
+    fn string(&mut self) -> Result<Token, SyntaxError> {
         loop {
             match self.advance() {
                 Some('"') => break,
@@ -133,7 +134,7 @@ impl<'a> Scanner<'a> {
                     match self.advance() {
                         Some('\\') | Some('"') => {}
                         Some(c) => return Err(UnexpectedCharacter(c)),
-                        _ => return Err(ExpectedCharacter('"'))
+                        _ => return Err(MissingCharacter)
                     }
                 },
                 Some(c) => {}
@@ -141,7 +142,16 @@ impl<'a> Scanner<'a> {
             }
         }
 
-        Ok(self.lexeme().to_string())
+        Ok(Token::String(self.lexeme().to_string()))
+    }
+
+    fn char(&mut self) -> Result<Token, SyntaxError> {
+        match self.advance() {
+            Some(c) => {
+                Ok(Token::Char(c))
+            },
+            None => Err(MissingCharacter)
+        }
     }
 
     fn lexeme(&mut self) -> &'a str {
