@@ -46,12 +46,11 @@ impl<'a> Scanner<'a> {
                     ')' => self.add_token(Token::CloseParen),
                     '.' => self.add_token(Identifier(c.to_string())),
                     '+' | '-' => {
-                        match self.advance_if(char::is_ascii_digit) {
-                            Some(c) => {
-                                let number = self.number()?;
-                                self.add_token(number)
-                            },
-                            None => self.add_token(Identifier(c.to_string()))
+                        if self.advance_if(char::is_ascii_digit).is_some() {
+                            let number = self.number()?;
+                            self.add_token(number)
+                        } else {
+                            self.add_token(Identifier(c.to_string()))
                         }
                     },
                     '0'..='9' => {
@@ -154,10 +153,6 @@ impl<'a> Scanner<'a> {
 
     fn lexeme(&mut self) -> &'a str {
         &self.source[self.start..self.current]
-    }
-
-    fn peek(&mut self) -> Option<&char> {
-        self.chars.peek()
     }
 
     fn advance(&mut self) -> Option<char> {

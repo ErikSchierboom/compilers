@@ -76,7 +76,6 @@ impl Parser {
 
 pub fn parse(source_code: &str) -> Result<Vec<Node>, SyntaxError> {
     let tokens = scan(source_code)?;
-
     let mut parser = Parser::new(tokens);
     parser.parse()
 }

@@ -3,10 +3,41 @@ use crate::scanner::SyntaxError;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
+pub struct Environment {
+    parent: Option<Box<Environment>>,
+    variables: HashMap<String, Value>
+}
+
+impl Environment {
+    pub fn get(&self, name: &String) -> Option<&Value> {
+        match self.variables.get(name) {
+            Some(value) => Some(value),
+            None => match &self.parent {
+                Some(boxed) => boxed.get(name),
+                None => None
+            }
+        }
+    }
+}
+
+impl Environment {
+    pub fn default() -> Self {
+        Self { parent: None, variables: HashMap::new() }
+    }
+
+    pub fn create_child(&self) -> Self {
+        Self { parent: Some(Box::new(self.clone())), variables: HashMap::new() }
+    }
+
+    // TODO: get by name
+    // TODO: set by name
+}
+
+#[derive(Debug, Clone)]
 pub enum RuntimeError {
-    MissingFunction,
-    ExpectedInteger,
-    UnknownFunction(String)
+    UnknownSymbol(String),
+    ExpectedProcedure(Value),
+    InvalidNumberOfArguments,
 }
 
 #[derive(Debug, Clone)]
@@ -15,10 +46,10 @@ pub enum Error {
     Runtime(RuntimeError)
 }
 
-struct Interpreter {
-    values: Vec<Value>,
-    stack: Vec<Value>,
-    current: usize,
+#[derive(Debug, Clone)]
+pub enum Procedure {
+    Lambda(Vec<String>, Vec<Value>, Environment),
+    Builtin(fn(Vec<Value>, Environment) -> Result<Value, RuntimeError>)
 }
 
 #[derive(Debug, Clone)]
@@ -30,6 +61,7 @@ pub enum Value {
     String(String),
     Symbol(String),
     List(Vec<Value>),
+    Procedure(Procedure)
 }
 
 impl From<Node> for Value {
@@ -46,32 +78,15 @@ impl From<Node> for Value {
     }
 }
 
-pub struct Environment {
-    parent: Option<Box<Environment>>,
-    variables: HashMap<String, Procedure>
-}
 
-pub enum Procedure {
-    Lambda(Vec<String>, Vec<Value>, Environment),
-    Builtin(fn(Vec<Value>, Environment) -> Result<Value, RuntimeError>)
-}
 
-impl Environment {
-    pub fn default() -> Self {
-        Self { parent: None, variables: HashMap::new() }
-    }
-
-    pub fn create_child(self) -> Self {
-        Self { parent: Some(Box::new(self)), variables: HashMap::new() }
-    }
-
-    // TODO: get by name
-    // TODO: set by name
+struct Interpreter {
+    values: Vec<Value>
 }
 
 impl Interpreter {
     fn new(nodes: Vec<Node>) -> Self {
-        Self { values: nodes.into_iter().map(Value::from).collect(), stack: Vec::new(), current: 0 }
+        Self { values: nodes.into_iter().map(Value::from).collect() }
     }
 
     pub fn interpret(&mut self) -> Result<Value, RuntimeError> {
@@ -86,7 +101,56 @@ impl Interpreter {
     }
 
     pub fn evaluate(&mut self, value: &Value, env: &Environment) -> Result<Value, RuntimeError> {
-        Ok(value.clone())
+        match value {
+            &Value::Integer(i) => Ok(Value::Integer(i)),
+            &Value::Float(f) => Ok(Value::Float(f)),
+            &Value::Bool(b) => Ok(Value::Bool(b)),
+            &Value::Char(c) => Ok(Value::Char(c)),
+            &Value::String(ref string) => Ok(Value::String(string.clone())),
+            &Value::Symbol(ref symbol) => {
+                match env.get(symbol) {
+                    Some(value) => Ok(value.clone()),
+                    None => Err(RuntimeError::UnknownSymbol(symbol.clone()))
+                }
+            },
+            &Value::List(ref elements) => {
+                if elements.len() == 0 {
+                    Ok(Value::List(elements.clone()))
+                } else {
+                    let symbol = self.evaluate(elements.get(0).unwrap(), env)?;
+                    match symbol {
+                        Value::Procedure(procedure) => {
+                            let args = elements[1..].into_iter().collect();
+                            self.evaluate_procedure(procedure, args, &env.create_child())
+                        },
+                        _ => Err(RuntimeError::ExpectedProcedure(symbol))
+                    }
+                }
+            },
+            &Value::Procedure(_) => todo!()
+        }
+    }
+
+    fn evaluate_procedure(&self, procedure: Procedure, args: Vec<&Value>, env: &Environment) -> Result<Value, RuntimeError> {
+        match procedure {
+            Procedure::Lambda(parameters, body, closure_env) => {
+                if args.len() != parameters.len() {
+                    return Err(RuntimeError::InvalidNumberOfArguments)
+                }
+
+                // let arg_values: Vec<Value> = Vec::with_capacity(args.len());
+                // for arg in args {
+                //     arg_values.push(self.evaluate(arg, env)?)
+                // }
+                //
+                // let lambda_env = closure_env.create_child();
+                todo!("evaluate values")
+
+            },
+            Procedure::Builtin(_) => {
+                todo!("evaluate builtin")
+            }
+        }
     }
 }
 
