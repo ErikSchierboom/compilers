@@ -1,6 +1,6 @@
 use std::iter::Peekable;
 use crate::scanner::SyntaxError::{ExpectedCharacter, UnexpectedCharacter};
-use crate::scanner::Token::{Bool, Identifier, Integer};
+use crate::scanner::Token::{Bool, Float, Identifier, Integer};
 
 #[derive(Debug, Clone)]
 pub enum SyntaxError {
@@ -14,10 +14,10 @@ pub enum Token {
     CloseParen,
     Identifier(String),
     Integer(i64),
+    Float(f64),
     Bool(bool),
     Char(char),
     String(String)
-    // TODO: float
 }
 
 struct Scanner<'a> {
@@ -47,15 +47,15 @@ impl<'a> Scanner<'a> {
                     '+' | '-' => {
                         match self.peek() {
                             Some('0'..='9') => {
-                                let integer = self.number()?;
-                                self.add_token(Integer(integer))
+                                let number = self.number()?;
+                                self.add_token(number)
                             },
                             _ => self.add_token(Identifier(c.to_string()))
                         }
                     },
                     '0'..='9' => {
-                        let integer = self.number()?;
-                        self.add_token(Integer(integer))
+                        let number = self.number()?;
+                        self.add_token(number)
                     },
                     '"' => {
                         let string = self.string()?;
@@ -75,7 +75,7 @@ impl<'a> Scanner<'a> {
                     _ => {
                         if Self::initial(&c) {
                             let identifier = self.identifier()?;
-                            self.add_token(Token::Identifier(identifier));
+                            self.add_token(identifier);
                         } else {
                             return Err(UnexpectedCharacter(c))
                         }
@@ -108,16 +108,21 @@ impl<'a> Scanner<'a> {
         self.advance_while(|&c| c != '\n')
     }
 
-    fn number(&mut self) -> Result<i64, SyntaxError> {
+    fn number(&mut self) -> Result<Token, SyntaxError> {
         self.advance_while(char::is_ascii_digit);
-
-        Ok(self.lexeme().parse().unwrap())
+        
+        if self.advance_if(|&c| c == '.').is_some() {
+            self.advance_while(char::is_ascii_digit);
+            Ok(Float(self.lexeme().parse().unwrap()))
+        } else {
+            Ok(Integer(self.lexeme().parse().unwrap()))
+        }
     }
 
-    fn identifier(&mut self) -> Result<String, SyntaxError> {
+    fn identifier(&mut self) -> Result<Token, SyntaxError> {
         self.advance_while(Self::subsequent);
 
-        Ok(self.lexeme().to_string())
+        Ok(Identifier(self.lexeme().to_string()))
     }
 
     fn string(&mut self) -> Result<String, SyntaxError> {
