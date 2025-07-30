@@ -46,12 +46,12 @@ impl<'a> Scanner<'a> {
                     ')' => self.add_token(Token::CloseParen),
                     '.' => self.add_token(Identifier(c.to_string())),
                     '+' | '-' => {
-                        match self.peek() {
-                            Some('0'..='9') => {
+                        match self.advance_if(char::is_ascii_digit) {
+                            Some(c) => {
                                 let number = self.number()?;
                                 self.add_token(number)
                             },
-                            _ => self.add_token(Identifier(c.to_string()))
+                            None => self.add_token(Identifier(c.to_string()))
                         }
                     },
                     '0'..='9' => {
@@ -137,7 +137,7 @@ impl<'a> Scanner<'a> {
                         _ => return Err(MissingCharacter)
                     }
                 },
-                Some(c) => {}
+                Some(_) => {}
                 None => return Err(ExpectedCharacter('"'))
             }
         }
@@ -147,9 +147,7 @@ impl<'a> Scanner<'a> {
 
     fn char(&mut self) -> Result<Token, SyntaxError> {
         match self.advance() {
-            Some(c) => {
-                Ok(Token::Char(c))
-            },
+            Some(c) => Ok(Token::Char(c)),
             None => Err(MissingCharacter)
         }
     }
