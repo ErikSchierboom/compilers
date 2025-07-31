@@ -9,6 +9,19 @@ pub struct Environment {
 }
 
 impl Environment {
+    pub fn default() -> Self {
+        Self {
+            parent: None,
+            variables: HashMap::from([
+                ("+".to_string(), Value::Procedure(Procedure::Native(Interpreter::native_plus)))
+            ])
+        }
+    }
+
+    pub fn create_child(&self) -> Self {
+        Self { parent: Some(Box::new(self.clone())), variables: HashMap::new() }
+    }
+
     pub fn get(&self, name: &String) -> Option<&Value> {
         match self.variables.get(name) {
             Some(value) => Some(value),
@@ -18,25 +31,17 @@ impl Environment {
             }
         }
     }
-}
 
-impl Environment {
-    pub fn default() -> Self {
-        Self { parent: None, variables: HashMap::new() }
+    pub fn set(&mut self, name: String, value: Value) {
+        self.variables.insert(name, value);
     }
-
-    pub fn create_child(&self) -> Self {
-        Self { parent: Some(Box::new(self.clone())), variables: HashMap::new() }
-    }
-
-    // TODO: get by name
-    // TODO: set by name
 }
 
 #[derive(Debug, Clone)]
 pub enum RuntimeError {
     UnknownSymbol(String),
     ExpectedProcedure(Value),
+    UnknownArgument,
     InvalidNumberOfArguments,
 }
 
@@ -49,7 +54,7 @@ pub enum Error {
 #[derive(Debug, Clone)]
 pub enum Procedure {
     Lambda(Vec<String>, Vec<Value>, Environment),
-    Builtin(fn(Vec<Value>, Environment) -> Result<Value, RuntimeError>)
+    Native(fn(Vec<&Value>, &Environment) -> Result<Value, RuntimeError>)
 }
 
 #[derive(Debug, Clone)]
@@ -91,13 +96,17 @@ impl Interpreter {
 
     pub fn interpret(&mut self) -> Result<Value, RuntimeError> {
         let env = Environment::default();
+        self.evaluate_list(self.values.clone(), &env)
+    }
+
+    pub fn evaluate_list(&mut self, values: Vec<Value>, env: &Environment) -> Result<Value, RuntimeError> {
         let mut result = Value::List(Vec::new());
 
-        for value in self.values.clone() {
+        for value in values {
             result = self.evaluate(&value, &env)?
         }
 
-       Ok(result)
+        Ok(result)
     }
 
     pub fn evaluate(&mut self, value: &Value, env: &Environment) -> Result<Value, RuntimeError> {
@@ -131,26 +140,31 @@ impl Interpreter {
         }
     }
 
-    fn evaluate_procedure(&self, procedure: Procedure, args: Vec<&Value>, env: &Environment) -> Result<Value, RuntimeError> {
+    fn evaluate_procedure(&mut self, procedure: Procedure, args: Vec<&Value>, env: &Environment) -> Result<Value, RuntimeError> {
         match procedure {
             Procedure::Lambda(parameters, body, closure_env) => {
                 if args.len() != parameters.len() {
                     return Err(RuntimeError::InvalidNumberOfArguments)
                 }
 
-                // let arg_values: Vec<Value> = Vec::with_capacity(args.len());
-                // for arg in args {
-                //     arg_values.push(self.evaluate(arg, env)?)
-                // }
-                //
-                // let lambda_env = closure_env.create_child();
-                todo!("evaluate values")
+                let mut lambda_env = closure_env.create_child();
+                for (parameter, arg) in parameters.iter().zip(args) {
+                    match closure_env.get(&parameter) {
+                        Some(value) => lambda_env.set(parameter.clone(), value.clone()),
+                        None => return Err(RuntimeError::UnknownArgument)
+                    }
+                }
 
+                self.evaluate_list(body, &lambda_env)
             },
-            Procedure::Builtin(_) => {
-                todo!("evaluate builtin")
+            Procedure::Native(func) => {
+                func(args, env)
             }
         }
+    }
+
+    fn native_plus(args: Vec<&Value>, env: &Environment) -> Result<Value, RuntimeError> {
+        Ok(Value::Integer(0))
     }
 }
 
