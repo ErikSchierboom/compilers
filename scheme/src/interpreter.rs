@@ -13,7 +13,7 @@ impl Environment {
         Self {
             parent: None,
             variables: HashMap::from([
-                ("+".to_string(), Value::Procedure(Procedure::Native(Interpreter::native_plus)))
+                ("+".to_string(), Value::Procedure(Procedure::Native(native_plus)))
             ])
         }
     }
@@ -42,6 +42,7 @@ pub enum RuntimeError {
     UnknownSymbol(String),
     ExpectedProcedure(Value),
     UnknownArgument,
+    InvalidArgumentType,
     InvalidNumberOfArguments,
 }
 
@@ -83,7 +84,94 @@ impl From<Node> for Value {
     }
 }
 
+fn native_plus(args: Vec<&Value>, env: &Environment) -> Result<Value, RuntimeError> {
+    match &args[..] {
+        [] => Ok(Value::Integer(0)),
+        [Value::Integer(i), tail @ .. ] => {
+            let result =
+                tail.iter().try_fold(*i, |acc, element| {
+                    match element {
+                        &Value::Integer(j) => Ok(acc + j),
+                        _ => Err(RuntimeError::InvalidArgumentType)
+                    }
+                }).map(Value::Integer);
+            result
+        },
+        [Value::Float(i), tail @ .. ] => {
+            let result =
+                tail.iter().try_fold(*i, |acc, element| {
+                    match element {
+                        &Value::Float(j) => Ok(acc + j),
+                        _ => Err(RuntimeError::InvalidArgumentType)
+                    }
+                }).map(Value::Float);
+            result
+        },
+        _ => Err(RuntimeError::InvalidArgumentType)
+    }
+}
 
+pub fn evaluate_list(values: Vec<Value>, env: &Environment) -> Result<Value, RuntimeError> {
+    let mut result = Value::List(Vec::new());
+
+    for value in values {
+        result = evaluate(&value, &env)?
+    }
+
+    Ok(result)
+}
+
+pub fn evaluate(value: &Value, env: &Environment) -> Result<Value, RuntimeError> {
+    match value {
+        &Value::Integer(i) => Ok(Value::Integer(i)),
+        &Value::Float(f) => Ok(Value::Float(f)),
+        &Value::Bool(b) => Ok(Value::Bool(b)),
+        &Value::Char(c) => Ok(Value::Char(c)),
+        &Value::String(ref string) => Ok(Value::String(string.clone())),
+        &Value::Symbol(ref symbol) => {
+            match env.get(symbol) {
+                Some(value) => Ok(value.clone()),
+                None => Err(RuntimeError::UnknownSymbol(symbol.clone()))
+            }
+        },
+        &Value::List(ref elements) => {
+            if elements.len() == 0 {
+                Ok(Value::List(elements.clone()))
+            } else {
+                let symbol = evaluate(elements.get(0).unwrap(), env)?;
+                match symbol {
+                    Value::Procedure(procedure) => {
+                        let args = elements[1..].into_iter().collect();
+                        evaluate_procedure(procedure, args, &env.create_child())
+                    },
+                    _ => Err(RuntimeError::ExpectedProcedure(symbol))
+                }
+            }
+        },
+        &Value::Procedure(_) => todo!()
+    }
+}
+
+fn evaluate_procedure(procedure: Procedure, args: Vec<&Value>, env: &Environment) -> Result<Value, RuntimeError> {
+    match procedure {
+        Procedure::Lambda(parameters, body, closure_env) => {
+            if args.len() != parameters.len() {
+                return Err(RuntimeError::InvalidNumberOfArguments)
+            }
+
+            let mut lambda_env = closure_env.create_child();
+            for (parameter, arg) in parameters.iter().zip(args) {
+                let arg_value = evaluate(arg, env)?;
+                lambda_env.set(parameter.clone(), arg_value)
+            }
+
+            evaluate_list(body, &lambda_env)
+        },
+        Procedure::Native(func) => {
+            func(args, env)
+        }
+    }
+}
 
 struct Interpreter {
     values: Vec<Value>
@@ -96,75 +184,7 @@ impl Interpreter {
 
     pub fn interpret(&mut self) -> Result<Value, RuntimeError> {
         let env = Environment::default();
-        self.evaluate_list(self.values.clone(), &env)
-    }
-
-    pub fn evaluate_list(&mut self, values: Vec<Value>, env: &Environment) -> Result<Value, RuntimeError> {
-        let mut result = Value::List(Vec::new());
-
-        for value in values {
-            result = self.evaluate(&value, &env)?
-        }
-
-        Ok(result)
-    }
-
-    pub fn evaluate(&mut self, value: &Value, env: &Environment) -> Result<Value, RuntimeError> {
-        match value {
-            &Value::Integer(i) => Ok(Value::Integer(i)),
-            &Value::Float(f) => Ok(Value::Float(f)),
-            &Value::Bool(b) => Ok(Value::Bool(b)),
-            &Value::Char(c) => Ok(Value::Char(c)),
-            &Value::String(ref string) => Ok(Value::String(string.clone())),
-            &Value::Symbol(ref symbol) => {
-                match env.get(symbol) {
-                    Some(value) => Ok(value.clone()),
-                    None => Err(RuntimeError::UnknownSymbol(symbol.clone()))
-                }
-            },
-            &Value::List(ref elements) => {
-                if elements.len() == 0 {
-                    Ok(Value::List(elements.clone()))
-                } else {
-                    let symbol = self.evaluate(elements.get(0).unwrap(), env)?;
-                    match symbol {
-                        Value::Procedure(procedure) => {
-                            let args = elements[1..].into_iter().collect();
-                            self.evaluate_procedure(procedure, args, &env.create_child())
-                        },
-                        _ => Err(RuntimeError::ExpectedProcedure(symbol))
-                    }
-                }
-            },
-            &Value::Procedure(_) => todo!()
-        }
-    }
-
-    fn evaluate_procedure(&mut self, procedure: Procedure, args: Vec<&Value>, env: &Environment) -> Result<Value, RuntimeError> {
-        match procedure {
-            Procedure::Lambda(parameters, body, closure_env) => {
-                if args.len() != parameters.len() {
-                    return Err(RuntimeError::InvalidNumberOfArguments)
-                }
-
-                let mut lambda_env = closure_env.create_child();
-                for (parameter, arg) in parameters.iter().zip(args) {
-                    match closure_env.get(&parameter) {
-                        Some(value) => lambda_env.set(parameter.clone(), value.clone()),
-                        None => return Err(RuntimeError::UnknownArgument)
-                    }
-                }
-
-                self.evaluate_list(body, &lambda_env)
-            },
-            Procedure::Native(func) => {
-                func(args, env)
-            }
-        }
-    }
-
-    fn native_plus(args: Vec<&Value>, env: &Environment) -> Result<Value, RuntimeError> {
-        Ok(Value::Integer(0))
+        evaluate_list(self.values.clone(), &env)
     }
 }
 
