@@ -13,7 +13,8 @@ impl Environment {
         Self {
             parent: None,
             variables: HashMap::from([
-                ("+".to_string(), Value::Procedure(Procedure::Native(native_plus)))
+                ("+".to_string(), Value::Procedure(Procedure::Native(native_plus))),
+                ("define".to_string(), Value::Procedure(Procedure::Native(native_define)))
             ])
         }
     }
@@ -55,13 +56,12 @@ pub enum Error {
 #[derive(Debug, Clone)]
 pub enum Procedure {
     Lambda(Vec<String>, Vec<Value>, Environment),
-    Native(fn(Vec<&Value>, &Environment) -> Result<Value, RuntimeError>)
+    Native(fn(Vec<&Value>, &mut Environment) -> Result<Value, RuntimeError>)
 }
 
 #[derive(Debug, Clone)]
 pub enum Value {
     Integer(i64),
-    Float(f64),
     Bool(bool),
     Char(char),
     String(String),
@@ -74,7 +74,6 @@ impl From<Node> for Value {
     fn from(value: Node) -> Self {
         match value {
             Node::Integer(i) => Value::Integer(i),
-            Node::Float(f) => Value::Float(f),
             Node::Bool(b) => Value::Bool(b),
             Node::Char(c) => Value::Char(c),
             Node::String(string) => Value::String(string),
@@ -84,47 +83,51 @@ impl From<Node> for Value {
     }
 }
 
-fn native_plus(args: Vec<&Value>, env: &Environment) -> Result<Value, RuntimeError> {
-    match &args[..] {
-        [] => Ok(Value::Integer(0)),
-        [Value::Integer(i), tail @ .. ] => {
-            let result =
-                tail.iter().try_fold(*i, |acc, element| {
-                    match element {
-                        &Value::Integer(j) => Ok(acc + j),
-                        _ => Err(RuntimeError::InvalidArgumentType)
-                    }
-                }).map(Value::Integer);
-            result
-        },
-        [Value::Float(i), tail @ .. ] => {
-            let result =
-                tail.iter().try_fold(*i, |acc, element| {
-                    match element {
-                        &Value::Float(j) => Ok(acc + j),
-                        _ => Err(RuntimeError::InvalidArgumentType)
-                    }
-                }).map(Value::Float);
-            result
-        },
+fn native_plus(args: Vec<&Value>, env: &mut Environment) -> Result<Value, RuntimeError> {
+    let sum = 0i64;
+
+    args.iter().try_fold(sum, |acc, arg| {
+        let mut arg_env = env.clone();
+        let evaluated_arg = evaluate(arg, &mut arg_env)?;
+        match evaluated_arg {
+            Value::Integer(j) => Ok(acc + j),
+            _ => Err(RuntimeError::InvalidArgumentType)
+        }
+    }).map(Value::Integer)
+}
+
+fn native_define(args: Vec<&Value>, env: &mut Environment) -> Result<Value, RuntimeError> {
+    println!("{:?}", args);
+    println!("{:?}", env);
+
+    if args.len() != 2 {
+        return Err(RuntimeError::InvalidArgumentType)
+    }
+
+    match args[0] {
+        Value::Symbol(name) => {
+            let arg = args[1];
+            let evaluated_arg = evaluate(arg, env)?;
+            env.set(name.to_string(), evaluated_arg);
+            Ok(Value::List(Vec::new()))
+        }
         _ => Err(RuntimeError::InvalidArgumentType)
     }
 }
 
-pub fn evaluate_list(values: Vec<Value>, env: &Environment) -> Result<Value, RuntimeError> {
+pub fn evaluate_list(values: Vec<Value>, env: &mut Environment) -> Result<Value, RuntimeError> {
     let mut result = Value::List(Vec::new());
 
     for value in values {
-        result = evaluate(&value, &env)?
+        result = evaluate(&value, env)?
     }
 
     Ok(result)
 }
 
-pub fn evaluate(value: &Value, env: &Environment) -> Result<Value, RuntimeError> {
+pub fn evaluate(value: &Value, env: &mut Environment) -> Result<Value, RuntimeError> {
     match value {
         &Value::Integer(i) => Ok(Value::Integer(i)),
-        &Value::Float(f) => Ok(Value::Float(f)),
         &Value::Bool(b) => Ok(Value::Bool(b)),
         &Value::Char(c) => Ok(Value::Char(c)),
         &Value::String(ref string) => Ok(Value::String(string.clone())),
@@ -142,7 +145,7 @@ pub fn evaluate(value: &Value, env: &Environment) -> Result<Value, RuntimeError>
                 match symbol {
                     Value::Procedure(procedure) => {
                         let args = elements[1..].into_iter().collect();
-                        evaluate_procedure(procedure, args, &env.create_child())
+                        evaluate_procedure(procedure, args, env)
                     },
                     _ => Err(RuntimeError::ExpectedProcedure(symbol))
                 }
@@ -152,7 +155,7 @@ pub fn evaluate(value: &Value, env: &Environment) -> Result<Value, RuntimeError>
     }
 }
 
-fn evaluate_procedure(procedure: Procedure, args: Vec<&Value>, env: &Environment) -> Result<Value, RuntimeError> {
+fn evaluate_procedure(procedure: Procedure, args: Vec<&Value>, env: &mut Environment) -> Result<Value, RuntimeError> {
     match procedure {
         Procedure::Lambda(parameters, body, closure_env) => {
             if args.len() != parameters.len() {
@@ -165,7 +168,7 @@ fn evaluate_procedure(procedure: Procedure, args: Vec<&Value>, env: &Environment
                 lambda_env.set(parameter.clone(), arg_value)
             }
 
-            evaluate_list(body, &lambda_env)
+            evaluate_list(body, &mut lambda_env)
         },
         Procedure::Native(func) => {
             func(args, env)
@@ -183,8 +186,8 @@ impl Interpreter {
     }
 
     pub fn interpret(&mut self) -> Result<Value, RuntimeError> {
-        let env = Environment::default();
-        evaluate_list(self.values.clone(), &env)
+        let mut env = Environment::default();
+        evaluate_list(self.values.clone(), &mut env)
     }
 }
 

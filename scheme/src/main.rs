@@ -7,6 +7,7 @@ mod interpreter;
 fn main() {
     let result = interpret(
         "; this is a comment
-                    (+ 12 -23)");
+                    (define x 10)
+                    (+ x 12 -23)");
     println!("{:?}", result);
 }

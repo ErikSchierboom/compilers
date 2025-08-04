@@ -1,6 +1,6 @@
 use std::iter::Peekable;
 use crate::scanner::SyntaxError::{ExpectedCharacter, MissingCharacter, UnexpectedCharacter};
-use crate::scanner::Token::{Bool, Float, Identifier, Integer};
+use crate::scanner::Token::{Bool, Identifier, Integer};
 
 #[derive(Debug, Clone)]
 pub enum SyntaxError {
@@ -15,7 +15,6 @@ pub enum Token {
     CloseParen,
     Identifier(String),
     Integer(i64),
-    Float(f64),
     Bool(bool),
     Char(char),
     String(String)
@@ -111,12 +110,7 @@ impl<'a> Scanner<'a> {
     fn number(&mut self) -> Result<Token, SyntaxError> {
         self.advance_while(char::is_ascii_digit);
 
-        if self.advance_if(|&c| c == '.').is_some() {
-            self.advance_while(char::is_ascii_digit);
-            Ok(Float(self.lexeme().parse().unwrap()))
-        } else {
-            Ok(Integer(self.lexeme().parse().unwrap()))
-        }
+        Ok(Integer(self.lexeme().parse().unwrap()))
     }
 
     fn identifier(&mut self) -> Result<Token, SyntaxError> {

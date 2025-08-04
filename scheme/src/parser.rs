@@ -3,7 +3,6 @@ use crate::scanner::{scan, SyntaxError, Token};
 #[derive(Debug, Clone)]
 pub enum Node {
     Integer(i64),
-    Float(f64),
     Bool(bool),
     Char(char),
     String(String),
@@ -40,7 +39,6 @@ impl Parser {
             Token::CloseParen => Some(Err(SyntaxError::UnexpectedCharacter(')'))),
             Token::Identifier(identifier) => Some(Ok(Node::Symbol(identifier.to_string()))),
             Token::Integer(i) => Some(Ok(Node::Integer(i.clone()))),
-            Token::Float(f) => Some(Ok(Node::Float(f.clone()))),
             Token::Bool(bool) => Some(Ok(Node::Bool(bool.clone()))),
             Token::Char(c) => Some(Ok(Node::Char(c.clone()))),
             Token::String(str) => Some(Ok(Node::String(str.clone()))),
