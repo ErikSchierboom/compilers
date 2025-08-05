@@ -9,6 +9,8 @@ pub enum SyntaxError {
     ExpectedCharacter(char)
 }
 
+// TODO: convert tokens to span
+
 #[derive(Debug, Clone)]
 pub enum Token {
     OpenParen,
