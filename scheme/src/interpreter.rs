@@ -97,9 +97,6 @@ fn native_plus(args: Vec<&Value>, env: &mut Environment) -> Result<Value, Runtim
 }
 
 fn native_define(args: Vec<&Value>, env: &mut Environment) -> Result<Value, RuntimeError> {
-    println!("{:?}", args);
-    println!("{:?}", env);
-
     if args.len() != 2 {
         return Err(RuntimeError::InvalidArgumentType)
     }
