@@ -1,11 +1,9 @@
-// "+ [1 2 3] 2 # this is a comment"
-
 use std::iter::Peekable;
 
 #[derive(Debug)]
 pub enum ScanError {
     UnexpectedCharacter,
-    ExpectedCharacter(char)
+    ExpectedCharacter(Vec<char>)
 }
 
 #[derive(Clone, Debug)]
@@ -40,9 +38,11 @@ impl<T> Spanned<T> {
 pub enum Token {
     Number,
     Character,
+    String,
     Identifier,
     OpenBracket,
-    CloseBracket
+    CloseBracket,
+    Primitive
 }
 
 type ScanResult = Result<Spanned<Token>, Spanned<ScanError>>;
@@ -64,11 +64,54 @@ impl<'a> Scanner<'a> {
 
         self.span.advance();
 
-        match self.chars.next()? {
-            '[' => Some(Ok(self.spanned(Token::OpenBracket))),
-            ']' => Some(Ok(self.spanned(Token::CloseBracket))),
-            _ => Some(Err(self.spanned(ScanError::UnexpectedCharacter)))
+        match self.advance()? {
+            '[' => self.token(Token::OpenBracket),
+            ']' => self.token(Token::CloseBracket),
+            '+' | '-' | '*' | '/' => self.token(Token::Primitive),
+            '@' => self.character(),
+            '"' => self.string(),
+            c if c.is_ascii_digit() => self.number(),
+            c if c.is_ascii_alphabetic() => self.identifier(),
+            _ => self.error(ScanError::UnexpectedCharacter)
         }
+    }
+
+    fn identifier(&mut self) -> Option<ScanResult> {
+        self.advance_while(char::is_ascii_alphanumeric);
+        self.token(Token::Identifier)
+    }
+
+    fn number(&mut self) -> Option<ScanResult> {
+        self.advance_while(char::is_ascii_digit);
+        self.token(Token::Number)
+    }
+
+    fn character(&mut self) -> Option<ScanResult> {
+        // TODO: escape characters
+        
+        match self.advance() {
+            Some(_) => Some(Ok(self.spanned(Token::Character))),
+            None => Some(Err(self.spanned(ScanError::ExpectedCharacter(vec![]))))
+        }
+    }
+
+    fn string(&mut self) -> Option<ScanResult> {
+        // TODO: escape characters
+
+        self.advance_while(|&c| c != '"');
+     
+        match self.advance_if_match(&'"') {
+            Some(_) => self.token(Token::String),
+            None => self.error(ScanError::ExpectedCharacter(vec!['"']))
+        }
+    }
+
+    fn token(&mut self, token: Token) -> Option<ScanResult> {
+        Some(Ok(self.spanned(token)))
+    }
+
+    fn error(&mut self, error: ScanError) -> Option<ScanResult> {
+        Some(Err(self.spanned(error)))
     }
 
     fn skip_whitespace(&mut self) {
