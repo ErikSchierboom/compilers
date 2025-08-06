@@ -88,22 +88,21 @@ impl<'a> Scanner<'a> {
     }
 
     fn character(&mut self) -> Option<ScanResult> {
-        // TODO: escape characters
-        
-        match self.advance() {
-            Some(_) => Some(Ok(self.spanned(Token::Character))),
-            None => Some(Err(self.spanned(ScanError::ExpectedCharacter(vec![]))))
+        match self.char() {
+            Some(Ok(_)) => self.token(Token::Character),
+            Some(Err(error)) => self.error(error),
+            None => self.error(ScanError::ExpectedCharacter(vec![]))
         }
     }
 
     fn string(&mut self) -> Option<ScanResult> {
-        // TODO: escape characters
-
-        self.advance_while(|&c| c != '"');
-     
-        match self.advance_if_match(&'"') {
-            Some(_) => self.token(Token::String),
-            None => self.error(ScanError::ExpectedCharacter(vec!['"']))
+        loop {
+            match self.char() {
+                Some(Ok('"')) => return self.token(Token::String),
+                Some(Ok(_)) => {},
+                Some(Err(error)) => return self.error(error),
+                None => return self.error(ScanError::ExpectedCharacter(vec!['"']))
+            }
         }
     }
     
@@ -111,8 +110,11 @@ impl<'a> Scanner<'a> {
         match self.advance() {
             Some('\\') => {
                 match self.advance() {
-                    Some(c) => Some(Err(ScanError::InvalidEscape(c))),
-                    None => Some(Err(ScanError::ExpectedCharacter(vec!['n', 't', 'r', '\\'])))
+                    Some(c) => match c {
+                        'n' | 'r' | 't' | '\\' | 'b' | '0' => Some(Ok(c)),
+                        _ => Some(Err(ScanError::InvalidEscape(c))),
+                    },
+                    None => Some(Err(ScanError::ExpectedCharacter(vec!['n', 't', 'r', '\\', 'b', '0'])))
                 }
             },
             Some(c) => Some(Ok(c)),
