@@ -157,6 +157,6 @@ impl<'a> Iterator for Scanner<'a> {
     }
 }
 
-pub fn scan(source_text: &SourceText) -> Scanner {
+pub fn scan<'a>(source_text: &'a SourceText<'a>) -> Scanner<'a> {
     Scanner::new(source_text)
 }
