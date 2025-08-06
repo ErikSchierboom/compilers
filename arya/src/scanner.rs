@@ -1,26 +1,11 @@
 use std::iter::Peekable;
+use crate::source::{SourceText, Span};
 
 #[derive(Debug)]
 pub enum ScanError {
     UnexpectedCharacter,
     ExpectedCharacter(Vec<char>),
     InvalidEscape(char)
-}
-
-#[derive(Clone, Debug)]
-pub struct Span {
-    pub begin: usize,
-    pub end: usize
-}
-
-impl Span {
-    pub fn empty() -> Self {
-        Span { begin: 0, end: 0 }
-    }
-
-    pub fn advance(&mut self) {
-        self.begin = self.end
-    }
 }
 
 #[derive(Debug)]
@@ -55,8 +40,10 @@ pub struct Scanner<'a> {
 }
 
 impl<'a> Scanner<'a> {
-    pub fn new(source_code: &'a str) -> Self {
-        Scanner { source_code, chars: source_code.chars().peekable(), span: Span::empty() }
+    pub fn new(source_text: &'a SourceText) -> Self {
+        let source_code = source_text.source_code.as_str();
+        let chars = source_code.chars().peekable();
+        Scanner { source_code, chars, span: Span::empty() }
     }
 
     fn scan_token(&mut self) -> Option<ScanResult> {
@@ -169,6 +156,6 @@ impl<'a> Iterator for Scanner<'a> {
     }
 }
 
-pub fn scan(source_code: &str) -> Scanner {
-    Scanner::new(source_code)
+pub fn scan(source_text: &SourceText) -> Scanner {
+    Scanner::new(source_text)
 }
