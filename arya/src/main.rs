@@ -3,7 +3,11 @@ use crate::scanner::scan;
 mod scanner;
 
 fn main() {
-    const code: &str = "+ [1 2 3] 2 \"abc 123 %^@#\" ";
+    const code: &str = "
+        # this is a comment
+        + [1 2 3] 2
+         @w @\\n \"abc 123 %^@#\"
+     ";
 
     for token in scan(code) {
         println!("{:?}", token);

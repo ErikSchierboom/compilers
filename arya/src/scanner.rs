@@ -3,7 +3,8 @@ use std::iter::Peekable;
 #[derive(Debug)]
 pub enum ScanError {
     UnexpectedCharacter,
-    ExpectedCharacter(Vec<char>)
+    ExpectedCharacter(Vec<char>),
+    InvalidEscape(char)
 }
 
 #[derive(Clone, Debug)]
@@ -103,6 +104,19 @@ impl<'a> Scanner<'a> {
         match self.advance_if_match(&'"') {
             Some(_) => self.token(Token::String),
             None => self.error(ScanError::ExpectedCharacter(vec!['"']))
+        }
+    }
+    
+    fn char(&mut self) -> Option<Result<char, ScanError>> {
+        match self.advance() {
+            Some('\\') => {
+                match self.advance() {
+                    Some(c) => Some(Err(ScanError::InvalidEscape(c))),
+                    None => Some(Err(ScanError::ExpectedCharacter(vec!['n', 't', 'r', '\\'])))
+                }
+            },
+            Some(c) => Some(Ok(c)),
+            None => None
         }
     }
 
