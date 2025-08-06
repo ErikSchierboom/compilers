@@ -5,8 +5,7 @@ mod scanner;
 mod source;
 
 fn main() {
-    // let code: String = "# this is a comment\n+ [1 2 3] 2\n@w @\\n \"abc 123 %^@#\"".into();
-    let code: String = "+ [1 2 3] 2".into();
+    let code: String = "# this is a comment\n+ [1 2 3] 2\n@w @\\n \"abc 123 %^@#\"".into();
     let source_text = SourceText::from_str(code);
 
     for scan_result in scan(&source_text) {

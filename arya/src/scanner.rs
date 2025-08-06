@@ -123,7 +123,8 @@ impl<'a> Scanner<'a> {
 
     fn skip_comment(&mut self) {
         if self.advance_if_match(&'#').is_some() {
-            self.advance_while(|&c| c != '\n')
+            self.advance_while(|&c| c != '\n');
+            self.advance();
         }
     }
 
