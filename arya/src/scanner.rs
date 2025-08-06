@@ -34,16 +34,14 @@ pub enum Token {
 type ScanResult = Result<Spanned<Token>, Spanned<ScanError>>;
 
 pub struct Scanner<'a> {
-    source_code: &'a str,
     chars: Peekable<std::str::Chars<'a>>,
     span: Span
 }
 
 impl<'a> Scanner<'a> {
     pub fn new(source_text: &'a SourceText) -> Self {
-        let source_code = source_text.source_code.as_str();
-        let chars = source_code.chars().peekable();
-        Scanner { source_code, chars, span: Span::empty() }
+        let chars = source_text.source_code.chars().peekable();
+        Scanner { chars, span: Span::empty() }
     }
 
     fn scan_token(&mut self) -> Option<ScanResult> {
