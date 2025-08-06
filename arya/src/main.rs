@@ -1,5 +1,5 @@
-use crate::source::SourceText;
 use crate::scanner::scan;
+use crate::source::SourceText;
 
 mod scanner;
 mod source;
@@ -13,7 +13,6 @@ fn main() {
             Ok(token) => println!("Token: {:?} at {:?}", token.value, source_text.get_location(token.span)),
             Err(error) => eprintln!("Error: {:?} at {:?}", error.value, source_text.get_location(error.span))
         }
-        
     }
 }
 
