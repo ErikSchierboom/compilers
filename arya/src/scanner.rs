@@ -1,12 +1,27 @@
+use std::error::Error;
+use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 use crate::source::{SourceText, Span};
 
 #[derive(Debug)]
 pub enum ScanError {
-    UnexpectedCharacter,
+    UnexpectedCharacter(char),
     ExpectedCharacter(Vec<char>),
     InvalidEscape(char)
 }
+
+impl Display for ScanError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ScanError::UnexpectedCharacter(c) => write!(f, "Unexpected character {c:?}"),
+            ScanError::ExpectedCharacter(chars) if chars.is_empty() => write!(f, "Expected character"),
+            ScanError::ExpectedCharacter(chars) => write!(f, "Expected on of {chars:?}"),
+            ScanError::InvalidEscape(c) => write!(f, "Invalid escape \\{c:?}")
+        }
+    }
+}
+
+impl Error for ScanError {}
 
 #[derive(Debug)]
 pub struct Spanned<T> {
@@ -58,7 +73,7 @@ impl<'a> Scanner<'a> {
             '"' => self.string(),
             c if c.is_ascii_digit() => self.number(),
             c if c.is_ascii_alphabetic() => self.identifier(),
-            _ => self.error(ScanError::UnexpectedCharacter)
+            c => self.error(ScanError::UnexpectedCharacter(c))
         }
     }
 

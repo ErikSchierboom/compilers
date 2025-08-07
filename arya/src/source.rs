@@ -21,7 +21,7 @@ impl<'a> Lines<'a> {
         }
     }
 
-    fn get_line_offsets(source_code: &'a String) -> Vec<usize> {
+    fn get_line_offsets(source_code: &'a str) -> Vec<usize> {
         source_code
             .chars()
             .enumerate()
@@ -52,7 +52,7 @@ impl<'a> SourceText<'a> {
         Self { source_code, lines: OnceCell::new() }
     }
 
-    pub fn get_location(&'a self, span: Span) -> Location {
+    pub fn get_location(&'a self, span: Span) -> Location<'a> {
         self.lines
             .get_or_init(|| Lines::new(&self.source_code))
             .get_location(span)
