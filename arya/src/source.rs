@@ -22,10 +22,12 @@ impl<'a> Lines<'a> {
     }
 
     fn get_line_offsets(source_code: &'a str) -> Vec<usize> {
-        source_code
-            .chars()
-            .enumerate()
-            .filter_map(|(i, c)| if i == 0 || c == '\n' { Some(i) } else { None })
+        std::iter::once(0)
+            .chain(
+                source_code
+                    .chars()
+                    .enumerate()
+                    .filter_map(|(i, c)| if c == '\n' { Some(i + 1) } else { None }))
             .collect()
     }
 
@@ -66,14 +68,12 @@ pub struct Span {
 }
 
 impl Span {
-    pub fn empty() -> Self {
-        Self { begin: 0, end: 0 }
+    pub(crate) fn new(begin: usize, end: usize) -> Self {
+        Self { begin, end }
     }
+}
 
-    pub fn advance(&mut self) {
-        self.begin = self.end
-    }
-    
+impl Span {
     pub fn length(&self) -> usize {
         self.end - self.begin
     }
