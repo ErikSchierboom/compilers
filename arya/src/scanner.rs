@@ -48,24 +48,51 @@ pub enum Token {
 
 type ScanResult = Result<Spanned<Token>, Spanned<ScanError>>;
 
-pub struct Scanner<'a> {
+pub struct CharStream<'a> {
     chars: Peekable<std::str::Chars<'a>>,
-    span: Span
+    position: usize
+}
+
+impl<'a> CharStream<'a> {
+    pub fn new(source_text: &'a SourceText) -> Self {
+        let chars = source_text.source_code.chars().peekable();
+        CharStream { chars, position: 0 }
+    }
+
+    pub fn advance(&mut self) -> Option<char> {
+        self.advance_if(|_| true)
+    }
+
+    pub fn advance_if_match(&mut self, expected: &char) -> Option<char> {
+        self.advance_if(|c| c == expected)
+    }
+
+    pub fn advance_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {
+        self.chars.next_if(func).inspect(|_| self.position += 1 )
+    }
+
+    pub fn advance_while(&mut self, func: impl Fn(&char) -> bool) {
+        while self.advance_if(&func).is_some() {}
+    }
+}
+
+pub struct Scanner<'a> {
+    chars: CharStream<'a>,
+    start: usize
 }
 
 impl<'a> Scanner<'a> {
     pub fn new(source_text: &'a SourceText) -> Self {
-        let chars = source_text.source_code.chars().peekable();
-        Scanner { chars, span: Span::empty() }
+        Scanner { chars: CharStream::new(source_text), start: 0 }
     }
 
     fn scan_token(&mut self) -> Option<ScanResult> {
         self.skip_whitespace();
         self.skip_comment();
 
-        self.span.advance();
+        self.start = self.chars.position;
 
-        match self.advance()? {
+        match self.chars.advance()? {
             '[' => self.token(Token::OpenBracket),
             ']' => self.token(Token::CloseBracket),
             '+' | '-' | '*' | '/' => self.token(Token::Primitive),
@@ -78,12 +105,12 @@ impl<'a> Scanner<'a> {
     }
 
     fn identifier(&mut self) -> Option<ScanResult> {
-        self.advance_while(char::is_ascii_alphanumeric);
+        self.chars.advance_while(char::is_ascii_alphanumeric);
         self.token(Token::Identifier)
     }
 
     fn number(&mut self) -> Option<ScanResult> {
-        self.advance_while(char::is_ascii_digit);
+        self.chars.advance_while(char::is_ascii_digit);
         self.token(Token::Number)
     }
 
@@ -107,9 +134,9 @@ impl<'a> Scanner<'a> {
     }
     
     fn char(&mut self) -> Option<Result<char, ScanError>> {
-        match self.advance() {
+        match self.chars.advance() {
             Some('\\') => {
-                match self.advance() {
+                match self.chars.advance() {
                     Some(c) => match c {
                         'n' | 'r' | 't' | '\\' | 'b' | '0' => Some(Ok(c)),
                         _ => Some(Err(ScanError::InvalidEscape(c))),
@@ -131,34 +158,18 @@ impl<'a> Scanner<'a> {
     }
 
     fn skip_whitespace(&mut self) {
-        self.advance_while(|&c| c.is_whitespace())
+        self.chars.advance_while(|&c| c.is_whitespace())
     }
 
     fn skip_comment(&mut self) {
-        if self.advance_if_match(&'#').is_some() {
-            self.advance_while(|&c| c != '\n');
-            self.advance();
+        if self.chars.advance_if_match(&'#').is_some() {
+            self.chars.advance_while(|&c| c != '\n');
+            self.chars.advance();
         }
     }
 
     fn spanned<T>(&self, value: T) -> Spanned<T> {
-        Spanned::new(value, self.span.clone())
-    }
-
-    fn advance(&mut self) -> Option<char> {
-        self.advance_if(|_| true)
-    }
-
-    fn advance_if_match(&mut self, expected: &char) -> Option<char> {
-        self.advance_if(|c| c == expected)
-    }
-
-    fn advance_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {
-        self.chars.next_if(func).inspect(|_| self.span.end += 1 )
-    }
-
-    fn advance_while(&mut self, func: impl Fn(&char) -> bool) {
-        while self.advance_if(&func).is_some() {}
+        Spanned::new(value, Span::new(self.start, self.chars.position))
     }
 }
 
