@@ -1,7 +1,4 @@
-use std::error::Error;
 use std::fmt::{Display, Formatter};
-use std::fs;
-use std::path::Path;
 
 #[derive(Clone, Debug)]
 pub struct Location {
@@ -49,8 +46,7 @@ impl Span {
 impl Display for Span {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.source {
-            Source::Text(_) => write!(f, "{} - {}", self.begin, self.end),
-            Source::File(_, path) => write!(f, "{}: {} - {}", path.to_str().unwrap(), self.begin, self.end)
+            Source::Text(_) => write!(f, "{} - {}", self.begin, self.end)
         }
     }
 }
@@ -69,24 +65,17 @@ impl<T> Spanned<T> {
 
 #[derive(Clone, Debug)]
 pub enum Source {
-    Text(String),
-    File(String, Box<Path>)
+    Text(String)
 }
 
 impl Source {
     pub fn source_code(&self) -> &String {
         match self {
-            Source::Text(source) => source,
-            Source::File(source, _) => source
+            Source::Text(source) => source
         }
     }
 
     pub fn from_text(source: String) -> Self {
         Self::Text(source)
-    }
-
-    pub fn from_file(path: Box<Path>) -> Result<Self, Box<dyn Error>> {
-        let source = fs::read_to_string(&path)?;
-        Ok(Self::File(source, path))
     }
 }
