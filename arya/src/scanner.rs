@@ -15,7 +15,7 @@ impl Display for ScanError {
         match self {
             ScanError::UnexpectedCharacter(c) => write!(f, "Unexpected character {c:?}"),
             ScanError::ExpectedCharacter(chars) if chars.is_empty() => write!(f, "Expected character"),
-            ScanError::ExpectedCharacter(chars) => write!(f, "Expected on of {chars:?}"),
+            ScanError::ExpectedCharacter(chars) => write!(f, "Expected one of {chars:?}"),
             ScanError::InvalidEscape(c) => write!(f, "Invalid escape \\{c:?}")
         }
     }
