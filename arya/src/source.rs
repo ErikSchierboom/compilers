@@ -1,80 +1,70 @@
-use std::cell::OnceCell;
+use std::error::Error;
+use std::fmt::{Display, Formatter};
+use std::fs;
+use std::path::Path;
+
+#[derive(Clone, Debug)]
+pub struct Location {
+    pub line: u16,
+    pub column: u16,
+    pub position: u32
+}
+
+impl Location {
+    pub fn new(line: u16, column: u16, position: u32) -> Self {
+        Self { line, column, position }
+    }
+}
+
+impl Display for Location {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.line, self.column)
+    }
+}
 
 #[derive(Debug)]
-pub struct Location<'a> {
-    pub text: &'a str,
-    pub line: usize,
-    pub column: usize,
-    pub length: usize
+pub struct Span {
+    pub source: Source,
+    pub begin: Location,
+    pub end: Location
+
 }
 
-struct Lines<'a> {
-    source_code: &'a String,
-    line_offsets: Vec<usize>
+impl Span {
+    pub(crate) fn new(source: Source, begin: Location, end: Location) -> Self {
+        Self { source, begin, end }
+    }
 }
 
-impl<'a> Lines<'a> {
-    pub fn new(source_code: &'a String) -> Self {
-        Self {
-            source_code,
-            line_offsets: Self::get_line_offsets(source_code)
+impl Display for Span {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self.source {
+            Source::Text(_) => write!(f, "{} - {}", self.begin, self.end),
+            Source::File(_, path) => write!(f, "{}: {} - {}", path.to_str().unwrap(), self.begin, self.end)
         }
-    }
-
-    fn get_line_offsets(source_code: &'a str) -> Vec<usize> {
-        std::iter::once(0)
-            .chain(
-                source_code
-                    .chars()
-                    .enumerate()
-                    .filter_map(|(i, c)| if c == '\n' { Some(i + 1) } else { None }))
-            .collect()
-    }
-
-    pub fn get_location(&self, span: Span) -> Location<'a> {
-        let line_pos = self.line_offsets
-            .iter()
-            .rposition(|line_offset| line_offset <= &span.begin)
-            .unwrap_or(0);
-        let line = line_pos + 1;
-        let column = span.begin - self.line_offsets[line_pos] + 1;
-        let length = span.length();
-        let text = &self.source_code[span.begin..span.end];
-        Location { text, line, column, length }
-    }
-}
-
-pub struct SourceText<'a> {
-    pub source_code: String,
-    lines: OnceCell<Lines<'a>>
-}
-
-impl<'a> SourceText<'a> {
-    pub fn from_str(source_code: String) -> Self {
-        Self { source_code, lines: OnceCell::new() }
-    }
-
-    pub fn get_location(&'a self, span: Span) -> Location<'a> {
-        self.lines
-            .get_or_init(|| Lines::new(&self.source_code))
-            .get_location(span)
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct Span {
-    pub begin: usize,
-    pub end: usize
+pub enum Source {
+    Text(String),
+    File(String, Box<Path>)
 }
 
-impl Span {
-    pub(crate) fn new(begin: usize, end: usize) -> Self {
-        Self { begin, end }
+impl Source {
+    pub fn source_code(&self) -> &String {
+        match self {
+            Source::Text(source) => source,
+            Source::File(source, _) => source
+        }
     }
-}
 
-impl Span {
-    pub fn length(&self) -> usize {
-        self.end - self.begin
+    pub fn from_text(source: String) -> Self {
+        Self::Text(source)
+    }
+
+    pub fn from_file(path: Box<Path>) -> Result<Self, Box<dyn Error>> {
+        let source = fs::read_to_string(&path)?;
+        Ok(Self::File(source, path))
     }
 }

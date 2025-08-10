@@ -1,17 +1,16 @@
 use crate::scanner::scan;
-use crate::source::SourceText;
+use crate::source::Source;
 
 mod scanner;
 mod source;
 
 fn main() {
-    let code: String = "# this is a comment\n+ [1 2 3] 2\n@w @\\n \"abc 123 %^@#\"".into();
-    let source_text = SourceText::from_str(code);
+    let source = Source::from_text("# this is a comment\n+ [1 2 3] 2\n@w @\\n \"abc 123 %^@#\"".into());
 
-    for scan_result in scan(&source_text) {
+    for scan_result in scan(&source) {
         match scan_result {
-            Ok(token) => println!("Token: {:?} at {:?}", token.value, source_text.get_location(token.span)),
-            Err(error) => eprintln!("Error: {:?} at {:?}", error.value, source_text.get_location(error.span))
+            Ok(token) => println!("Token: {} at {}", token.value, token.span),
+            Err(error) => eprintln!("Error: {} at {}", error.value, error.span)
         }
     }
 }

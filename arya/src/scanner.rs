@@ -1,7 +1,8 @@
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
-use crate::source::{SourceText, Span};
+use std::ptr::write;
+use crate::source::{Location, Source, Span};
 
 #[derive(Debug)]
 pub enum ScanError {
@@ -46,17 +47,32 @@ pub enum Token {
     Primitive
 }
 
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Number => write!(f, "number"),
+            Token::Character => write!(f, "character"),
+            Token::String => write!(f, "string"),
+            Token::Identifier => write!(f, "identifier"),
+            Token::OpenBracket => write!(f, "["),
+            Token::CloseBracket => write!(f, "]"),
+            Token::Primitive => write!(f, "primitive"),
+        }
+    }
+}
+
 type ScanResult = Result<Spanned<Token>, Spanned<ScanError>>;
 
 pub struct TextWindow<'a> {
     chars: Peekable<std::str::Chars<'a>>,
-    position: usize
+    location: Location
 }
 
 impl<'a> TextWindow<'a> {
-    pub fn new(source_text: &'a SourceText) -> Self {
-        let chars = source_text.source_code.chars().peekable();
-        TextWindow { chars, position: 0 }
+    pub fn new(source: &'a Source) -> Self {
+        let chars = source.source_code().chars().peekable();
+        let location = Location::new(0, 0, 0);
+        TextWindow { chars, location }
     }
 
     pub fn advance(&mut self) -> Option<char> {
@@ -68,7 +84,16 @@ impl<'a> TextWindow<'a> {
     }
 
     pub fn advance_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {
-        self.chars.next_if(func).inspect(|_| self.position += 1 )
+        self.chars.next_if(func).inspect(|&c| {
+            if c == '\n' {
+                self.location.line += 1;
+                self.location.column = 1;
+            } else {
+                self.location.column += 1;
+            }
+
+            self.location.position += 1
+        } )
     }
 
     pub fn advance_while(&mut self, func: impl Fn(&char) -> bool) {
@@ -78,19 +103,22 @@ impl<'a> TextWindow<'a> {
 
 pub struct Scanner<'a> {
     chars: TextWindow<'a>,
-    start: usize
+    start: Location,
+    source: &'a Source
 }
 
 impl<'a> Scanner<'a> {
-    pub fn new(source_text: &'a SourceText) -> Self {
-        Scanner { chars: TextWindow::new(source_text), start: 0 }
+    pub fn new(source: &'a Source) -> Self {
+        let chars = TextWindow::new(source);
+        let start = chars.location.clone();
+        Scanner { chars, start, source }
     }
 
     fn scan_token(&mut self) -> Option<ScanResult> {
         self.skip_whitespace();
         self.skip_comment();
 
-        self.start = self.chars.position;
+        self.start = self.chars.location.clone();
 
         match self.chars.advance()? {
             '[' => self.token(Token::OpenBracket),
@@ -169,7 +197,8 @@ impl<'a> Scanner<'a> {
     }
 
     fn spanned<T>(&self, value: T) -> Spanned<T> {
-        Spanned::new(value, Span::new(self.start, self.chars.position))
+        let source = self.source.clone();
+        Spanned::new(value, Span::new(source, self.start.clone(), self.chars.location.clone()))
     }
 }
 
@@ -181,6 +210,6 @@ impl<'a> Iterator for Scanner<'a> {
     }
 }
 
-pub fn scan<'a>(source_text: &'a SourceText<'a>) -> Scanner<'a> {
-    Scanner::new(source_text)
+pub fn scan(source: &Source) -> Scanner {
+    Scanner::new(source)
 }
