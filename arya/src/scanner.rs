@@ -1,8 +1,7 @@
+use crate::source::{Location, Source, Span};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
-use std::ptr::write;
-use crate::source::{Location, Source, Span};
 
 #[derive(Debug)]
 pub enum ScanError {
