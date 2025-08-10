@@ -31,7 +31,7 @@ pub enum Token {
     Identifier,
     OpenBracket,
     CloseBracket,
-    Primitive
+    Error(ScanError)
 }
 
 impl Display for Token {
@@ -43,23 +43,21 @@ impl Display for Token {
             Token::Identifier => write!(f, "identifier"),
             Token::OpenBracket => write!(f, "["),
             Token::CloseBracket => write!(f, "]"),
-            Token::Primitive => write!(f, "primitive"),
+            Token::Error(error) => write!(f, "{error}")
         }
     }
 }
 
-type ScanResult = Result<Spanned<Token>, Spanned<ScanError>>;
-
-pub struct TextWindow<'a> {
+struct CharacterWindow<'a> {
     chars: Peekable<std::str::Chars<'a>>,
     location: Location
 }
 
-impl<'a> TextWindow<'a> {
+impl<'a> CharacterWindow<'a> {
     pub fn new(source: &'a Source) -> Self {
         let chars = source.source_code().chars().peekable();
         let location = Location::new();
-        TextWindow { chars, location }
+        CharacterWindow { chars, location }
     }
 
     pub fn advance(&mut self) -> Option<char> {
@@ -81,20 +79,20 @@ impl<'a> TextWindow<'a> {
     }
 }
 
-pub struct Scanner<'a> {
-    chars: TextWindow<'a>,
+struct Scanner<'a> {
+    chars: CharacterWindow<'a>,
     start: Location,
     source: &'a Source
 }
 
 impl<'a> Scanner<'a> {
     pub fn new(source: &'a Source) -> Self {
-        let chars = TextWindow::new(source);
+        let chars = CharacterWindow::new(source);
         let start = chars.location.clone();
         Scanner { chars, start, source }
     }
 
-    fn scan_token(&mut self) -> Option<ScanResult> {
+    fn scan_token(&mut self) -> Option<Spanned<Token>> {
         self.skip_whitespace();
         self.skip_comment();
 
@@ -103,7 +101,7 @@ impl<'a> Scanner<'a> {
         match self.chars.advance()? {
             '[' => self.token(Token::OpenBracket),
             ']' => self.token(Token::CloseBracket),
-            '+' | '-' | '*' | '/' => self.token(Token::Primitive),
+            '+' | '-' | '*' | '/' => self.identifier(),
             '@' => self.character(),
             '"' => self.string(),
             c if c.is_ascii_digit() => self.number(),
@@ -112,17 +110,17 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn identifier(&mut self) -> Option<ScanResult> {
+    fn identifier(&mut self) -> Option<Spanned<Token>> {
         self.chars.advance_while(char::is_ascii_alphanumeric);
         self.token(Token::Identifier)
     }
 
-    fn number(&mut self) -> Option<ScanResult> {
+    fn number(&mut self) -> Option<Spanned<Token>> {
         self.chars.advance_while(char::is_ascii_digit);
         self.token(Token::Number)
     }
 
-    fn character(&mut self) -> Option<ScanResult> {
+    fn character(&mut self) -> Option<Spanned<Token>> {
         match self.char() {
             Some(Ok(_)) => self.token(Token::Character),
             Some(Err(error)) => self.error(error),
@@ -130,7 +128,7 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn string(&mut self) -> Option<ScanResult> {
+    fn string(&mut self) -> Option<Spanned<Token>> {
         loop {
             match self.char() {
                 Some(Ok('"')) => return self.token(Token::String),
@@ -140,7 +138,7 @@ impl<'a> Scanner<'a> {
             }
         }
     }
-    
+
     fn char(&mut self) -> Option<Result<char, ScanError>> {
         match self.chars.advance() {
             Some('\\') => {
@@ -157,12 +155,12 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn token(&mut self, token: Token) -> Option<ScanResult> {
-        Some(Ok(self.spanned(token)))
+    fn token(&mut self, token: Token) -> Option<Spanned<Token>> {
+        Some(self.spanned(token))
     }
 
-    fn error(&mut self, error: ScanError) -> Option<ScanResult> {
-        Some(Err(self.spanned(error)))
+    fn error(&mut self, error: ScanError) -> Option<Spanned<Token>> {
+        Some(self.spanned(Token::Error(error)))
     }
 
     fn skip_whitespace(&mut self) {
@@ -183,13 +181,13 @@ impl<'a> Scanner<'a> {
 }
 
 impl<'a> Iterator for Scanner<'a> {
-    type Item = ScanResult;
+    type Item = Spanned<Token>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.scan_token()
     }
 }
 
-pub fn scan(source: &Source) -> Scanner {
+pub fn scan<I>(source: &Source) -> impl Iterator<Item = Spanned<Token>> {
     Scanner::new(source)
 }
