@@ -48,15 +48,15 @@ pub enum Token {
 
 type ScanResult = Result<Spanned<Token>, Spanned<ScanError>>;
 
-pub struct CharStream<'a> {
+pub struct TextWindow<'a> {
     chars: Peekable<std::str::Chars<'a>>,
     position: usize
 }
 
-impl<'a> CharStream<'a> {
+impl<'a> TextWindow<'a> {
     pub fn new(source_text: &'a SourceText) -> Self {
         let chars = source_text.source_code.chars().peekable();
-        CharStream { chars, position: 0 }
+        TextWindow { chars, position: 0 }
     }
 
     pub fn advance(&mut self) -> Option<char> {
@@ -77,13 +77,13 @@ impl<'a> CharStream<'a> {
 }
 
 pub struct Scanner<'a> {
-    chars: CharStream<'a>,
+    chars: TextWindow<'a>,
     start: usize
 }
 
 impl<'a> Scanner<'a> {
     pub fn new(source_text: &'a SourceText) -> Self {
-        Scanner { chars: CharStream::new(source_text), start: 0 }
+        Scanner { chars: TextWindow::new(source_text), start: 0 }
     }
 
     fn scan_token(&mut self) -> Option<ScanResult> {
