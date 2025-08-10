@@ -1,4 +1,4 @@
-use crate::source::{Location, Source, Span};
+use crate::source::{Location, Source, Span, Spanned};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
@@ -22,18 +22,6 @@ impl Display for ScanError {
 }
 
 impl Error for ScanError {}
-
-#[derive(Debug)]
-pub struct Spanned<T> {
-    pub value: T,
-    pub span: Span,
-}
-
-impl<T> Spanned<T> {
-    pub fn new(value: T, span: Span) -> Self {
-        Self { value, span }
-    }
-}
 
 #[derive(Debug)]
 pub enum Token {

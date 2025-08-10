@@ -45,6 +45,18 @@ impl Display for Span {
     }
 }
 
+#[derive(Debug)]
+pub struct Spanned<T> {
+    pub value: T,
+    pub span: Span,
+}
+
+impl<T> Spanned<T> {
+    pub fn new(value: T, span: Span) -> Self {
+        Self { value, span }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum Source {
     Text(String),
