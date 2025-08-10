@@ -14,6 +14,17 @@ impl Location {
     pub fn new(line: u16, column: u16, position: u32) -> Self {
         Self { line, column, position }
     }
+
+    pub fn advance(&mut self, c: char) {
+        if c == '\n' {
+            self.line += 1;
+            self.column = 1;
+        } else {
+            self.column += 1;
+        }
+
+        self.position += 1
+    }
 }
 
 impl Display for Location {
@@ -27,7 +38,6 @@ pub struct Span {
     pub source: Source,
     pub begin: Location,
     pub end: Location
-
 }
 
 impl Span {

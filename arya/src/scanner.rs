@@ -72,14 +72,7 @@ impl<'a> TextWindow<'a> {
 
     pub fn advance_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {
         self.chars.next_if(func).inspect(|&c| {
-            if c == '\n' {
-                self.location.line += 1;
-                self.location.column = 1;
-            } else {
-                self.location.column += 1;
-            }
-
-            self.location.position += 1
+            self.location.advance(c)
         } )
     }
 
