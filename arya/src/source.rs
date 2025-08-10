@@ -8,8 +8,8 @@ pub struct Location {
 }
 
 impl Location {
-    pub fn new(line: u16, column: u16, position: u32) -> Self {
-        Self { line, column, position }
+    pub fn new() -> Self {
+        Self { line: 1, column: 1, position: 0 }
     }
 
     pub fn advance(&mut self, c: char) {

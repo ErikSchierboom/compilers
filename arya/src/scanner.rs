@@ -58,7 +58,7 @@ pub struct TextWindow<'a> {
 impl<'a> TextWindow<'a> {
     pub fn new(source: &'a Source) -> Self {
         let chars = source.source_code().chars().peekable();
-        let location = Location::new(0, 0, 0);
+        let location = Location::new();
         TextWindow { chars, location }
     }
 
