@@ -1,3 +1,4 @@
+use crate::parser::parse;
 use crate::source::Source;
 
 mod scanner;
@@ -7,12 +8,10 @@ mod parser;
 fn main() {
     let source = Source::from_text("# this is a comment\n+ [1 2 3] 2\n@w @\\n \"abc 123 %^@#\"".into());
 
-    // for scan_result in parse(&source) {
-    //     match scan_result {
-    //         Ok(token) => println!("Token: {} at {}", token.value, token.span),
-    //         Err(error) => eprintln!("Error: {} at {}", error.value, error.span)
-    //     }
-    // }
+    match parse(&source) {
+        Ok(nodes) => println!("{:?}", nodes),
+        Err(errors) => eprintln!("{:?}", errors),
+    }
 }
 
 // TODO: add clippy

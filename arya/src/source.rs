@@ -30,7 +30,7 @@ impl Display for Location {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Span {
     pub source: Source,
     pub begin: Location,
@@ -51,7 +51,7 @@ impl Display for Span {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Spanned<T> {
     pub value: T,
     pub span: Span,
@@ -60,6 +60,11 @@ pub struct Spanned<T> {
 impl<T> Spanned<T> {
     pub fn new(value: T, span: Span) -> Self {
         Self { value, span }
+    }
+
+    pub fn map_value<U>(self, func: impl Fn(T) -> U) -> Spanned<U> {
+        let value = func(self.value);
+        Spanned::<U> { value, span: self.span.clone() }
     }
 }
 
