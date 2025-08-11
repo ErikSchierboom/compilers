@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use std::ops::Add;
 
 #[derive(Clone, Debug)]
 pub struct Location {
@@ -51,6 +52,14 @@ impl Display for Span {
     }
 }
 
+impl Add<Span> for Span {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        Self::new(self.source, self.begin, rhs.end)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Spanned<T> {
     pub value: T,
@@ -62,9 +71,13 @@ impl<T> Spanned<T> {
         Self { value, span }
     }
 
-    pub fn map_value<U>(self, func: impl Fn(T) -> U) -> Spanned<U> {
-        let value = func(self.value);
+    pub fn with_value<U>(self, value: U) -> Spanned<U> {
         Spanned::<U> { value, span: self.span.clone() }
+    }
+
+    pub fn map_value<U>(self, func: impl Fn(&T) -> U) -> Spanned<U> {
+        let value = func(&self.value);
+        self.with_value(value)
     }
 }
 

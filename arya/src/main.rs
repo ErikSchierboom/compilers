@@ -6,7 +6,7 @@ mod source;
 mod parser;
 
 fn main() {
-    let source = Source::from_text("# this is a comment\n+ [1 2 3] 2\n@w @\\n \"abc 123 %^@#\"".into());
+    let source = Source::from_text("+ [1 2 3] 5".into());
 
     match parse(&source) {
         Ok(nodes) => println!("{:?}", nodes),

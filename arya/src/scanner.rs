@@ -3,7 +3,7 @@ use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum ScanError {
     UnexpectedCharacter(char),
     ExpectedCharacter(Vec<char>),
@@ -23,7 +23,7 @@ impl Display for ScanError {
 
 impl Error for ScanError {}
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     Number,
     Character,
