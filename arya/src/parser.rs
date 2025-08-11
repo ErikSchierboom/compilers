@@ -34,9 +34,9 @@ pub struct Parser<'a, I> where I: Iterator<Item = Spanned<Token>> {
 }
 
 impl<'a, I> Parser<'a, I> where I: Iterator<Item = Spanned<Token>> {
-    pub fn new(tokens: Peekable<I>, source: &'a Source) -> Self {
+    pub fn new(tokens: I, source: &'a Source) -> Self {
         let start = Location::new();
-        Parser { tokens, start, source }
+        Parser { tokens: tokens.peekable(), start, source }
     }
 }
 
@@ -49,6 +49,6 @@ impl<'a, I> Iterator for Parser<'a, I> where I: Iterator<Item = Spanned<Token>> 
 }
 
 pub fn parse<I>(source: &Source) -> Vec<Spanned<Node>> {
-    let tokens = scan::<Spanned<Node>>(source).into_iter().peekable();
+    let tokens = scan::<Spanned<Node>>(source);
     Parser::new(tokens, source).collect()
 }
