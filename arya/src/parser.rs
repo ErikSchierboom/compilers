@@ -1,5 +1,5 @@
 use crate::scanner::{scan, ScanError, Token};
-use crate::source::{Location, Source, Span, Spanned};
+use crate::source::{Source, Span, Spanned};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
@@ -63,16 +63,8 @@ impl TokenWindow {
         self.advance_if(|_| true)
     }
 
-    pub fn advance_if_match(&mut self, expected: &Token) -> Option<Spanned<Token>> {
-        self.advance_if(|c| c == expected)
-    }
-
     pub fn advance_if(&mut self, func: impl Fn(&Token) -> bool) -> Option<Spanned<Token>> {
         self.tokens.next_if(|spanned| func(&spanned.value))
-    }
-
-    pub fn advance_while(&mut self, func: impl Fn(&Token) -> bool) {
-        while self.advance_if(&func).is_some() {}
     }
 }
 
@@ -81,17 +73,14 @@ type ParseResult = Result<Vec<Spanned<Node>>, Vec<Spanned<ParseError>>>;
 
 pub struct Parser<'a> {
     tokens: TokenWindow,
-    start: Location,
-    source: &'a Source,
     source_code: &'a str
 }
 
 impl<'a> Parser<'a>  {
     pub fn new(source: &'a Source, tokens: Vec<Spanned<Token>>) -> Self {
         let tokens = TokenWindow::new(tokens);
-        let start = Location::new();
         let source_code = source.source_code();
-        Parser { tokens, start, source, source_code }
+        Parser { tokens, source_code }
     }
 
     pub fn parse(&mut self) -> ParseResult {

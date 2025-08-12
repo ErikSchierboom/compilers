@@ -4,6 +4,7 @@ use crate::source::Source;
 mod scanner;
 mod source;
 mod parser;
+mod interpreter;
 
 fn main() {
     let source = Source::from_text("# comment\n+ [1 2 3] 5".into());
