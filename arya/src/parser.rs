@@ -30,8 +30,19 @@ pub enum Node {
     Character(char),
     String(String),
     Identifier(String),
-    Array(Vec<Node>),
-    Error(ParseError)
+    Array(Vec<Node>)
+}
+
+impl Display for Node {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Node::Number(n) => write!(f, "Number: {n}"),
+            Node::Character(c) => write!(f, "Character: {c}"),
+            Node::String(string) => write!(f, "String: {string}"),
+            Node::Identifier(identifier) => write!(f, "Identifier: {identifier}"),
+            Node::Array(elements) => write!(f, "Array: {:?}", elements)
+        }
+    }
 }
 
 struct TokenWindow {

@@ -81,6 +81,12 @@ impl<T> Spanned<T> {
     }
 }
 
+impl<T : Display> Display for Spanned<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} at {}", self.value, self.span)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum Source {
     Text(String)

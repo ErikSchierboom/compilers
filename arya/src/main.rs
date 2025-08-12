@@ -6,15 +6,15 @@ mod source;
 mod parser;
 
 fn main() {
-    let source = Source::from_text("+ [1 2 3] 5".into());
+    let source = Source::from_text("# comment\n+ [1 2 3] 5".into());
 
     match parse(&source) {
-        Ok(nodes) => println!("{:?}", nodes),
-        Err(errors) => eprintln!("{:?}", errors),
+        Ok(nodes) => nodes.iter().for_each(|node|println!("{}", node)),
+        Err(errors) => errors.iter().for_each(|error|eprintln!("{}", error)),
     }
 }
 
+// TODO: add CI
 // TODO: add clippy
 // TODO: add unit tests
 // TODO: add perf tests
-
