@@ -1,17 +1,18 @@
-use crate::parser::parse;
-use crate::source::Source;
+use crate::lex::tokenize;
 
-mod scanner;
+mod lex;
 mod source;
-mod parser;
-mod interpreter;
+mod parse;
+mod interpret;
 
 fn main() {
-    let source = Source::from_text("# comment\n+ [1 2 3] 5".into());
+    let source = "# comment\n[1 2 3] 5 + 2 -";
 
-    match parse(&source) {
-        Ok(nodes) => nodes.iter().for_each(|node|println!("{}", node)),
-        Err(errors) => errors.iter().for_each(|error|eprintln!("{}", error)),
+    for result in tokenize(&source) {
+        match result {
+            Ok(token) => println!("{:?}", token),
+            Err(error) => eprintln!("{:?}", error),
+        }
     }
 }
 
