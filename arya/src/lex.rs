@@ -1,5 +1,4 @@
 use std::iter::Peekable;
-use std::ops::Add;
 
 #[derive(Clone, Debug)]
 pub struct Span {
@@ -11,12 +10,10 @@ impl Span {
     pub fn new(position: u32, length: u16) -> Self {
         Self { position, length }
     }
-}
-impl Add for Span {
-    type Output = Self;
 
-    fn add(self, rhs: Self) -> Self::Output {
-        Self::new(self.position, (rhs.position - self.position) as u16 + rhs.length)
+    pub fn grow(&mut self, rhs: &Self) {
+        assert!(rhs.position >= self.position);
+        self.length = (rhs.position - self.position) as u16 + rhs.length
     }
 }
 
@@ -115,65 +112,64 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
         self.start = self.chars.position;
 
         match self.chars.advance()? {
-            '[' => Some(Ok(self.token(TokenKind::OpenBracket))),
-            ']' => Some(Ok(self.token(TokenKind::CloseBracket))),
-            '+' => Some(Ok(self.token(TokenKind::Plus))),
-            '-' => Some(Ok(self.token(TokenKind::Minus))),
-            '*' => Some(Ok(self.token(TokenKind::Star))),
-            '/' => Some(Ok(self.token(TokenKind::Slash))),
+            '[' => self.token(TokenKind::OpenBracket),
+            ']' => self.token(TokenKind::CloseBracket),
+            '+' => self.token(TokenKind::Plus),
+            '-' => self.token(TokenKind::Minus),
+            '*' => self.token(TokenKind::Star),
+            '/' => self.token(TokenKind::Slash),
             '@' => self.character(),
             '"' => self.string(),
             c if c.is_ascii_digit() => self.number(),
-            c => Some(Err(self.error(LexErrorKind::UnexpectedCharacter(c))))
+            c => self.error(LexErrorKind::UnexpectedCharacter(c))
         }
     }
 
     fn number(&mut self) -> Option<TokenResult> {
         self.chars.advance_while(char::is_ascii_digit);
-        Some(Ok(self.token(TokenKind::Number)))
-    }
-
-    fn character(&mut self) -> Option<TokenResult> {
-        match self.char() {
-            Some(Ok(_)) => Some(Ok(self.token(TokenKind::Character))),
-            Some(Err(error)) => Some(Err(error)),
-            None => Some(Err(self.error(LexErrorKind::MissingCharacterValue)))
-        }
+        self.token(TokenKind::Number)
     }
 
     fn string(&mut self) -> Option<TokenResult> {
         loop {
             match self.char() {
-                Some(Ok('"')) => return Some(Ok(self.token(TokenKind::String))),
+                Some(Ok('"')) => return self.token(TokenKind::String),
                 Some(Ok(_)) => {},
-                Some(Err(error)) => return Some(Err(error)),
-                None => return Some(Err(self.error(LexErrorKind::UnterminatedString)))
+                Some(Err(error)) => return self.error(error),
+                None => return self.error(LexErrorKind::UnterminatedString)
             }
         }
     }
 
-    fn char(&mut self) -> Option<Result<char, LexError>> {
-        match self.chars.advance() {
-            Some('\\') => {
-                match self.chars.advance() {
-                    Some(c) => match c {
-                        'n' | 'r' | 't' | '\\' | 'b' | '0' => Some(Ok(c)),
-                        _ => Some(Err(self.error(LexErrorKind::InvalidCharacterEscape(c)))),
-                    },
-                    None => Some(Err(self.error(LexErrorKind::MissingCharacterValue)))
-                }
-            },
-            Some(c) => Some(Ok(c)),
-            None => None
+    fn character(&mut self) -> Option<TokenResult> {
+        match self.char() {
+            Some(Ok(_)) => self.token(TokenKind::Character),
+            Some(Err(error)) => self.error(error),
+            None =>self.error(LexErrorKind::MissingCharacterValue)
         }
     }
 
-    fn token(&mut self, kind: TokenKind) -> Token {
-        Token::new(kind, self.span())
+    fn char(&mut self) -> Option<Result<char, LexErrorKind>> {
+        match self.chars.advance()? {
+            '\\' => {
+                match self.chars.advance() {
+                    Some(c) => match c {
+                        'n' | 'r' | 't' | 'b' | '0' | '\\' => Some(Ok(c)),
+                        _ => Some(Err(LexErrorKind::InvalidCharacterEscape(c))),
+                    },
+                    None => Some(Err(LexErrorKind::MissingCharacterValue))
+                }
+            },
+            c => Some(Ok(c))
+        }
     }
 
-    fn error(&mut self, kind: LexErrorKind) -> LexError {
-        LexError::new(kind, self.span())
+    fn token(&mut self, kind: TokenKind) -> Option<TokenResult> {
+        Some(Ok(Token::new(kind, self.span())))
+    }
+
+    fn error(&mut self, kind: LexErrorKind) -> Option<TokenResult> {
+        Some(Err(LexError::new(kind, self.span())))
     }
 
     fn skip_whitespace(&mut self) {

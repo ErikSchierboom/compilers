@@ -12,6 +12,7 @@ pub enum ParseErrorKind {
     UnterminatedArray,
 }
 
+#[derive(Debug)]
 pub struct ParseError {
     pub kind: ParseErrorKind,
     pub span: Span
@@ -107,8 +108,7 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
     }
     
     fn parse_node(&mut self) -> Option<ParseNodeResult> {
-        let token_result = self.tokens.advance()?;
-        match token_result {
+        match self.tokens.advance()? {
             Ok(token) => {
                 self.span = token.span;
                 match token.kind {
@@ -120,31 +120,34 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
                     TokenKind::Star => self.operator(Op::Multiply),
                     TokenKind::Slash => self.operator(Op::Divide),
                     TokenKind::OpenBracket => self.array(),
-                    TokenKind::CloseBracket => {
-                        Some(Err(ParseError::new(ParseErrorKind::Unexpected(token.kind), self.span.clone())))
-                    }
+                    TokenKind::CloseBracket => self.error(ParseErrorKind::Unexpected(token.kind))
                 }
             },
             Err(lex_error) => {
                 self.span = lex_error.span;
-                Some(Err(ParseError::new(Lex(lex_error.kind), self.span.clone())))
+                self.error(Lex(lex_error.kind))
             }
         }
     }
     
     fn array(&mut self) -> Option<ParseNodeResult> {
         let mut elements: Vec<Node> = Vec::new();
-        let mut last_span = self.span.clone();
-    
+
         loop {
             match self.tokens.peek() {
-                None => return Some(Err(ParseError::new(ParseErrorKind::UnterminatedArray, last_span))),
-                Some(Err(error)) => return Some(Err(ParseError::new(Lex(error.kind.clone()), last_span))),
+                None => return self.error(ParseErrorKind::UnterminatedArray),
+                Some(Err(lex_error)) => {
+                    let lex_error = Lex(lex_error.kind.clone());
+                    return self.error(lex_error)
+                }
                 Some(Ok(token)) => {
-                    last_span = token.span.clone();
+                    self.span.grow(&token.span);
 
                     match token.kind {
-                        TokenKind::CloseBracket => break,
+                        TokenKind::CloseBracket => {
+                            self.tokens.advance();
+                            break
+                        },
                         _ => match self.parse_node().unwrap() {
                             Ok(element) => elements.push(element),
                             Err(error) => return Some(Err(error))
@@ -153,40 +156,37 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
                 }
             }
         }
-    
-        self.tokens.advance();
 
-        self.span = self.span.clone() + last_span;
-        Some(Ok(self.node(NodeValue::Array(elements))))
+        self.node(NodeValue::Array(elements))
     }
     
     fn string(&mut self) -> Option<ParseNodeResult> {
         let str: EcoString = self.lexeme(&self.span).into();
-        Some(Ok(self.node(NodeValue::String(str))))
+        self.node(NodeValue::String(str))
     }
     
     fn character(&mut self) -> Option<ParseNodeResult> {
         let c = self.lexeme(&self.span).chars().next().unwrap();
-        Some(Ok(self.node(NodeValue::Character(c))))
+        self.node(NodeValue::Character(c))
     }
     
     fn number(&mut self) -> Option<ParseNodeResult> {
         let number = i64::from_str(self.lexeme(&self.span)).unwrap();
-        Some(Ok(self.node(Integer(number))))
+        self.node(Integer(number))
     }
 
     fn operator(&self, operator: Op) -> Option<ParseNodeResult> {
-        Some(Ok(self.node(Operator(operator))))
+        self.node(Operator(operator))
     }
 
-    fn node(&self, value: NodeValue) -> Node {
-        Node::new(value, self.span.clone())
+    fn node(&self, value: NodeValue) -> Option<ParseNodeResult> {
+        Some(Ok(Node::new(value, self.span.clone())))
     }
 
-    fn error(&self, error: ParseErrorKind) -> ParseError {
-        ParseError::new(error, self.span.clone())
+    fn error(&self, error: ParseErrorKind) -> Option<ParseNodeResult> {
+        Some(Err(ParseError::new(error, self.span.clone())))
     }
-    
+
     fn lexeme(&self, span: &Span) -> &'a str {
         &self.source_code[span.position as usize..(span.position + span.length as u32) as usize]
     }

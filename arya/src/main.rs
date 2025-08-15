@@ -1,4 +1,4 @@
-use crate::lex::tokenize;
+use crate::parse::parse;
 
 mod lex;
 mod source;
@@ -8,11 +8,9 @@ mod interpret;
 fn main() {
     let source = "# comment\n[1 2 3] 5 + 2 -";
 
-    for result in tokenize(&source) {
-        match result {
-            Ok(token) => println!("{:?}", token),
-            Err(error) => eprintln!("{:?}", error),
-        }
+    match parse(&source) {
+        Ok(nodes) => println!("{:?}", nodes),
+        Err(error) => eprintln!("{:?}", error),
     }
 }
 
