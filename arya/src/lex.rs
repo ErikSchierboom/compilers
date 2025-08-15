@@ -1,6 +1,7 @@
 use std::iter::Peekable;
+use std::ops::Add;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Span {
     pub position: u32,
     pub length: u16
@@ -11,9 +12,16 @@ impl Span {
         Self { position, length }
     }
 }
+impl Add for Span {
+    type Output = Self;
 
-#[derive(Debug)]
-pub enum LexErrorType {
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::new(self.position, (rhs.position - self.position) as u16 + rhs.length)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum LexErrorKind {
     UnexpectedCharacter(char),
     InvalidCharacterEscape(char),
     MissingCharacterValue,
@@ -22,8 +30,14 @@ pub enum LexErrorType {
 
 #[derive(Debug)]
 pub struct LexError {
-    pub kind: LexErrorType,
+    pub kind: LexErrorKind,
     pub span: Span
+}
+
+impl LexError {
+    pub fn new(kind: LexErrorKind, span: Span) -> Self {
+        Self { kind, span }
+    }
 }
 
 #[derive(Debug)]
@@ -43,6 +57,12 @@ pub enum TokenKind {
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span
+}
+
+impl Token {
+    pub fn new(kind: TokenKind, span: Span) -> Self {
+        Self { kind, span }
+    }
 }
 
 struct CharacterWindow<T: Iterator<Item = char>> {
@@ -68,7 +88,7 @@ impl<T> CharacterWindow<T> where T : Iterator<Item = char> {
     }
 
     pub fn advance_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {
-        self.chars.next_if(func).inspect(|&c| {
+        self.chars.next_if(func).inspect(|_| {
             self.position += 1
         } )
     }
@@ -79,7 +99,7 @@ struct Lexer<T> where T: Iterator<Item = char> {
     start: u32
 }
 
-pub type LexResult = Result<Token, LexError>;
+pub type TokenResult = Result<Token, LexError>;
 
 impl<T> Lexer<T> where T : Iterator<Item = char> {
     pub fn new(source: T) -> Self {
@@ -88,7 +108,7 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
         Lexer { chars, start }
     }
 
-    fn lex_token(&mut self) -> Option<LexResult> {
+    fn lex_token(&mut self) -> Option<TokenResult> {
         self.skip_whitespace();
         self.skip_comment();
 
@@ -104,30 +124,30 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
             '@' => self.character(),
             '"' => self.string(),
             c if c.is_ascii_digit() => self.number(),
-            c => Some(Err(self.error(LexErrorType::UnexpectedCharacter(c))))
+            c => Some(Err(self.error(LexErrorKind::UnexpectedCharacter(c))))
         }
     }
 
-    fn number(&mut self) -> Option<LexResult> {
+    fn number(&mut self) -> Option<TokenResult> {
         self.chars.advance_while(char::is_ascii_digit);
         Some(Ok(self.token(TokenKind::Number)))
     }
 
-    fn character(&mut self) -> Option<LexResult> {
+    fn character(&mut self) -> Option<TokenResult> {
         match self.char() {
             Some(Ok(_)) => Some(Ok(self.token(TokenKind::Character))),
             Some(Err(error)) => Some(Err(error)),
-            None => Some(Err(self.error(LexErrorType::MissingCharacterValue)))
+            None => Some(Err(self.error(LexErrorKind::MissingCharacterValue)))
         }
     }
 
-    fn string(&mut self) -> Option<LexResult> {
+    fn string(&mut self) -> Option<TokenResult> {
         loop {
             match self.char() {
                 Some(Ok('"')) => return Some(Ok(self.token(TokenKind::String))),
                 Some(Ok(_)) => {},
                 Some(Err(error)) => return Some(Err(error)),
-                None => return Some(Err(self.error(LexErrorType::UnterminatedString)))
+                None => return Some(Err(self.error(LexErrorKind::UnterminatedString)))
             }
         }
     }
@@ -138,9 +158,9 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
                 match self.chars.advance() {
                     Some(c) => match c {
                         'n' | 'r' | 't' | '\\' | 'b' | '0' => Some(Ok(c)),
-                        _ => Some(Err(self.error(LexErrorType::InvalidCharacterEscape(c)))),
+                        _ => Some(Err(self.error(LexErrorKind::InvalidCharacterEscape(c)))),
                     },
-                    None => Some(Err(self.error(LexErrorType::MissingCharacterValue)))
+                    None => Some(Err(self.error(LexErrorKind::MissingCharacterValue)))
                 }
             },
             Some(c) => Some(Ok(c)),
@@ -149,11 +169,11 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
     }
 
     fn token(&mut self, kind: TokenKind) -> Token {
-        Token { kind, span: self.span() }
+        Token::new(kind, self.span())
     }
 
-    fn error(&mut self, kind: LexErrorType) -> LexError {
-        LexError { kind, span: self.span() }
+    fn error(&mut self, kind: LexErrorKind) -> LexError {
+        LexError::new(kind, self.span())
     }
 
     fn skip_whitespace(&mut self) {
@@ -173,13 +193,13 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
 }
 
 impl<T> Iterator for Lexer<T> where T : Iterator<Item = char> {
-    type Item = LexResult;
+    type Item = TokenResult;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.lex_token()
     }
 }
 
-pub fn tokenize(source: &str) -> impl Iterator<Item=LexResult> + '_ {
+pub fn tokenize(source: &str) -> impl Iterator<Item=TokenResult> + '_ {
     Lexer::new(source.chars())
 }
