@@ -194,7 +194,5 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
 
 pub fn parse(source: &str) -> ParseResult {
     let tokens = tokenize(source);
-    let mut parser = Parser::new(source, tokens);
-    parser.parse()
+    Parser::new(source, tokens).parse()
 }
-
