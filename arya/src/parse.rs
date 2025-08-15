@@ -130,6 +130,25 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
         }
     }
     
+    fn string(&mut self) -> Option<ParseNodeResult> {
+        let str: EcoString = self.lexeme(&self.span).into();
+        self.node(NodeValue::String(str))
+    }
+    
+    fn character(&mut self) -> Option<ParseNodeResult> {
+        let c = self.lexeme(&self.span).chars().next().unwrap();
+        self.node(NodeValue::Character(c))
+    }
+    
+    fn number(&mut self) -> Option<ParseNodeResult> {
+        let number = i64::from_str(self.lexeme(&self.span)).unwrap();
+        self.node(Integer(number))
+    }
+
+    fn operator(&self, operator: Op) -> Option<ParseNodeResult> {
+        self.node(Operator(operator))
+    }
+
     fn array(&mut self) -> Option<ParseNodeResult> {
         let mut elements: Vec<Node> = Vec::new();
 
@@ -158,25 +177,6 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
         }
 
         self.node(NodeValue::Array(elements))
-    }
-    
-    fn string(&mut self) -> Option<ParseNodeResult> {
-        let str: EcoString = self.lexeme(&self.span).into();
-        self.node(NodeValue::String(str))
-    }
-    
-    fn character(&mut self) -> Option<ParseNodeResult> {
-        let c = self.lexeme(&self.span).chars().next().unwrap();
-        self.node(NodeValue::Character(c))
-    }
-    
-    fn number(&mut self) -> Option<ParseNodeResult> {
-        let number = i64::from_str(self.lexeme(&self.span)).unwrap();
-        self.node(Integer(number))
-    }
-
-    fn operator(&self, operator: Op) -> Option<ParseNodeResult> {
-        self.node(Operator(operator))
     }
 
     fn node(&self, value: NodeValue) -> Option<ParseNodeResult> {
