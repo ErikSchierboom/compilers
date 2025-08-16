@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+use std::mem::Discriminant;
 use crate::lex::Span;
 use crate::parse::{parse, Node, NodeValue, Op, ParseErrorKind};
 use ecow::EcoString;
@@ -7,6 +9,7 @@ pub enum RuntimeErrorKind {
     Parse(ParseErrorKind),
     MissingArguments(i32),
     InvalidArgumentType,
+    DifferentArrayElementTypes
 }
 
 #[derive(Debug)]
@@ -44,7 +47,10 @@ impl Interpreter {
 
     pub fn interpret(&mut self) -> InterpretResult {
         while let Some(node) = self.nodes.pop() {
-            self.evaluate(node);
+            match self.evaluate(node) {
+                Ok(value) => self.stack.push(value),
+                Err(error) => return Err(error)
+            }
         }
 
         Ok(self.stack.clone())
@@ -55,11 +61,18 @@ impl Interpreter {
             NodeValue::Integer(i) => Ok(RuntimeValue::Integer(i)),
             NodeValue::Character(c) => Ok(RuntimeValue::Character(c)),
             NodeValue::String(str) => Ok(RuntimeValue::String(str)),
-            NodeValue::Array(arr) =>
-                arr.into_iter()
-                    .map(|elem|self.evaluate(elem))
-                    .collect::<Result<Vec<RuntimeValue>, RuntimeError>>()
-                    .map(RuntimeValue::Array),
+            NodeValue::Array(arr) => {
+                let elements = arr.into_iter()
+                    .map(|elem| self.evaluate(elem))
+                    .collect::<Result<Vec<RuntimeValue>, RuntimeError>>()?;
+
+                let discriminants: HashSet<Discriminant<RuntimeValue>> = elements.iter().map(|element| std::mem::discriminant(element)).collect();
+                if discriminants.len() > 1 {
+                    return Err(RuntimeError::new(RuntimeErrorKind::DifferentArrayElementTypes, node.span.clone()))
+                }
+
+                Ok(RuntimeValue::Array(elements))
+            },
             NodeValue::Operator(op) =>
                 match op {
                     Op::Plus => {
@@ -68,11 +81,17 @@ impl Interpreter {
                         match (left, right) {
                             (RuntimeValue::Integer(l), RuntimeValue::Integer(r)) => Ok(RuntimeValue::Integer(l + r)),
                             (RuntimeValue::Integer(l), RuntimeValue::Array(elements)) => {
-                                todo!("Get lement")
-                                // if elements.iter().all(|e|matches!(RuntimeValue::Integer(_))) {
-                                //     Ok(RuntimeValue::Array(l + r)) },
-                                // }
-                            },
+                                if elements.len() == 0 {
+                                    Ok(RuntimeValue::Array(Vec::new()))
+                                } else {
+                                    elements.iter().map(|e| {
+                                        match e {
+                                            RuntimeValue::Integer(r) => Ok(RuntimeValue::Integer(l + r)),
+                                            _ => Err(RuntimeError::new(RuntimeErrorKind::InvalidArgumentType, node.span.clone()))
+                                        }
+                                    }).collect::<Result<Vec<RuntimeValue>, RuntimeError>>().map(RuntimeValue::Array)
+                                }
+                            }
                             _ => Err(RuntimeError::new(RuntimeErrorKind::InvalidArgumentType, node.span.clone()))
                         }
                     }
