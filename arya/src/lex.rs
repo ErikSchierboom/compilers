@@ -87,7 +87,7 @@ impl<T> CharacterWindow<T> where T : Iterator<Item = char> {
     pub fn advance_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {
         self.chars.next_if(func).inspect(|_| {
             self.position += 1
-        } )
+        })
     }
 }
 
@@ -105,7 +105,7 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
         Lexer { chars, start }
     }
 
-    fn lex_token(&mut self) -> Option<TokenResult> {
+    fn next_token(&mut self) -> Option<TokenResult> {
         self.skip_whitespace();
         self.skip_comment();
 
@@ -192,7 +192,7 @@ impl<T> Iterator for Lexer<T> where T : Iterator<Item = char> {
     type Item = TokenResult;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.lex_token()
+        self.next_token()
     }
 }
 
