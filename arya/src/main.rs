@@ -6,7 +6,7 @@ mod parse;
 mod interpret;
 
 fn main() {
-    let source = "# comment\n+ [1 2 3] 5 ";
+    let source = "# comment\n+ [ [1 2 3] ] 5 ";
 
     match interpret(&source) {
         Ok(values) => println!("{:?}", values),

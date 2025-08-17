@@ -9,7 +9,8 @@ pub enum RuntimeErrorKind {
     Parse(ParseErrorKind),
     MissingArguments(i32),
     InvalidArgumentType,
-    DifferentArrayElementTypes
+    DifferentArrayElementTypes,
+    DifferentArrayElementShapes,
 }
 
 #[derive(Debug)]
@@ -29,9 +30,46 @@ pub enum RuntimeValue {
     Integer(i64),
     Character(char),
     String(EcoString),
-    Array(Vec<Self>)
+    Array(Box<Arr>)
 }
 
+impl RuntimeValue {
+    pub fn shape(&self) -> Shape {
+        match self {
+            RuntimeValue::Integer(_) |
+            RuntimeValue::Character(_) |
+            RuntimeValue::String(_) => Shape::ZERO_DIMENSIONS,
+            RuntimeValue::Array(arr) => arr.shape.clone()
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Shape {
+    dimensions: Vec<usize>
+}
+
+impl Shape {
+    pub const ZERO_DIMENSIONS: Shape = Self { dimensions: vec![] };
+
+    pub fn add_dimension(&mut self, size: usize) {
+        self.dimensions.push(size);
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Arr {
+    pub shape: Shape,
+    pub elements: Vec<RuntimeValue>
+}
+
+impl Arr {
+    pub const EMPTY: Arr = Self { shape: Shape::ZERO_DIMENSIONS, elements: Vec::new() };
+
+    pub fn new(shape: Shape, elements: Vec<RuntimeValue>) -> Self {
+        Self { shape, elements }
+    }
+}
 
 pub type InterpretResult = Result<Vec<RuntimeValue>, RuntimeError>;
 
@@ -47,7 +85,7 @@ impl Interpreter {
 
     pub fn interpret(&mut self) -> InterpretResult {
         while let Some(node) = self.nodes.pop() {
-            match self.evaluate(node) {
+            match self.evaluate(&node) {
                 Ok(value) => self.stack.push(value),
                 Err(error) => return Err(error)
             }
@@ -56,23 +94,12 @@ impl Interpreter {
         Ok(self.stack.clone())
     }
 
-    fn evaluate(&mut self, node: Node) -> Result<RuntimeValue, RuntimeError> {
-        match node.value {
-            NodeValue::Integer(i) => Ok(RuntimeValue::Integer(i)),
-            NodeValue::Character(c) => Ok(RuntimeValue::Character(c)),
-            NodeValue::String(str) => Ok(RuntimeValue::String(str)),
-            NodeValue::Array(arr) => {
-                let elements = arr.into_iter()
-                    .map(|elem| self.evaluate(elem))
-                    .collect::<Result<Vec<RuntimeValue>, RuntimeError>>()?;
-
-                let discriminants: HashSet<Discriminant<RuntimeValue>> = elements.iter().map(|element| std::mem::discriminant(element)).collect();
-                if discriminants.len() > 1 {
-                    return Err(RuntimeError::new(RuntimeErrorKind::DifferentArrayElementTypes, node.span.clone()))
-                }
-
-                Ok(RuntimeValue::Array(elements))
-            },
+    fn evaluate(&mut self, node: &Node) -> Result<RuntimeValue, RuntimeError> {
+        match &node.value {
+            NodeValue::Integer(i) => Ok(RuntimeValue::Integer(i.clone())),
+            NodeValue::Character(c) => Ok(RuntimeValue::Character(c.clone())),
+            NodeValue::String(str) => Ok(RuntimeValue::String(str.clone())),
+            NodeValue::Array(arr) => self.array(&node, &arr),
             NodeValue::Operator(op) =>
                 match op {
                     Op::Plus => {
@@ -80,16 +107,18 @@ impl Interpreter {
                         let left = self.stack.pop().ok_or_else(|| RuntimeError::new(RuntimeErrorKind::MissingArguments(1), node.span.clone()))?;
                         match (left, right) {
                             (RuntimeValue::Integer(l), RuntimeValue::Integer(r)) => Ok(RuntimeValue::Integer(l + r)),
-                            (RuntimeValue::Integer(l), RuntimeValue::Array(elements)) => {
-                                if elements.len() == 0 {
-                                    Ok(RuntimeValue::Array(Vec::new()))
+                            (RuntimeValue::Integer(l), RuntimeValue::Array(arr)) => {
+                                if arr.elements.len() == 0 {
+                                    Ok(RuntimeValue::Array(Box::new(Arr::new(Shape::ZERO_DIMENSIONS, Vec::new()))))
                                 } else {
-                                    elements.iter().map(|e| {
+                                    arr.elements.iter().map(|e| {
                                         match e {
                                             RuntimeValue::Integer(r) => Ok(RuntimeValue::Integer(l + r)),
                                             _ => Err(RuntimeError::new(RuntimeErrorKind::InvalidArgumentType, node.span.clone()))
                                         }
-                                    }).collect::<Result<Vec<RuntimeValue>, RuntimeError>>().map(RuntimeValue::Array)
+                                    }).collect::<Result<Vec<RuntimeValue>, RuntimeError>>().map(|values| {
+                                        RuntimeValue::Array(Box::new(Arr::new(arr.shape.clone(), values)))
+                                    })
                                 }
                             }
                             _ => Err(RuntimeError::new(RuntimeErrorKind::InvalidArgumentType, node.span.clone()))
@@ -106,6 +135,39 @@ impl Interpreter {
                     }
                 }
         }
+    }
+
+    fn array(&mut self, node: &Node, nodes: &Vec<Node>) -> Result<RuntimeValue, RuntimeError> {
+        if nodes.len() == 0 {
+            return Ok(RuntimeValue::Array(Box::new(Arr::EMPTY)));
+        }
+
+        // Get the first element's shape and discriminant to ensure the array is homogenous
+        let head = self.evaluate(&nodes[0])?;
+        let mut array_shape = head.shape();
+        let array_discriminant = std::mem::discriminant(&head);
+
+        let mut elements = Vec::with_capacity(nodes.len());
+        elements.push(head);
+
+        for node in &nodes[1..] {
+            let element = self.evaluate(node)?;
+
+            let shape = element.shape();
+            if shape != array_shape {
+                return Err(RuntimeError::new(RuntimeErrorKind::DifferentArrayElementShapes, node.span.clone()));
+            }
+
+            let discriminant = std::mem::discriminant(&element);
+            if discriminant != array_discriminant {
+                return Err(RuntimeError::new(RuntimeErrorKind::DifferentArrayElementTypes, node.span.clone()));
+            }
+
+            elements.push(element)
+        }
+
+        array_shape.add_dimension(elements.len());
+        Ok(RuntimeValue::Array(Box::new(Arr::new(array_shape, elements))))
     }
 }
 
