@@ -1,7 +1,6 @@
 use crate::lex::{tokenize, LexErrorKind, Span, TokenKind, TokenResult};
 use crate::parse::NodeValue::{Integer, Operator};
 use crate::parse::ParseErrorKind::Lex;
-use ecow::EcoString;
 use std::iter::Peekable;
 use std::str::FromStr;
 
@@ -27,8 +26,6 @@ impl ParseError {
 #[derive(Debug)]
 pub enum NodeValue {
     Integer(i64),
-    Character(char),
-    String(EcoString),
     Operator(Op),
     Array(Vec<Node>)
 }
@@ -60,10 +57,6 @@ struct TokenWindow<T: Iterator<Item =TokenResult>> {
 impl<T> TokenWindow<T> where T : Iterator<Item =TokenResult> {
     pub fn new(tokens: T) -> Self {
         TokenWindow { tokens: tokens.peekable() }
-    }
-
-    pub fn peek(&mut self) -> Option<&TokenResult> {
-        self.tokens.peek()
     }
 
     pub fn advance(&mut self) -> Option<TokenResult> {
@@ -112,9 +105,7 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
             Ok(token) => {
                 self.span = token.span;
                 match token.kind {
-                    TokenKind::Number => self.number(),
-                    TokenKind::Character => self.character(),
-                    TokenKind::String => self.string(),
+                    TokenKind::Number => self.integer(),
                     TokenKind::Plus => self.operator(Op::Plus),
                     TokenKind::Minus => self.operator(Op::Minus),
                     TokenKind::Star => self.operator(Op::Multiply),
@@ -129,18 +120,8 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
             }
         }
     }
-    
-    fn string(&mut self) -> Option<ParseNodeResult> {
-        let str: EcoString = self.lexeme(&self.span).into();
-        self.node(NodeValue::String(str))
-    }
-    
-    fn character(&mut self) -> Option<ParseNodeResult> {
-        let c = self.lexeme(&self.span).chars().next().unwrap();
-        self.node(NodeValue::Character(c))
-    }
-    
-    fn number(&mut self) -> Option<ParseNodeResult> {
+
+    fn integer(&mut self) -> Option<ParseNodeResult> {
         let number = i64::from_str(self.lexeme(&self.span)).unwrap();
         self.node(Integer(number))
     }
@@ -153,15 +134,13 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
         let mut elements: Vec<Node> = Vec::new();
 
         loop {
-            match self.tokens.peek() {
+            match self.tokens.advance() {
                 None => return self.error(ParseErrorKind::UnterminatedArray),
                 Some(Err(lex_error)) => {
-                    let lex_error = Lex(lex_error.kind.clone());
-                    return self.error(lex_error)
+                    self.span = lex_error.span;
+                    return self.error(Lex(lex_error.kind))
                 }
                 Some(Ok(token)) => {
-                    self.span.grow(&token.span);
-
                     match token.kind {
                         TokenKind::CloseBracket => {
                             self.tokens.advance();
@@ -176,6 +155,7 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
             }
         }
 
+        self.span = elements.last().map_or(self.span.clone(), |s| s.span.clone());
         self.node(NodeValue::Array(elements))
     }
 

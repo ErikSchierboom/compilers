@@ -11,9 +11,9 @@ impl Span {
         Self { position, length }
     }
 
-    pub fn grow(&mut self, rhs: &Self) {
+    pub fn merge(&self, rhs: &Self) -> Self {
         assert!(rhs.position >= self.position);
-        self.length = (rhs.position - self.position) as u16 + rhs.length
+        Self::new(self.position, (rhs.position - self.position) as u16 + rhs.length)
     }
 }
 
@@ -40,8 +40,6 @@ impl LexError {
 #[derive(Debug)]
 pub enum TokenKind {
     Number,
-    Character,
-    String,
     OpenBracket,
     CloseBracket,
     Plus,
@@ -118,8 +116,6 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
             '-' => self.token(TokenKind::Minus),
             '*' => self.token(TokenKind::Star),
             '/' => self.token(TokenKind::Slash),
-            '@' => self.character(),
-            '"' => self.string(),
             c if c.is_ascii_digit() => self.number(),
             c => self.error(LexErrorKind::UnexpectedCharacter(c))
         }
@@ -128,40 +124,6 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
     fn number(&mut self) -> Option<TokenResult> {
         self.chars.advance_while(char::is_ascii_digit);
         self.token(TokenKind::Number)
-    }
-
-    fn string(&mut self) -> Option<TokenResult> {
-        loop {
-            match self.char() {
-                Some(Ok('"')) => return self.token(TokenKind::String),
-                Some(Ok(_)) => {},
-                Some(Err(error)) => return self.error(error),
-                None => return self.error(LexErrorKind::UnterminatedString)
-            }
-        }
-    }
-
-    fn character(&mut self) -> Option<TokenResult> {
-        match self.char() {
-            Some(Ok(_)) => self.token(TokenKind::Character),
-            Some(Err(error)) => self.error(error),
-            None =>self.error(LexErrorKind::MissingCharacterValue)
-        }
-    }
-
-    fn char(&mut self) -> Option<Result<char, LexErrorKind>> {
-        match self.chars.advance()? {
-            '\\' => {
-                match self.chars.advance() {
-                    Some(c) => match c {
-                        'n' | 'r' | 't' | 'b' | '0' | '\\' => Some(Ok(c)),
-                        _ => Some(Err(LexErrorKind::InvalidCharacterEscape(c))),
-                    },
-                    None => Some(Err(LexErrorKind::MissingCharacterValue))
-                }
-            },
-            c => Some(Ok(c))
-        }
     }
 
     fn token(&mut self, kind: TokenKind) -> Option<TokenResult> {

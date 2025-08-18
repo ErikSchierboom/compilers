@@ -1,4 +1,4 @@
-use crate::interpret::interpret;
+use crate::parse::parse;
 
 mod lex;
 mod source;
@@ -6,9 +6,9 @@ mod parse;
 mod interpret;
 
 fn main() {
-    let source = "# comment\n+ [ [1 2 3] ] 5 ";
+    let source = "+ [1 2 3] 5";
 
-    match interpret(&source) {
+    match parse(&source) {
         Ok(values) => println!("{:?}", values),
         Err(error) => eprintln!("{:?}", error),
     }
