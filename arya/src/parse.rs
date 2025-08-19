@@ -47,7 +47,7 @@ impl<T> TokenWindow<T> where T : Iterator<Item =TokenResult> {
             }
         })
     }
-    
+
     pub fn peek(&mut self) -> Option<&TokenResult> {
         self.tokens.peek()
     }
@@ -63,20 +63,17 @@ pub struct Parser<'a, T> where T : Iterator<Item = TokenResult> {
 }
 
 impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
-    pub fn new(source: &'a str, tokens: T) -> Self {
-        Parser { tokens: TokenWindow::new(tokens), source_code: source, span: Span::new(0, 0) }
+    pub fn new(source_code: &'a str, tokens: T) -> Self {
+        Parser { tokens: TokenWindow::new(tokens), source_code, span: Span::new(0, 0) }
     }
 
     pub fn parse(&mut self) -> ParseResult {
-        let mut nodes: Vec<Spanned<Node>> = Vec::new();
-        
-        while let Some(parse_node_result) = self.parse_node() {
-            match parse_node_result {
-                Ok(node) => nodes.push(node),
-                Err(error) => return Err(error)
-            }
+        let mut nodes = Vec::new();
+
+        while let Some(result) = self.parse_node() {
+            nodes.push(result?);
         }
-   
+
         Ok(nodes)
     }
     

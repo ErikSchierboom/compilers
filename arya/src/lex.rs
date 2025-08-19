@@ -85,8 +85,8 @@ struct Lexer<T> where T: Iterator<Item = char> {
 pub type TokenResult = Result<Spanned<Token>, Spanned<LexError>>;
 
 impl<T> Lexer<T> where T : Iterator<Item = char> {
-    pub fn new(source: T) -> Self {
-        let chars = CharacterWindow::new(source);
+    pub fn new(source_code: T) -> Self {
+        let chars = CharacterWindow::new(source_code);
         let start = 0;
         Lexer { chars, start }
     }
@@ -115,11 +115,11 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
     }
 
     fn token(&mut self, token: Token) -> Option<TokenResult> {
-        Some(Ok(Spanned::new(token, self.span())))
+        Some(Ok(self.spanned(token)))
     }
 
     fn error(&mut self, error: LexError) -> Option<TokenResult> {
-        Some(Err(Spanned::new(error, self.span())))
+        Some(Err(self.spanned(error)))
     }
 
     fn skip_whitespace(&mut self) {
@@ -131,6 +131,10 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
             self.chars.advance_while(|&c| c != '\n');
             self.chars.advance();
         }
+    }
+    
+    fn spanned<V>(&self, value: V) -> Spanned<V> {
+        Spanned::new(value, self.span())
     }
 
     fn span(&self) -> Span {
