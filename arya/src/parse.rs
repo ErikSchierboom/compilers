@@ -47,6 +47,10 @@ impl<T> TokenWindow<T> where T : Iterator<Item =TokenResult> {
             }
         })
     }
+    
+    pub fn peek(&mut self) -> Option<&TokenResult> {
+        self.tokens.peek()
+    }
 }
 
 type ParseNodeResult = Result<Spanned<Node>, Spanned<ParseError>>;
@@ -110,11 +114,13 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
         let mut elements: Vec<Spanned<Node>> = Vec::new();
 
         loop {
-            match self.tokens.advance() {
+            match self.tokens.peek() {
                 None => return self.error(ParseError::UnterminatedArray),
                 Some(Err(lex_error)) => {
-                    self.span = lex_error.span;
-                    return self.error(Lex(lex_error.value))
+                    self.span = lex_error.span.clone();
+                    let error = Lex(lex_error.value.clone());
+                    self.tokens.advance();
+                    return self.error(error)
                 }
                 Some(Ok(token)) => {
                     match token.value {

@@ -19,7 +19,7 @@ impl Shape {
     pub const SCALAR: Self = Self { dimensions: vec![] };
 
     pub fn prepend_dimension(&mut self, size: usize) {
-        self.dimensions.insert(size, 0)
+        self.dimensions.insert(0, size)
     }
 }
 
@@ -84,7 +84,7 @@ impl Interpreter {
                     }
                 }
 
-                let shape= array_shape.get_or_insert(Shape::SCALAR);
+                let mut shape= array_shape.get_or_insert(Shape::SCALAR).clone();
                 shape.prepend_dimension(elements.len());
                 Ok(Spanned::new(Value::new(shape.clone(), array_values), node.span.clone()))
             }

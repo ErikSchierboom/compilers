@@ -5,7 +5,7 @@ mod parse;
 mod interpret;
 
 fn main() {
-    let source = "[1 2 3] 5";
+    let source = "[ [1 2 3] [4 5 6]] 5";
 
     match interpret(&source) {
         Ok(values) => println!("{:?}", values),
