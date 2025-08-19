@@ -1,13 +1,13 @@
-use crate::parse::parse;
+use crate::interpret::interpret;
 
 mod lex;
 mod parse;
 mod interpret;
 
 fn main() {
-    let source = "+ [1 2 3] 5";
+    let source = "[1 2 3] 5";
 
-    match parse(&source) {
+    match interpret(&source) {
         Ok(values) => println!("{:?}", values),
         Err(error) => eprintln!("{:?}", error),
     }
