@@ -1,45 +1,21 @@
-use crate::lex::{tokenize, LexErrorKind, Span, TokenKind, TokenResult};
-use crate::parse::NodeValue::{Integer, Operator};
-use crate::parse::ParseErrorKind::Lex;
+use crate::lex::{tokenize, LexError, Span, Spanned, Token, TokenResult};
+use crate::parse::Node::{Integer, Operator};
+use crate::parse::ParseError::Lex;
 use std::iter::Peekable;
 use std::str::FromStr;
 
 #[derive(Debug)]
-pub enum ParseErrorKind {
-    Lex(LexErrorKind),
-    Unexpected(TokenKind),
+pub enum ParseError {
+    Lex(LexError),
+    Unexpected(Token),
     UnterminatedArray,
 }
 
 #[derive(Debug)]
-pub struct ParseError {
-    pub kind: ParseErrorKind,
-    pub span: Span
-}
-
-impl ParseError {
-    pub fn new(kind: ParseErrorKind, span: Span) -> Self {
-        Self { kind, span }
-    }
-}
-
-#[derive(Debug)]
-pub enum NodeValue {
+pub enum Node {
     Integer(i64),
     Operator(Op),
-    Array(Vec<Node>)
-}
-
-#[derive(Debug)]
-pub struct Node {
-    pub value: NodeValue,
-    pub span: Span
-}
-
-impl Node {
-    pub fn new(value: NodeValue, span: Span) -> Self {
-        Self { value, span }
-    }
+    Array(Vec<Spanned<Node>>)
 }
 
 #[derive(Debug)]
@@ -63,18 +39,18 @@ impl<T> TokenWindow<T> where T : Iterator<Item =TokenResult> {
         self.advance_if(|_| true)
     }
 
-    pub fn advance_if(&mut self, func: impl Fn(&TokenKind) -> bool) -> Option<TokenResult> {
+    pub fn advance_if(&mut self, func: impl Fn(&Token) -> bool) -> Option<TokenResult> {
         self.tokens.next_if(|lex_result| {
             match lex_result {
-                Ok(token) => func(&token.kind),
+                Ok(token) => func(&token.value),
                 _ => false
             }
         })
     }
 }
 
-type ParseNodeResult = Result<Node, ParseError>;
-pub type ParseResult = Result<Vec<Node>, ParseError>;
+type ParseNodeResult = Result<Spanned<Node>, Spanned<ParseError>>;
+pub type ParseResult = Result<Vec<Spanned<Node>>, Spanned<ParseError>>;
 
 pub struct Parser<'a, T> where T : Iterator<Item = TokenResult> {
     tokens: TokenWindow<T>,
@@ -88,7 +64,7 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
     }
 
     pub fn parse(&mut self) -> ParseResult {
-        let mut nodes: Vec<Node> = Vec::new();
+        let mut nodes: Vec<Spanned<Node>> = Vec::new();
         
         while let Some(parse_node_result) = self.parse_node() {
             match parse_node_result {
@@ -104,19 +80,19 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
         match self.tokens.advance()? {
             Ok(token) => {
                 self.span = token.span;
-                match token.kind {
-                    TokenKind::Number => self.integer(),
-                    TokenKind::Plus => self.operator(Op::Plus),
-                    TokenKind::Minus => self.operator(Op::Minus),
-                    TokenKind::Star => self.operator(Op::Multiply),
-                    TokenKind::Slash => self.operator(Op::Divide),
-                    TokenKind::OpenBracket => self.array(),
-                    TokenKind::CloseBracket => self.error(ParseErrorKind::Unexpected(token.kind))
+                match token.value {
+                    Token::Number => self.integer(),
+                    Token::Plus => self.operator(Op::Plus),
+                    Token::Minus => self.operator(Op::Minus),
+                    Token::Star => self.operator(Op::Multiply),
+                    Token::Slash => self.operator(Op::Divide),
+                    Token::OpenBracket => self.array(),
+                    Token::CloseBracket => self.error(ParseError::Unexpected(token.value))
                 }
             },
             Err(lex_error) => {
                 self.span = lex_error.span;
-                self.error(Lex(lex_error.kind))
+                self.error(Lex(lex_error.value))
             }
         }
     }
@@ -131,18 +107,18 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
     }
 
     fn array(&mut self) -> Option<ParseNodeResult> {
-        let mut elements: Vec<Node> = Vec::new();
+        let mut elements: Vec<Spanned<Node>> = Vec::new();
 
         loop {
             match self.tokens.advance() {
-                None => return self.error(ParseErrorKind::UnterminatedArray),
+                None => return self.error(ParseError::UnterminatedArray),
                 Some(Err(lex_error)) => {
                     self.span = lex_error.span;
-                    return self.error(Lex(lex_error.kind))
+                    return self.error(Lex(lex_error.value))
                 }
                 Some(Ok(token)) => {
-                    match token.kind {
-                        TokenKind::CloseBracket => {
+                    match token.value {
+                        Token::CloseBracket => {
                             self.tokens.advance();
                             break
                         },
@@ -156,15 +132,15 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
         }
 
         self.span = elements.last().map_or(self.span.clone(), |s| s.span.clone());
-        self.node(NodeValue::Array(elements))
+        self.node(Node::Array(elements))
     }
 
-    fn node(&self, value: NodeValue) -> Option<ParseNodeResult> {
-        Some(Ok(Node::new(value, self.span.clone())))
+    fn node(&self, node: Node) -> Option<ParseNodeResult> {
+        Some(Ok(Spanned::new(node, self.span.clone())))
     }
 
-    fn error(&self, error: ParseErrorKind) -> Option<ParseNodeResult> {
-        Some(Err(ParseError::new(error, self.span.clone())))
+    fn error(&self, error: ParseError) -> Option<ParseNodeResult> {
+        Some(Err(Spanned::new(error, self.span.clone())))
     }
 
     fn lexeme(&self, span: &Span) -> &'a str {

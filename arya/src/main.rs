@@ -1,7 +1,6 @@
 use crate::parse::parse;
 
 mod lex;
-mod source;
 mod parse;
 mod interpret;
 
