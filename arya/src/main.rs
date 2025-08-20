@@ -7,7 +7,7 @@ mod interpret;
 mod location;
 
 fn main() {
-    let source = "4 [[1 2 3] [11 12 13]] +";
+    let source = "[1 2 3] [4 5 6] +";
 
     match interpret(&source) {
         Ok(values) => {
