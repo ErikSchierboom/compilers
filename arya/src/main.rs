@@ -7,10 +7,14 @@ mod interpret;
 mod location;
 
 fn main() {
-    let source = "[ [1 2 3] [4 5 6]] 5 *";
+    let source = "4 [[1 2 3] [11 12 13]] +";
 
     match interpret(&source) {
-        Ok(values) => println!("{:?}", values),
+        Ok(values) => {
+            for value in values {
+                println!("{:}", value.value)
+            }
+        },
         Err(error) => {
             let line_endings = LineEndings::new(source);
             let location = line_endings.location(&error.span);

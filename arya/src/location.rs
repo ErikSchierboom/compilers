@@ -50,18 +50,15 @@ impl Display for Location {
 }
 
 pub struct LineEndings {
-    length: u32,
     line_starts: Vec<u32>
 }
 
 impl LineEndings {
     pub fn new(source: &str) -> Self {
-        Self {
-            length: source.len() as u32,
-            line_starts: std::iter::once(0)
-                .chain(source.match_indices('\n').map(|(position, _)| (position + 1) as u32))
-                .collect()
-        }
+        let line_starts = std::iter::once(0)
+            .chain(source.match_indices('\n').map(|(position, _)| (position + 1) as u32))
+            .collect();
+        Self { line_starts }
     }
 
     pub fn location(&self, span: &Span) -> Location {

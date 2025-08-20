@@ -66,7 +66,39 @@ impl Value {
 
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {:?}", self.shape, self.values)
+        match self.shape.dimensions.len() {
+            0 => write!(f, "{}", self.values.first().unwrap()),
+            1 => {
+                write!(f, "[")?;
+                for (i, v) in self.values.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, " ")?
+                    }
+                    write!(f, "{}", v)?
+                }
+                write!(f, "]")
+            },
+            2 => {
+                let num_columns = self.shape.dimensions.get(1).unwrap();
+                let max_width = self.values.iter()
+                    .map(|&value| value.checked_ilog10().unwrap_or(0) + 1)
+                    .max()
+                    .unwrap_or(1) as usize;
+
+                write!(f, "[")?;
+                for (i, v) in self.values.iter().enumerate() {
+                    if i > 0{
+                        write!(f, " ")?
+                    }
+                    write!(f, "{:>max_width$}", v)?;
+                    if i % num_columns == num_columns - 1 && i < self.values.len() - 1 {
+                        write!(f, "\n")?;
+                    }
+                }
+                write!(f, "]")
+            },
+            _ => write!(f, "{:?}", self)
+        }
     }
 }
 

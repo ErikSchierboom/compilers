@@ -135,21 +135,8 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
         &self.source_code[span.position as usize..(span.position + span.length as u32) as usize]
     }
 
-    fn peek(&mut self) -> Option<&ParseTokenResult> {
-        self.tokens.peek()
-    }
-
     fn next(&mut self) -> Option<ParseTokenResult> {
         self.next_if(|_| true)
-    }
-
-    fn next_if_match(&mut self, expected: Token) -> Option<ParseTokenResult> {
-        self.next_if(|token_result| {
-            match token_result {
-                Ok(token) => token.value == expected,
-                Err(_) => false
-            }
-        })
     }
 
     fn next_if(&mut self, func: impl Fn(&ParseTokenResult) -> bool) -> Option<ParseTokenResult> {
