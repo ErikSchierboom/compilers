@@ -1,6 +1,7 @@
 use std::iter::Peekable;
 use crate::lex::{Spanned, ParseTokenResult};
 use crate::parse::{parse, Node, ParseError, ParseNodeResult, Parser};
+use crate::parse::Node::Integer;
 
 #[derive(Debug)]
 pub enum RuntimeError {
@@ -48,8 +49,12 @@ struct NodeWindow<T: Iterator<Item = ParseNodeResult>> {
 }
 
 impl<T> NodeWindow<T> where T : Iterator<Item = ParseNodeResult>  {
-    pub fn new(tokens: T) -> Self {
-        NodeWindow { nodes: tokens.peekable() }
+    pub fn new(nodes: T) -> Self {
+        NodeWindow { nodes: nodes.peekable() }
+    }
+
+    fn advance(&mut self) -> Option<ParseNodeResult> {
+        self.nodes.next()
     }
 }
 
@@ -64,10 +69,15 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
     }
 
     pub fn interpret(&mut self) -> InterpretResult {
-        while let Some(node) = self.nodes.pop() {
-            match self.evaluate(&node) {
-                Ok(value) => self.stack.push(value),
-                Err(error) => return Err(error)
+        while let Some(node) = self.nodes.advance() {
+            match node {
+                Ok(node) => {
+                    match self.evaluate(&node) {
+                        Ok(value) => self.stack.push(value),
+                        Err(error) => return Err(error)
+                    }
+                }
+                Err(error) => return Err(Spanned::new(RuntimeError::Parse(error.value), error.span))
             }
         }
 
@@ -104,8 +114,7 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
 }
 
 pub fn interpret<'a>(source: &str) -> InterpretResult {
-    match parse(source) {
-        Ok(nodes) => Interpreter::new(nodes).interpret(),
-        Err(error) => Err(Spanned::new(RuntimeError::Parse(error.value), error.span))
-    }
+    let nodes = parse(source);
+    let mut interpreter = Interpreter::new(nodes);
+    interpreter.interpret()
 }
