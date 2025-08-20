@@ -3,10 +3,7 @@ use crate::location::{Span, Spanned};
 
 #[derive(Clone, Debug)]
 pub enum LexError {
-    UnexpectedCharacter(char),
-    InvalidCharacterEscape(char),
-    MissingCharacterValue,
-    UnterminatedString
+    UnexpectedCharacter(char)
 }
 
 #[derive(Debug)]
