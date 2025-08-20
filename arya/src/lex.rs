@@ -54,23 +54,23 @@ struct CharacterWindow<T: Iterator<Item = char>> {
 }
 
 impl<T> CharacterWindow<T> where T : Iterator<Item = char> {
-    pub fn new(chars: T) -> Self {
+    fn new(chars: T) -> Self {
         CharacterWindow { chars: chars.peekable(), position: 0 }
     }
 
-    pub fn advance(&mut self) -> Option<char> {
+    fn advance(&mut self) -> Option<char> {
         self.advance_if(|_| true)
     }
 
-    pub fn advance_if_match(&mut self, expected: &char) -> Option<char> {
+    fn advance_if_match(&mut self, expected: &char) -> Option<char> {
         self.advance_if(|c| c == expected)
     }
 
-    pub fn advance_while(&mut self, func: impl Fn(&char) -> bool) {
+    fn advance_while(&mut self, func: impl Fn(&char) -> bool) {
         while self.advance_if(&func).is_some() {}
     }
 
-    pub fn advance_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {
+    fn advance_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {
         self.chars.next_if(func).inspect(|_| {
             self.position += 1
         })
@@ -82,16 +82,16 @@ struct Lexer<T> where T: Iterator<Item = char> {
     start: u32
 }
 
-pub type TokenResult = Result<Spanned<Token>, Spanned<LexError>>;
+pub type ParseTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
 
 impl<T> Lexer<T> where T : Iterator<Item = char> {
-    pub fn new(source_code: T) -> Self {
+    fn new(source_code: T) -> Self {
         let chars = CharacterWindow::new(source_code);
         let start = 0;
         Lexer { chars, start }
     }
 
-    fn next_token(&mut self) -> Option<TokenResult> {
+    fn parse_token(&mut self) -> Option<ParseTokenResult> {
         self.skip_whitespace();
         self.skip_comment();
 
@@ -109,16 +109,16 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
         }
     }
 
-    fn number(&mut self) -> Option<TokenResult> {
+    fn number(&mut self) -> Option<ParseTokenResult> {
         self.chars.advance_while(char::is_ascii_digit);
         self.token(Token::Number)
     }
 
-    fn token(&mut self, token: Token) -> Option<TokenResult> {
+    fn token(&mut self, token: Token) -> Option<ParseTokenResult> {
         Some(Ok(self.spanned(token)))
     }
 
-    fn error(&mut self, error: LexError) -> Option<TokenResult> {
+    fn error(&mut self, error: LexError) -> Option<ParseTokenResult> {
         Some(Err(self.spanned(error)))
     }
 
@@ -132,7 +132,7 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
             self.chars.advance();
         }
     }
-    
+
     fn spanned<V>(&self, value: V) -> Spanned<V> {
         Spanned::new(value, self.span())
     }
@@ -143,13 +143,13 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
 }
 
 impl<T> Iterator for Lexer<T> where T : Iterator<Item = char> {
-    type Item = TokenResult;
+    type Item = ParseTokenResult;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.next_token()
+        self.parse_token()
     }
 }
 
-pub fn tokenize(source: &str) -> impl Iterator<Item=TokenResult> + '_ {
+pub fn tokenize(source: &str) -> impl Iterator<Item=ParseTokenResult> + '_ {
     Lexer::new(source.chars())
 }

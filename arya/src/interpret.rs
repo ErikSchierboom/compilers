@@ -1,5 +1,6 @@
-use crate::lex::Spanned;
-use crate::parse::{parse, Node, ParseError};
+use std::iter::Peekable;
+use crate::lex::{Spanned, ParseTokenResult};
+use crate::parse::{parse, Node, ParseError, ParseNodeResult, Parser};
 
 #[derive(Debug)]
 pub enum RuntimeError {
@@ -42,14 +43,24 @@ impl Value {
 pub type EvaluateResult = Result<Spanned<Value>, Spanned<RuntimeError>>;
 pub type InterpretResult = Result<Vec<Spanned<Value>>, Spanned<RuntimeError>>;
 
-pub struct Interpreter {
-    nodes: Vec<Spanned<Node>>,
+struct NodeWindow<T: Iterator<Item = ParseNodeResult>> {
+    nodes: Peekable<T>
+}
+
+impl<T> NodeWindow<T> where T : Iterator<Item = ParseNodeResult>  {
+    pub fn new(tokens: T) -> Self {
+        NodeWindow { nodes: tokens.peekable() }
+    }
+}
+
+pub struct Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
+    nodes: NodeWindow<T>,
     stack: Vec<Spanned<Value>>
 }
 
-impl Interpreter {
-    pub fn new(nodes: Vec<Spanned<Node>>) -> Self {
-        Self { nodes, stack: Vec::new() }
+impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
+    pub fn new(nodes: T) -> Self {
+        Self { nodes: NodeWindow::new(nodes), stack: Vec::new() }
     }
 
     pub fn interpret(&mut self) -> InterpretResult {

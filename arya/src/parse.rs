@@ -1,4 +1,4 @@
-use crate::lex::{tokenize, LexError, Span, Spanned, Token, TokenResult};
+use crate::lex::{tokenize, LexError, Span, Spanned, Token, ParseTokenResult};
 use crate::parse::Node::{Integer, Operator};
 use crate::parse::ParseError::Lex;
 use std::iter::Peekable;
@@ -26,20 +26,20 @@ pub enum Op {
     Divide
 }
 
-struct TokenWindow<T: Iterator<Item =TokenResult>> {
+struct TokenWindow<T: Iterator<Item =ParseTokenResult>> {
     tokens: Peekable<T>
 }
 
-impl<T> TokenWindow<T> where T : Iterator<Item =TokenResult> {
+impl<T> TokenWindow<T> where T : Iterator<Item =ParseTokenResult> {
     pub fn new(tokens: T) -> Self {
         TokenWindow { tokens: tokens.peekable() }
     }
 
-    pub fn advance(&mut self) -> Option<TokenResult> {
+    pub fn advance(&mut self) -> Option<ParseTokenResult> {
         self.advance_if(|_| true)
     }
 
-    pub fn advance_if(&mut self, func: impl Fn(&Token) -> bool) -> Option<TokenResult> {
+    pub fn advance_if(&mut self, func: impl Fn(&Token) -> bool) -> Option<ParseTokenResult> {
         self.tokens.next_if(|lex_result| {
             match lex_result {
                 Ok(token) => func(&token.value),
@@ -48,35 +48,24 @@ impl<T> TokenWindow<T> where T : Iterator<Item =TokenResult> {
         })
     }
 
-    pub fn peek(&mut self) -> Option<&TokenResult> {
+    pub fn peek(&mut self) -> Option<&ParseTokenResult> {
         self.tokens.peek()
     }
 }
 
-type ParseNodeResult = Result<Spanned<Node>, Spanned<ParseError>>;
-pub type ParseResult = Result<Vec<Spanned<Node>>, Spanned<ParseError>>;
+pub type ParseNodeResult = Result<Spanned<Node>, Spanned<ParseError>>;
 
-pub struct Parser<'a, T> where T : Iterator<Item = TokenResult> {
+pub struct Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
     tokens: TokenWindow<T>,
     source_code: &'a str,
     span: Span
 }
 
-impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
-    pub fn new(source_code: &'a str, tokens: T) -> Self {
+impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
+    fn new(source_code: &'a str, tokens: T) -> Self {
         Parser { tokens: TokenWindow::new(tokens), source_code, span: Span::new(0, 0) }
     }
 
-    pub fn parse(&mut self) -> ParseResult {
-        let mut nodes = Vec::new();
-
-        while let Some(result) = self.parse_node() {
-            nodes.push(result?);
-        }
-
-        Ok(nodes)
-    }
-    
     fn parse_node(&mut self) -> Option<ParseNodeResult> {
         match self.tokens.advance()? {
             Ok(token) => {
@@ -151,7 +140,15 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item = TokenResult> {
     }
 }
 
-pub fn parse(source: &str) -> ParseResult {
+impl<'a, T> Iterator for Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
+    type Item = ParseNodeResult;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.parse_node()
+    }
+}
+
+pub fn parse(source: &str) -> impl Iterator<Item=ParseNodeResult> + '_ {
     let tokens = tokenize(source);
-    Parser::new(source, tokens).parse()
+    Parser::new(source, tokens)
 }
