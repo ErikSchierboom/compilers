@@ -1,8 +1,9 @@
-use crate::lex::{tokenize, LexError, Span, Spanned, Token, ParseTokenResult};
+use crate::lex::{tokenize, LexError, Token, ParseTokenResult};
 use crate::parse::Node::{Integer, Operator};
 use crate::parse::ParseError::Lex;
 use std::iter::Peekable;
 use std::str::FromStr;
+use crate::location::{Span, Spanned};
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -26,48 +27,21 @@ pub enum Op {
     Divide
 }
 
-struct TokenWindow<T: Iterator<Item =ParseTokenResult>> {
-    tokens: Peekable<T>
-}
-
-impl<T> TokenWindow<T> where T : Iterator<Item =ParseTokenResult> {
-    pub fn new(tokens: T) -> Self {
-        TokenWindow { tokens: tokens.peekable() }
-    }
-
-    pub fn advance(&mut self) -> Option<ParseTokenResult> {
-        self.advance_if(|_| true)
-    }
-
-    pub fn advance_if(&mut self, func: impl Fn(&Token) -> bool) -> Option<ParseTokenResult> {
-        self.tokens.next_if(|lex_result| {
-            match lex_result {
-                Ok(token) => func(&token.value),
-                _ => false
-            }
-        })
-    }
-
-    pub fn peek(&mut self) -> Option<&ParseTokenResult> {
-        self.tokens.peek()
-    }
-}
-
 pub type ParseNodeResult = Result<Spanned<Node>, Spanned<ParseError>>;
 
 pub struct Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
-    tokens: TokenWindow<T>,
+    tokens: Peekable<T>,
     source_code: &'a str,
     span: Span
 }
 
 impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
     fn new(source_code: &'a str, tokens: T) -> Self {
-        Parser { tokens: TokenWindow::new(tokens), source_code, span: Span::new(0, 0) }
+        Parser { tokens: tokens.peekable(), source_code, span: Span::new(0, 0) }
     }
 
     fn parse_node(&mut self) -> Option<ParseNodeResult> {
-        match self.tokens.advance()? {
+        match self.tokens.next()? {
             Ok(token) => {
                 self.span = token.span;
                 match token.value {
@@ -97,22 +71,24 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
     }
 
     fn array(&mut self) -> Option<ParseNodeResult> {
+        let start_span = self.span.clone();
         let mut elements: Vec<Spanned<Node>> = Vec::new();
-
+        
         loop {
             match self.tokens.peek() {
                 None => return self.error(ParseError::UnterminatedArray),
                 Some(Err(lex_error)) => {
                     self.span = lex_error.span.clone();
                     let error = Lex(lex_error.value.clone());
-                    self.tokens.advance();
+                    self.tokens.next();
                     return self.error(error)
                 }
                 Some(Ok(token)) => {
                     match token.value {
                         Token::CloseBracket => {
-                            self.tokens.advance();
-                            break
+                            self.span = start_span.merge(&token.span);
+                            self.tokens.next(); // consume the closing bracket         
+                            return self.node(Node::Array(elements))
                         },
                         _ => match self.parse_node().unwrap() {
                             Ok(element) => elements.push(element),
@@ -121,22 +97,23 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
                     }
                 }
             }
-        }
-
-        self.span = elements.last().map_or(self.span.clone(), |s| s.span.clone());
-        self.node(Node::Array(elements))
+        }        
     }
 
     fn node(&self, node: Node) -> Option<ParseNodeResult> {
-        Some(Ok(Spanned::new(node, self.span.clone())))
+        Some(Ok(self.spanned(node)))
     }
 
     fn error(&self, error: ParseError) -> Option<ParseNodeResult> {
-        Some(Err(Spanned::new(error, self.span.clone())))
+        Some(Err(self.spanned(error)))
     }
 
     fn lexeme(&self, span: &Span) -> &'a str {
         &self.source_code[span.position as usize..(span.position + span.length as u32) as usize]
+    }
+
+    fn spanned<V>(&self, value: V) -> Spanned<V> {
+        Spanned::new(value, self.span.clone())
     }
 }
 
