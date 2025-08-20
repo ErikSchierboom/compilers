@@ -41,23 +41,21 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
     }
 
     fn parse_node(&mut self) -> Option<ParseNodeResult> {
-        match self.tokens.next()? {
-            Ok(token) => {
-                self.span = token.span;
-                match token.value {
-                    Token::Number => self.integer(),
-                    Token::Plus => self.operator(Op::Plus),
-                    Token::Minus => self.operator(Op::Minus),
-                    Token::Star => self.operator(Op::Multiply),
-                    Token::Slash => self.operator(Op::Divide),
-                    Token::OpenBracket => self.array(),
-                    Token::CloseBracket => self.error(ParseError::Unexpected(token.value))
-                }
-            },
-            Err(lex_error) => {
-                self.span = lex_error.span;
-                self.error(Lex(lex_error.value))
-            }
+        match self.next()? {
+            Ok(token) => self.parse_node_from_token(token.value),
+            Err(lex_error) => self.error(Lex(lex_error.value))
+        }
+    }
+
+    fn parse_node_from_token(&mut self, token: Token) -> Option<ParseNodeResult> {
+        match token {
+            Token::Number => self.integer(),
+            Token::Plus => self.operator(Op::Plus),
+            Token::Minus => self.operator(Op::Minus),
+            Token::Star => self.operator(Op::Multiply),
+            Token::Slash => self.operator(Op::Divide),
+            Token::OpenBracket => self.array(),
+            Token::CloseBracket => self.error(ParseError::Unexpected(token))
         }
     }
 
@@ -75,26 +73,16 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
         let mut elements: Vec<Spanned<Node>> = Vec::new();
         
         loop {
-            match self.tokens.peek() {
+            match self.next() {
                 None => return self.error(ParseError::UnterminatedArray),
-                Some(Err(lex_error)) => {
-                    self.span = lex_error.span.clone();
-                    let error = Lex(lex_error.value.clone());
-                    self.tokens.next();
-                    return self.error(error)
+                Some(Err(lex_error)) => return self.error(Lex(lex_error.value)),
+                Some(Ok(token)) if token.value == Token::CloseBracket => {
+                    self.span = start_span.merge(&self.span);
+                    return self.node(Node::Array(elements))
                 }
-                Some(Ok(token)) => {
-                    match token.value {
-                        Token::CloseBracket => {
-                            self.span = start_span.merge(&token.span);
-                            self.tokens.next(); // consume the closing bracket         
-                            return self.node(Node::Array(elements))
-                        },
-                        _ => match self.parse_node().unwrap() {
-                            Ok(element) => elements.push(element),
-                            Err(error) => return Some(Err(error))
-                        }
-                    }
+                Some(Ok(token)) => match self.parse_node_from_token(token.value)? {
+                    Err(error) => return Some(Err(error)),
+                    Ok(element) => elements.push(element)
                 }
             }
         }        
@@ -110,6 +98,36 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
 
     fn lexeme(&self, span: &Span) -> &'a str {
         &self.source_code[span.position as usize..(span.position + span.length as u32) as usize]
+    }
+
+    fn peek(&mut self) -> Option<&ParseTokenResult> {
+        self.tokens.peek()
+    }
+
+    fn next(&mut self) -> Option<ParseTokenResult> {
+        self.next_if(|_| true)
+    }
+
+    fn next_if_match(&mut self, expected: Token) -> Option<ParseTokenResult> {
+        self.next_if(|token_result| {
+            match token_result {
+                Ok(token) => token.value == expected,
+                Err(_) => false
+            }
+        })
+    }
+
+    fn next_if(&mut self, func: impl Fn(&ParseTokenResult) -> bool) -> Option<ParseTokenResult> {
+        self.tokens.next_if(func).inspect(|token_result|{
+            self.update_span(token_result)
+        })
+    }
+
+    fn update_span(&mut self, token_result: &ParseTokenResult) {
+        match token_result {
+            Ok(token) => self.span = token.span.clone(),
+            Err(error) => self.span = error.span.clone()
+        }
     }
 
     fn spanned<V>(&self, value: V) -> Spanned<V> {

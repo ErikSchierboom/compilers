@@ -6,7 +6,7 @@ pub enum LexError {
     UnexpectedCharacter(char)
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Token {
     Number,
     OpenBracket,
@@ -84,12 +84,15 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
     fn next(&mut self) -> Option<char> {
         self.next_if(|_| true)
     }
+    
     fn next_while(&mut self, func: impl Fn(&char) -> bool) {
         while self.next_if(&func).is_some() {}
     }
 
     fn next_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {
-        self.chars.next_if(func).inspect(|_| self.length += 1)
+        self.chars.next_if(func).inspect(|_| {
+            self.length += 1
+        })
     }
 }
 
