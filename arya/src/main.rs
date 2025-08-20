@@ -27,3 +27,7 @@ fn main() {
 // TODO: add clippy
 // TODO: add unit tests
 // TODO: add perf tests
+// TODO: formatter
+// TODO: LSP
+// TODO: WASM website
+// TODO: CLI
