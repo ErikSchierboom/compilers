@@ -1,3 +1,5 @@
+use std::error::Error;
+use std::fmt::{write, Display, Formatter};
 use crate::lex::{tokenize, LexError, Token, ParseTokenResult};
 use crate::parse::Node::{Integer, Operator};
 use crate::parse::ParseError::Lex;
@@ -11,6 +13,18 @@ pub enum ParseError {
     Unexpected(Token),
     UnterminatedArray,
 }
+
+impl Display for ParseError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Lex(lex_error) => write!(f, "{lex_error}"),
+            ParseError::Unexpected(token) => write!(f, "Unexpected token: {token}"),
+            ParseError::UnterminatedArray => write!(f, "Unterminated array")
+        }
+    }
+}
+
+impl Error for ParseError {}
 
 #[derive(Debug)]
 pub enum Node {

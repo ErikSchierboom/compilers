@@ -1,3 +1,5 @@
+use std::error::Error;
+use std::fmt::{Display, Formatter};
 use crate::parse::{parse, Node, ParseError, ParseNodeResult};
 use crate::location::{Spanned};
 use std::iter::Peekable;
@@ -5,11 +7,23 @@ use std::iter::Peekable;
 #[derive(Debug)]
 pub enum RuntimeError {
     Parse(ParseError),
-    MissingArguments(i32),
+    InvalidNumberOfArguments(u8, u8),
     InvalidArgumentType,
-    DifferentArrayElementTypes,
     DifferentArrayElementShapes,
 }
+
+impl Display for RuntimeError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RuntimeError::Parse(parse_error) => write!(f, "{parse_error}"),
+            RuntimeError::InvalidNumberOfArguments(expected, actual) => write!(f, "Expected {expected} arguments, got {actual}"),
+            RuntimeError::InvalidArgumentType => write!(f, "Invalid argument type"),
+            RuntimeError::DifferentArrayElementShapes => write!(f, "Not all rows in the array have the same shape")
+        }
+    }
+}
+
+impl Error for RuntimeError {}
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Shape {
@@ -82,7 +96,7 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
                     let element_shape = element_value.value.shape;
                     let existing_shape = array_shape.get_or_insert(element_shape.clone());
                     if *existing_shape != element_shape {
-                        return Err(Spanned::new(RuntimeError::DifferentArrayElementShapes, node.span.clone()))
+                        return Err(Spanned::new(RuntimeError::DifferentArrayElementShapes, element.span.clone()))
                     }
 
                     for integer in element_value.value.values {

@@ -1,6 +1,5 @@
 use crate::interpret::interpret;
-use crate::lex::tokenize;
-use crate::parse::parse;
+use crate::location::LineEndings;
 
 mod lex;
 mod parse;
@@ -8,18 +7,15 @@ mod interpret;
 mod location;
 
 fn main() {
-    let source = "[ [1 2 3] [4 5 6]] 5";
-    //
-    // for token_result in parse(&source) {
-    //     match token_result {
-    //         Ok(token) => println!("{:?}", token),
-    //         Err(error) => eprintln!("{:?}", error),
-    //     }
-    // }
+    let source = "[ [1 2 3] [4 5 6] []] 5";
 
     match interpret(&source) {
         Ok(values) => println!("{:?}", values),
-        Err(error) => eprintln!("{:?}", error),
+        Err(error) => {
+            let line_endings = LineEndings::new(source);
+            let location = line_endings.location(&error.span);
+            eprintln!("Error at {}: {}", location, error.value)
+        },
     }
 }
 

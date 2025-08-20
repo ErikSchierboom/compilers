@@ -1,3 +1,5 @@
+use std::error::Error;
+use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 use crate::location::{Span, Spanned};
 
@@ -5,6 +7,16 @@ use crate::location::{Span, Spanned};
 pub enum LexError {
     UnexpectedCharacter(char)
 }
+
+impl Display for LexError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self { 
+            LexError::UnexpectedCharacter(c) => write!(f, "Unexpected character '{c}'")
+        }
+    }
+}
+
+impl Error for LexError {}
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
@@ -15,6 +27,20 @@ pub enum Token {
     Minus,
     Star,
     Slash,
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Number => write!(f, "number"),
+            Token::OpenBracket => write!(f, "["),
+            Token::CloseBracket => write!(f, "]"),
+            Token::Plus => write!(f, "+"),
+            Token::Minus => write!(f, "-"),
+            Token::Star => write!(f, "*"),
+            Token::Slash => write!(f, "/"),
+        }
+    }
 }
 
 pub type ParseTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
