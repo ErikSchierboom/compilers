@@ -38,6 +38,12 @@ impl Shape {
     }
 }
 
+impl Display for Shape {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.dimensions)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Value {
     pub shape: Shape,
@@ -51,6 +57,12 @@ impl Value {
 
     pub fn scalar(element: i64) -> Self {
         Self::new(Shape::SCALAR, vec!(element))
+    }
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {:?}", self.shape, self.values)
     }
 }
 

@@ -33,12 +33,33 @@ pub enum Node {
     Array(Vec<Spanned<Node>>)
 }
 
+impl Display for Node {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Integer(i) => write!(f, "{i}"),
+            Operator(op) => write!(f, "{op}"),
+            Node::Array(array) => write!(f, "{:?}", array)
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Op {
     Plus,
     Minus,
     Multiply,
     Divide
+}
+
+impl Display for Op {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Op::Plus => write!(f, "+"),
+            Op::Minus => write!(f, "-"),
+            Op::Multiply => write!(f, "*"),
+            Op::Divide => write!(f, "/"),
+        }
+    }
 }
 
 pub type ParseNodeResult = Result<Spanned<Node>, Spanned<ParseError>>;
