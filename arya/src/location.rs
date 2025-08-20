@@ -7,6 +7,8 @@ pub struct Span {
 }
 
 impl Span {
+    pub const EMPTY: Self = Self { position: 0, length: 0 };
+    
     pub fn new(position: u32, length: u16) -> Self {
         Self { position, length }
     }

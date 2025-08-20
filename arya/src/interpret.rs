@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fmt::{Display, Formatter};
-use crate::parse::{parse, Node, ParseError, ParseNodeResult};
-use crate::location::{Spanned};
+use crate::parse::{parse, Node, Op, ParseError, ParseNodeResult};
+use crate::location::{Span, Spanned};
 use std::iter::Peekable;
 
 #[derive(Debug)]
@@ -35,6 +35,10 @@ impl Shape {
 
     pub fn prepend_dimension(&mut self, size: usize) {
         self.dimensions.insert(0, size)
+    }
+
+    fn is_scalar(&self) -> bool {
+        self.dimensions.len() == 0
     }
 }
 
@@ -71,24 +75,29 @@ pub type InterpretResult = Result<Vec<Spanned<Value>>, Spanned<RuntimeError>>;
 
 pub struct Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
     nodes: Peekable<T>,
-    stack: Vec<Spanned<Value>>
+    stack: Vec<Spanned<Value>>,
+    span: Span
 }
 
 impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
     pub fn new(nodes: T) -> Self {
-        Self { nodes: nodes.peekable(), stack: Vec::new() }
+        Self { nodes: nodes.peekable(), stack: Vec::new(), span: Span::EMPTY }
     }
 
     pub fn interpret(&mut self) -> InterpretResult {
         while let Some(node) = self.nodes.next() {
             match node {
                 Ok(node) => {
+                    self.span = node.span.clone();
                     match self.evaluate(&node) {
                         Ok(value) => self.stack.push(value),
                         Err(error) => return Err(error)
                     }
                 }
-                Err(error) => return Err(Spanned::new(RuntimeError::Parse(error.value), error.span))
+                Err(error) => {
+                    self.span = error.span.clone();
+                    return Err(self.spanned(RuntimeError::Parse(error.value)))
+                }
             }
         }
 
@@ -97,30 +106,76 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
 
     fn evaluate(&mut self, node: &Spanned<Node>) -> EvaluateResult {
         match &node.value {
-            Node::Integer(i) => Ok(Spanned::new(Value::scalar(i.clone()), node.span.clone())),
-            Node::Operator(_) => todo!(),
-            Node::Array(elements) => {
-                let mut array_shape: Option<Shape> = None;
-                let mut array_values: Vec<i64> = Vec::new();
+            Node::Integer(i) => self.integer(i),
+            Node::Operator(op) => self.operator(op),
+            Node::Array(elements) => self.array(elements)
+        }
+    }
 
-                for element in elements {
-                    let element_value = self.evaluate(element)?;
-                    let element_shape = element_value.value.shape;
-                    let existing_shape = array_shape.get_or_insert(element_shape.clone());
-                    if *existing_shape != element_shape {
-                        return Err(Spanned::new(RuntimeError::DifferentArrayElementShapes, element.span.clone()))
-                    }
+    fn integer(&self, i: &i64) -> Result<Spanned<Value>, Spanned<RuntimeError>> {
+        Ok(self.spanned(Value::scalar(i.clone())))
+    }
 
-                    for integer in element_value.value.values {
-                        array_values.push(integer)
-                    }
+    fn operator(&mut self, op: &Op) -> EvaluateResult {
+        match op {
+            Op::Plus => {
+                if self.stack.len() < 2 {
+                    return Err(self.spanned(RuntimeError::InvalidNumberOfArguments(2, self.stack.len() as u8)))
                 }
 
-                let mut shape= array_shape.get_or_insert(Shape::SCALAR).clone();
-                shape.prepend_dimension(elements.len());
-                Ok(Spanned::new(Value::new(shape.clone(), array_values), node.span.clone()))
+                let rhs = self.stack.pop().unwrap();
+                let lhs = self.stack.pop().unwrap();
+
+                if lhs.value.shape.is_scalar() {
+                    let lhs_value = lhs.value.values.first().unwrap();
+                    let summed_values: Vec<i64> = rhs.value.values.iter().map(|value| value + lhs_value).collect();
+
+                    Ok(self.spanned(Value::new(rhs.value.shape, summed_values)))
+                } else if rhs.value.shape.is_scalar() {
+                    let rhs_value = rhs.value.values.first().unwrap();
+                    let summed_values: Vec<i64> = lhs.value.values.iter().map(|value| value + rhs_value).collect();
+
+                    Ok(self.spanned(Value::new(lhs.value.shape, summed_values)))
+                } else if lhs.value.shape == rhs.value.shape {
+                    let summed_values: Vec<i64> = lhs.value.values.iter().zip(rhs.value.values)
+                        .map(|(lhs_value, rhs_value)| lhs_value + rhs_value)
+                        .collect();
+                    Ok(self.spanned(Value::new(lhs.value.shape, summed_values)))
+                } else {
+                    Err(self.spanned(RuntimeError::InvalidArgumentType))
+                }
+            }
+            Op::Minus => todo!(),
+            Op::Multiply => todo!(),
+            Op::Divide => todo!(),
+        }
+    }
+
+    fn array(&mut self, elements: &Vec<Spanned<Node>>) -> EvaluateResult {
+        let mut array_shape: Option<Shape> = None;
+        let mut array_values: Vec<i64> = Vec::new();
+
+        for element in elements {
+            let element_value = self.evaluate(element)?;
+            let element_shape = element_value.value.shape;
+            let existing_shape = array_shape.get_or_insert(element_shape.clone());
+            if *existing_shape != element_shape {
+                self.span = element.span.clone();
+                return Err(self.spanned(RuntimeError::DifferentArrayElementShapes))
+            }
+
+            for integer in element_value.value.values {
+                array_values.push(integer)
             }
         }
+
+        let mut shape = array_shape.get_or_insert(Shape::SCALAR).clone();
+        shape.prepend_dimension(elements.len());
+        Ok(self.spanned(Value::new(shape.clone(), array_values)))
+    }
+
+    fn spanned<V>(&self, value: V) -> Spanned<V> {
+        Spanned::new(value, self.span.clone())
     }
 }
 

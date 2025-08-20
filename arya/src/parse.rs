@@ -1,11 +1,11 @@
-use std::error::Error;
-use std::fmt::{write, Display, Formatter};
-use crate::lex::{tokenize, LexError, Token, ParseTokenResult};
+use crate::lex::{tokenize, LexError, ParseTokenResult, Token};
+use crate::location::{Span, Spanned};
 use crate::parse::Node::{Integer, Operator};
 use crate::parse::ParseError::Lex;
+use std::error::Error;
+use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 use std::str::FromStr;
-use crate::location::{Span, Spanned};
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -72,7 +72,7 @@ pub struct Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
 
 impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
     fn new(source_code: &'a str, tokens: T) -> Self {
-        Parser { tokens: tokens.peekable(), source_code, span: Span::new(0, 0) }
+        Parser { tokens: tokens.peekable(), source_code, span: Span::EMPTY }
     }
 
     fn parse_node(&mut self) -> Option<ParseNodeResult> {
