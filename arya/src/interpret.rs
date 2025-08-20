@@ -191,23 +191,23 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
         let mut array_shape: Option<Shape> = None;
         let mut array_values: Vec<i64> = Vec::new();
 
-        for element in elements {
-            let element_value = self.evaluate(element)?;
-            let element_shape = element_value.value.shape;
-            let existing_shape = array_shape.get_or_insert(element_shape.clone());
-            if *existing_shape != element_shape {
-                self.span = element.span.clone();
+        for spanned_element in elements {
+            let spanned_value = self.evaluate(spanned_element)?;
+            let value_shape = spanned_value.value.shape;
+            let existing_shape = array_shape.get_or_insert(value_shape.clone());
+            if *existing_shape != value_shape {
+                self.span = spanned_element.span.clone();
                 return Err(self.spanned(RuntimeError::DifferentArrayElementShapes))
             }
 
-            for integer in element_value.value.values {
+            for integer in spanned_value.value.values {
                 array_values.push(integer)
             }
         }
 
         let mut shape = array_shape.get_or_insert(Shape::SCALAR).clone();
         shape.prepend_dimension(elements.len());
-        Ok(self.spanned(Value::new(shape.clone(), array_values)))
+        Ok(self.spanned(Value::new(shape, array_values)))
     }
 
     fn spanned<V>(&self, value: V) -> Spanned<V> {
