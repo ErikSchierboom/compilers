@@ -44,32 +44,18 @@ impl Value {
 pub type EvaluateResult = Result<Spanned<Value>, Spanned<RuntimeError>>;
 pub type InterpretResult = Result<Vec<Spanned<Value>>, Spanned<RuntimeError>>;
 
-struct NodeWindow<T: Iterator<Item = ParseNodeResult>> {
-    nodes: Peekable<T>
-}
-
-impl<T> NodeWindow<T> where T : Iterator<Item = ParseNodeResult>  {
-    pub fn new(nodes: T) -> Self {
-        NodeWindow { nodes: nodes.peekable() }
-    }
-
-    fn advance(&mut self) -> Option<ParseNodeResult> {
-        self.nodes.next()
-    }
-}
-
 pub struct Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
-    nodes: NodeWindow<T>,
+    nodes: Peekable<T>,
     stack: Vec<Spanned<Value>>
 }
 
 impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
     pub fn new(nodes: T) -> Self {
-        Self { nodes: NodeWindow::new(nodes), stack: Vec::new() }
+        Self { nodes: nodes.peekable(), stack: Vec::new() }
     }
 
     pub fn interpret(&mut self) -> InterpretResult {
-        while let Some(node) = self.nodes.advance() {
+        while let Some(node) = self.nodes.next() {
             match node {
                 Ok(node) => {
                     match self.evaluate(&node) {
