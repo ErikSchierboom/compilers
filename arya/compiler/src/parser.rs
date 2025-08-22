@@ -52,7 +52,8 @@ pub enum Operator {
     LessEqual,
     Duplicate,
     Over,
-    Swap
+    Swap,
+    Drop,
 }
 
 pub type ParseNodeResult = Result<Spanned<Node>, Spanned<ParseError>>;
@@ -98,6 +99,7 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
             Token::Dot          => self.operation(Operator::Duplicate),
             Token::Comma        => self.operation(Operator::Over),
             Token::Colon        => self.operation(Operator::Swap),
+            Token::Semicolon    => self.operation(Operator::Drop),
         }
     }
 

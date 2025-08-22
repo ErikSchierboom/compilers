@@ -41,6 +41,7 @@ pub enum Token {
     Dot,
     Comma,
     Colon,
+    Semicolon,
 }
 
 pub type ParseTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
@@ -78,6 +79,7 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
             '.' => self.token(Token::Dot),
             ',' => self.token(Token::Comma),
             ':' => self.token(Token::Colon),
+            ';' => self.token(Token::Semicolon),
             '!' => if self.next_if_char('=').is_some() { self.token(Token::NotEqual) } else { self.token(Token::Bang) },
             '>' => if self.next_if_char('=').is_some() { self.token(Token::GreaterEqual) } else { self.token(Token::Greater) },
             '<' => if self.next_if_char('=').is_some() { self.token(Token::LessEqual) } else { self.token(Token::Less) },

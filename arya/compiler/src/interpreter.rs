@@ -164,9 +164,10 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
             Operator::LessEqual    => self.binary_operation(|l,r| (l <= r) as i64),
             Operator::Not          => self.unary_operation(|value| !value),
             Operator::Negate       => self.unary_operation(|value| -value),
-            Operator::Duplicate    => todo!(),
-            Operator::Over         => todo!(),
-            Operator::Swap         => todo!(),
+            Operator::Duplicate    => self.unary_stack_operation(|value| vec![value.clone(), value.clone()]),
+            Operator::Drop         => self.unary_stack_operation(|_| vec![]),
+            Operator::Over         => self.binary_stack_operation(|l, r| vec![l.clone(), r.clone(), l.clone()]),
+            Operator::Swap         => self.binary_stack_operation(|l, r| vec![r.clone(), l.clone()]),
         }
     }
 
@@ -253,6 +254,29 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
             .collect();
         let value = Value::new(operand.value.shape, transformed_values);
         self.push(value);
+        Ok(())
+    }
+
+    fn binary_stack_operation(&mut self, operation: impl Fn(&Value, &Value) -> Vec<Value>) -> EvaluateResult {
+        self.verify_stack_size(2)?;
+
+        let rhs = self.pop().unwrap();
+        let lhs = self.pop().unwrap();
+        for value in operation(&lhs.value, &rhs.value) {
+            self.push(value)
+        }
+
+        Ok(())
+    }
+
+    fn unary_stack_operation(&mut self, operation: impl Fn(&Value) -> Vec<Value>) -> EvaluateResult {
+        self.verify_stack_size(1)?;
+
+        let operand = self.pop().unwrap();
+        for value in operation(&operand.value) {
+            self.push(value)
+        }
+
         Ok(())
     }
 
