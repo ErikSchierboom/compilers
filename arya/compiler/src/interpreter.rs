@@ -8,7 +8,7 @@ use std::iter::Peekable;
 pub enum RuntimeError {
     Parse(ParseError),
     InvalidNumberOfArguments(u8, u8),
-    InvalidArgumentType,
+    IncompatibleShapes,
     DifferentArrayElementShapes,
 }
 
@@ -17,7 +17,7 @@ impl Display for RuntimeError {
         match self {
             RuntimeError::Parse(parse_error) => write!(f, "{parse_error}"),
             RuntimeError::InvalidNumberOfArguments(expected, actual) => write!(f, "Expected {expected} arguments, got {actual}"),
-            RuntimeError::InvalidArgumentType => write!(f, "Invalid argument type"),
+            RuntimeError::IncompatibleShapes => write!(f, "Incompatible shapes"),
             RuntimeError::DifferentArrayElementShapes => write!(f, "Not all rows in the array have the same shape")
         }
     }
@@ -196,9 +196,7 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
     }
 
     fn binary_operation(&mut self, operation: impl Fn(&i64, &i64) -> i64) -> EvaluateResult {
-        if self.stack.len() < 2 {
-            return Err(self.spanned(RuntimeError::InvalidNumberOfArguments(2, self.stack.len() as u8)))
-        }
+        self.verify_stack_size(2)?;
 
         let rhs = self.stack.pop().unwrap();
         let lhs = self.stack.pop().unwrap();
@@ -221,18 +219,26 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
                 .collect();
             Ok(self.spanned(Value::new(lhs.value.shape, transformed_values)))
         } else {
-            Err(self.spanned(RuntimeError::InvalidArgumentType))
+            Err(self.spanned(RuntimeError::IncompatibleShapes))
         }
     }
 
     fn unary_operation(&mut self, operation: impl Fn(&i64) -> i64) -> EvaluateResult {
-        if let Some(operand) = self.stack.pop() {
-            let transformed_values: Vec<i64> = operand.value.values.iter()
-                .map(operation)
-                .collect();
-            Ok(self.spanned(Value::new(operand.value.shape, transformed_values)))
+        self.verify_stack_size(1)?;
+        
+        let operand = self.stack.pop().unwrap();        
+        let transformed_values: Vec<i64> = operand.value.values.iter()
+            .map(operation)
+            .collect();
+        Ok(self.spanned(Value::new(operand.value.shape, transformed_values)))
+    }
+
+    fn verify_stack_size(&mut self, expected: u8) -> Result<(), Spanned<RuntimeError>> {
+        let actual = self.stack.len() as u8;
+        if actual < expected {
+            Err(self.spanned(RuntimeError::InvalidNumberOfArguments(expected, self.stack.len() as u8)))
         } else {
-            Err(self.spanned(RuntimeError::InvalidNumberOfArguments(1, self.stack.len() as u8)))
+            Ok(())
         }
     }
 }
