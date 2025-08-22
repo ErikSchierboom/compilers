@@ -96,8 +96,8 @@ mod tests {
 
     #[test]
     fn test_location() {
-        const source: &str = "1 2 3\n4 5 6";
-        let line_endings = LineEndings::new(source);
+        const SOURCE: &str = "1 2 3\n4 5 6";
+        let line_endings = LineEndings::new(SOURCE);
 
         let first_character = Span::new(0, 1);
         assert_eq!(line_endings.location(&first_character), Location::new(1, 1));
