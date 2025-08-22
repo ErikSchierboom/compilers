@@ -1,6 +1,6 @@
 use crate::lexer::{tokenize, LexError, ParseTokenResult, Token};
 use crate::location::{Span, Spanned};
-use crate::parser::Node::{Integer, Operator};
+use crate::parser::Node::{Integer, Operation};
 use crate::parser::ParseError::Lex;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -29,7 +29,7 @@ impl Error for ParseError {}
 #[derive(Debug)]
 pub enum Node {
     Integer(i64),
-    Operator(Op),
+    Operation(Operator),
     Array(Vec<Spanned<Node>>)
 }
 
@@ -37,27 +37,29 @@ impl Display for Node {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Integer(i) => write!(f, "{i}"),
-            Operator(op) => write!(f, "{op}"),
+            Operation(op) => write!(f, "{op}"),
             Node::Array(array) => write!(f, "{:?}", array)
         }
     }
 }
 
 #[derive(Debug)]
-pub enum Op {
-    Plus,
-    Minus,
+pub enum Operator {
+    Add,
+    Subtract,
     Multiply,
-    Divide
+    Divide,
+    Xor,
 }
 
-impl Display for Op {
+impl Display for Operator {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Op::Plus => write!(f, "+"),
-            Op::Minus => write!(f, "-"),
-            Op::Multiply => write!(f, "*"),
-            Op::Divide => write!(f, "/"),
+            Operator::Add => write!(f, "add"),
+            Operator::Subtract => write!(f, "subtract"),
+            Operator::Multiply => write!(f, "multiply"),
+            Operator::Divide => write!(f, "divide"),
+            Operator::Xor => write!(f, "power"),
         }
     }
 }
@@ -85,12 +87,13 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
     fn parse_node_from_token(&mut self, token: Token) -> Option<ParseNodeResult> {
         match token {
             Token::Number => self.integer(),
-            Token::Plus => self.operator(Op::Plus),
-            Token::Minus => self.operator(Op::Minus),
-            Token::Star => self.operator(Op::Multiply),
-            Token::Slash => self.operator(Op::Divide),
+            Token::Plus => self.operation(Operator::Add),
+            Token::Minus => self.operation(Operator::Subtract),
+            Token::Star => self.operation(Operator::Multiply),
+            Token::Slash => self.operation(Operator::Divide),
+            Token::Caret => self.operation(Operator::Xor),
             Token::OpenBracket => self.array(),
-            Token::CloseBracket => self.error(ParseError::Unexpected(token))
+            Token::CloseBracket => self.error(ParseError::Unexpected(token)),
         }
     }
 
@@ -99,8 +102,8 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
         self.node(Integer(number))
     }
 
-    fn operator(&self, operator: Op) -> Option<ParseNodeResult> {
-        self.node(Operator(operator))
+    fn operation(&self, operator: Operator) -> Option<ParseNodeResult> {
+        self.node(Operation(operator))
     }
 
     fn array(&mut self) -> Option<ParseNodeResult> {

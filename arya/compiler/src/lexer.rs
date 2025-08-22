@@ -27,6 +27,7 @@ pub enum Token {
     Minus,
     Star,
     Slash,
+    Caret
 }
 
 impl Display for Token {
@@ -39,6 +40,7 @@ impl Display for Token {
             Token::Minus => write!(f, "-"),
             Token::Star => write!(f, "*"),
             Token::Slash => write!(f, "/"),
+            Token::Caret => write!(f, "^"),
         }
     }
 }
@@ -70,6 +72,7 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
             '-' => self.token(Token::Minus),
             '*' => self.token(Token::Star),
             '/' => self.token(Token::Slash),
+            '^' => self.token(Token::Caret),
             c if c.is_ascii_digit() => self.number(),
             c => self.error(LexError::UnexpectedCharacter(c))
         }

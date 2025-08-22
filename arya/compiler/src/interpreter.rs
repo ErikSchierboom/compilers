@@ -1,6 +1,6 @@
 use std::error::Error;
 use std::fmt::{Display, Formatter};
-use crate::parser::{parse, Node, Op, ParseError, ParseNodeResult};
+use crate::parser::{parse, Node, Operator, ParseError, ParseNodeResult};
 use crate::location::{Span, Spanned};
 use std::iter::Peekable;
 
@@ -169,7 +169,7 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
     fn evaluate(&mut self, node: &Spanned<Node>) -> EvaluateResult {
         match &node.value {
             Node::Integer(i) => self.integer(i),
-            Node::Operator(op) => self.operator(op),
+            Node::Operation(op) => self.operator(op),
             Node::Array(elements) => self.array(elements)
         }
     }
@@ -178,12 +178,13 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
         Ok(self.spanned(Value::scalar(i.clone())))
     }
 
-    fn operator(&mut self, op: &Op) -> EvaluateResult {
+    fn operator(&mut self, op: &Operator) -> EvaluateResult {
         match op {
-            Op::Plus     => binary_operation!(self, +),
-            Op::Minus    => binary_operation!(self, -),
-            Op::Multiply => binary_operation!(self, *),
-            Op::Divide   => binary_operation!(self, /),
+            Operator::Add      => binary_operation!(self, +),
+            Operator::Subtract => binary_operation!(self, -),
+            Operator::Multiply => binary_operation!(self, *),
+            Operator::Divide   => binary_operation!(self, /),
+            Operator::Xor      => binary_operation!(self, ^),
         }
     }
 
