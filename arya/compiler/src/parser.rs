@@ -18,7 +18,7 @@ impl Display for ParseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Lex(lex_error) => write!(f, "{lex_error}"),
-            ParseError::Unexpected(token) => write!(f, "Unexpected token: {token}"),
+            ParseError::Unexpected(token) => write!(f, "Unexpected token: {:?}", token),
             ParseError::UnterminatedArray => write!(f, "Unterminated array")
         }
     }
@@ -33,16 +33,6 @@ pub enum Node {
     Array(Vec<Spanned<Node>>)
 }
 
-impl Display for Node {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Integer(i) => write!(f, "{i}"),
-            Operation(op) => write!(f, "{op}"),
-            Node::Array(array) => write!(f, "{:?}", array)
-        }
-    }
-}
-
 #[derive(Debug)]
 pub enum Operator {
     Add,
@@ -50,18 +40,10 @@ pub enum Operator {
     Multiply,
     Divide,
     Xor,
-}
-
-impl Display for Operator {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Operator::Add => write!(f, "add"),
-            Operator::Subtract => write!(f, "subtract"),
-            Operator::Multiply => write!(f, "multiply"),
-            Operator::Divide => write!(f, "divide"),
-            Operator::Xor => write!(f, "power"),
-        }
-    }
+    And,
+    Or,
+    Not,
+    Negate,
 }
 
 pub type ParseNodeResult = Result<Spanned<Node>, Spanned<ParseError>>;
@@ -87,13 +69,17 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
     fn parse_node_from_token(&mut self, token: Token) -> Option<ParseNodeResult> {
         match token {
             Token::Number => self.integer(),
+            Token::OpenBracket => self.array(),
+            Token::CloseBracket => self.error(ParseError::Unexpected(token)),
             Token::Plus => self.operation(Operator::Add),
             Token::Minus => self.operation(Operator::Subtract),
             Token::Star => self.operation(Operator::Multiply),
             Token::Slash => self.operation(Operator::Divide),
+            Token::Ampersand => self.operation(Operator::And),
+            Token::Pipe => self.operation(Operator::Or),
             Token::Caret => self.operation(Operator::Xor),
-            Token::OpenBracket => self.array(),
-            Token::CloseBracket => self.error(ParseError::Unexpected(token)),
+            Token::Bang => self.operation(Operator::Not),
+            Token::Underscore => self.operation(Operator::Negate),
         }
     }
 

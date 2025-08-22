@@ -27,22 +27,11 @@ pub enum Token {
     Minus,
     Star,
     Slash,
-    Caret
-}
-
-impl Display for Token {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Token::Number => write!(f, "number"),
-            Token::OpenBracket => write!(f, "["),
-            Token::CloseBracket => write!(f, "]"),
-            Token::Plus => write!(f, "+"),
-            Token::Minus => write!(f, "-"),
-            Token::Star => write!(f, "*"),
-            Token::Slash => write!(f, "/"),
-            Token::Caret => write!(f, "^"),
-        }
-    }
+    Caret,
+    Ampersand,
+    Pipe,
+    Bang,
+    Underscore,
 }
 
 pub type ParseTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
@@ -73,6 +62,10 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
             '*' => self.token(Token::Star),
             '/' => self.token(Token::Slash),
             '^' => self.token(Token::Caret),
+            '&' => self.token(Token::Ampersand),
+            '|' => self.token(Token::Pipe),
+            '!' => self.token(Token::Bang),
+            '_' => self.token(Token::Underscore),
             c if c.is_ascii_digit() => self.number(),
             c => self.error(LexError::UnexpectedCharacter(c))
         }

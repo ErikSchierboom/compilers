@@ -111,36 +111,6 @@ pub struct Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
     span: Span
 }
 
-macro_rules! binary_operation {
-    ($self:ident, $operation:tt) => {
-        if $self.stack.len() < 2 {
-            return Err($self.spanned(RuntimeError::InvalidNumberOfArguments(2, $self.stack.len() as u8)))
-        } else {
-            let rhs = $self.stack.pop().unwrap();
-            let lhs = $self.stack.pop().unwrap();
-
-            if lhs.value.shape.is_scalar() {
-                let lhs_value = lhs.value.values.first().unwrap();
-                let summed_values: Vec<i64> = rhs.value.values.iter().map(|value| value $operation lhs_value).collect();
-
-                Ok($self.spanned(Value::new(rhs.value.shape, summed_values)))
-            } else if rhs.value.shape.is_scalar() {
-                let rhs_value = rhs.value.values.first().unwrap();
-                let summed_values: Vec<i64> = lhs.value.values.iter().map(|value| value $operation rhs_value).collect();
-
-                Ok($self.spanned(Value::new(lhs.value.shape, summed_values)))
-            } else if lhs.value.shape == rhs.value.shape {
-                let summed_values: Vec<i64> = lhs.value.values.iter().zip(rhs.value.values)
-                    .map(|(lhs_value, rhs_value)| lhs_value $operation rhs_value)
-                    .collect();
-                Ok($self.spanned(Value::new(lhs.value.shape, summed_values)))
-            } else {
-                Err($self.spanned(RuntimeError::InvalidArgumentType))
-            }
-        }
-    };
-}
-
 impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
     pub fn new(nodes: T) -> Self {
         Self { nodes: nodes.peekable(), stack: Vec::new(), span: Span::EMPTY }
@@ -180,11 +150,15 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
 
     fn operator(&mut self, op: &Operator) -> EvaluateResult {
         match op {
-            Operator::Add      => binary_operation!(self, +),
-            Operator::Subtract => binary_operation!(self, -),
-            Operator::Multiply => binary_operation!(self, *),
-            Operator::Divide   => binary_operation!(self, /),
-            Operator::Xor      => binary_operation!(self, ^),
+            Operator::Add      => self.binary_operation(|l,r| l + r),
+            Operator::Subtract => self.binary_operation(|l,r| l - r),
+            Operator::Multiply => self.binary_operation(|l,r| l * r),
+            Operator::Divide   => self.binary_operation(|l,r| l / r),
+            Operator::And      => self.binary_operation(|l,r| l & r),
+            Operator::Or       => self.binary_operation(|l,r| l | r),
+            Operator::Xor      => self.binary_operation(|l,r| l ^ r),
+            Operator::Not      => self.unary_operation(|value| !value),
+            Operator::Negate   => self.unary_operation(|value| -value),
         }
     }
 
@@ -213,6 +187,47 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
 
     fn spanned<V>(&self, value: V) -> Spanned<V> {
         Spanned::new(value, self.span.clone())
+    }
+
+    fn binary_operation(&mut self, operation: impl Fn(&i64, &i64) -> i64) -> EvaluateResult {
+        if self.stack.len() < 2 {
+            return Err(self.spanned(RuntimeError::InvalidNumberOfArguments(2, self.stack.len() as u8)))
+        }
+
+        let rhs = self.stack.pop().unwrap();
+        let lhs = self.stack.pop().unwrap();
+
+        if lhs.value.shape.is_scalar() {
+            let lhs_value = lhs.value.values.first().unwrap();
+            let transformed_values: Vec<i64> = rhs.value.values.iter()
+                .map(|value| operation(value, lhs_value))
+                .collect();
+            Ok(self.spanned(Value::new(rhs.value.shape, transformed_values)))
+        } else if rhs.value.shape.is_scalar() {
+            let rhs_value = rhs.value.values.first().unwrap();
+            let transformed_values: Vec<i64> = lhs.value.values.iter()
+                .map(|value| operation(value, rhs_value))
+                .collect();
+            Ok(self.spanned(Value::new(lhs.value.shape, transformed_values)))
+        } else if lhs.value.shape == rhs.value.shape {
+            let transformed_values: Vec<i64> = lhs.value.values.iter().zip(rhs.value.values)
+                .map(|(lhs_value, rhs_value)| operation(lhs_value, &rhs_value))
+                .collect();
+            Ok(self.spanned(Value::new(lhs.value.shape, transformed_values)))
+        } else {
+            Err(self.spanned(RuntimeError::InvalidArgumentType))
+        }
+    }
+
+    fn unary_operation(&mut self, operation: impl Fn(&i64) -> i64) -> EvaluateResult {
+        if let Some(operand) = self.stack.pop() {
+            let transformed_values: Vec<i64> = operand.value.values.iter()
+                .map(operation)
+                .collect();
+            Ok(self.spanned(Value::new(operand.value.shape, transformed_values)))
+        } else {
+            Err(self.spanned(RuntimeError::InvalidNumberOfArguments(1, self.stack.len() as u8)))
+        }
     }
 }
 
