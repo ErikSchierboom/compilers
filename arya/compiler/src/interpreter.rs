@@ -102,7 +102,7 @@ impl Display for Value {
     }
 }
 
-pub type EvaluateResult = Result<Spanned<Value>, Spanned<RuntimeError>>;
+pub type EvaluateResult = Result<(), Spanned<RuntimeError>>;
 pub type InterpretResult = Result<Vec<Spanned<Value>>, Spanned<RuntimeError>>;
 
 pub struct Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
@@ -121,10 +121,7 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
             match node {
                 Ok(node) => {
                     self.span = node.span.clone();
-                    match self.evaluate(&node) {
-                        Ok(value) => self.stack.push(value),
-                        Err(error) => return Err(error)
-                    }
+                    self.evaluate(&node)?
                 }
                 Err(error) => {
                     self.span = error.span.clone();
@@ -144,8 +141,10 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
         }
     }
 
-    fn integer(&self, i: &i64) -> Result<Spanned<Value>, Spanned<RuntimeError>> {
-        Ok(self.spanned(Value::scalar(i.clone())))
+    fn integer(&mut self, i: &i64) -> EvaluateResult {
+        let value = Value::scalar(i.clone());
+        self.push(value);
+        Ok(())
     }
 
     fn operator(&mut self, op: &Operator) -> EvaluateResult {
@@ -165,6 +164,9 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
             Operator::LessEqual    => self.binary_operation(|l,r| (l <= r) as i64),
             Operator::Not          => self.unary_operation(|value| !value),
             Operator::Negate       => self.unary_operation(|value| -value),
+            Operator::Duplicate    => todo!(),
+            Operator::Over         => todo!(),
+            Operator::Swap         => todo!(),
         }
     }
 
@@ -173,12 +175,13 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
         let mut array_values: Vec<i64> = Vec::new();
 
         for spanned_element in elements {
-            let spanned_value = self.evaluate(spanned_element)?;
+            self.evaluate(spanned_element)?;
+            let spanned_value = self.pop().unwrap();
             let value_shape = spanned_value.value.shape;
             let existing_shape = array_shape.get_or_insert(value_shape.clone());
             if *existing_shape != value_shape {
                 self.span = spanned_element.span.clone();
-                return Err(self.spanned(RuntimeError::DifferentArrayElementShapes))
+                return self.error(RuntimeError::DifferentArrayElementShapes)
             }
 
             for integer in spanned_value.value.values {
@@ -188,7 +191,19 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
 
         let mut shape = array_shape.get_or_insert(Shape::SCALAR).clone();
         shape.prepend_dimension(elements.len());
-        Ok(self.spanned(Value::new(shape, array_values)))
+
+        let value = Value::new(shape, array_values);
+        self.push(value);
+
+        Ok(())
+    }
+
+    fn push(&mut self, value: Value) {
+        self.stack.push(self.spanned(value))
+    }
+
+    fn pop(&mut self) -> Option<Spanned<Value>> {
+        self.stack.pop()
     }
 
     fn spanned<V>(&self, value: V) -> Spanned<V> {
@@ -198,39 +213,47 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
     fn binary_operation(&mut self, operation: impl Fn(&i64, &i64) -> i64) -> EvaluateResult {
         self.verify_stack_size(2)?;
 
-        let rhs = self.stack.pop().unwrap();
-        let lhs = self.stack.pop().unwrap();
+        let rhs = self.pop().unwrap();
+        let lhs = self.pop().unwrap();
 
         if lhs.value.shape.is_scalar() {
             let lhs_value = lhs.value.values.first().unwrap();
             let transformed_values: Vec<i64> = rhs.value.values.iter()
                 .map(|value| operation(value, lhs_value))
                 .collect();
-            Ok(self.spanned(Value::new(rhs.value.shape, transformed_values)))
+            let value = Value::new(rhs.value.shape, transformed_values);
+            self.push(value);
+            Ok(())
         } else if rhs.value.shape.is_scalar() {
             let rhs_value = rhs.value.values.first().unwrap();
             let transformed_values: Vec<i64> = lhs.value.values.iter()
                 .map(|value| operation(value, rhs_value))
                 .collect();
-            Ok(self.spanned(Value::new(lhs.value.shape, transformed_values)))
+            let value = Value::new(lhs.value.shape, transformed_values);
+            self.push(value);
+            Ok(())
         } else if lhs.value.shape == rhs.value.shape {
             let transformed_values: Vec<i64> = lhs.value.values.iter().zip(rhs.value.values)
                 .map(|(lhs_value, rhs_value)| operation(lhs_value, &rhs_value))
                 .collect();
-            Ok(self.spanned(Value::new(lhs.value.shape, transformed_values)))
+            let value = Value::new(lhs.value.shape, transformed_values);
+            self.push(value);
+            Ok(())
         } else {
-            Err(self.spanned(RuntimeError::IncompatibleShapes))
+            self.error(RuntimeError::IncompatibleShapes)
         }
     }
 
     fn unary_operation(&mut self, operation: impl Fn(&i64) -> i64) -> EvaluateResult {
         self.verify_stack_size(1)?;
-        
-        let operand = self.stack.pop().unwrap();        
+
+        let operand = self.pop().unwrap();
         let transformed_values: Vec<i64> = operand.value.values.iter()
             .map(operation)
             .collect();
-        Ok(self.spanned(Value::new(operand.value.shape, transformed_values)))
+        let value = Value::new(operand.value.shape, transformed_values);
+        self.push(value);
+        Ok(())
     }
 
     fn verify_stack_size(&mut self, expected: u8) -> Result<(), Spanned<RuntimeError>> {
@@ -240,6 +263,10 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
         } else {
             Ok(())
         }
+    }
+
+    fn error(&mut self, error: RuntimeError) -> EvaluateResult {
+        Err(self.spanned(error))
     }
 }
 

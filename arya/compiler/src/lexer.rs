@@ -38,6 +38,9 @@ pub enum Token {
     GreaterEqual,
     Less,
     LessEqual,
+    Dot,
+    Comma,
+    Colon,
 }
 
 pub type ParseTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
@@ -70,11 +73,14 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
             '^' => self.token(Token::Caret),
             '&' => self.token(Token::Ampersand),
             '|' => self.token(Token::Pipe),
+            '_' => self.token(Token::Underscore),
+            '=' => self.token(Token::Equal),
+            '.' => self.token(Token::Dot),
+            ',' => self.token(Token::Comma),
+            ':' => self.token(Token::Colon),
             '!' => if self.next_if_char('=').is_some() { self.token(Token::NotEqual) } else { self.token(Token::Bang) },
             '>' => if self.next_if_char('=').is_some() { self.token(Token::GreaterEqual) } else { self.token(Token::Greater) },
             '<' => if self.next_if_char('=').is_some() { self.token(Token::LessEqual) } else { self.token(Token::Less) },
-            '_' => self.token(Token::Underscore),
-            '=' => self.token(Token::Equal),
             c if c.is_ascii_digit() => self.number(),
             c => self.error(LexError::UnexpectedCharacter(c))
         }
