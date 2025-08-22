@@ -1,10 +1,5 @@
-use crate::interpret::interpret;
-use crate::location::LineEndings;
-
-mod lex;
-mod parse;
-mod interpret;
-mod location;
+use compiler::interpreter::interpret;
+use compiler::location::LineEndings;
 
 fn main() {
     let source = "[1 2 3] [4 5 6] +";
@@ -22,12 +17,3 @@ fn main() {
         },
     }
 }
-
-// TODO: add CI
-// TODO: add clippy
-// TODO: add unit tests
-// TODO: add perf tests
-// TODO: formatter
-// TODO: LSP
-// TODO: WASM website
-// TODO: CLI

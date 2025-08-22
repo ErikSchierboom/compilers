@@ -1,6 +1,6 @@
 use std::error::Error;
 use std::fmt::{Display, Formatter};
-use crate::parse::{parse, Node, Op, ParseError, ParseNodeResult};
+use crate::parser::{parse, Node, Op, ParseError, ParseNodeResult};
 use crate::location::{Span, Spanned};
 use std::iter::Peekable;
 

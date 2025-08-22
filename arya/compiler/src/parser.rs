@@ -1,7 +1,7 @@
-use crate::lex::{tokenize, LexError, ParseTokenResult, Token};
+use crate::lexer::{tokenize, LexError, ParseTokenResult, Token};
 use crate::location::{Span, Spanned};
-use crate::parse::Node::{Integer, Operator};
-use crate::parse::ParseError::Lex;
+use crate::parser::Node::{Integer, Operator};
+use crate::parser::ParseError::Lex;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
