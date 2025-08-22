@@ -2,7 +2,7 @@ use compiler::interpreter::interpret;
 use compiler::location::LineEndings;
 
 fn main() {
-    let source = "[1 2 3] [4 5 6] 6 _";
+    let source = "[1 8 3] [1 5 3] >";
 
     match interpret(&source) {
         Ok(values) => {

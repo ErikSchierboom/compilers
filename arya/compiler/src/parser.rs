@@ -44,6 +44,12 @@ pub enum Operator {
     Or,
     Not,
     Negate,
+    Equal,
+    NotEqual,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
 }
 
 pub type ParseNodeResult = Result<Spanned<Node>, Spanned<ParseError>>;
@@ -68,18 +74,24 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
 
     fn parse_node_from_token(&mut self, token: Token) -> Option<ParseNodeResult> {
         match token {
-            Token::Number => self.integer(),
-            Token::OpenBracket => self.array(),
+            Token::Number       => self.integer(),
+            Token::OpenBracket  => self.array(),
             Token::CloseBracket => self.error(ParseError::Unexpected(token)),
-            Token::Plus => self.operation(Operator::Add),
-            Token::Minus => self.operation(Operator::Subtract),
-            Token::Star => self.operation(Operator::Multiply),
-            Token::Slash => self.operation(Operator::Divide),
-            Token::Ampersand => self.operation(Operator::And),
-            Token::Pipe => self.operation(Operator::Or),
-            Token::Caret => self.operation(Operator::Xor),
-            Token::Bang => self.operation(Operator::Not),
-            Token::Underscore => self.operation(Operator::Negate),
+            Token::Plus         => self.operation(Operator::Add),
+            Token::Minus        => self.operation(Operator::Subtract),
+            Token::Star         => self.operation(Operator::Multiply),
+            Token::Slash        => self.operation(Operator::Divide),
+            Token::Ampersand    => self.operation(Operator::And),
+            Token::Pipe         => self.operation(Operator::Or),
+            Token::Caret        => self.operation(Operator::Xor),
+            Token::Bang         => self.operation(Operator::Not),
+            Token::Underscore   => self.operation(Operator::Negate),
+            Token::Equal        => self.operation(Operator::Equal),
+            Token::NotEqual     => self.operation(Operator::NotEqual),
+            Token::Greater      => self.operation(Operator::Greater),
+            Token::GreaterEqual => self.operation(Operator::GreaterEqual),
+            Token::Less         => self.operation(Operator::Less),
+            Token::LessEqual    => self.operation(Operator::LessEqual),
         }
     }
 

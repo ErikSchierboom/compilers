@@ -32,6 +32,12 @@ pub enum Token {
     Pipe,
     Bang,
     Underscore,
+    Equal,
+    NotEqual,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
 }
 
 pub type ParseTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
@@ -64,8 +70,11 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
             '^' => self.token(Token::Caret),
             '&' => self.token(Token::Ampersand),
             '|' => self.token(Token::Pipe),
-            '!' => self.token(Token::Bang),
+            '!' => if self.next_if_char('=').is_some() { self.token(Token::NotEqual) } else { self.token(Token::Bang) },
+            '>' => if self.next_if_char('=').is_some() { self.token(Token::GreaterEqual) } else { self.token(Token::Greater) },
+            '<' => if self.next_if_char('=').is_some() { self.token(Token::LessEqual) } else { self.token(Token::Less) },
             '_' => self.token(Token::Underscore),
+            '=' => self.token(Token::Equal),
             c if c.is_ascii_digit() => self.number(),
             c => self.error(LexError::UnexpectedCharacter(c))
         }
@@ -89,7 +98,7 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
     }
 
     fn skip_comment(&mut self) {
-        if self.next_if(|c| *c == '#').is_some() {
+        if self.next_if_char('#').is_some() {
             self.next_while(|&c| c != '\n');
             self.next(); // consume the newline character
         }
@@ -109,6 +118,10 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
     
     fn next_while(&mut self, func: impl Fn(&char) -> bool) {
         while self.next_if(&func).is_some() {}
+    }
+
+    fn next_if_char(&mut self, expected: char) -> Option<char> {
+        self.next_if(|c| *c == expected)
     }
 
     fn next_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {

@@ -150,15 +150,21 @@ impl<T> Interpreter<T> where T : Iterator<Item =ParseNodeResult> {
 
     fn operator(&mut self, op: &Operator) -> EvaluateResult {
         match op {
-            Operator::Add      => self.binary_operation(|l,r| l + r),
-            Operator::Subtract => self.binary_operation(|l,r| l - r),
-            Operator::Multiply => self.binary_operation(|l,r| l * r),
-            Operator::Divide   => self.binary_operation(|l,r| l / r),
-            Operator::And      => self.binary_operation(|l,r| l & r),
-            Operator::Or       => self.binary_operation(|l,r| l | r),
-            Operator::Xor      => self.binary_operation(|l,r| l ^ r),
-            Operator::Not      => self.unary_operation(|value| !value),
-            Operator::Negate   => self.unary_operation(|value| -value),
+            Operator::Add          => self.binary_operation(|l,r| l + r),
+            Operator::Subtract     => self.binary_operation(|l,r| l - r),
+            Operator::Multiply     => self.binary_operation(|l,r| l * r),
+            Operator::Divide       => self.binary_operation(|l,r| l / r),
+            Operator::And          => self.binary_operation(|l,r| l & r),
+            Operator::Or           => self.binary_operation(|l,r| l | r),
+            Operator::Xor          => self.binary_operation(|l,r| l ^ r),
+            Operator::Equal        => self.binary_operation(|l,r| (l == r) as i64),
+            Operator::NotEqual     => self.binary_operation(|l,r| (l != r) as i64),
+            Operator::Greater      => self.binary_operation(|l,r| (l >  r) as i64),
+            Operator::GreaterEqual => self.binary_operation(|l,r| (l >= r) as i64),
+            Operator::Less         => self.binary_operation(|l,r| (l <  r) as i64),
+            Operator::LessEqual    => self.binary_operation(|l,r| (l <= r) as i64),
+            Operator::Not          => self.unary_operation(|value| !value),
+            Operator::Negate       => self.unary_operation(|value| -value),
         }
     }
 
