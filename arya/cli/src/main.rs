@@ -2,11 +2,11 @@ use compiler::interpreter::interpret;
 use compiler::location::LineEndings;
 
 fn main() {
-    let source = "[1 8 3] [1 5 3] , . ;";
+    let source = "[1 8 3] [1 5 3] swap";
 
     match interpret(&source) {
-        Ok(values) => {
-            for value in values {
+        Ok(mut values) => {
+            while let Some(value) = values.pop() {
                 println!("{:}", value.value)
             }
         }

@@ -106,10 +106,10 @@ where
             Token::GreaterEqual => self.operation(Operator::GreaterEqual),
             Token::Less => self.operation(Operator::Less),
             Token::LessEqual => self.operation(Operator::LessEqual),
-            Token::Dot => self.operation(Operator::Duplicate),
-            Token::Comma => self.operation(Operator::Over),
-            Token::Colon => self.operation(Operator::Swap),
-            Token::Semicolon => self.operation(Operator::Drop),
+            Token::Dup => self.operation(Operator::Duplicate),
+            Token::Over => self.operation(Operator::Over),
+            Token::Swap => self.operation(Operator::Swap),
+            Token::Drop => self.operation(Operator::Drop),
         }
     }
 

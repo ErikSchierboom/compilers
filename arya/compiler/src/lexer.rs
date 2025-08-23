@@ -38,10 +38,10 @@ pub enum Token {
     GreaterEqual,
     Less,
     LessEqual,
-    Dot,
-    Comma,
-    Colon,
-    Semicolon,
+    Dup,
+    Over,
+    Swap,
+    Drop,
 }
 
 pub type ParseTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
@@ -86,26 +86,26 @@ where
             '|' => self.token(Token::Pipe),
             '_' => self.token(Token::Underscore),
             '=' => self.token(Token::Equal),
-            '.' => self.token(Token::Dot),
-            ',' => self.token(Token::Comma),
-            ':' => self.token(Token::Colon),
-            ';' => self.token(Token::Semicolon),
+            'd' if self.next_if_chars("up") => self.token(Token::Dup),
+            'd' if self.next_if_chars("drop") => self.token(Token::Drop),
+            'o' if self.next_if_chars("ver") => self.token(Token::Over),
+            's' if self.next_if_chars("wap") => self.token(Token::Swap),
             '!' => {
-                if self.next_if_char('=').is_some() {
+                if self.next_if_char('=') {
                     self.token(Token::NotEqual)
                 } else {
                     self.token(Token::Bang)
                 }
             }
             '>' => {
-                if self.next_if_char('=').is_some() {
+                if self.next_if_char('=') {
                     self.token(Token::GreaterEqual)
                 } else {
                     self.token(Token::Greater)
                 }
             }
             '<' => {
-                if self.next_if_char('=').is_some() {
+                if self.next_if_char('=') {
                     self.token(Token::LessEqual)
                 } else {
                     self.token(Token::Less)
@@ -134,7 +134,7 @@ where
     }
 
     fn skip_comment(&mut self) {
-        if self.next_if_char('#').is_some() {
+        if self.next_if_char('#') {
             self.next_while(|&c| c != '\n');
             self.next(); // consume the newline character
         }
@@ -156,8 +156,12 @@ where
         while self.next_if(&func).is_some() {}
     }
 
-    fn next_if_char(&mut self, expected: char) -> Option<char> {
-        self.next_if(|c| *c == expected)
+    fn next_if_char(&mut self, expected: char) -> bool {
+        self.next_if(|c| *c == expected).is_some()
+    }
+
+    fn next_if_chars(&mut self, expected: &str) -> bool {
+        expected.chars().all(|c|self.next_if_char(c))
     }
 
     fn next_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {

@@ -22,10 +22,3 @@ compiler = { path = "../compiler" }
 wasm-bindgen = "0.2"
 wasm-bindgen-test = "0.3"
 web-sys = { version = "0.3", features = ["Document", "Window"] }
-
-
-[profile.release]
-opt-level = 'z'
-lto = true
-codegen-units = 1
-panic = "abort"

@@ -183,13 +183,9 @@ where
             Operator::LessEqual => self.binary_operation(|l, r| (l <= r) as i64),
             Operator::Not => self.unary_operation(|value| !value),
             Operator::Negate => self.unary_operation(|value| -value),
-            Operator::Duplicate => {
-                self.unary_stack_operation(|value| vec![value.clone(), value.clone()])
-            }
+            Operator::Duplicate => self.unary_stack_operation(|value| vec![value.clone(), value.clone()]),
             Operator::Drop => self.unary_stack_operation(|_| vec![]),
-            Operator::Over => {
-                self.binary_stack_operation(|l, r| vec![l.clone(), r.clone(), l.clone()])
-            }
+            Operator::Over => self.binary_stack_operation(|l, r| vec![l.clone(), r.clone(), l.clone()]),
             Operator::Swap => self.binary_stack_operation(|l, r| vec![r.clone(), l.clone()]),
         }
     }
