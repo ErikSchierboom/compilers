@@ -1,6 +1,6 @@
 use crate::lexer::{LexError, ParseTokenResult, Token, tokenize};
 use crate::location::{Span, Spanned};
-use crate::parser::Node::{Integer, Operation};
+use crate::parser::Node::{Identifier, Integer, Operation};
 use crate::parser::ParseError::Lex;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -29,6 +29,7 @@ impl Error for ParseError {}
 #[derive(Debug)]
 pub enum Node {
     Integer(i64),
+    Identifier(String),
     Operation(Operator),
     Array(Vec<Spanned<Node>>),
 }
@@ -49,11 +50,7 @@ pub enum Operator {
     Greater,
     GreaterEqual,
     Less,
-    LessEqual,
-    Duplicate,
-    Over,
-    Swap,
-    Drop,
+    LessEqual
 }
 
 pub type ParseNodeResult = Result<Spanned<Node>, Spanned<ParseError>>;
@@ -90,6 +87,7 @@ where
         match token {
             Token::Number => self.integer(),
             Token::OpenBracket => self.array(),
+            Token::Identifier => self.identifier(),
             Token::CloseBracket => self.error(ParseError::Unexpected(token)),
             Token::Plus => self.operation(Operator::Add),
             Token::Minus => self.operation(Operator::Subtract),
@@ -105,17 +103,18 @@ where
             Token::Greater => self.operation(Operator::Greater),
             Token::GreaterEqual => self.operation(Operator::GreaterEqual),
             Token::Less => self.operation(Operator::Less),
-            Token::LessEqual => self.operation(Operator::LessEqual),
-            Token::Dup => self.operation(Operator::Duplicate),
-            Token::Over => self.operation(Operator::Over),
-            Token::Swap => self.operation(Operator::Swap),
-            Token::Drop => self.operation(Operator::Drop),
+            Token::LessEqual => self.operation(Operator::LessEqual)
         }
     }
 
     fn integer(&mut self) -> Option<ParseNodeResult> {
         let number = i64::from_str(self.lexeme(&self.span)).unwrap();
         self.node(Integer(number))
+    }
+
+    fn identifier(&mut self) -> Option<ParseNodeResult> {
+        let name = self.lexeme(&self.span);
+        self.node(Identifier(name.to_string()))
     }
 
     fn operation(&self, operator: Operator) -> Option<ParseNodeResult> {

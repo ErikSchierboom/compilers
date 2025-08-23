@@ -21,6 +21,7 @@ impl Error for LexError {}
 #[derive(Debug, PartialEq)]
 pub enum Token {
     Number,
+    Identifier,
     OpenBracket,
     CloseBracket,
     Plus,
@@ -37,11 +38,7 @@ pub enum Token {
     Greater,
     GreaterEqual,
     Less,
-    LessEqual,
-    Dup,
-    Over,
-    Swap,
-    Drop,
+    LessEqual
 }
 
 pub type ParseTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
@@ -86,10 +83,6 @@ where
             '|' => self.token(Token::Pipe),
             '_' => self.token(Token::Underscore),
             '=' => self.token(Token::Equal),
-            'd' if self.next_if_chars("up") => self.token(Token::Dup),
-            'd' if self.next_if_chars("drop") => self.token(Token::Drop),
-            'o' if self.next_if_chars("ver") => self.token(Token::Over),
-            's' if self.next_if_chars("wap") => self.token(Token::Swap),
             '!' => {
                 if self.next_if_char('=') {
                     self.token(Token::NotEqual)
@@ -112,6 +105,7 @@ where
                 }
             }
             c if c.is_ascii_digit() => self.number(),
+            c if c.is_ascii_alphabetic() => self.identifier(),
             c => self.error(LexError::UnexpectedCharacter(c)),
         }
     }
@@ -119,6 +113,11 @@ where
     fn number(&mut self) -> Option<ParseTokenResult> {
         self.next_while(char::is_ascii_digit);
         self.token(Token::Number)
+    }
+
+    fn identifier(&mut self) -> Option<ParseTokenResult> {
+        self.next_while(char::is_ascii_alphanumeric);
+        self.token(Token::Identifier)
     }
 
     fn token(&mut self, token: Token) -> Option<ParseTokenResult> {

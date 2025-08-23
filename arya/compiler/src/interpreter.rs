@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::location::{Span, Spanned};
 use crate::parser::{Node, Operator, ParseError, ParseNodeResult, parse};
 use std::error::Error;
@@ -29,6 +30,37 @@ impl Display for RuntimeError {
 
 impl Error for RuntimeError {}
 
+#[derive(Debug, Clone)]
+pub struct Environment {
+    parent: Option<Box<Environment>>,
+    bindings: HashMap<String, Value>
+}
+
+impl Environment {
+    pub fn default() -> Self {
+        Self {
+            parent: None,
+            bindings: HashMap::from([
+                // TODO: add built-in functions
+                // ("dup".to_string(), Value::Procedure(Procedure::Native(native_plus))),
+                // ("drop".to_string(), Value::Procedure(Procedure::Native(native_define)))
+            ])
+        }
+    }
+
+    pub fn create_child(&self) -> Self {
+        Self { parent: Some(Box::new(self.clone())), bindings: HashMap::new() }
+    }
+
+    pub fn get(&self, name: &String) -> Option<&Value> {
+        self.bindings.get(name).or_else(|| self.parent.as_ref()?.get(name))
+    }
+
+    pub fn set(&mut self, name: String, value: Value) {
+        self.bindings.insert(name, value);
+    }
+}
+
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Shape {
     dimensions: Vec<usize>,
@@ -53,12 +85,17 @@ impl Display for Shape {
 }
 
 #[derive(Clone, Debug)]
-pub struct Value {
+pub enum Value {
+    Array(Array)
+}
+
+#[derive(Clone, Debug)]
+pub struct Array {
     pub shape: Shape,
     pub values: Vec<i64>,
 }
 
-impl Value {
+impl Array {
     pub fn new(shape: Shape, elements: Vec<i64>) -> Self {
         Self {
             shape,
@@ -71,7 +108,7 @@ impl Value {
     }
 }
 
-impl Display for Value {
+impl Display for Array {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self.shape.dimensions.len() {
             0 => write!(f, "{}", self.values.first().unwrap()),
@@ -157,11 +194,12 @@ where
             Node::Integer(i) => self.integer(i),
             Node::Operation(op) => self.operator(op),
             Node::Array(elements) => self.array(elements),
+            Node::Identifier(name) => todo!("implement identifier")
         }
     }
 
     fn integer(&mut self, i: &i64) -> EvaluateResult {
-        let value = Value::scalar(i.clone());
+        let value = Value::Array(Array::scalar(i.clone()));
         self.push(value);
         Ok(())
     }
@@ -183,10 +221,6 @@ where
             Operator::LessEqual => self.binary_operation(|l, r| (l <= r) as i64),
             Operator::Not => self.unary_operation(|value| !value),
             Operator::Negate => self.unary_operation(|value| -value),
-            Operator::Duplicate => self.unary_stack_operation(|value| vec![value.clone(), value.clone()]),
-            Operator::Drop => self.unary_stack_operation(|_| vec![]),
-            Operator::Over => self.binary_stack_operation(|l, r| vec![l.clone(), r.clone(), l.clone()]),
-            Operator::Swap => self.binary_stack_operation(|l, r| vec![r.clone(), l.clone()]),
         }
     }
 
@@ -212,7 +246,7 @@ where
         let mut shape = array_shape.get_or_insert(Shape::SCALAR).clone();
         shape.prepend_dimension(elements.len());
 
-        let value = Value::new(shape, array_values);
+        let value = Value::Array(Array::new(shape, array_values));
         self.push(value);
 
         Ok(())
@@ -244,7 +278,7 @@ where
                 .iter()
                 .map(|value| operation(value, lhs_value))
                 .collect();
-            let value = Value::new(rhs.value.shape, transformed_values);
+            let value = Value::Array(Array::new(rhs.value.shape, transformed_values));
             self.push(value);
             Ok(())
         } else if rhs.value.shape.is_scalar() {
@@ -255,7 +289,7 @@ where
                 .iter()
                 .map(|value| operation(value, rhs_value))
                 .collect();
-            let value = Value::new(lhs.value.shape, transformed_values);
+            let value = Value::Array(Array::new(lhs.value.shape, transformed_values));
             self.push(value);
             Ok(())
         } else if lhs.value.shape == rhs.value.shape {
@@ -266,7 +300,7 @@ where
                 .zip(rhs.value.values)
                 .map(|(lhs_value, rhs_value)| operation(lhs_value, &rhs_value))
                 .collect();
-            let value = Value::new(lhs.value.shape, transformed_values);
+            let value = Value::Array(Array::new(lhs.value.shape, transformed_values));
             self.push(value);
             Ok(())
         } else {
@@ -279,7 +313,7 @@ where
 
         let operand = self.pop().unwrap();
         let transformed_values: Vec<i64> = operand.value.values.iter().map(operation).collect();
-        let value = Value::new(operand.value.shape, transformed_values);
+        let value = Value::Array(Array::new(operand.value.shape, transformed_values));
         self.push(value);
         Ok(())
     }
