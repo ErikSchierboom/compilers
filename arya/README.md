@@ -4,6 +4,7 @@ A toy array programming language written in Rust.
 
 ## TODO's
 
+- [ ] add stack-manipulation syntax instead of dedicated operators
 - [x] add basic stack operations
 - [ ] add virtual machine
 - [ ] add docs
