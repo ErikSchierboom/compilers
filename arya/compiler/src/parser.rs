@@ -1,4 +1,4 @@
-use crate::lexer::{tokenize, LexError, ParseTokenResult, Token};
+use crate::lexer::{LexError, ParseTokenResult, Token, tokenize};
 use crate::location::{Span, Spanned};
 use crate::parser::Node::{Integer, Operation};
 use crate::parser::ParseError::Lex;
@@ -19,7 +19,7 @@ impl Display for ParseError {
         match self {
             Lex(lex_error) => write!(f, "{lex_error}"),
             ParseError::Unexpected(token) => write!(f, "Unexpected token: {:?}", token),
-            ParseError::UnterminatedArray => write!(f, "Unterminated array")
+            ParseError::UnterminatedArray => write!(f, "Unterminated array"),
         }
     }
 }
@@ -30,7 +30,7 @@ impl Error for ParseError {}
 pub enum Node {
     Integer(i64),
     Operation(Operator),
-    Array(Vec<Spanned<Node>>)
+    Array(Vec<Spanned<Node>>),
 }
 
 #[derive(Debug)]
@@ -58,48 +58,58 @@ pub enum Operator {
 
 pub type ParseNodeResult = Result<Spanned<Node>, Spanned<ParseError>>;
 
-pub struct Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
+pub struct Parser<'a, T>
+where
+    T: Iterator<Item = ParseTokenResult>,
+{
     tokens: Peekable<T>,
     source_code: &'a str,
-    span: Span
+    span: Span,
 }
 
-impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
+impl<'a, T> Parser<'a, T>
+where
+    T: Iterator<Item = ParseTokenResult>,
+{
     fn new(source_code: &'a str, tokens: T) -> Self {
-        Parser { tokens: tokens.peekable(), source_code, span: Span::EMPTY }
+        Parser {
+            tokens: tokens.peekable(),
+            source_code,
+            span: Span::EMPTY,
+        }
     }
 
     fn parse_node(&mut self) -> Option<ParseNodeResult> {
         match self.next()? {
             Ok(token) => self.parse_node_from_token(token.value),
-            Err(lex_error) => self.error(Lex(lex_error.value))
+            Err(lex_error) => self.error(Lex(lex_error.value)),
         }
     }
 
     fn parse_node_from_token(&mut self, token: Token) -> Option<ParseNodeResult> {
         match token {
-            Token::Number       => self.integer(),
-            Token::OpenBracket  => self.array(),
+            Token::Number => self.integer(),
+            Token::OpenBracket => self.array(),
             Token::CloseBracket => self.error(ParseError::Unexpected(token)),
-            Token::Plus         => self.operation(Operator::Add),
-            Token::Minus        => self.operation(Operator::Subtract),
-            Token::Star         => self.operation(Operator::Multiply),
-            Token::Slash        => self.operation(Operator::Divide),
-            Token::Ampersand    => self.operation(Operator::And),
-            Token::Pipe         => self.operation(Operator::Or),
-            Token::Caret        => self.operation(Operator::Xor),
-            Token::Bang         => self.operation(Operator::Not),
-            Token::Underscore   => self.operation(Operator::Negate),
-            Token::Equal        => self.operation(Operator::Equal),
-            Token::NotEqual     => self.operation(Operator::NotEqual),
-            Token::Greater      => self.operation(Operator::Greater),
+            Token::Plus => self.operation(Operator::Add),
+            Token::Minus => self.operation(Operator::Subtract),
+            Token::Star => self.operation(Operator::Multiply),
+            Token::Slash => self.operation(Operator::Divide),
+            Token::Ampersand => self.operation(Operator::And),
+            Token::Pipe => self.operation(Operator::Or),
+            Token::Caret => self.operation(Operator::Xor),
+            Token::Bang => self.operation(Operator::Not),
+            Token::Underscore => self.operation(Operator::Negate),
+            Token::Equal => self.operation(Operator::Equal),
+            Token::NotEqual => self.operation(Operator::NotEqual),
+            Token::Greater => self.operation(Operator::Greater),
             Token::GreaterEqual => self.operation(Operator::GreaterEqual),
-            Token::Less         => self.operation(Operator::Less),
-            Token::LessEqual    => self.operation(Operator::LessEqual),
-            Token::Dot          => self.operation(Operator::Duplicate),
-            Token::Comma        => self.operation(Operator::Over),
-            Token::Colon        => self.operation(Operator::Swap),
-            Token::Semicolon    => self.operation(Operator::Drop),
+            Token::Less => self.operation(Operator::Less),
+            Token::LessEqual => self.operation(Operator::LessEqual),
+            Token::Dot => self.operation(Operator::Duplicate),
+            Token::Comma => self.operation(Operator::Over),
+            Token::Colon => self.operation(Operator::Swap),
+            Token::Semicolon => self.operation(Operator::Drop),
         }
     }
 
@@ -115,21 +125,21 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
     fn array(&mut self) -> Option<ParseNodeResult> {
         let start_span = self.span.clone();
         let mut elements: Vec<Spanned<Node>> = Vec::new();
-        
+
         loop {
             match self.next() {
                 None => return self.error(ParseError::UnterminatedArray),
                 Some(Err(lex_error)) => return self.error(Lex(lex_error.value)),
                 Some(Ok(token)) if token.value == Token::CloseBracket => {
                     self.span = start_span.merge(&self.span);
-                    return self.node(Node::Array(elements))
+                    return self.node(Node::Array(elements));
                 }
                 Some(Ok(token)) => match self.parse_node_from_token(token.value)? {
                     Err(error) => return Some(Err(error)),
-                    Ok(element) => elements.push(element)
-                }
+                    Ok(element) => elements.push(element),
+                },
             }
-        }        
+        }
     }
 
     fn node(&self, node: Node) -> Option<ParseNodeResult> {
@@ -149,15 +159,15 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
     }
 
     fn next_if(&mut self, func: impl Fn(&ParseTokenResult) -> bool) -> Option<ParseTokenResult> {
-        self.tokens.next_if(func).inspect(|token_result|{
-            self.update_span(token_result)
-        })
+        self.tokens
+            .next_if(func)
+            .inspect(|token_result| self.update_span(token_result))
     }
 
     fn update_span(&mut self, token_result: &ParseTokenResult) {
         match token_result {
             Ok(token) => self.span = token.span.clone(),
-            Err(error) => self.span = error.span.clone()
+            Err(error) => self.span = error.span.clone(),
         }
     }
 
@@ -166,7 +176,10 @@ impl<'a, T> Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
     }
 }
 
-impl<'a, T> Iterator for Parser<'a, T> where T : Iterator<Item =ParseTokenResult> {
+impl<'a, T> Iterator for Parser<'a, T>
+where
+    T: Iterator<Item = ParseTokenResult>,
+{
     type Item = ParseNodeResult;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -174,7 +187,7 @@ impl<'a, T> Iterator for Parser<'a, T> where T : Iterator<Item =ParseTokenResult
     }
 }
 
-pub fn parse(source: &str) -> impl Iterator<Item=ParseNodeResult> + '_ {
+pub fn parse(source: &str) -> impl Iterator<Item = ParseNodeResult> + '_ {
     let tokens = tokenize(source);
     Parser::new(source, tokens)
 }

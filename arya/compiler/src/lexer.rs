@@ -1,17 +1,17 @@
+use crate::location::{Span, Spanned};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
-use crate::location::{Span, Spanned};
 
 #[derive(Clone, Debug)]
 pub enum LexError {
-    UnexpectedCharacter(char)
+    UnexpectedCharacter(char),
 }
 
 impl Display for LexError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self { 
-            LexError::UnexpectedCharacter(c) => write!(f, "Unexpected character '{c}'")
+        match self {
+            LexError::UnexpectedCharacter(c) => write!(f, "Unexpected character '{c}'"),
         }
     }
 }
@@ -46,15 +46,25 @@ pub enum Token {
 
 pub type ParseTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
 
-struct Lexer<T> where T: Iterator<Item = char> {
+struct Lexer<T>
+where
+    T: Iterator<Item = char>,
+{
     chars: Peekable<T>,
     start: u32,
     length: u16,
 }
 
-impl<T> Lexer<T> where T : Iterator<Item = char> {
+impl<T> Lexer<T>
+where
+    T: Iterator<Item = char>,
+{
     fn new(source_code: T) -> Self {
-        Self { chars: source_code.peekable(), start: 0, length: 0 }
+        Self {
+            chars: source_code.peekable(),
+            start: 0,
+            length: 0,
+        }
     }
 
     fn parse_token(&mut self) -> Option<ParseTokenResult> {
@@ -80,11 +90,29 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
             ',' => self.token(Token::Comma),
             ':' => self.token(Token::Colon),
             ';' => self.token(Token::Semicolon),
-            '!' => if self.next_if_char('=').is_some() { self.token(Token::NotEqual) } else { self.token(Token::Bang) },
-            '>' => if self.next_if_char('=').is_some() { self.token(Token::GreaterEqual) } else { self.token(Token::Greater) },
-            '<' => if self.next_if_char('=').is_some() { self.token(Token::LessEqual) } else { self.token(Token::Less) },
+            '!' => {
+                if self.next_if_char('=').is_some() {
+                    self.token(Token::NotEqual)
+                } else {
+                    self.token(Token::Bang)
+                }
+            }
+            '>' => {
+                if self.next_if_char('=').is_some() {
+                    self.token(Token::GreaterEqual)
+                } else {
+                    self.token(Token::Greater)
+                }
+            }
+            '<' => {
+                if self.next_if_char('=').is_some() {
+                    self.token(Token::LessEqual)
+                } else {
+                    self.token(Token::Less)
+                }
+            }
             c if c.is_ascii_digit() => self.number(),
-            c => self.error(LexError::UnexpectedCharacter(c))
+            c => self.error(LexError::UnexpectedCharacter(c)),
         }
     }
 
@@ -93,7 +121,7 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
         self.token(Token::Number)
     }
 
-    fn token(&mut self, token: Token) -> Option<ParseTokenResult> {        
+    fn token(&mut self, token: Token) -> Option<ParseTokenResult> {
         Some(Ok(self.spanned(token)))
     }
 
@@ -123,7 +151,7 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
     fn next(&mut self) -> Option<char> {
         self.next_if(|_| true)
     }
-    
+
     fn next_while(&mut self, func: impl Fn(&char) -> bool) {
         while self.next_if(&func).is_some() {}
     }
@@ -133,13 +161,14 @@ impl<T> Lexer<T> where T : Iterator<Item = char> {
     }
 
     fn next_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {
-        self.chars.next_if(func).inspect(|_| {
-            self.length += 1
-        })
+        self.chars.next_if(func).inspect(|_| self.length += 1)
     }
 }
 
-impl<T> Iterator for Lexer<T> where T : Iterator<Item = char> {
+impl<T> Iterator for Lexer<T>
+where
+    T: Iterator<Item = char>,
+{
     type Item = ParseTokenResult;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -147,6 +176,6 @@ impl<T> Iterator for Lexer<T> where T : Iterator<Item = char> {
     }
 }
 
-pub fn tokenize(source: &str) -> impl Iterator<Item=ParseTokenResult> + '_ {
+pub fn tokenize(source: &str) -> impl Iterator<Item = ParseTokenResult> + '_ {
     Lexer::new(source.chars())
 }
