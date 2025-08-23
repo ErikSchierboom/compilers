@@ -1972,6 +1972,7 @@ dependencies = [
 name = "website"
 version = "0.1.0"
 dependencies = [
+ "compiler",
  "console_error_panic_hook",
  "console_log",
  "leptos",

@@ -43,7 +43,6 @@ pub fn Home() -> impl IntoView {
 
                 <div class="buttons">
                     <Button />
-                    <Button increment=5 />
                 </div>
 
             </div>
