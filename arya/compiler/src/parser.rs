@@ -112,6 +112,10 @@ where
             Token::Drop => self.operation(Op::Drop),
             Token::Swap => self.operation(Op::Swap),
             Token::Over => self.operation(Op::Over),
+            Token::Colon => {}
+            Token::Newline => {}
+            Token::Whitespace => {}
+            Token::Comment => {}
         }
     }
 

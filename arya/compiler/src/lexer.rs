@@ -43,6 +43,10 @@ pub enum Token {
     Drop,
     Swap,
     Over,
+    Colon,
+    Newline,
+    Whitespace,
+    Comment
 }
 
 pub type ParseTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
@@ -69,9 +73,6 @@ where
     }
 
     fn parse_token(&mut self) -> Option<ParseTokenResult> {
-        self.skip_whitespace();
-        self.skip_comment();
-
         self.start += self.length as u32;
         self.length = 0;
 
@@ -87,6 +88,7 @@ where
             '|' => self.token(Token::Pipe),
             '_' => self.token(Token::Underscore),
             '=' => self.token(Token::Equal),
+            ':' => self.token(Token::Colon),
             '!' => {
                 if self.next_if_char('=') {
                     self.token(Token::NotEqual)
@@ -112,6 +114,9 @@ where
             'd' if self.next_if_chars("rop") => self.token(Token::Drop),
             's' if self.next_if_chars("wap") => self.token(Token::Swap),
             'o' if self.next_if_chars("ver") => self.token(Token::Over),
+            '#' => self.comment(),
+            '\n' => self.token(Token::Newline),
+            c if c.is_ascii_whitespace() => self.whitespace(),
             c if c.is_ascii_digit() => self.number(),
             c if c.is_ascii_alphabetic() => self.identifier(),
             c => self.error(LexError::UnexpectedCharacter(c)),
@@ -136,15 +141,14 @@ where
         Some(Err(self.spanned(error)))
     }
 
-    fn skip_whitespace(&mut self) {
-        self.next_while(|&c| c.is_whitespace())
+    fn whitespace(&mut self) -> Option<ParseTokenResult> {
+        self.next_while(|&c| c != '\n' && c.is_ascii_whitespace());
+        self.token(Token::Whitespace)
     }
 
-    fn skip_comment(&mut self) {
-        if self.next_if_char('#') {
-            self.next_while(|&c| c != '\n');
-            self.next(); // consume the newline character
-        }
+    fn comment(&mut self) -> Option<ParseTokenResult> {
+        self.next_while(|&c| c != '\n');
+        self.token(Token::Comment)
     }
 
     fn spanned<V>(&self, value: V) -> Spanned<V> {
