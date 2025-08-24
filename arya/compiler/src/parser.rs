@@ -30,12 +30,12 @@ impl Error for ParseError {}
 pub enum Node {
     Integer(i64),
     Identifier(String),
-    Operation(Operator),
+    Operation(Op),
     Array(Vec<Spanned<Node>>),
 }
 
 #[derive(Debug)]
-pub enum Operator {
+pub enum Op {
     Add,
     Subtract,
     Multiply,
@@ -50,7 +50,11 @@ pub enum Operator {
     Greater,
     GreaterEqual,
     Less,
-    LessEqual
+    LessEqual,
+    Dup,
+    Drop,
+    Swap,
+    Over
 }
 
 pub type ParseNodeResult = Result<Spanned<Node>, Spanned<ParseError>>;
@@ -89,21 +93,25 @@ where
             Token::OpenBracket => self.array(),
             Token::Identifier => self.identifier(),
             Token::CloseBracket => self.error(ParseError::Unexpected(token)),
-            Token::Plus => self.operation(Operator::Add),
-            Token::Minus => self.operation(Operator::Subtract),
-            Token::Star => self.operation(Operator::Multiply),
-            Token::Slash => self.operation(Operator::Divide),
-            Token::Ampersand => self.operation(Operator::And),
-            Token::Pipe => self.operation(Operator::Or),
-            Token::Caret => self.operation(Operator::Xor),
-            Token::Bang => self.operation(Operator::Not),
-            Token::Underscore => self.operation(Operator::Negate),
-            Token::Equal => self.operation(Operator::Equal),
-            Token::NotEqual => self.operation(Operator::NotEqual),
-            Token::Greater => self.operation(Operator::Greater),
-            Token::GreaterEqual => self.operation(Operator::GreaterEqual),
-            Token::Less => self.operation(Operator::Less),
-            Token::LessEqual => self.operation(Operator::LessEqual)
+            Token::Plus => self.operation(Op::Add),
+            Token::Minus => self.operation(Op::Subtract),
+            Token::Star => self.operation(Op::Multiply),
+            Token::Slash => self.operation(Op::Divide),
+            Token::Ampersand => self.operation(Op::And),
+            Token::Pipe => self.operation(Op::Or),
+            Token::Caret => self.operation(Op::Xor),
+            Token::Bang => self.operation(Op::Not),
+            Token::Underscore => self.operation(Op::Negate),
+            Token::Equal => self.operation(Op::Equal),
+            Token::NotEqual => self.operation(Op::NotEqual),
+            Token::Greater => self.operation(Op::Greater),
+            Token::GreaterEqual => self.operation(Op::GreaterEqual),
+            Token::Less => self.operation(Op::Less),
+            Token::LessEqual => self.operation(Op::LessEqual),
+            Token::Dup => self.operation(Op::Dup),
+            Token::Drop => self.operation(Op::Drop),
+            Token::Swap => self.operation(Op::Swap),
+            Token::Over => self.operation(Op::Over),
         }
     }
 
@@ -117,7 +125,7 @@ where
         self.node(Identifier(name.to_string()))
     }
 
-    fn operation(&self, operator: Operator) -> Option<ParseNodeResult> {
+    fn operation(&self, operator: Op) -> Option<ParseNodeResult> {
         self.node(Operation(operator))
     }
 

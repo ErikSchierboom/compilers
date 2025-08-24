@@ -2,7 +2,7 @@ use compiler::interpreter::interpret;
 use compiler::location::LineEndings;
 
 fn main() {
-    let source = "[1 8 3] [1 5 3] swap";
+    let source = "[1 8 3] [1 5 3] swap dup";
 
     match interpret(&source) {
         Ok(mut values) => {

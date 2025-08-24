@@ -1,6 +1,5 @@
-use std::collections::HashMap;
 use crate::location::{Span, Spanned};
-use crate::parser::{Node, Operator, ParseError, ParseNodeResult, parse};
+use crate::parser::{parse, Node, Op, ParseError, ParseNodeResult};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
@@ -30,37 +29,6 @@ impl Display for RuntimeError {
 
 impl Error for RuntimeError {}
 
-#[derive(Debug, Clone)]
-pub struct Environment {
-    parent: Option<Box<Environment>>,
-    bindings: HashMap<String, Value>
-}
-
-impl Environment {
-    pub fn default() -> Self {
-        Self {
-            parent: None,
-            bindings: HashMap::from([
-                // TODO: add built-in functions
-                // ("dup".to_string(), Value::Procedure(Procedure::Native(native_plus))),
-                // ("drop".to_string(), Value::Procedure(Procedure::Native(native_define)))
-            ])
-        }
-    }
-
-    pub fn create_child(&self) -> Self {
-        Self { parent: Some(Box::new(self.clone())), bindings: HashMap::new() }
-    }
-
-    pub fn get(&self, name: &String) -> Option<&Value> {
-        self.bindings.get(name).or_else(|| self.parent.as_ref()?.get(name))
-    }
-
-    pub fn set(&mut self, name: String, value: Value) {
-        self.bindings.insert(name, value);
-    }
-}
-
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Shape {
     dimensions: Vec<usize>,
@@ -87,6 +55,14 @@ impl Display for Shape {
 #[derive(Clone, Debug)]
 pub enum Value {
     Array(Array)
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Array(array) => write!(f, "{array}")
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -204,23 +180,27 @@ where
         Ok(())
     }
 
-    fn operator(&mut self, op: &Operator) -> EvaluateResult {
+    fn operator(&mut self, op: &Op) -> EvaluateResult {
         match op {
-            Operator::Add => self.binary_operation(|l, r| l + r),
-            Operator::Subtract => self.binary_operation(|l, r| l - r),
-            Operator::Multiply => self.binary_operation(|l, r| l * r),
-            Operator::Divide => self.binary_operation(|l, r| l / r),
-            Operator::And => self.binary_operation(|l, r| l & r),
-            Operator::Or => self.binary_operation(|l, r| l | r),
-            Operator::Xor => self.binary_operation(|l, r| l ^ r),
-            Operator::Equal => self.binary_operation(|l, r| (l == r) as i64),
-            Operator::NotEqual => self.binary_operation(|l, r| (l != r) as i64),
-            Operator::Greater => self.binary_operation(|l, r| (l > r) as i64),
-            Operator::GreaterEqual => self.binary_operation(|l, r| (l >= r) as i64),
-            Operator::Less => self.binary_operation(|l, r| (l < r) as i64),
-            Operator::LessEqual => self.binary_operation(|l, r| (l <= r) as i64),
-            Operator::Not => self.unary_operation(|value| !value),
-            Operator::Negate => self.unary_operation(|value| -value),
+            Op::Add => self.binary_operation(|l, r| l + r),
+            Op::Subtract => self.binary_operation(|l, r| l - r),
+            Op::Multiply => self.binary_operation(|l, r| l * r),
+            Op::Divide => self.binary_operation(|l, r| l / r),
+            Op::And => self.binary_operation(|l, r| l & r),
+            Op::Or => self.binary_operation(|l, r| l | r),
+            Op::Xor => self.binary_operation(|l, r| l ^ r),
+            Op::Equal => self.binary_operation(|l, r| (l == r) as i64),
+            Op::NotEqual => self.binary_operation(|l, r| (l != r) as i64),
+            Op::Greater => self.binary_operation(|l, r| (l > r) as i64),
+            Op::GreaterEqual => self.binary_operation(|l, r| (l >= r) as i64),
+            Op::Less => self.binary_operation(|l, r| (l < r) as i64),
+            Op::LessEqual => self.binary_operation(|l, r| (l <= r) as i64),
+            Op::Not => self.unary_operation(|value| !value),
+            Op::Negate => self.unary_operation(|value| -value),
+            Op::Dup => self.unary_stack_operation(|value| vec![value.clone(), value.clone()]),
+            Op::Drop => self.unary_stack_operation(|_| vec![]),
+            Op::Swap => self.binary_stack_operation(|lhs, rhs| vec!(rhs.clone(), lhs.clone())),
+            Op::Over => self.binary_stack_operation(|lhs, rhs| vec!(lhs.clone(), rhs.clone(), lhs.clone())),
         }
     }
 
@@ -231,15 +211,19 @@ where
         for spanned_element in elements {
             self.evaluate(spanned_element)?;
             let spanned_value = self.pop().unwrap();
-            let value_shape = spanned_value.value.shape;
-            let existing_shape = array_shape.get_or_insert(value_shape.clone());
-            if *existing_shape != value_shape {
-                self.span = spanned_element.span.clone();
-                return self.error(RuntimeError::DifferentArrayElementShapes);
-            }
+            match spanned_value.value {
+                Value::Array(array) => {
+                    let value_shape = array.shape;
+                    let existing_shape = array_shape.get_or_insert(value_shape.clone());
+                    if *existing_shape != value_shape {
+                        self.span = spanned_element.span.clone();
+                        return self.error(RuntimeError::DifferentArrayElementShapes);
+                    }
 
-            for integer in spanned_value.value.values {
-                array_values.push(integer)
+                    for integer in array.values {
+                        array_values.push(integer)
+                    }
+                }
             }
         }
 
@@ -270,41 +254,42 @@ where
         let rhs = self.pop().unwrap();
         let lhs = self.pop().unwrap();
 
-        if lhs.value.shape.is_scalar() {
-            let lhs_value = lhs.value.values.first().unwrap();
-            let transformed_values: Vec<i64> = rhs
-                .value
-                .values
-                .iter()
-                .map(|value| operation(value, lhs_value))
-                .collect();
-            let value = Value::Array(Array::new(rhs.value.shape, transformed_values));
-            self.push(value);
-            Ok(())
-        } else if rhs.value.shape.is_scalar() {
-            let rhs_value = rhs.value.values.first().unwrap();
-            let transformed_values: Vec<i64> = lhs
-                .value
-                .values
-                .iter()
-                .map(|value| operation(value, rhs_value))
-                .collect();
-            let value = Value::Array(Array::new(lhs.value.shape, transformed_values));
-            self.push(value);
-            Ok(())
-        } else if lhs.value.shape == rhs.value.shape {
-            let transformed_values: Vec<i64> = lhs
-                .value
-                .values
-                .iter()
-                .zip(rhs.value.values)
-                .map(|(lhs_value, rhs_value)| operation(lhs_value, &rhs_value))
-                .collect();
-            let value = Value::Array(Array::new(lhs.value.shape, transformed_values));
-            self.push(value);
-            Ok(())
-        } else {
-            self.error(RuntimeError::IncompatibleShapes)
+        match (lhs.value, rhs.value) {
+            (Value::Array(lhs_value), Value::Array(rhs_value)) => {
+                if lhs_value.shape.is_scalar() {
+                    let lhs_value = lhs_value.values.first().unwrap();
+                    let transformed_values: Vec<i64> = rhs_value
+                        .values
+                        .iter()
+                        .map(|value| operation(value, lhs_value))
+                        .collect();
+                    let value = Value::Array(Array::new(rhs_value.shape, transformed_values));
+                    self.push(value);
+                    Ok(())
+                } else if rhs_value.shape.is_scalar() {
+                    let rhs_value = rhs_value.values.first().unwrap();
+                    let transformed_values: Vec<i64> = lhs_value
+                        .values
+                        .iter()
+                        .map(|value| operation(value, rhs_value))
+                        .collect();
+                    let value = Value::Array(Array::new(lhs_value.shape, transformed_values));
+                    self.push(value);
+                    Ok(())
+                } else if lhs_value.shape == rhs_value.shape {
+                    let transformed_values: Vec<i64> = lhs_value
+                        .values
+                        .iter()
+                        .zip(rhs_value.values)
+                        .map(|(lhs_value, rhs_value)| operation(lhs_value, &rhs_value))
+                        .collect();
+                    let value = Value::Array(Array::new(lhs_value.shape, transformed_values));
+                    self.push(value);
+                    Ok(())
+                } else {
+                    self.error(RuntimeError::IncompatibleShapes)
+                }
+            }
         }
     }
 
@@ -312,9 +297,14 @@ where
         self.verify_stack_size(1)?;
 
         let operand = self.pop().unwrap();
-        let transformed_values: Vec<i64> = operand.value.values.iter().map(operation).collect();
-        let value = Value::Array(Array::new(operand.value.shape, transformed_values));
-        self.push(value);
+        match operand.value {
+            Value::Array(array) => {
+                let transformed_values: Vec<i64> = array.values.iter().map(operation).collect();
+                let value = Value::Array(Array::new(array.shape, transformed_values));
+                self.push(value);
+            }
+        }
+
         Ok(())
     }
 

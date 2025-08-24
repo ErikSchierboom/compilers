@@ -38,7 +38,11 @@ pub enum Token {
     Greater,
     GreaterEqual,
     Less,
-    LessEqual
+    LessEqual,
+    Dup,
+    Drop,
+    Swap,
+    Over,
 }
 
 pub type ParseTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
@@ -103,7 +107,11 @@ where
                 } else {
                     self.token(Token::Less)
                 }
-            }
+            },
+            'd' if self.next_if_chars("up") => self.token(Token::Dup),
+            'd' if self.next_if_chars("rop") => self.token(Token::Drop),
+            's' if self.next_if_chars("wap") => self.token(Token::Swap),
+            'o' if self.next_if_chars("ver") => self.token(Token::Over),
             c if c.is_ascii_digit() => self.number(),
             c if c.is_ascii_alphabetic() => self.identifier(),
             c => self.error(LexError::UnexpectedCharacter(c)),
