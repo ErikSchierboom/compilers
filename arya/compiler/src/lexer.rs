@@ -89,26 +89,20 @@ where
             '_' => self.token(Token::Underscore),
             '=' => self.token(Token::Equal),
             ':' => self.token(Token::Colon),
-            '!' => {
-                if self.next_if_char('=') {
-                    self.token(Token::NotEqual)
-                } else {
-                    self.token(Token::Bang)
-                }
-            }
-            '>' => {
-                if self.next_if_char('=') {
-                    self.token(Token::GreaterEqual)
-                } else {
-                    self.token(Token::Greater)
-                }
-            }
-            '<' => {
-                if self.next_if_char('=') {
-                    self.token(Token::LessEqual)
-                } else {
-                    self.token(Token::Less)
-                }
+            '!' => if self.next_if_char('=') {
+                self.token(Token::NotEqual)
+            } else {
+                self.token(Token::Bang)
+            },
+            '>' => if self.next_if_char('=') {
+                self.token(Token::GreaterEqual)
+            } else {
+                self.token(Token::Greater)
+            },
+            '<' => if self.next_if_char('=') {
+                self.token(Token::LessEqual)
+            } else {
+                self.token(Token::Less)
             },
             'd' if self.next_if_chars("up") => self.token(Token::Dup),
             'd' if self.next_if_chars("rop") => self.token(Token::Drop),
