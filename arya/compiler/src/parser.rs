@@ -1,4 +1,4 @@
-use crate::lexer::{tokenize, LexError, ParseTokenResult, Token};
+use crate::lexer::{LexError, ParseTokenResult, Token, tokenize};
 use crate::location::{Span, Spanned};
 use crate::parser::Node::{Identifier, Integer, Operation};
 use crate::parser::ParseError::Lex;
@@ -32,7 +32,7 @@ pub enum Node {
     Identifier(String),
     Operation(Op),
     Array(Vec<Spanned<Node>>),
-    Binding(String, Vec<Spanned<Node>>)
+    Binding(String, Vec<Spanned<Node>>),
 }
 
 #[derive(Clone, Debug)]
@@ -55,7 +55,7 @@ pub enum Op {
     Dup,
     Drop,
     Swap,
-    Over
+    Over,
 }
 
 pub type ParseNodeResult = Result<Spanned<Node>, Spanned<ParseError>>;
@@ -94,7 +94,7 @@ where
             Token::OpenBracket => self.array(),
             Token::Identifier => match self.next_if_token(&Token::Colon) {
                 Some(_) => self.binding(spanned_token),
-                None => self.identifier()
+                None => self.identifier(),
             },
             Token::Plus => self.operation(Op::Add),
             Token::Minus => self.operation(Op::Subtract),
@@ -164,17 +164,23 @@ where
             match self.next() {
                 None => {
                     self.span = identifier.span.merge(&self.span);
-                    return self.node(Node::Binding(self.lexeme(&identifier.span).to_string(), body))
-                },
+                    return self.node(Node::Binding(
+                        self.lexeme(&identifier.span).to_string(),
+                        body,
+                    ));
+                }
                 Some(Ok(token)) if token.value == Token::Newline => {
                     self.span = identifier.span.merge(&self.span);
-                    return self.node(Node::Binding(self.lexeme(&identifier.span).to_string(), body))
+                    return self.node(Node::Binding(
+                        self.lexeme(&identifier.span).to_string(),
+                        body,
+                    ));
                 }
                 Some(Err(lex_error)) => return self.error(Lex(lex_error.value)),
                 Some(Ok(token)) => match self.parse_node_from_token(token)? {
                     Err(error) => return Some(Err(error)),
                     Ok(element) => body.push(element),
-                }
+                },
             }
         }
     }
@@ -196,13 +202,10 @@ where
     }
 
     fn next_if_token(&mut self, token: &Token) -> Option<ParseTokenResult> {
-        self.tokens
-            .next_if(|parse_result| {
-                match parse_result {
-                    Ok(spanned_token) => &spanned_token.value == token,
-                    _ => false
-                }
-            })
+        self.tokens.next_if(|parse_result| match parse_result {
+            Ok(spanned_token) => &spanned_token.value == token,
+            _ => false,
+        })
     }
 
     fn next_if(&mut self, func: impl Fn(&ParseTokenResult) -> bool) -> Option<ParseTokenResult> {

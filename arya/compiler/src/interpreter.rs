@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use crate::location::{Span, Spanned};
-use crate::parser::{parse, Node, Op, ParseError, ParseNodeResult};
+use crate::parser::{Node, Op, ParseError, ParseNodeResult, parse};
+use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
@@ -19,11 +19,17 @@ impl Display for RuntimeError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             RuntimeError::Parse(parse_error) => write!(f, "{parse_error}"),
-            RuntimeError::InvalidNumberOfArguments(expected, actual) => write!(f, "Expected {expected} arguments, got {actual}"),
+            RuntimeError::InvalidNumberOfArguments(expected, actual) => {
+                write!(f, "Expected {expected} arguments, got {actual}")
+            }
             RuntimeError::IncompatibleShapes => write!(f, "Incompatible shapes"),
-            RuntimeError::DifferentArrayElementShapes => write!(f, "Not all rows in the array have the same shape"),
+            RuntimeError::DifferentArrayElementShapes => {
+                write!(f, "Not all rows in the array have the same shape")
+            }
             RuntimeError::UnknownIdentifier(name) => write!(f, "Unknown identifier: {name}"),
-            RuntimeError::IdentifierAlreadyExists(name) => write!(f, "Identifier already exists: {name}"),
+            RuntimeError::IdentifierAlreadyExists(name) => {
+                write!(f, "Identifier already exists: {name}")
+            }
         }
     }
 }
@@ -55,13 +61,13 @@ impl Display for Shape {
 
 #[derive(Clone, Debug)]
 pub enum Value {
-    Array(Array)
+    Array(Array),
 }
 
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::Array(array) => write!(f, "{array}")
+            Value::Array(array) => write!(f, "{array}"),
         }
     }
 }
@@ -184,11 +190,11 @@ where
                         Ok(())
                     }
                 }
-            },
+            }
             Node::Binding(name, body) => match self.bindings.insert(name.clone(), body.to_vec()) {
                 None => Ok(()),
-                Some(_) => self.error(RuntimeError::IdentifierAlreadyExists(name.clone()))
-            }
+                Some(_) => self.error(RuntimeError::IdentifierAlreadyExists(name.clone())),
+            },
         }
     }
 
@@ -217,8 +223,10 @@ where
             Op::Negate => self.unary_operation(|value| -value),
             Op::Dup => self.unary_stack_operation(|value| vec![value.clone(), value.clone()]),
             Op::Drop => self.unary_stack_operation(|_| vec![]),
-            Op::Swap => self.binary_stack_operation(|lhs, rhs| vec!(rhs.clone(), lhs.clone())),
-            Op::Over => self.binary_stack_operation(|lhs, rhs| vec!(lhs.clone(), rhs.clone(), lhs.clone())),
+            Op::Swap => self.binary_stack_operation(|lhs, rhs| vec![rhs.clone(), lhs.clone()]),
+            Op::Over => {
+                self.binary_stack_operation(|lhs, rhs| vec![lhs.clone(), rhs.clone(), lhs.clone()])
+            }
         }
     }
 

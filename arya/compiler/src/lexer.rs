@@ -46,7 +46,7 @@ pub enum Token {
     Colon,
     Newline,
     Whitespace,
-    Comment
+    Comment,
 }
 
 pub type ParseTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
@@ -89,21 +89,27 @@ where
             '_' => self.token(Token::Underscore),
             '=' => self.token(Token::Equal),
             ':' => self.token(Token::Colon),
-            '!' => if self.next_if_char('=') {
-                self.token(Token::NotEqual)
-            } else {
-                self.token(Token::Bang)
-            },
-            '>' => if self.next_if_char('=') {
-                self.token(Token::GreaterEqual)
-            } else {
-                self.token(Token::Greater)
-            },
-            '<' => if self.next_if_char('=') {
-                self.token(Token::LessEqual)
-            } else {
-                self.token(Token::Less)
-            },
+            '!' => {
+                if self.next_if_char('=') {
+                    self.token(Token::NotEqual)
+                } else {
+                    self.token(Token::Bang)
+                }
+            }
+            '>' => {
+                if self.next_if_char('=') {
+                    self.token(Token::GreaterEqual)
+                } else {
+                    self.token(Token::Greater)
+                }
+            }
+            '<' => {
+                if self.next_if_char('=') {
+                    self.token(Token::LessEqual)
+                } else {
+                    self.token(Token::Less)
+                }
+            }
             'd' if self.next_if_chars("up") => self.token(Token::Dup),
             'd' if self.next_if_chars("rop") => self.token(Token::Drop),
             's' if self.next_if_chars("wap") => self.token(Token::Swap),
@@ -166,7 +172,7 @@ where
     }
 
     fn next_if_chars(&mut self, expected: &str) -> bool {
-        expected.chars().all(|c|self.next_if_char(c))
+        expected.chars().all(|c| self.next_if_char(c))
     }
 
     fn next_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {
