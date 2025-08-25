@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::location::{Span, Spanned};
 use crate::parser::{parse, Node, Op, ParseError, ParseNodeResult};
 use std::error::Error;
@@ -10,19 +11,19 @@ pub enum RuntimeError {
     InvalidNumberOfArguments(u8, u8),
     IncompatibleShapes,
     DifferentArrayElementShapes,
+    UnknownIdentifier(String),
+    IdentifierAlreadyExists(String),
 }
 
 impl Display for RuntimeError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             RuntimeError::Parse(parse_error) => write!(f, "{parse_error}"),
-            RuntimeError::InvalidNumberOfArguments(expected, actual) => {
-                write!(f, "Expected {expected} arguments, got {actual}")
-            }
+            RuntimeError::InvalidNumberOfArguments(expected, actual) => write!(f, "Expected {expected} arguments, got {actual}"),
             RuntimeError::IncompatibleShapes => write!(f, "Incompatible shapes"),
-            RuntimeError::DifferentArrayElementShapes => {
-                write!(f, "Not all rows in the array have the same shape")
-            }
+            RuntimeError::DifferentArrayElementShapes => write!(f, "Not all rows in the array have the same shape"),
+            RuntimeError::UnknownIdentifier(name) => write!(f, "Unknown identifier: {name}"),
+            RuntimeError::IdentifierAlreadyExists(name) => write!(f, "Identifier already exists: {name}"),
         }
     }
 }
@@ -132,6 +133,7 @@ where
     T: Iterator<Item = ParseNodeResult>,
 {
     nodes: Peekable<T>,
+    bindings: HashMap<String, Vec<Spanned<Node>>>,
     stack: Vec<Spanned<Value>>,
     span: Span,
 }
@@ -143,6 +145,7 @@ where
     pub fn new(nodes: T) -> Self {
         Self {
             nodes: nodes.peekable(),
+            bindings: HashMap::new(),
             stack: Vec::new(),
             span: Span::EMPTY,
         }
@@ -170,7 +173,22 @@ where
             Node::Integer(i) => self.integer(i),
             Node::Operation(op) => self.operator(op),
             Node::Array(elements) => self.array(elements),
-            Node::Identifier(name) => todo!("implement identifier")
+            Node::Identifier(name) => {
+                let binding = &self.bindings.get_mut(name);
+                match binding {
+                    None => self.error(RuntimeError::UnknownIdentifier(name.clone())),
+                    Some(nodes) => {
+                        for node in nodes.to_vec() {
+                            self.evaluate(&node)?
+                        }
+                        Ok(())
+                    }
+                }
+            },
+            Node::Binding(name, body) => match self.bindings.insert(name.clone(), body.to_vec()) {
+                None => Ok(()),
+                Some(_) => self.error(RuntimeError::IdentifierAlreadyExists(name.clone()))
+            }
         }
     }
 

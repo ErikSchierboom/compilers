@@ -1,4 +1,4 @@
-use crate::lexer::{LexError, ParseTokenResult, Token, tokenize};
+use crate::lexer::{tokenize, LexError, ParseTokenResult, Token};
 use crate::location::{Span, Spanned};
 use crate::parser::Node::{Identifier, Integer, Operation};
 use crate::parser::ParseError::Lex;
@@ -26,15 +26,16 @@ impl Display for ParseError {
 
 impl Error for ParseError {}
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Node {
     Integer(i64),
     Identifier(String),
     Operation(Op),
     Array(Vec<Spanned<Node>>),
+    Binding(String, Vec<Spanned<Node>>)
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Op {
     Add,
     Subtract,
@@ -82,17 +83,19 @@ where
 
     fn parse_node(&mut self) -> Option<ParseNodeResult> {
         match self.next()? {
-            Ok(token) => self.parse_node_from_token(token.value),
+            Ok(token) => self.parse_node_from_token(token),
             Err(lex_error) => self.error(Lex(lex_error.value)),
         }
     }
 
-    fn parse_node_from_token(&mut self, token: Token) -> Option<ParseNodeResult> {
-        match token {
+    fn parse_node_from_token(&mut self, spanned_token: Spanned<Token>) -> Option<ParseNodeResult> {
+        match spanned_token.value {
             Token::Number => self.integer(),
             Token::OpenBracket => self.array(),
-            Token::Identifier => self.identifier(),
-            Token::CloseBracket => self.error(ParseError::Unexpected(token)),
+            Token::Identifier => match self.next_if_token(&Token::Colon) {
+                Some(_) => self.binding(spanned_token),
+                None => self.identifier()
+            },
             Token::Plus => self.operation(Op::Add),
             Token::Minus => self.operation(Op::Subtract),
             Token::Star => self.operation(Op::Multiply),
@@ -112,10 +115,11 @@ where
             Token::Drop => self.operation(Op::Drop),
             Token::Swap => self.operation(Op::Swap),
             Token::Over => self.operation(Op::Over),
-            Token::Colon => {}
-            Token::Newline => {}
-            Token::Whitespace => {}
-            Token::Comment => {}
+            Token::CloseBracket => self.error(ParseError::Unexpected(spanned_token.value)),
+            Token::Colon => self.error(ParseError::Unexpected(spanned_token.value)),
+            Token::Newline => self.parse_node(),
+            Token::Whitespace => self.parse_node(),
+            Token::Comment => self.parse_node(),
         }
     }
 
@@ -145,10 +149,32 @@ where
                     self.span = start_span.merge(&self.span);
                     return self.node(Node::Array(elements));
                 }
-                Some(Ok(token)) => match self.parse_node_from_token(token.value)? {
+                Some(Ok(token)) => match self.parse_node_from_token(token)? {
                     Err(error) => return Some(Err(error)),
                     Ok(element) => elements.push(element),
                 },
+            }
+        }
+    }
+
+    fn binding(&mut self, identifier: Spanned<Token>) -> Option<ParseNodeResult> {
+        let mut body: Vec<Spanned<Node>> = Vec::new();
+
+        loop {
+            match self.next() {
+                None => {
+                    self.span = identifier.span.merge(&self.span);
+                    return self.node(Node::Binding(self.lexeme(&identifier.span).to_string(), body))
+                },
+                Some(Ok(token)) if token.value == Token::Newline => {
+                    self.span = identifier.span.merge(&self.span);
+                    return self.node(Node::Binding(self.lexeme(&identifier.span).to_string(), body))
+                }
+                Some(Err(lex_error)) => return self.error(Lex(lex_error.value)),
+                Some(Ok(token)) => match self.parse_node_from_token(token)? {
+                    Err(error) => return Some(Err(error)),
+                    Ok(element) => body.push(element),
+                }
             }
         }
     }
@@ -167,6 +193,16 @@ where
 
     fn next(&mut self) -> Option<ParseTokenResult> {
         self.next_if(|_| true)
+    }
+
+    fn next_if_token(&mut self, token: &Token) -> Option<ParseTokenResult> {
+        self.tokens
+            .next_if(|parse_result| {
+                match parse_result {
+                    Ok(spanned_token) => &spanned_token.value == token,
+                    _ => false
+                }
+            })
     }
 
     fn next_if(&mut self, func: impl Fn(&ParseTokenResult) -> bool) -> Option<ParseTokenResult> {
