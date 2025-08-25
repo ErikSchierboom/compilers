@@ -72,11 +72,11 @@ where
         }
     }
 
-    fn parse_token(&mut self) -> Option<ParseTokenResult> {
+    fn next_token(&mut self) -> Option<ParseTokenResult> {
         self.start += self.length as u32;
         self.length = 0;
 
-        match self.next()? {
+        match self.next_char()? {
             '[' => self.token(Token::OpenBracket),
             ']' => self.token(Token::CloseBracket),
             '+' => self.token(Token::Plus),
@@ -90,30 +90,30 @@ where
             '=' => self.token(Token::Equal),
             ':' => self.token(Token::Colon),
             '!' => {
-                if self.next_if_char('=') {
+                if self.next_char_if_match('=') {
                     self.token(Token::NotEqual)
                 } else {
                     self.token(Token::Bang)
                 }
             }
             '>' => {
-                if self.next_if_char('=') {
+                if self.next_char_if_match('=') {
                     self.token(Token::GreaterEqual)
                 } else {
                     self.token(Token::Greater)
                 }
             }
             '<' => {
-                if self.next_if_char('=') {
+                if self.next_char_if_match('=') {
                     self.token(Token::LessEqual)
                 } else {
                     self.token(Token::Less)
                 }
             }
-            'd' if self.next_if_chars("up") => self.token(Token::Dup),
-            'd' if self.next_if_chars("rop") => self.token(Token::Drop),
-            's' if self.next_if_chars("wap") => self.token(Token::Swap),
-            'o' if self.next_if_chars("ver") => self.token(Token::Over),
+            'd' if self.next_chars_if_match("up") => self.token(Token::Dup),
+            'd' if self.next_chars_if_match("rop") => self.token(Token::Drop),
+            's' if self.next_chars_if_match("wap") => self.token(Token::Swap),
+            'o' if self.next_chars_if_match("ver") => self.token(Token::Over),
             '#' => self.comment(),
             '\n' => self.token(Token::Newline),
             c if c.is_ascii_whitespace() => self.whitespace(),
@@ -124,12 +124,12 @@ where
     }
 
     fn number(&mut self) -> Option<ParseTokenResult> {
-        self.next_while(char::is_ascii_digit);
+        self.next_chars_while(char::is_ascii_digit);
         self.token(Token::Number)
     }
 
     fn identifier(&mut self) -> Option<ParseTokenResult> {
-        self.next_while(char::is_ascii_alphanumeric);
+        self.next_chars_while(char::is_ascii_alphanumeric);
         self.token(Token::Identifier)
     }
 
@@ -142,12 +142,12 @@ where
     }
 
     fn whitespace(&mut self) -> Option<ParseTokenResult> {
-        self.next_while(|&c| c != '\n' && c.is_ascii_whitespace());
+        self.next_chars_while(|&c| c != '\n' && c.is_ascii_whitespace());
         self.token(Token::Whitespace)
     }
 
     fn comment(&mut self) -> Option<ParseTokenResult> {
-        self.next_while(|&c| c != '\n');
+        self.next_chars_while(|&c| c != '\n');
         self.token(Token::Comment)
     }
 
@@ -159,23 +159,23 @@ where
         Span::new(self.start, self.length)
     }
 
-    fn next(&mut self) -> Option<char> {
-        self.next_if(|_| true)
+    fn next_char(&mut self) -> Option<char> {
+        self.next_char_if(|_| true)
     }
 
-    fn next_while(&mut self, func: impl Fn(&char) -> bool) {
-        while self.next_if(&func).is_some() {}
+    fn next_chars_while(&mut self, func: impl Fn(&char) -> bool) {
+        while self.next_char_if(&func).is_some() {}
     }
 
-    fn next_if_char(&mut self, expected: char) -> bool {
-        self.next_if(|c| *c == expected).is_some()
+    fn next_char_if_match(&mut self, expected: char) -> bool {
+        self.next_char_if(|&c| c == expected).is_some()
     }
 
-    fn next_if_chars(&mut self, expected: &str) -> bool {
-        expected.chars().all(|c| self.next_if_char(c))
+    fn next_chars_if_match(&mut self, expected: &str) -> bool {
+        expected.chars().all(|c| self.next_char_if_match(c))
     }
 
-    fn next_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {
+    fn next_char_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {
         self.chars.next_if(func).inspect(|_| self.length += 1)
     }
 }
@@ -187,7 +187,7 @@ where
     type Item = ParseTokenResult;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.parse_token()
+        self.next_token()
     }
 }
 
