@@ -120,6 +120,7 @@ where
             Token::Newline => self.parse_node(),
             Token::Whitespace => self.parse_node(),
             Token::Comment => self.parse_node(),
+            Token::EndOfFile => None,
         }
     }
 

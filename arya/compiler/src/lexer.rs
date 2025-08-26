@@ -47,6 +47,7 @@ pub enum Token {
     Newline,
     Whitespace,
     Comment,
+    EndOfFile,
 }
 
 pub type ParseTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
@@ -72,81 +73,84 @@ where
         }
     }
 
-    fn next_token(&mut self) -> Option<ParseTokenResult> {
+    fn next_token(&mut self) -> ParseTokenResult {
         self.start += self.length as u32;
         self.length = 0;
 
-        match self.next_char()? {
-            '[' => self.token(Token::OpenBracket),
-            ']' => self.token(Token::CloseBracket),
-            '+' => self.token(Token::Plus),
-            '-' => self.token(Token::Minus),
-            '*' => self.token(Token::Star),
-            '/' => self.token(Token::Slash),
-            '^' => self.token(Token::Caret),
-            '&' => self.token(Token::Ampersand),
-            '|' => self.token(Token::Pipe),
-            '_' => self.token(Token::Underscore),
-            '=' => self.token(Token::Equal),
-            ':' => self.token(Token::Colon),
-            '!' => {
-                if self.next_char_if_match('=') {
-                    self.token(Token::NotEqual)
-                } else {
-                    self.token(Token::Bang)
+        match self.next_char() {
+            None => self.token(Token::EndOfFile),
+            Some(c) => match c {
+                '[' => self.token(Token::OpenBracket),
+                ']' => self.token(Token::CloseBracket),
+                '+' => self.token(Token::Plus),
+                '-' => self.token(Token::Minus),
+                '*' => self.token(Token::Star),
+                '/' => self.token(Token::Slash),
+                '^' => self.token(Token::Caret),
+                '&' => self.token(Token::Ampersand),
+                '|' => self.token(Token::Pipe),
+                '_' => self.token(Token::Underscore),
+                '=' => self.token(Token::Equal),
+                ':' => self.token(Token::Colon),
+                '!' => {
+                    if self.next_char_if_match('=') {
+                        self.token(Token::NotEqual)
+                    } else {
+                        self.token(Token::Bang)
+                    }
                 }
-            }
-            '>' => {
-                if self.next_char_if_match('=') {
-                    self.token(Token::GreaterEqual)
-                } else {
-                    self.token(Token::Greater)
+                '>' => {
+                    if self.next_char_if_match('=') {
+                        self.token(Token::GreaterEqual)
+                    } else {
+                        self.token(Token::Greater)
+                    }
                 }
-            }
-            '<' => {
-                if self.next_char_if_match('=') {
-                    self.token(Token::LessEqual)
-                } else {
-                    self.token(Token::Less)
+                '<' => {
+                    if self.next_char_if_match('=') {
+                        self.token(Token::LessEqual)
+                    } else {
+                        self.token(Token::Less)
+                    }
                 }
-            }
-            'd' if self.next_chars_if_match("up") => self.token(Token::Dup),
-            'd' if self.next_chars_if_match("rop") => self.token(Token::Drop),
-            's' if self.next_chars_if_match("wap") => self.token(Token::Swap),
-            'o' if self.next_chars_if_match("ver") => self.token(Token::Over),
-            '#' => self.comment(),
-            '\n' => self.token(Token::Newline),
-            c if c.is_ascii_whitespace() => self.whitespace(),
-            c if c.is_ascii_digit() => self.number(),
-            c if c.is_ascii_alphabetic() => self.identifier(),
-            c => self.error(LexError::UnexpectedCharacter(c)),
+                'd' if self.next_chars_if_match("up") => self.token(Token::Dup),
+                'd' if self.next_chars_if_match("rop") => self.token(Token::Drop),
+                's' if self.next_chars_if_match("wap") => self.token(Token::Swap),
+                'o' if self.next_chars_if_match("ver") => self.token(Token::Over),
+                '#' => self.comment(),
+                '\n' => self.token(Token::Newline),
+                c if c.is_ascii_whitespace() => self.whitespace(),
+                c if c.is_ascii_digit() => self.number(),
+                c if c.is_ascii_alphabetic() => self.identifier(),
+                c => self.error(LexError::UnexpectedCharacter(c)),
+            },
         }
     }
 
-    fn number(&mut self) -> Option<ParseTokenResult> {
+    fn number(&mut self) -> ParseTokenResult {
         self.next_chars_while(char::is_ascii_digit);
         self.token(Token::Number)
     }
 
-    fn identifier(&mut self) -> Option<ParseTokenResult> {
+    fn identifier(&mut self) -> ParseTokenResult {
         self.next_chars_while(char::is_ascii_alphanumeric);
         self.token(Token::Identifier)
     }
 
-    fn token(&mut self, token: Token) -> Option<ParseTokenResult> {
-        Some(Ok(self.spanned(token)))
+    fn token(&mut self, token: Token) -> ParseTokenResult {
+        Ok(self.spanned(token))
     }
 
-    fn error(&mut self, error: LexError) -> Option<ParseTokenResult> {
-        Some(Err(self.spanned(error)))
+    fn error(&mut self, error: LexError) -> ParseTokenResult {
+        Err(self.spanned(error))
     }
 
-    fn whitespace(&mut self) -> Option<ParseTokenResult> {
+    fn whitespace(&mut self) -> ParseTokenResult {
         self.next_chars_while(|&c| c != '\n' && c.is_ascii_whitespace());
         self.token(Token::Whitespace)
     }
 
-    fn comment(&mut self) -> Option<ParseTokenResult> {
+    fn comment(&mut self) -> ParseTokenResult {
         self.next_chars_while(|&c| c != '\n');
         self.token(Token::Comment)
     }
@@ -187,7 +191,13 @@ where
     type Item = ParseTokenResult;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.next_token()
+        match self.next_token() {
+            Ok(Spanned {
+                value: Token::EndOfFile,
+                ..
+            }) => None,
+            token_result => Some(token_result),
+        }
     }
 }
 
