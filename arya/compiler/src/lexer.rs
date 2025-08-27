@@ -93,30 +93,30 @@ where
                 '=' => self.token(Token::Equal),
                 ':' => self.token(Token::Colon),
                 '!' => {
-                    if self.next_char_if_match('=') {
+                    if self.next_char_matches('=') {
                         self.token(Token::NotEqual)
                     } else {
                         self.token(Token::Bang)
                     }
                 }
                 '>' => {
-                    if self.next_char_if_match('=') {
+                    if self.next_char_matches('=') {
                         self.token(Token::GreaterEqual)
                     } else {
                         self.token(Token::Greater)
                     }
                 }
                 '<' => {
-                    if self.next_char_if_match('=') {
+                    if self.next_char_matches('=') {
                         self.token(Token::LessEqual)
                     } else {
                         self.token(Token::Less)
                     }
                 }
-                'd' if self.next_chars_if_match("up") => self.token(Token::Dup),
-                'd' if self.next_chars_if_match("rop") => self.token(Token::Drop),
-                's' if self.next_chars_if_match("wap") => self.token(Token::Swap),
-                'o' if self.next_chars_if_match("ver") => self.token(Token::Over),
+                'd' if self.next_chars_match("up") => self.token(Token::Dup),
+                'd' if self.next_chars_match("rop") => self.token(Token::Drop),
+                's' if self.next_chars_match("wap") => self.token(Token::Swap),
+                'o' if self.next_chars_match("ver") => self.token(Token::Over),
                 '#' => self.comment(),
                 '\n' => self.token(Token::Newline),
                 c if c.is_ascii_whitespace() => self.whitespace(),
@@ -171,12 +171,12 @@ where
         while self.next_char_if(&func).is_some() {}
     }
 
-    fn next_char_if_match(&mut self, expected: char) -> bool {
+    fn next_char_matches(&mut self, expected: char) -> bool {
         self.next_char_if(|&c| c == expected).is_some()
     }
 
-    fn next_chars_if_match(&mut self, expected: &str) -> bool {
-        expected.chars().all(|c| self.next_char_if_match(c))
+    fn next_chars_match(&mut self, expected: &str) -> bool {
+        expected.chars().all(|c| self.next_char_matches(c))
     }
 
     fn next_char_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {
