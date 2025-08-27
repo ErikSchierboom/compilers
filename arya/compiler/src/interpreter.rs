@@ -1,5 +1,5 @@
 use crate::location::{Span, Spanned};
-use crate::parser::{parse, ParseError, ParseNodeResult, Primitive, Word};
+use crate::parser::{parse, ParseError, ParseWordResult, Primitive, Word};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -136,7 +136,7 @@ pub type InterpretResult = Result<Vec<Spanned<Value>>, Spanned<RuntimeError>>;
 
 pub struct Interpreter<T>
 where
-    T: Iterator<Item = ParseNodeResult>,
+    T: Iterator<Item = ParseWordResult>,
 {
     nodes: Peekable<T>,
     bindings: HashMap<String, Vec<Spanned<Word>>>,
@@ -146,7 +146,7 @@ where
 
 impl<T> Interpreter<T>
 where
-    T: Iterator<Item = ParseNodeResult>,
+    T: Iterator<Item = ParseWordResult>,
 {
     pub fn new(nodes: T) -> Self {
         Self {
@@ -267,11 +267,11 @@ where
         Ok(())
     }
 
-    fn comment(&self) -> Option<ParseNodeResult> {
+    fn comment(&self) -> Option<ParseWordResult> {
         todo!()
     }
 
-    fn whitepace(&self) -> Option<ParseNodeResult> {
+    fn whitepace(&self) -> Option<ParseWordResult> {
         todo!()
     }
 
