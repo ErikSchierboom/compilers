@@ -177,7 +177,7 @@ where
     fn evaluate(&mut self, node: &Spanned<Word>) -> EvaluateResult {
         match &node.value {
             Word::Integer(i) => self.integer(i),
-            Word::Primitive(op) => self.operator(op),
+            Word::Primitive(op) => self.primitive(op),
             Word::Array(elements) => self.array(elements),
             Word::Identifier(name) => {
                 let binding = &self.bindings.get_mut(name);
@@ -195,6 +195,7 @@ where
                 None => Ok(()),
                 Some(_) => self.error(RuntimeError::IdentifierAlreadyExists(name.clone())),
             },
+            Word::Comment(_) | Word::Whitespace(_) => Ok(()),
         }
     }
 
@@ -204,7 +205,7 @@ where
         Ok(())
     }
 
-    fn operator(&mut self, op: &Primitive) -> EvaluateResult {
+    fn primitive(&mut self, op: &Primitive) -> EvaluateResult {
         match op {
             Primitive::Add => self.binary_operation(|l, r| l + r),
             Primitive::Subtract => self.binary_operation(|l, r| l - r),
@@ -264,6 +265,14 @@ where
         self.push(value);
 
         Ok(())
+    }
+
+    fn comment(&self) -> Option<ParseNodeResult> {
+        todo!()
+    }
+
+    fn whitepace(&self) -> Option<ParseNodeResult> {
+        todo!()
     }
 
     fn push(&mut self, value: Value) {

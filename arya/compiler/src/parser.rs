@@ -32,6 +32,8 @@ pub enum Word {
     Primitive(Primitive),
     Array(Vec<Spanned<Word>>),
     Binding(String, Vec<Spanned<Word>>),
+    Comment(String),
+    Whitespace(String),
 }
 
 #[derive(Clone, Debug)]
@@ -91,7 +93,7 @@ where
         match spanned_token.value {
             Token::Number => self.integer(),
             Token::OpenBracket => self.array(),
-            Token::Identifier => match self.next_if_token(&Token::Colon) {
+            Token::Identifier => match self.next_token_matches(&Token::Colon) {
                 Some(_) => self.binding(spanned_token),
                 None => self.identifier(),
             },
@@ -113,8 +115,8 @@ where
             Token::CloseBracket => self.error(ParseError::Unexpected(spanned_token.value)),
             Token::Colon => self.error(ParseError::Unexpected(spanned_token.value)),
             Token::Newline => self.parse_node(),
-            Token::Whitespace => self.parse_node(),
-            Token::Comment => self.parse_node(),
+            Token::Whitespace => self.whitepace(),
+            Token::Comment => self.comment(),
             Token::EndOfFile => None,
         }
     }
@@ -130,7 +132,7 @@ where
             "drop" => self.primitive(Primitive::Drop),
             "swap" => self.primitive(Primitive::Swap),
             "over" => self.primitive(Primitive::Over),
-            name => self.node(Word::Identifier(name.to_string()))
+            name => self.node(Word::Identifier(name.to_string())),
         }
     }
 
@@ -171,6 +173,8 @@ where
                     ));
                 }
                 Some(Ok(token)) if token.value == Token::Newline => {
+                    // TODO: get identifier before updating span, then the lexeme method can use the
+                    // current span to fetch the lexeme
                     self.span = identifier.span.merge(&self.span);
                     return self.node(Word::Binding(
                         self.lexeme(&identifier.span).to_string(),
@@ -184,6 +188,16 @@ where
                 },
             }
         }
+    }
+
+    fn whitepace(&self) -> Option<ParseNodeResult> {
+        let whitespace = self.lexeme(&self.span).to_string();
+        self.node(Word::Whitespace(whitespace))
+    }
+
+    fn comment(&self) -> Option<ParseNodeResult> {
+        let comment = self.lexeme(&self.span).to_string();
+        self.node(Word::Comment(comment))
     }
 
     fn node(&self, node: Word) -> Option<ParseNodeResult> {
@@ -202,7 +216,7 @@ where
         self.next_if(|_| true)
     }
 
-    fn next_if_token(&mut self, token: &Token) -> Option<ParseTokenResult> {
+    fn next_token_matches(&mut self, token: &Token) -> Option<ParseTokenResult> {
         self.tokens.next_if(|parse_result| match parse_result {
             Ok(spanned_token) => &spanned_token.value == token,
             _ => false,
