@@ -20,10 +20,16 @@ impl Error for LexError {}
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
+    // TODO: String
+    // TODO: Char
     Number,
     Identifier,
+
+    // Delimiters
     OpenBracket,
     CloseBracket,
+
+    // Symbols
     Plus,
     Minus,
     Star,
@@ -33,20 +39,20 @@ pub enum Token {
     Pipe,
     Bang,
     Underscore,
+    Colon,
     Equal,
     NotEqual,
     Greater,
     GreaterEqual,
     Less,
     LessEqual,
-    Dup,
-    Drop,
-    Swap,
-    Over,
-    Colon,
+
+    // Trivia
     Newline,
     Whitespace,
     Comment,
+
+    // Synthetic
     EndOfFile,
 }
 
@@ -113,10 +119,6 @@ where
                         self.token(Token::Less)
                     }
                 }
-                'd' if self.next_chars_match("up") => self.token(Token::Dup),
-                'd' if self.next_chars_match("rop") => self.token(Token::Drop),
-                's' if self.next_chars_match("wap") => self.token(Token::Swap),
-                'o' if self.next_chars_match("ver") => self.token(Token::Over),
                 '#' => self.comment(),
                 '\n' => self.token(Token::Newline),
                 c if c.is_ascii_whitespace() => self.whitespace(),
@@ -173,10 +175,6 @@ where
 
     fn next_char_matches(&mut self, expected: char) -> bool {
         self.next_char_if(|&c| c == expected).is_some()
-    }
-
-    fn next_chars_match(&mut self, expected: &str) -> bool {
-        expected.chars().all(|c| self.next_char_matches(c))
     }
 
     fn next_char_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {

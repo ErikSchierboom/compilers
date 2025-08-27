@@ -1,6 +1,5 @@
-use crate::lexer::{LexError, ParseTokenResult, Token, tokenize};
+use crate::lexer::{tokenize, LexError, ParseTokenResult, Token};
 use crate::location::{Span, Spanned};
-use crate::parser::Node::{Identifier, Integer, Operation};
 use crate::parser::ParseError::Lex;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -27,16 +26,16 @@ impl Display for ParseError {
 impl Error for ParseError {}
 
 #[derive(Clone, Debug)]
-pub enum Node {
+pub enum Word {
     Integer(i64),
     Identifier(String),
-    Operation(Op),
-    Array(Vec<Spanned<Node>>),
-    Binding(String, Vec<Spanned<Node>>),
+    Primitive(Primitive),
+    Array(Vec<Spanned<Word>>),
+    Binding(String, Vec<Spanned<Word>>),
 }
 
 #[derive(Clone, Debug)]
-pub enum Op {
+pub enum Primitive {
     Add,
     Subtract,
     Multiply,
@@ -58,7 +57,7 @@ pub enum Op {
     Over,
 }
 
-pub type ParseNodeResult = Result<Spanned<Node>, Spanned<ParseError>>;
+pub type ParseNodeResult = Result<Spanned<Word>, Spanned<ParseError>>;
 
 pub struct Parser<'a, T>
 where
@@ -96,25 +95,21 @@ where
                 Some(_) => self.binding(spanned_token),
                 None => self.identifier(),
             },
-            Token::Plus => self.operation(Op::Add),
-            Token::Minus => self.operation(Op::Subtract),
-            Token::Star => self.operation(Op::Multiply),
-            Token::Slash => self.operation(Op::Divide),
-            Token::Ampersand => self.operation(Op::And),
-            Token::Pipe => self.operation(Op::Or),
-            Token::Caret => self.operation(Op::Xor),
-            Token::Bang => self.operation(Op::Not),
-            Token::Underscore => self.operation(Op::Negate),
-            Token::Equal => self.operation(Op::Equal),
-            Token::NotEqual => self.operation(Op::NotEqual),
-            Token::Greater => self.operation(Op::Greater),
-            Token::GreaterEqual => self.operation(Op::GreaterEqual),
-            Token::Less => self.operation(Op::Less),
-            Token::LessEqual => self.operation(Op::LessEqual),
-            Token::Dup => self.operation(Op::Dup),
-            Token::Drop => self.operation(Op::Drop),
-            Token::Swap => self.operation(Op::Swap),
-            Token::Over => self.operation(Op::Over),
+            Token::Plus => self.primitive(Primitive::Add),
+            Token::Minus => self.primitive(Primitive::Subtract),
+            Token::Star => self.primitive(Primitive::Multiply),
+            Token::Slash => self.primitive(Primitive::Divide),
+            Token::Ampersand => self.primitive(Primitive::And),
+            Token::Pipe => self.primitive(Primitive::Or),
+            Token::Caret => self.primitive(Primitive::Xor),
+            Token::Bang => self.primitive(Primitive::Not),
+            Token::Underscore => self.primitive(Primitive::Negate),
+            Token::Equal => self.primitive(Primitive::Equal),
+            Token::NotEqual => self.primitive(Primitive::NotEqual),
+            Token::Greater => self.primitive(Primitive::Greater),
+            Token::GreaterEqual => self.primitive(Primitive::GreaterEqual),
+            Token::Less => self.primitive(Primitive::Less),
+            Token::LessEqual => self.primitive(Primitive::LessEqual),
             Token::CloseBracket => self.error(ParseError::Unexpected(spanned_token.value)),
             Token::Colon => self.error(ParseError::Unexpected(spanned_token.value)),
             Token::Newline => self.parse_node(),
@@ -126,21 +121,26 @@ where
 
     fn integer(&mut self) -> Option<ParseNodeResult> {
         let number = i64::from_str(self.lexeme(&self.span)).unwrap();
-        self.node(Integer(number))
+        self.node(Word::Integer(number))
     }
 
     fn identifier(&mut self) -> Option<ParseNodeResult> {
-        let name = self.lexeme(&self.span);
-        self.node(Identifier(name.to_string()))
+        match self.lexeme(&self.span) {
+            "dup" => self.primitive(Primitive::Dup),
+            "drop" => self.primitive(Primitive::Drop),
+            "swap" => self.primitive(Primitive::Swap),
+            "over" => self.primitive(Primitive::Over),
+            name => self.node(Word::Identifier(name.to_string()))
+        }
     }
 
-    fn operation(&self, operator: Op) -> Option<ParseNodeResult> {
-        self.node(Operation(operator))
+    fn primitive(&self, primitive: Primitive) -> Option<ParseNodeResult> {
+        self.node(Word::Primitive(primitive))
     }
 
     fn array(&mut self) -> Option<ParseNodeResult> {
         let start_span = self.span.clone();
-        let mut elements: Vec<Spanned<Node>> = Vec::new();
+        let mut elements: Vec<Spanned<Word>> = Vec::new();
 
         loop {
             match self.next() {
@@ -148,7 +148,7 @@ where
                 Some(Err(lex_error)) => return self.error(Lex(lex_error.value)),
                 Some(Ok(token)) if token.value == Token::CloseBracket => {
                     self.span = start_span.merge(&self.span);
-                    return self.node(Node::Array(elements));
+                    return self.node(Word::Array(elements));
                 }
                 Some(Ok(token)) => match self.parse_node_from_token(token)? {
                     Err(error) => return Some(Err(error)),
@@ -159,20 +159,20 @@ where
     }
 
     fn binding(&mut self, identifier: Spanned<Token>) -> Option<ParseNodeResult> {
-        let mut body: Vec<Spanned<Node>> = Vec::new();
+        let mut body: Vec<Spanned<Word>> = Vec::new();
 
         loop {
             match self.next() {
                 None => {
                     self.span = identifier.span.merge(&self.span);
-                    return self.node(Node::Binding(
+                    return self.node(Word::Binding(
                         self.lexeme(&identifier.span).to_string(),
                         body,
                     ));
                 }
                 Some(Ok(token)) if token.value == Token::Newline => {
                     self.span = identifier.span.merge(&self.span);
-                    return self.node(Node::Binding(
+                    return self.node(Word::Binding(
                         self.lexeme(&identifier.span).to_string(),
                         body,
                     ));
@@ -186,7 +186,7 @@ where
         }
     }
 
-    fn node(&self, node: Node) -> Option<ParseNodeResult> {
+    fn node(&self, node: Word) -> Option<ParseNodeResult> {
         Some(Ok(self.spanned(node)))
     }
 
