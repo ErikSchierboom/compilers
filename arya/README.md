@@ -4,6 +4,7 @@ A toy array programming language written in Rust.
 
 ## TODO's
 
+- [ ] support windows newlines
 - [ ] bindings
 - [ ] embed stack signature in bindings and primitives
 - [ ] add virtual machine
