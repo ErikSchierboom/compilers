@@ -49,29 +49,28 @@ pub enum Token {
 
     // Trivia
     Newline,
-    Whitespace,
     Comment,
 
     // Synthetic
     EndOfFile,
 }
 
-pub type LexResult = Result<Spanned<Token>, Spanned<LexError>>;
+pub type LexTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
 
-struct Lexer<T>
+struct Lexer<TChars>
 where
-    T: Iterator<Item = char>,
+    TChars: Iterator<Item = char>,
 {
-    chars: Peekable<T>,
+    chars: Peekable<TChars>,
     start: u32,
     length: u16,
 }
 
-impl<T> Lexer<T>
+impl<TChars> Lexer<TChars>
 where
-    T: Iterator<Item = char>,
+    TChars: Iterator<Item = char>,
 {
-    fn new(source_code: T) -> Self {
+    fn new(source_code: TChars) -> Self {
         Self {
             chars: source_code.peekable(),
             start: 0,
@@ -79,82 +78,82 @@ where
         }
     }
 
-    fn token(&mut self) -> LexResult {
+    fn lex_token(&mut self) -> LexTokenResult {
+        self.skip_whitespace();
+
         self.start += self.length as u32;
         self.length = 0;
 
         match self.next_char() {
-            None => self.spanned_token(Token::EndOfFile),
+            None => self.make_token(Token::EndOfFile),
             Some(c) => match c {
-                '[' => self.spanned_token(Token::OpenBracket),
-                ']' => self.spanned_token(Token::CloseBracket),
-                '+' => self.spanned_token(Token::Plus),
-                '-' => self.spanned_token(Token::Minus),
-                '*' => self.spanned_token(Token::Star),
-                '/' => self.spanned_token(Token::Slash),
-                '^' => self.spanned_token(Token::Caret),
-                '&' => self.spanned_token(Token::Ampersand),
-                '|' => self.spanned_token(Token::Pipe),
-                '_' => self.spanned_token(Token::Underscore),
-                '=' => self.spanned_token(Token::Equal),
-                ':' => self.spanned_token(Token::Colon),
+                '[' => self.make_token(Token::OpenBracket),
+                ']' => self.make_token(Token::CloseBracket),
+                '+' => self.make_token(Token::Plus),
+                '-' => self.make_token(Token::Minus),
+                '*' => self.make_token(Token::Star),
+                '/' => self.make_token(Token::Slash),
+                '^' => self.make_token(Token::Caret),
+                '&' => self.make_token(Token::Ampersand),
+                '|' => self.make_token(Token::Pipe),
+                '_' => self.make_token(Token::Underscore),
+                '=' => self.make_token(Token::Equal),
+                ':' => self.make_token(Token::Colon),
                 '!' => {
                     if self.next_char_matches('=') {
-                        self.spanned_token(Token::NotEqual)
+                        self.make_token(Token::NotEqual)
                     } else {
-                        self.spanned_token(Token::Bang)
+                        self.make_token(Token::Bang)
                     }
                 }
                 '>' => {
                     if self.next_char_matches('=') {
-                        self.spanned_token(Token::GreaterEqual)
+                        self.make_token(Token::GreaterEqual)
                     } else {
-                        self.spanned_token(Token::Greater)
+                        self.make_token(Token::Greater)
                     }
                 }
                 '<' => {
                     if self.next_char_matches('=') {
-                        self.spanned_token(Token::LessEqual)
+                        self.make_token(Token::LessEqual)
                     } else {
-                        self.spanned_token(Token::Less)
+                        self.make_token(Token::Less)
                     }
                 }
-                '#' => self.comment(),
-                '\n' => self.spanned_token(Token::Newline),
-                c if c.is_ascii_whitespace() => self.whitespace(),
-                c if c.is_ascii_digit() => self.number(),
-                c if c.is_ascii_alphabetic() => self.identifier(),
-                c => self.spanned_error(LexError::UnexpectedCharacter(c)),
+                '#' => self.lex_comment(),
+                '\n' => self.make_token(Token::Newline),
+                c if c.is_ascii_digit() => self.lex_number(),
+                c if c.is_ascii_alphabetic() => self.lex_identifier(),
+                c => self.make_error(LexError::UnexpectedCharacter(c)),
             },
         }
     }
 
-    fn number(&mut self) -> LexResult {
+    fn lex_number(&mut self) -> LexTokenResult {
         self.next_chars_while(char::is_ascii_digit);
-        self.spanned_token(Token::Number)
+        self.make_token(Token::Number)
     }
 
-    fn identifier(&mut self) -> LexResult {
+    fn lex_identifier(&mut self) -> LexTokenResult {
         self.next_chars_while(char::is_ascii_alphanumeric);
-        self.spanned_token(Token::Identifier)
+        self.make_token(Token::Identifier)
     }
 
-    fn spanned_token(&mut self, token: Token) -> LexResult {
+    fn lex_comment(&mut self) -> LexTokenResult {
+        self.next_chars_while(|&c| c != '\n');
+        self.make_token(Token::Comment)
+    }
+
+    fn skip_whitespace(&mut self) {
+        self.next_chars_while(|&c| c != '\n' && c.is_ascii_whitespace());
+    }
+
+    fn make_token(&mut self, token: Token) -> LexTokenResult {
         Ok(self.spanned(token))
     }
 
-    fn spanned_error(&mut self, error: LexError) -> LexResult {
+    fn make_error(&mut self, error: LexError) -> LexTokenResult {
         Err(self.spanned(error))
-    }
-
-    fn whitespace(&mut self) -> LexResult {
-        self.next_chars_while(|&c| c != '\n' && c.is_ascii_whitespace());
-        self.spanned_token(Token::Whitespace)
-    }
-
-    fn comment(&mut self) -> LexResult {
-        self.next_chars_while(|&c| c != '\n');
-        self.spanned_token(Token::Comment)
     }
 
     fn spanned<V>(&self, value: V) -> Spanned<V> {
@@ -169,27 +168,27 @@ where
         self.next_char_if(|_| true)
     }
 
-    fn next_chars_while(&mut self, func: impl Fn(&char) -> bool) {
-        while self.next_char_if(&func).is_some() {}
+    fn next_chars_while(&mut self, predicate: impl Fn(&char) -> bool) {
+        while self.next_char_if(&predicate).is_some() {}
     }
 
     fn next_char_matches(&mut self, expected: char) -> bool {
         self.next_char_if(|&c| c == expected).is_some()
     }
 
-    fn next_char_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {
-        self.chars.next_if(func).inspect(|_| self.length += 1)
+    fn next_char_if(&mut self, predicate: impl Fn(&char) -> bool) -> Option<char> {
+        self.chars.next_if(predicate).inspect(|_| self.length += 1)
     }
 }
 
-impl<T> Iterator for Lexer<T>
+impl<TChars> Iterator for Lexer<TChars>
 where
-    T: Iterator<Item = char>,
+    TChars: Iterator<Item = char>,
 {
-    type Item = LexResult;
+    type Item = LexTokenResult;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.token() {
+        match self.lex_token() {
             Ok(Spanned {
                 value: Token::EndOfFile,
                 ..
@@ -199,6 +198,6 @@ where
     }
 }
 
-pub fn tokenize(source: &str) -> impl Iterator<Item = LexResult> + '_ {
+pub fn tokenize(source: &str) -> impl Iterator<Item = LexTokenResult> + '_ {
     Lexer::new(source.chars())
 }
