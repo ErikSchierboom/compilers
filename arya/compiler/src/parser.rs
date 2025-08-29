@@ -26,25 +26,46 @@ impl Display for ParseError {
 impl Error for ParseError {}
 
 #[derive(Clone, Debug)]
-pub enum Item {
-    Words(Vec<Spanned<Word>>),
-    Binding(Binding),
-}
-
-#[derive(Clone, Debug)]
-pub struct Binding {
-    pub identifier: Spanned<Token>,
-    pub colon: Spanned<Token>,
-    pub words: Vec<Spanned<Word>>,
-}
-
-#[derive(Clone, Debug)]
 pub enum Word {
     Integer(i64),
-    Identifier(String),
+    Symbol(String),
     Primitive(Primitive),
     Array(Vec<Spanned<Word>>),
+    Function(Box<Function>),
     Comment(String),
+}
+
+#[derive(Clone, Debug)]
+pub struct Signature {
+    pub num_arguments: u8,
+    pub num_outputs: u8,
+}
+
+#[derive(Clone, Debug)]
+pub enum Function {
+    Anonymous(AnonymousFunction),
+    Native(NativeFunction),
+}
+
+#[derive(Clone, Debug)]
+pub struct AnonymousFunction {
+    pub signature: Signature,
+    pub body: Vec<Word>,
+}
+
+#[derive(Clone, Debug)]
+pub struct NativeFunction {
+    pub signature: Signature,
+    pub name: Word,
+}
+
+impl Function {
+    pub fn signature(self) -> Signature {
+        match self {
+            Function::Anonymous(anonymous) => anonymous.signature,
+            Function::Native(native) => native.signature,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -70,95 +91,34 @@ pub enum Primitive {
     Over,
 }
 
-pub type LexLineResult = Result<Vec<Spanned<Token>>, Spanned<LexError>>;
+pub type ParseWordResult = Result<Spanned<Word>, Spanned<ParseError>>;
 
-pub struct LineIterator<T>
+pub struct Parser<'a, TTokens>
 where
-    T: Iterator<Item = LexTokenResult>,
-{
-    tokens: Peekable<T>,
-}
-
-impl<T> LineIterator<T>
-where
-    T: Iterator<Item = LexTokenResult>,
-{
-    pub fn new(tokens: T) -> Self {
-        Self {
-            tokens: tokens.peekable(),
-        }
-    }
-}
-
-impl<T> Iterator for LineIterator<T>
-where
-    T: Iterator<Item = LexTokenResult>,
-{
-    type Item = LexLineResult;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.tokens.peek().is_none() {
-            return None;
-        }
-
-        let mut line_lex_results: Vec<LexTokenResult> = Vec::new();
-        while let Some(lex_result) = self.tokens.next() {
-            if lex_result
-                .as_ref()
-                .is_ok_and(|token| token.value == Token::Newline)
-            {
-                break;
-            }
-
-            line_lex_results.push(lex_result)
-        }
-
-        Some(line_lex_results.into_iter().collect())
-    }
-}
-
-pub type ParseItemResult = ParseResult<Spanned<Item>>;
-pub type ParseWordResult = ParseResult<Spanned<Word>>;
-type ParseResult<T> = Result<T, Spanned<ParseError>>;
-
-pub struct Parser<'a, TLines>
-where
-    TLines: Iterator<Item = LexLineResult>,
+    TTokens: Iterator<Item = LexTokenResult>,
 {
     source_code: &'a str,
-    lines: TLines,
+    tokens: Peekable<TTokens>,
     span: Span,
 }
 
-impl<'a, TLines> Parser<'a, TLines>
+impl<'a, TTokens> Parser<'a, TTokens>
 where
-    TLines: Iterator<Item = LexLineResult>,
+    TTokens: Iterator<Item = LexTokenResult>,
 {
-    fn new(source_code: &'a str, lines: TLines) -> Self {
+    fn new(source_code: &'a str, tokens: TTokens) -> Self {
         Parser {
             source_code,
-            lines,
+            tokens: tokens.peekable(),
             span: Span::EMPTY,
         }
-    }
-
-    fn parse_item(&mut self) -> Option<ParseItemResult> {
-        self.parse_binding().or_else(|| self.parse_words())
-    }
-
-    fn parse_binding(&mut self) -> Option<ParseItemResult> {
-        todo!()
-    }
-
-    fn parse_words(&mut self) -> Option<ParseItemResult> {
-        todo!("parse words")
     }
 
     fn parse_word(&mut self) -> Option<ParseWordResult> {
         match self.next_token()? {
             Err(lex_error) => Some(self.make_error(Lex(lex_error.value))),
             Ok(token) => match token.value {
-                Token::Identifier => Some(self.parse_identifier()),
+                Token::Symbol => Some(self.parse_identifier()),
                 Token::Number => Some(self.parse_integer()),
                 Token::OpenBracket => Some(self.parse_array()),
                 Token::Plus => Some(self.parse_primitive(Primitive::Add)),
@@ -200,7 +160,7 @@ where
             "drop" => self.parse_primitive(Primitive::Drop),
             "swap" => self.parse_primitive(Primitive::Swap),
             "over" => self.parse_primitive(Primitive::Over),
-            name => self.make_word(Word::Identifier(name.to_string())),
+            name => self.make_word(Word::Symbol(name.to_string())),
         }
     }
 
@@ -229,15 +189,11 @@ where
         // }
     }
 
-    fn make_item(&self, item: Item) -> ParseItemResult {
-        Ok(self.spanned(item))
-    }
-
     fn make_word(&self, word: Word) -> ParseWordResult {
         Ok(self.spanned(word))
     }
 
-    fn make_error<V>(&mut self, error: ParseError) -> ParseResult<V> {
+    fn make_error(&mut self, error: ParseError) -> ParseWordResult {
         Err(self.spanned(error))
     }
 
@@ -279,19 +235,18 @@ where
     }
 }
 
-impl<'a, TLines> Iterator for Parser<'a, TLines>
+impl<'a, TTokens> Iterator for Parser<'a, TTokens>
 where
-    TLines: Iterator<Item = LexLineResult>,
+    TTokens: Iterator<Item = LexTokenResult>,
 {
-    type Item = ParseItemResult;
+    type Item = ParseWordResult;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.parse_item()
+        self.parse_word()
     }
 }
 
-pub fn parse(source: &str) -> impl Iterator<Item = ParseItemResult> + '_ {
+pub fn parse(source: &str) -> impl Iterator<Item = ParseWordResult> + '_ {
     let tokens = tokenize(source);
-    let lines = LineIterator::new(tokens);
-    Parser::new(source, lines)
+    Parser::new(source, tokens)
 }

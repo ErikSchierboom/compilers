@@ -23,7 +23,7 @@ pub enum Token {
     // TODO: String
     // TODO: Char
     Number,
-    Identifier,
+    Symbol,
 
     // Delimiters
     OpenBracket,
@@ -123,7 +123,7 @@ where
                 '#' => self.lex_comment(),
                 '\n' => self.make_token(Token::Newline),
                 c if c.is_ascii_digit() => self.lex_number(),
-                c if c.is_ascii_alphabetic() => self.lex_identifier(),
+                c if c.is_ascii_alphabetic() => self.lex_symbol(),
                 c => self.make_error(LexError::UnexpectedCharacter(c)),
             },
         }
@@ -134,9 +134,9 @@ where
         self.make_token(Token::Number)
     }
 
-    fn lex_identifier(&mut self) -> LexTokenResult {
+    fn lex_symbol(&mut self) -> LexTokenResult {
         self.next_chars_while(char::is_ascii_alphanumeric);
-        self.make_token(Token::Identifier)
+        self.make_token(Token::Symbol)
     }
 
     fn lex_comment(&mut self) -> LexTokenResult {
