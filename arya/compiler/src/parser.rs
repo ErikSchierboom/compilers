@@ -88,7 +88,7 @@ macro_rules! primitive {
     };
 }
 
-// Define an enum for all built-in primitives with their stack signature
+// Defines an enum for built-in primitives (including their stack signature)
 primitive!(
     (2, 1, Add),
     (2, 1, Subtract),
@@ -256,6 +256,7 @@ where
         let start_span = self.span.clone();
         let mut elements: Vec<Spanned<Word>> = Vec::new();
 
+        // TODO: convert to helper function to parse something multiple times
         loop {
             match self.current_token() {
                 None => return self.make_error(ParseError::UnterminatedArray),
