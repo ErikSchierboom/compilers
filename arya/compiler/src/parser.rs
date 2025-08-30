@@ -146,45 +146,93 @@ where
     }
 
     fn parse_word(&mut self) -> Option<ParseWordResult> {
-        match self.next_token()? {
-            Err(lex_error) => Some(self.make_error(Lex(lex_error.value))),
-            Ok(token) => match token.value {
-                Token::Symbol => Some(self.parse_identifier()),
-                Token::Number => Some(self.parse_integer()),
-                Token::OpenBracket => Some(self.parse_array()),
-                Token::Plus => Some(self.parse_primitive_function(PrimitiveFunction::Add)),
-                Token::Minus => Some(self.parse_primitive_function(PrimitiveFunction::Subtract)),
-                Token::Star => Some(self.parse_primitive_function(PrimitiveFunction::Multiply)),
-                Token::Slash => Some(self.parse_primitive_function(PrimitiveFunction::Divide)),
-                Token::Ampersand => Some(self.parse_primitive_function(PrimitiveFunction::And)),
-                Token::Pipe => Some(self.parse_primitive_function(PrimitiveFunction::Or)),
-                Token::Caret => Some(self.parse_primitive_function(PrimitiveFunction::Xor)),
-                Token::Bang => Some(self.parse_primitive_function(PrimitiveFunction::Not)),
-                Token::Underscore => Some(self.parse_primitive_function(PrimitiveFunction::Negate)),
-                Token::Equal => Some(self.parse_primitive_function(PrimitiveFunction::Equal)),
-                Token::NotEqual => Some(self.parse_primitive_function(PrimitiveFunction::NotEqual)),
-                Token::Greater => Some(self.parse_primitive_function(PrimitiveFunction::Greater)),
+        match self.current_token()? {
+            Err(lex_error) => {
+                let error = lex_error.value.clone(); // only clone the value, not the whole result
+                self.advance();
+                Some(self.make_error(Lex(error)))
+            }
+            Ok(token) => match &token.value {
+                Token::Symbol => {
+                    self.advance();
+                    Some(self.parse_identifier())
+                }
+                Token::Number => {
+                    self.advance();
+                    Some(self.parse_integer())
+                }
+                Token::OpenBracket => {
+                    self.advance();
+                    Some(self.parse_array())
+                }
+                Token::OpenParenthesis => todo!(),
+                Token::Plus => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Add))
+                }
+                Token::Minus => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Subtract))
+                }
+                Token::Star => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Multiply))
+                }
+                Token::Slash => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Divide))
+                }
+                Token::Ampersand => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::And))
+                }
+                Token::Pipe => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Or))
+                }
+                Token::Caret => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Xor))
+                }
+                Token::Bang => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Not))
+                }
+                Token::Underscore => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Negate))
+                }
+                Token::Equal => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Equal))
+                }
+                Token::NotEqual => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::NotEqual))
+                }
+                Token::Greater => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Greater))
+                }
                 Token::GreaterEqual => {
+                    self.advance();
                     Some(self.parse_primitive_function(PrimitiveFunction::GreaterEqual))
                 }
-                Token::Less => Some(self.parse_primitive_function(PrimitiveFunction::Less)),
+                Token::Less => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Less))
+                }
                 Token::LessEqual => {
+                    self.advance();
                     Some(self.parse_primitive_function(PrimitiveFunction::LessEqual))
                 }
-                Token::CloseBracket => Some(self.make_error(ParseError::Unexpected(token.value))),
-                Token::Colon => Some(self.make_error(ParseError::Unexpected(token.value))),
-                Token::Comment => Some(self.parse_comment()),
-                Token::Newline | Token::EndOfFile => None,
-
-                Token::OpenParenthesis => todo!(),
-                Token::CloseParenthesis => todo!(),
+                _ => {
+                    let actual_token = token.value.clone();
+                    self.advance();
+                    Some(self.make_error(ParseError::Unexpected(actual_token)))
+                }
             },
         }
-    }
-
-    fn parse_comment(&mut self) -> ParseWordResult {
-        let comment = self.lexeme(&self.span).to_string();
-        self.make_word(Word::Comment(comment))
     }
 
     fn parse_integer(&mut self) -> ParseWordResult {
@@ -211,16 +259,22 @@ where
         let mut elements: Vec<Spanned<Word>> = Vec::new();
 
         loop {
-            match self.next_token() {
+            match self.current_token() {
                 None => return self.make_error(ParseError::UnterminatedArray),
-                Some(Err(lex_error)) => return self.make_error(Lex(lex_error.value)),
+                Some(Err(lex_error)) => {
+                    let error = lex_error.value.clone();
+                    self.advance();
+                    return self.make_error(Lex(error));
+                }
                 Some(Ok(token)) if token.value == Token::CloseBracket => {
+                    self.advance();
                     self.span = start_span.merge(&self.span);
                     return self.make_word(Word::Array(elements));
                 }
-                Some(Ok(token)) => match self.item(token)? {
-                    Err(error) => return self.make_error(error),
-                    Ok(element) => elements.push(element),
+                Some(Ok(_)) => match self.parse_word() {
+                    None => return self.make_error(ParseError::UnterminatedArray),
+                    Some(Err(error)) => return self.make_error(error.value),
+                    Some(Ok(element)) => elements.push(element),
                 },
             }
         }
@@ -238,26 +292,14 @@ where
         &self.source_code[span.position as usize..(span.position + span.length as u32) as usize]
     }
 
-    fn next_token(&mut self) -> Option<LexTokenResult> {
-        self.next_token_if(|_| true)
+    fn current_token(&mut self) -> Option<&LexTokenResult> {
+        self.tokens.peek()
     }
 
-    fn next_token_matches(&mut self, expected: &Token) -> Option<LexTokenResult> {
-        self.next_token_if(|token| token == expected)
-    }
-
-    fn next_token_while(&mut self, func: impl Fn(&Token) -> bool) {
-        while self.next_token_if(&func).is_some() {}
-    }
-
-    fn next_token_if(&mut self, func: impl Fn(&Token) -> bool) -> Option<LexTokenResult> {
-        todo!()
-        // self.tokens
-        //     .next_if(|lex_result| match lex_result {
-        //         Ok(token) => func(&token.value),
-        //         _ => false,
-        //     })
-        //     .inspect(|lex_result| self.update_span(lex_result))
+    fn advance(&mut self) {
+        self.tokens
+            .next()
+            .inspect(|lex_result| self.update_span(lex_result));
     }
 
     fn update_span(&mut self, token_result: &LexTokenResult) {

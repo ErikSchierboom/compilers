@@ -1,5 +1,5 @@
 use crate::location::{Span, Spanned};
-use crate::parser::{parse, ParseError, ParseWordResult, Word};
+use crate::parser::{parse, ParseError, ParseWordResult, PrimitiveFunction, Word};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -206,31 +206,31 @@ where
         Ok(())
     }
 
-    fn primitive(&mut self, op: &Primitive) -> EvaluateResult {
+    fn primitive(&mut self, op: &PrimitiveFunction) -> EvaluateResult {
         match op {
-            Primitive::Add => self.binary_operation(|l, r| l + r),
-            Primitive::Subtract => self.binary_operation(|l, r| l - r),
-            Primitive::Multiply => self.binary_operation(|l, r| l * r),
-            Primitive::Divide => self.binary_operation(|l, r| l / r),
-            Primitive::And => self.binary_operation(|l, r| l & r),
-            Primitive::Or => self.binary_operation(|l, r| l | r),
-            Primitive::Xor => self.binary_operation(|l, r| l ^ r),
-            Primitive::Equal => self.binary_operation(|l, r| (l == r) as i64),
-            Primitive::NotEqual => self.binary_operation(|l, r| (l != r) as i64),
-            Primitive::Greater => self.binary_operation(|l, r| (l > r) as i64),
-            Primitive::GreaterEqual => self.binary_operation(|l, r| (l >= r) as i64),
-            Primitive::Less => self.binary_operation(|l, r| (l < r) as i64),
-            Primitive::LessEqual => self.binary_operation(|l, r| (l <= r) as i64),
-            Primitive::Not => self.unary_operation(|value| !value),
-            Primitive::Negate => self.unary_operation(|value| -value),
-            Primitive::Dup => {
+            PrimitiveFunction::Add => self.binary_operation(|l, r| l + r),
+            PrimitiveFunction::Subtract => self.binary_operation(|l, r| l - r),
+            PrimitiveFunction::Multiply => self.binary_operation(|l, r| l * r),
+            PrimitiveFunction::Divide => self.binary_operation(|l, r| l / r),
+            PrimitiveFunction::And => self.binary_operation(|l, r| l & r),
+            PrimitiveFunction::Or => self.binary_operation(|l, r| l | r),
+            PrimitiveFunction::Xor => self.binary_operation(|l, r| l ^ r),
+            PrimitiveFunction::Equal => self.binary_operation(|l, r| (l == r) as i64),
+            PrimitiveFunction::NotEqual => self.binary_operation(|l, r| (l != r) as i64),
+            PrimitiveFunction::Greater => self.binary_operation(|l, r| (l > r) as i64),
+            PrimitiveFunction::GreaterEqual => self.binary_operation(|l, r| (l >= r) as i64),
+            PrimitiveFunction::Less => self.binary_operation(|l, r| (l < r) as i64),
+            PrimitiveFunction::LessEqual => self.binary_operation(|l, r| (l <= r) as i64),
+            PrimitiveFunction::Not => self.unary_operation(|value| !value),
+            PrimitiveFunction::Negate => self.unary_operation(|value| -value),
+            PrimitiveFunction::Dup => {
                 self.unary_stack_operation(|value| vec![value.clone(), value.clone()])
             }
-            Primitive::Drop => self.unary_stack_operation(|_| vec![]),
-            Primitive::Swap => {
+            PrimitiveFunction::Drop => self.unary_stack_operation(|_| vec![]),
+            PrimitiveFunction::Swap => {
                 self.binary_stack_operation(|lhs, rhs| vec![rhs.clone(), lhs.clone()])
             }
-            Primitive::Over => {
+            PrimitiveFunction::Over => {
                 self.binary_stack_operation(|lhs, rhs| vec![lhs.clone(), rhs.clone(), lhs.clone()])
             }
         }

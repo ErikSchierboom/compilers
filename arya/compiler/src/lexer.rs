@@ -41,17 +41,12 @@ pub enum Token {
     Pipe,
     Bang,
     Underscore,
-    Colon,
     Equal,
     NotEqual,
     Greater,
     GreaterEqual,
     Less,
     LessEqual,
-
-    // Trivia
-    Newline,
-    Comment,
 
     // Synthetic
     EndOfFile,
@@ -102,7 +97,6 @@ where
                 '|' => self.make_token(Token::Pipe),
                 '_' => self.make_token(Token::Underscore),
                 '=' => self.make_token(Token::Equal),
-                ':' => self.make_token(Token::Colon),
                 '!' => {
                     if self.next_if_char_matches('=') {
                         self.make_token(Token::NotEqual)
@@ -124,8 +118,6 @@ where
                         self.make_token(Token::Less)
                     }
                 }
-                '#' => self.lex_comment(),
-                '\n' => self.make_token(Token::Newline),
                 c if c.is_ascii_digit() => self.lex_number(),
                 c if c.is_ascii_alphabetic() => self.lex_symbol(),
                 c => self.make_error(LexError::UnexpectedCharacter(c)),
@@ -143,13 +135,8 @@ where
         self.make_token(Token::Symbol)
     }
 
-    fn lex_comment(&mut self) -> LexTokenResult {
-        self.next_while_chars_match(|&c| c != '\n');
-        self.make_token(Token::Comment)
-    }
-
     fn skip_whitespace(&mut self) {
-        self.next_while_chars_match(|&c| c != '\n' && c.is_ascii_whitespace());
+        self.next_while_chars_match(char::is_ascii_whitespace);
     }
 
     fn make_token(&mut self, token: Token) -> LexTokenResult {
