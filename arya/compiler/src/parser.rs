@@ -46,7 +46,6 @@ pub enum Word {
     Symbol(String),
     Array(Vec<Spanned<Word>>),
     Function(Box<Function>),
-    Comment(String),
 }
 
 impl Word {
@@ -56,7 +55,6 @@ impl Word {
             Word::Array(_) => Signature::new(0, 1),
             Word::Symbol(_) => Signature::new(0, 1),
             Word::Function(function) => function.to_owned().signature(),
-            Word::Comment(_) => Signature::new(0, 0),
         }
     }
 }

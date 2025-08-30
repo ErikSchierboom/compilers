@@ -1,5 +1,7 @@
 use crate::location::{Span, Spanned};
-use crate::parser::{parse, ParseError, ParseWordResult, PrimitiveFunction, Word};
+use crate::parser::{
+    parse, AnonymousFunction, Function, ParseError, ParseWordResult, PrimitiveFunction, Word,
+};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -11,8 +13,8 @@ pub enum RuntimeError {
     InvalidNumberOfArguments(u8, u8),
     IncompatibleShapes,
     DifferentArrayElementShapes,
-    UnknownIdentifier(String),
-    IdentifierAlreadyExists(String),
+    UnknownSymbol(String),
+    SymbolAlreadyExists(String),
 }
 
 impl Display for RuntimeError {
@@ -26,8 +28,8 @@ impl Display for RuntimeError {
             RuntimeError::DifferentArrayElementShapes => {
                 write!(f, "Not all rows in the array have the same shape")
             }
-            RuntimeError::UnknownIdentifier(name) => write!(f, "Unknown identifier: {name}"),
-            RuntimeError::IdentifierAlreadyExists(name) => {
+            RuntimeError::UnknownSymbol(name) => write!(f, "Unknown identifier: {name}"),
+            RuntimeError::SymbolAlreadyExists(name) => {
                 write!(f, "Identifier already exists: {name}")
             }
         }
@@ -158,47 +160,41 @@ where
     }
 
     pub fn interpret(&mut self) -> InterpretResult {
-        todo!()
-        // while let Some(node) = self.nodes.next() {
-        //     match node {
-        //         Ok(node) => {
-        //             self.span = node.span.clone();
-        //             self.evaluate(&node)?
-        //         }
-        //         Err(error) => {
-        //             self.span = error.span.clone();
-        //             return Err(self.spanned(RuntimeError::Parse(error.value)));
-        //         }
-        //     }
-        // }
-        //
-        // Ok(self.stack.clone())
+        while let Some(node) = self.nodes.next() {
+            match node {
+                Ok(node) => {
+                    self.span = node.span.clone();
+                    self.evaluate(&node)?
+                }
+                Err(error) => {
+                    self.span = error.span.clone();
+                    return Err(self.spanned(RuntimeError::Parse(error.value)));
+                }
+            }
+        }
+
+        Ok(self.stack.clone())
     }
 
-    // fn evaluate(&mut self, node: &Spanned<Word>) -> EvaluateResult {
-    //     match &node.value {
-    //         Word::Integer(i) => self.integer(i),
-    //         Word::Primitive(op) => self.primitive(op),
-    //         Word::Array(elements) => self.array(elements),
-    //         Word::Identifier(name) => {
-    //             let binding = &self.bindings.get_mut(name);
-    //             match binding {
-    //                 None => self.error(RuntimeError::UnknownIdentifier(name.clone())),
-    //                 Some(nodes) => {
-    //                     for node in nodes.to_vec() {
-    //                         self.evaluate(&node)?
-    //                     }
-    //                     Ok(())
-    //                 }
-    //             }
-    //         }
-    //         Word::Binding(name, body) => match self.bindings.insert(name.clone(), body.to_vec()) {
-    //             None => Ok(()),
-    //             Some(_) => self.error(RuntimeError::IdentifierAlreadyExists(name.clone())),
-    //         },
-    //         Word::Comment(_) | Word::Whitespace(_) => Ok(()),
-    //     }
-    // }
+    fn evaluate(&mut self, node: &Spanned<Word>) -> EvaluateResult {
+        match &node.value {
+            Word::Integer(i) => self.integer(i),
+            Word::Function(func) => self.function(&*func),
+            Word::Array(elements) => self.array(elements),
+            Word::Symbol(name) => {
+                let binding = &self.bindings.get_mut(name);
+                match binding {
+                    None => self.error(RuntimeError::UnknownSymbol(name.clone())),
+                    Some(nodes) => {
+                        for node in nodes.to_vec() {
+                            self.evaluate(&node)?
+                        }
+                        Ok(())
+                    }
+                }
+            }
+        }
+    }
 
     fn integer(&mut self, i: &i64) -> EvaluateResult {
         let value = Value::Array(Array::scalar(i.clone()));
@@ -206,8 +202,19 @@ where
         Ok(())
     }
 
-    fn primitive(&mut self, op: &PrimitiveFunction) -> EvaluateResult {
-        match op {
+    fn function(&mut self, func: &Function) -> EvaluateResult {
+        match func {
+            Function::Anonymous(anonymous_func) => self.anonymous_function(anonymous_func),
+            Function::Primitive(primitive_func) => self.primitive_function(primitive_func),
+        }
+    }
+
+    fn anonymous_function(&mut self, func: &AnonymousFunction) -> EvaluateResult {
+        todo!()
+    }
+
+    fn primitive_function(&mut self, func: &PrimitiveFunction) -> EvaluateResult {
+        match func {
             PrimitiveFunction::Add => self.binary_operation(|l, r| l + r),
             PrimitiveFunction::Subtract => self.binary_operation(|l, r| l - r),
             PrimitiveFunction::Multiply => self.binary_operation(|l, r| l * r),
@@ -237,36 +244,35 @@ where
     }
 
     fn array(&mut self, elements: &Vec<Spanned<Word>>) -> EvaluateResult {
-        todo!()
-        // let mut array_shape: Option<Shape> = None;
-        // let mut array_values: Vec<i64> = Vec::new();
-        //
-        // for spanned_element in elements {
-        //     self.evaluate(spanned_element)?;
-        //     let spanned_value = self.pop().unwrap();
-        //     match spanned_value.value {
-        //         Value::Array(array) => {
-        //             let value_shape = array.shape;
-        //             let existing_shape = array_shape.get_or_insert(value_shape.clone());
-        //             if *existing_shape != value_shape {
-        //                 self.span = spanned_element.span.clone();
-        //                 return self.error(RuntimeError::DifferentArrayElementShapes);
-        //             }
-        //
-        //             for integer in array.values {
-        //                 array_values.push(integer)
-        //             }
-        //         }
-        //     }
-        // }
-        //
-        // let mut shape = array_shape.get_or_insert(Shape::SCALAR).clone();
-        // shape.prepend_dimension(elements.len());
-        //
-        // let value = Value::Array(Array::new(shape, array_values));
-        // self.push(value);
-        //
-        // Ok(())
+        let mut array_shape: Option<Shape> = None;
+        let mut array_values: Vec<i64> = Vec::new();
+
+        for spanned_element in elements {
+            self.evaluate(spanned_element)?;
+            let spanned_value = self.pop().unwrap();
+            match spanned_value.value {
+                Value::Array(array) => {
+                    let value_shape = array.shape;
+                    let existing_shape = array_shape.get_or_insert(value_shape.clone());
+                    if *existing_shape != value_shape {
+                        self.span = spanned_element.span.clone();
+                        return self.error(RuntimeError::DifferentArrayElementShapes);
+                    }
+
+                    for integer in array.values {
+                        array_values.push(integer)
+                    }
+                }
+            }
+        }
+
+        let mut shape = array_shape.get_or_insert(Shape::SCALAR).clone();
+        shape.prepend_dimension(elements.len());
+
+        let value = Value::Array(Array::new(shape, array_values));
+        self.push(value);
+
+        Ok(())
     }
 
     fn comment(&self) -> Option<ParseWordResult> {
