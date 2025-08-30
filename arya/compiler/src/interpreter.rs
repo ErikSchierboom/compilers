@@ -1,5 +1,5 @@
 use crate::location::{Span, Spanned};
-use crate::parser::{parse, ParseError, ParseWordResult, Primitive, Word};
+use crate::parser::{parse, ParseError, ParseWordResult, Word};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Display, Formatter};

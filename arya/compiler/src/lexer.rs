@@ -28,6 +28,8 @@ pub enum Token {
     // Delimiters
     OpenBracket,
     CloseBracket,
+    OpenParenthesis,
+    CloseParenthesis,
 
     // Symbols
     Plus,
@@ -89,6 +91,8 @@ where
             Some(c) => match c {
                 '[' => self.make_token(Token::OpenBracket),
                 ']' => self.make_token(Token::CloseBracket),
+                '(' => self.make_token(Token::OpenParenthesis),
+                ')' => self.make_token(Token::CloseParenthesis),
                 '+' => self.make_token(Token::Plus),
                 '-' => self.make_token(Token::Minus),
                 '*' => self.make_token(Token::Star),
@@ -100,21 +104,21 @@ where
                 '=' => self.make_token(Token::Equal),
                 ':' => self.make_token(Token::Colon),
                 '!' => {
-                    if self.next_char_matches('=') {
+                    if self.next_if_char_matches('=') {
                         self.make_token(Token::NotEqual)
                     } else {
                         self.make_token(Token::Bang)
                     }
                 }
                 '>' => {
-                    if self.next_char_matches('=') {
+                    if self.next_if_char_matches('=') {
                         self.make_token(Token::GreaterEqual)
                     } else {
                         self.make_token(Token::Greater)
                     }
                 }
                 '<' => {
-                    if self.next_char_matches('=') {
+                    if self.next_if_char_matches('=') {
                         self.make_token(Token::LessEqual)
                     } else {
                         self.make_token(Token::Less)
@@ -130,22 +134,22 @@ where
     }
 
     fn lex_number(&mut self) -> LexTokenResult {
-        self.next_chars_while(char::is_ascii_digit);
+        self.next_while_chars_match(char::is_ascii_digit);
         self.make_token(Token::Number)
     }
 
     fn lex_symbol(&mut self) -> LexTokenResult {
-        self.next_chars_while(char::is_ascii_alphanumeric);
+        self.next_while_chars_match(char::is_ascii_alphanumeric);
         self.make_token(Token::Symbol)
     }
 
     fn lex_comment(&mut self) -> LexTokenResult {
-        self.next_chars_while(|&c| c != '\n');
+        self.next_while_chars_match(|&c| c != '\n');
         self.make_token(Token::Comment)
     }
 
     fn skip_whitespace(&mut self) {
-        self.next_chars_while(|&c| c != '\n' && c.is_ascii_whitespace());
+        self.next_while_chars_match(|&c| c != '\n' && c.is_ascii_whitespace());
     }
 
     fn make_token(&mut self, token: Token) -> LexTokenResult {
@@ -168,16 +172,16 @@ where
         self.next_char_if(|_| true)
     }
 
-    fn next_chars_while(&mut self, predicate: impl Fn(&char) -> bool) {
+    fn next_char_if(&mut self, predicate: impl Fn(&char) -> bool) -> Option<char> {
+        self.chars.next_if(predicate).inspect(|_| self.length += 1)
+    }
+
+    fn next_while_chars_match(&mut self, predicate: impl Fn(&char) -> bool) {
         while self.next_char_if(&predicate).is_some() {}
     }
 
-    fn next_char_matches(&mut self, expected: char) -> bool {
+    fn next_if_char_matches(&mut self, expected: char) -> bool {
         self.next_char_if(|&c| c == expected).is_some()
-    }
-
-    fn next_char_if(&mut self, predicate: impl Fn(&char) -> bool) -> Option<char> {
-        self.chars.next_if(predicate).inspect(|_| self.length += 1)
     }
 }
 
