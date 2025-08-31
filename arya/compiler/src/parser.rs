@@ -72,7 +72,7 @@ pub struct AnonymousFunction {
 }
 
 macro_rules! primitive {
-    ($( ($inputs:expr, $outputs:expr, $name:ident) ),* $(,)?) => {
+    ($( ($num_inputs:expr, $num_outputs:expr, $name:ident) ),* $(,)?) => {
         #[derive(Clone, Debug)]
         pub enum PrimitiveFunction {
             $($name),*
@@ -81,14 +81,14 @@ macro_rules! primitive {
         impl PrimitiveFunction {
             pub fn signature(&self) -> Signature {
                 match self {
-                    $( PrimitiveFunction::$name => Signature::new($inputs, $outputs), )*
+                    $( PrimitiveFunction::$name => Signature::new($num_inputs, $num_outputs), )*
                 }
             }
         }
     };
 }
 
-// Defines an enum for built-in primitives (including their stack signature)
+// Defines an enum for built-in primitives using the format: (num_inputs, num_outputs, name)
 primitive!(
     (2, 1, Add),
     (2, 1, Subtract),
