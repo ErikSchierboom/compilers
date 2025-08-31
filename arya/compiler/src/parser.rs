@@ -1,5 +1,6 @@
 use crate::lexer::{tokenize, LexError, LexTokenResult, Token};
 use crate::location::{Span, Spanned};
+use crate::parser::Function::Anonymous;
 use crate::parser::ParseError::Lex;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -27,16 +28,24 @@ impl Error for ParseError {}
 
 #[derive(Clone, Debug)]
 pub struct Signature {
-    pub num_arguments: u8,
+    pub num_inputs: u8,
     pub num_outputs: u8,
 }
 
 impl Signature {
-    pub fn new(num_arguments: u8, num_outputs: u8) -> Self {
+    pub fn new(num_inputs: u8, num_outputs: u8) -> Self {
         Self {
-            num_arguments,
+            num_inputs,
             num_outputs,
         }
+    }
+
+    pub fn from_words(words: &Vec<Spanned<Word>>) -> Self {
+        // let num_inputs = words.iter().map(|word| word.value.signature()).sum();
+        // let num_outputs = words.iter().map(|word| word.value.signature()).sum();
+
+        // TODO:
+        Self::new(0, 0)
     }
 }
 
@@ -68,7 +77,13 @@ pub enum Function {
 #[derive(Clone, Debug)]
 pub struct AnonymousFunction {
     pub signature: Signature,
-    pub body: Vec<Word>,
+    pub body: Vec<Spanned<Word>>,
+}
+
+impl AnonymousFunction {
+    pub fn new(signature: Signature, body: Vec<Spanned<Word>>) -> Self {
+        Self { signature, body }
+    }
 }
 
 macro_rules! primitive {
@@ -120,7 +135,8 @@ impl Function {
     }
 }
 
-pub type ParseWordResult = Result<Spanned<Word>, Spanned<ParseError>>;
+pub type ParseWordResult = ParseResult<Spanned<Word>>;
+type ParseResult<T> = Result<T, Spanned<ParseError>>;
 
 pub struct Parser<'a, TTokens>
 where
@@ -150,7 +166,7 @@ where
                 Token::Symbol => Some(self.parse_identifier()),
                 Token::Number => Some(self.parse_integer()),
                 Token::OpenBracket => Some(self.parse_array()),
-                Token::OpenParenthesis => todo!(),
+                Token::OpenParenthesis => Some(self.parse_anonymous_function()),
                 Token::Plus => Some(self.parse_primitive_function(PrimitiveFunction::Add)),
                 Token::Minus => Some(self.parse_primitive_function(PrimitiveFunction::Subtract)),
                 Token::Star => Some(self.parse_primitive_function(PrimitiveFunction::Multiply)),
@@ -192,6 +208,14 @@ where
 
     fn parse_array(&mut self) -> ParseWordResult {
         self.parse_delimited(Word::Array, Token::CloseBracket)
+    }
+
+    fn parse_anonymous_function(&mut self) -> ParseWordResult {
+        self.parse_delimited(|words| {
+            let signature = Signature::from_words(&words);
+            let anonymous_function = AnonymousFunction::new(signature, words);
+            Word::Function(Box::new(Anonymous(anonymous_function)))
+        }, Token::CloseParenthesis)
     }
 
     fn parse_delimited(

@@ -2,7 +2,7 @@ use crate::location::{Span, Spanned};
 use crate::parser::{
     parse, AnonymousFunction, Function, ParseError, ParseWordResult, PrimitiveFunction, Word,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
@@ -141,6 +141,7 @@ where
     T: Iterator<Item=ParseWordResult>,
 {
     nodes: Peekable<T>,
+    queue: VecDeque<T::Item>,
     bindings: HashMap<String, Vec<Spanned<Word>>>,
     stack: Vec<Spanned<Value>>,
     span: Span,
@@ -153,6 +154,7 @@ where
     pub fn new(nodes: T) -> Self {
         Self {
             nodes: nodes.peekable(),
+            queue: VecDeque::new(),
             bindings: HashMap::new(),
             stack: Vec::new(),
             span: Span::EMPTY,
@@ -160,7 +162,7 @@ where
     }
 
     pub fn interpret(&mut self) -> InterpretResult {
-        while let Some(node) = self.nodes.next() {
+        while let Some(node) = self.next() {
             match node {
                 Ok(node) => {
                     self.span = node.span.clone();
@@ -174,6 +176,14 @@ where
         }
 
         Ok(self.stack.clone())
+    }
+
+    fn next(&mut self) -> Option<ParseWordResult> {
+        let x = self.nodes.next();
+        let y = self.queue.pop_front();
+        None
+        // self.queue.pop_front().or(|| )
+
     }
 
     fn evaluate(&mut self, node: &Spanned<Word>) -> EvaluateResult {
