@@ -1,6 +1,6 @@
 use crate::location::{Span, Spanned};
 use crate::parser::{
-    AnonymousFunction, Function, ParseError, ParseWordResult, PrimitiveFunction, Word, parse,
+    parse, AnonymousFunction, Function, ParseError, ParseWordResult, PrimitiveFunction, Word,
 };
 use std::collections::HashMap;
 use std::error::Error;
@@ -138,7 +138,7 @@ pub type InterpretResult = Result<Vec<Spanned<Value>>, Spanned<RuntimeError>>;
 
 pub struct Interpreter<T>
 where
-    T: Iterator<Item = ParseWordResult>,
+    T: Iterator<Item=ParseWordResult>,
 {
     nodes: Peekable<T>,
     bindings: HashMap<String, Vec<Spanned<Word>>>,
@@ -148,7 +148,7 @@ where
 
 impl<T> Interpreter<T>
 where
-    T: Iterator<Item = ParseWordResult>,
+    T: Iterator<Item=ParseWordResult>,
 {
     pub fn new(nodes: T) -> Self {
         Self {
@@ -273,14 +273,6 @@ where
         self.push(value);
 
         Ok(())
-    }
-
-    fn comment(&self) -> Option<ParseWordResult> {
-        todo!()
-    }
-
-    fn whitepace(&self) -> Option<ParseWordResult> {
-        todo!()
     }
 
     fn push(&mut self, value: Value) {

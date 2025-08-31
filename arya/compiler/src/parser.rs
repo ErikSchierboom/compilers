@@ -1,4 +1,4 @@
-use crate::lexer::{LexError, LexTokenResult, Token, tokenize};
+use crate::lexer::{tokenize, LexError, LexTokenResult, Token};
 use crate::location::{Span, Spanned};
 use crate::parser::ParseError::Lex;
 use std::error::Error;
@@ -10,7 +10,7 @@ use std::str::FromStr;
 pub enum ParseError {
     Lex(LexError),
     Unexpected(Token),
-    UnterminatedArray,
+    Expected(Token),
 }
 
 impl Display for ParseError {
@@ -18,7 +18,7 @@ impl Display for ParseError {
         match self {
             Lex(lex_error) => write!(f, "{lex_error}"),
             ParseError::Unexpected(token) => write!(f, "Unexpected token: {:?}", token),
-            ParseError::UnterminatedArray => write!(f, "Unterminated array"),
+            ParseError::Expected(token) => write!(f, "Expected token: {:?}", token),
         }
     }
 }
@@ -124,7 +124,7 @@ pub type ParseWordResult = Result<Spanned<Word>, Spanned<ParseError>>;
 
 pub struct Parser<'a, TTokens>
 where
-    TTokens: Iterator<Item = LexTokenResult>,
+    TTokens: Iterator<Item=LexTokenResult>,
 {
     source_code: &'a str,
     tokens: Peekable<TTokens>,
@@ -133,7 +133,7 @@ where
 
 impl<'a, TTokens> Parser<'a, TTokens>
 where
-    TTokens: Iterator<Item = LexTokenResult>,
+    TTokens: Iterator<Item=LexTokenResult>,
 {
     fn new(source_code: &'a str, tokens: TTokens) -> Self {
         Parser {
@@ -144,91 +144,29 @@ where
     }
 
     fn parse_word(&mut self) -> Option<ParseWordResult> {
-        match self.current_token()? {
-            Err(lex_error) => {
-                let error = lex_error.value.clone(); // only clone the value, not the whole result
-                self.advance();
-                Some(self.make_error(Lex(error)))
-            }
+        match self.next()? {
+            Err(lex_error) => Some(self.make_error(Lex(lex_error.value.clone()))),
             Ok(token) => match &token.value {
-                Token::Symbol => {
-                    self.advance();
-                    Some(self.parse_identifier())
-                }
-                Token::Number => {
-                    self.advance();
-                    Some(self.parse_integer())
-                }
-                Token::OpenBracket => {
-                    self.advance();
-                    Some(self.parse_array())
-                }
+                Token::Symbol => Some(self.parse_identifier()),
+                Token::Number => Some(self.parse_integer()),
+                Token::OpenBracket => Some(self.parse_array()),
                 Token::OpenParenthesis => todo!(),
-                Token::Plus => {
-                    self.advance();
-                    Some(self.parse_primitive_function(PrimitiveFunction::Add))
-                }
-                Token::Minus => {
-                    self.advance();
-                    Some(self.parse_primitive_function(PrimitiveFunction::Subtract))
-                }
-                Token::Star => {
-                    self.advance();
-                    Some(self.parse_primitive_function(PrimitiveFunction::Multiply))
-                }
-                Token::Slash => {
-                    self.advance();
-                    Some(self.parse_primitive_function(PrimitiveFunction::Divide))
-                }
-                Token::Ampersand => {
-                    self.advance();
-                    Some(self.parse_primitive_function(PrimitiveFunction::And))
-                }
-                Token::Pipe => {
-                    self.advance();
-                    Some(self.parse_primitive_function(PrimitiveFunction::Or))
-                }
-                Token::Caret => {
-                    self.advance();
-                    Some(self.parse_primitive_function(PrimitiveFunction::Xor))
-                }
-                Token::Bang => {
-                    self.advance();
-                    Some(self.parse_primitive_function(PrimitiveFunction::Not))
-                }
-                Token::Underscore => {
-                    self.advance();
-                    Some(self.parse_primitive_function(PrimitiveFunction::Negate))
-                }
-                Token::Equal => {
-                    self.advance();
-                    Some(self.parse_primitive_function(PrimitiveFunction::Equal))
-                }
-                Token::NotEqual => {
-                    self.advance();
-                    Some(self.parse_primitive_function(PrimitiveFunction::NotEqual))
-                }
-                Token::Greater => {
-                    self.advance();
-                    Some(self.parse_primitive_function(PrimitiveFunction::Greater))
-                }
-                Token::GreaterEqual => {
-                    self.advance();
-                    Some(self.parse_primitive_function(PrimitiveFunction::GreaterEqual))
-                }
-                Token::Less => {
-                    self.advance();
-                    Some(self.parse_primitive_function(PrimitiveFunction::Less))
-                }
-                Token::LessEqual => {
-                    self.advance();
-                    Some(self.parse_primitive_function(PrimitiveFunction::LessEqual))
-                }
-                _ => {
-                    let actual_token = token.value.clone();
-                    self.advance();
-                    Some(self.make_error(ParseError::Unexpected(actual_token)))
-                }
+                Token::Plus => Some(self.parse_primitive_function(PrimitiveFunction::Add)),
+                Token::Minus => Some(self.parse_primitive_function(PrimitiveFunction::Subtract)),
+                Token::Star => Some(self.parse_primitive_function(PrimitiveFunction::Multiply)),
+                Token::Slash => Some(self.parse_primitive_function(PrimitiveFunction::Divide)),
+                Token::Ampersand => Some(self.parse_primitive_function(PrimitiveFunction::And)),
+                Token::Pipe => Some(self.parse_primitive_function(PrimitiveFunction::Or)),
+                Token::Caret => Some(self.parse_primitive_function(PrimitiveFunction::Xor)),
+                Token::Bang => Some(self.parse_primitive_function(PrimitiveFunction::Not)),
+                Token::Underscore => Some(self.parse_primitive_function(PrimitiveFunction::Negate)),
+                Token::Equal => Some(self.parse_primitive_function(PrimitiveFunction::Equal)),
+                Token::NotEqual => Some(self.parse_primitive_function(PrimitiveFunction::NotEqual)),
+                Token::Greater => Some(self.parse_primitive_function(PrimitiveFunction::Greater)),
+                Token::GreaterEqual => Some(self.parse_primitive_function(PrimitiveFunction::GreaterEqual)),
+                Token::Less => Some(self.parse_primitive_function(PrimitiveFunction::Less)),
+                Token::LessEqual => Some(self.parse_primitive_function(PrimitiveFunction::LessEqual)),
+                _ => Some(self.make_error(ParseError::Unexpected(token.value.clone()))),
             },
         }
     }
@@ -253,25 +191,33 @@ where
     }
 
     fn parse_array(&mut self) -> ParseWordResult {
-        let start_span = self.span.clone();
-        let mut elements: Vec<Spanned<Word>> = Vec::new();
+        self.parse_delimited(Word::Array, Token::CloseBracket)
+    }
 
-        // TODO: convert to helper function to parse something multiple times
+    fn parse_delimited(
+        &mut self,
+        word: impl Fn(Vec<Spanned<Word>>) -> Word,
+        closing_token: Token,
+    ) -> ParseWordResult
+    {
+        let start_span = self.span.clone();
+        let mut elements = Vec::new();
+
         loop {
-            match self.current_token() {
-                None => return self.make_error(ParseError::UnterminatedArray),
+            match self.peek() {
+                None => return self.make_error(ParseError::Expected(closing_token)),
                 Some(Err(lex_error)) => {
                     let error = lex_error.value.clone();
-                    self.advance();
+                    self.next();
                     return self.make_error(Lex(error));
                 }
-                Some(Ok(token)) if token.value == Token::CloseBracket => {
-                    self.advance();
+                Some(Ok(token)) if token.value == closing_token => {
+                    self.next();
                     self.span = start_span.merge(&self.span);
-                    return self.make_word(Word::Array(elements));
+                    return self.make_word(word(elements));
                 }
                 Some(Ok(_)) => match self.parse_word() {
-                    None => return self.make_error(ParseError::UnterminatedArray),
+                    None => return self.make_error(ParseError::Expected(closing_token)),
                     Some(Err(error)) => return self.make_error(error.value),
                     Some(Ok(element)) => elements.push(element),
                 },
@@ -291,14 +237,14 @@ where
         &self.source_code[span.position as usize..(span.position + span.length as u32) as usize]
     }
 
-    fn current_token(&mut self) -> Option<&LexTokenResult> {
+    fn peek(&mut self) -> Option<&LexTokenResult> {
         self.tokens.peek()
     }
 
-    fn advance(&mut self) {
+    fn next(&mut self) -> Option<LexTokenResult> {
         self.tokens
             .next()
-            .inspect(|lex_result| self.update_span(lex_result));
+            .inspect(|lex_result| self.update_span(lex_result))
     }
 
     fn update_span(&mut self, token_result: &LexTokenResult) {
@@ -315,7 +261,7 @@ where
 
 impl<'a, TTokens> Iterator for Parser<'a, TTokens>
 where
-    TTokens: Iterator<Item = LexTokenResult>,
+    TTokens: Iterator<Item=LexTokenResult>,
 {
     type Item = ParseWordResult;
 
@@ -324,7 +270,7 @@ where
     }
 }
 
-pub fn parse(source: &str) -> impl Iterator<Item = ParseWordResult> + '_ {
+pub fn parse(source: &str) -> impl Iterator<Item=ParseWordResult> + '_ {
     let tokens = tokenize(source);
     Parser::new(source, tokens)
 }
