@@ -4,8 +4,9 @@ A toy array programming language written in Rust.
 
 ## TODO's
 
-- [ ] add stack-manipulation syntax instead of dedicated operators
-- [x] add basic stack operations
+- [ ] support windows newlines
+- [ ] bindings
+- [ ] embed stack signature in bindings and primitives
 - [ ] add virtual machine
 - [ ] add docs
 - [ ] add CI
@@ -17,4 +18,3 @@ A toy array programming language written in Rust.
 - [ ] WASM website
 - [ ] CLI
 - [ ] REPL
-- [x] Split into multiple crates

@@ -18,12 +18,20 @@ impl Display for LexError {
 
 impl Error for LexError {}
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Token {
+    // TODO: String
+    // TODO: Char
     Number,
-    Identifier,
+    Symbol,
+
+    // Delimiters
     OpenBracket,
     CloseBracket,
+    OpenParenthesis,
+    CloseParenthesis,
+
+    // Symbols
     Plus,
     Minus,
     Star,
@@ -39,33 +47,27 @@ pub enum Token {
     GreaterEqual,
     Less,
     LessEqual,
-    Dup,
-    Drop,
-    Swap,
-    Over,
-    Colon,
-    Newline,
-    Whitespace,
-    Comment,
+
+    // Synthetic
     EndOfFile,
 }
 
-pub type ParseTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
+pub type LexTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
 
-struct Lexer<T>
+struct Lexer<TChars>
 where
-    T: Iterator<Item = char>,
+    TChars: Iterator<Item = char>,
 {
-    chars: Peekable<T>,
+    chars: Peekable<TChars>,
     start: u32,
     length: u16,
 }
 
-impl<T> Lexer<T>
+impl<TChars> Lexer<TChars>
 where
-    T: Iterator<Item = char>,
+    TChars: Iterator<Item = char>,
 {
-    fn new(source_code: T) -> Self {
+    fn new(source_code: TChars) -> Self {
         Self {
             chars: source_code.peekable(),
             start: 0,
@@ -73,81 +75,76 @@ where
         }
     }
 
-    fn next_token(&mut self) -> ParseTokenResult {
+    fn lex_token(&mut self) -> LexTokenResult {
+        self.skip_whitespace();
+
         self.start += self.length as u32;
         self.length = 0;
 
         match self.next_char() {
-            None => self.token(Token::EndOfFile),
+            None => self.make_token(Token::EndOfFile),
             Some(c) => match c {
-                '[' => self.token(Token::OpenBracket),
-                ']' => self.token(Token::CloseBracket),
-                '+' => self.token(Token::Plus),
-                '-' => self.token(Token::Minus),
-                '*' => self.token(Token::Star),
-                '/' => self.token(Token::Slash),
-                '^' => self.token(Token::Caret),
-                '&' => self.token(Token::Ampersand),
-                '|' => self.token(Token::Pipe),
-                '_' => self.token(Token::Underscore),
-                '=' => self.token(Token::Equal),
-                ':' => self.token(Token::Colon),
-                '!' => 
-                    if self.next_char_if_match('=') {
-                    self.token(Token::NotEqual)
-                } else {
-                    self.token(Token::Bang)
-                },
-                '>' => if self.next_char_if_match('=') {
-                    self.token(Token::GreaterEqual)
-                } else {
-                    self.token(Token::Greater)
-                },
-                '<' => if self.next_char_if_match('=') {
-                    self.token(Token::LessEqual)
-                } else {
-                    self.token(Token::Less)
-                },
-                'd' if self.next_chars_if_match("up") => self.token(Token::Dup),
-                'd' if self.next_chars_if_match("rop") => self.token(Token::Drop),
-                's' if self.next_chars_if_match("wap") => self.token(Token::Swap),
-                'o' if self.next_chars_if_match("ver") => self.token(Token::Over),
-                '#' => self.comment(),
-                '\n' => self.token(Token::Newline),
-                c if c.is_ascii_whitespace() => self.whitespace(),
-                c if c.is_ascii_digit() => self.number(),
-                c if c.is_ascii_alphabetic() => self.identifier(),
-                c => self.error(LexError::UnexpectedCharacter(c)),
+                '[' => self.make_token(Token::OpenBracket),
+                ']' => self.make_token(Token::CloseBracket),
+                '(' => self.make_token(Token::OpenParenthesis),
+                ')' => self.make_token(Token::CloseParenthesis),
+                '+' => self.make_token(Token::Plus),
+                '-' => self.make_token(Token::Minus),
+                '*' => self.make_token(Token::Star),
+                '/' => self.make_token(Token::Slash),
+                '^' => self.make_token(Token::Caret),
+                '&' => self.make_token(Token::Ampersand),
+                '|' => self.make_token(Token::Pipe),
+                '_' => self.make_token(Token::Underscore),
+                '=' => self.make_token(Token::Equal),
+                '!' => {
+                    if self.next_if_char_matches('=') {
+                        self.make_token(Token::NotEqual)
+                    } else {
+                        self.make_token(Token::Bang)
+                    }
+                }
+                '>' => {
+                    if self.next_if_char_matches('=') {
+                        self.make_token(Token::GreaterEqual)
+                    } else {
+                        self.make_token(Token::Greater)
+                    }
+                }
+                '<' => {
+                    if self.next_if_char_matches('=') {
+                        self.make_token(Token::LessEqual)
+                    } else {
+                        self.make_token(Token::Less)
+                    }
+                }
+                c if c.is_ascii_digit() => self.lex_number(),
+                c if c.is_ascii_alphabetic() => self.lex_symbol(),
+                c => self.make_error(LexError::UnexpectedCharacter(c)),
             },
         }
     }
 
-    fn number(&mut self) -> ParseTokenResult {
-        self.next_chars_while(char::is_ascii_digit);
-        self.token(Token::Number)
+    fn lex_number(&mut self) -> LexTokenResult {
+        self.next_while_chars_match(char::is_ascii_digit);
+        self.make_token(Token::Number)
     }
 
-    fn identifier(&mut self) -> ParseTokenResult {
-        self.next_chars_while(char::is_ascii_alphanumeric);
-        self.token(Token::Identifier)
+    fn lex_symbol(&mut self) -> LexTokenResult {
+        self.next_while_chars_match(char::is_ascii_alphanumeric);
+        self.make_token(Token::Symbol)
     }
 
-    fn token(&mut self, token: Token) -> ParseTokenResult {
+    fn skip_whitespace(&mut self) {
+        self.next_while_chars_match(char::is_ascii_whitespace);
+    }
+
+    fn make_token(&mut self, token: Token) -> LexTokenResult {
         Ok(self.spanned(token))
     }
 
-    fn error(&mut self, error: LexError) -> ParseTokenResult {
+    fn make_error(&mut self, error: LexError) -> LexTokenResult {
         Err(self.spanned(error))
-    }
-
-    fn whitespace(&mut self) -> ParseTokenResult {
-        self.next_chars_while(|&c| c != '\n' && c.is_ascii_whitespace());
-        self.token(Token::Whitespace)
-    }
-
-    fn comment(&mut self) -> ParseTokenResult {
-        self.next_chars_while(|&c| c != '\n');
-        self.token(Token::Comment)
     }
 
     fn spanned<V>(&self, value: V) -> Spanned<V> {
@@ -162,31 +159,27 @@ where
         self.next_char_if(|_| true)
     }
 
-    fn next_chars_while(&mut self, func: impl Fn(&char) -> bool) {
-        while self.next_char_if(&func).is_some() {}
+    fn next_char_if(&mut self, predicate: impl Fn(&char) -> bool) -> Option<char> {
+        self.chars.next_if(predicate).inspect(|_| self.length += 1)
     }
 
-    fn next_char_if_match(&mut self, expected: char) -> bool {
+    fn next_while_chars_match(&mut self, predicate: impl Fn(&char) -> bool) {
+        while self.next_char_if(&predicate).is_some() {}
+    }
+
+    fn next_if_char_matches(&mut self, expected: char) -> bool {
         self.next_char_if(|&c| c == expected).is_some()
-    }
-
-    fn next_chars_if_match(&mut self, expected: &str) -> bool {
-        expected.chars().all(|c| self.next_char_if_match(c))
-    }
-
-    fn next_char_if(&mut self, func: impl Fn(&char) -> bool) -> Option<char> {
-        self.chars.next_if(func).inspect(|_| self.length += 1)
     }
 }
 
-impl<T> Iterator for Lexer<T>
+impl<TChars> Iterator for Lexer<TChars>
 where
-    T: Iterator<Item = char>,
+    TChars: Iterator<Item = char>,
 {
-    type Item = ParseTokenResult;
+    type Item = LexTokenResult;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.next_token() {
+        match self.lex_token() {
             Ok(Spanned {
                 value: Token::EndOfFile,
                 ..
@@ -196,6 +189,6 @@ where
     }
 }
 
-pub fn tokenize(source: &str) -> impl Iterator<Item = ParseTokenResult> + '_ {
+pub fn tokenize(source: &str) -> impl Iterator<Item = LexTokenResult> + '_ {
     Lexer::new(source.chars())
 }

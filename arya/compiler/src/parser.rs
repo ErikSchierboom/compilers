@@ -1,6 +1,5 @@
-use crate::lexer::{LexError, ParseTokenResult, Token, tokenize};
+use crate::lexer::{tokenize, LexError, LexTokenResult, Token};
 use crate::location::{Span, Spanned};
-use crate::parser::Node::{Identifier, Integer, Operation};
 use crate::parser::ParseError::Lex;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -27,198 +26,285 @@ impl Display for ParseError {
 impl Error for ParseError {}
 
 #[derive(Clone, Debug)]
-pub enum Node {
-    Integer(i64),
-    Identifier(String),
-    Operation(Op),
-    Array(Vec<Spanned<Node>>),
-    Binding(String, Vec<Spanned<Node>>),
+pub struct Signature {
+    pub num_arguments: u8,
+    pub num_outputs: u8,
+}
+
+impl Signature {
+    pub fn new(num_arguments: u8, num_outputs: u8) -> Self {
+        Self {
+            num_arguments,
+            num_outputs,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
-pub enum Op {
-    Add,
-    Subtract,
-    Multiply,
-    Divide,
-    Xor,
-    And,
-    Or,
-    Not,
-    Negate,
-    Equal,
-    NotEqual,
-    Greater,
-    GreaterEqual,
-    Less,
-    LessEqual,
-    Dup,
-    Drop,
-    Swap,
-    Over,
+pub enum Word {
+    Integer(i64),
+    Symbol(String),
+    Array(Vec<Spanned<Word>>),
+    Function(Box<Function>),
 }
 
-pub type ParseNodeResult = Result<Spanned<Node>, Spanned<ParseError>>;
+impl Word {
+    pub fn signature(&self) -> Signature {
+        match self {
+            Word::Integer(_) => Signature::new(0, 1),
+            Word::Array(_) => Signature::new(0, 1),
+            Word::Symbol(_) => Signature::new(0, 1),
+            Word::Function(function) => function.to_owned().signature(),
+        }
+    }
+}
 
-pub struct Parser<'a, T>
+#[derive(Clone, Debug)]
+pub enum Function {
+    Anonymous(AnonymousFunction),
+    Primitive(PrimitiveFunction),
+}
+
+#[derive(Clone, Debug)]
+pub struct AnonymousFunction {
+    pub signature: Signature,
+    pub body: Vec<Word>,
+}
+
+macro_rules! primitive {
+    ($( ($inputs:expr, $outputs:expr, $name:ident) ),* $(,)?) => {
+        #[derive(Clone, Debug)]
+        pub enum PrimitiveFunction {
+            $($name),*
+        }
+
+        impl PrimitiveFunction {
+            pub fn signature(&self) -> Signature {
+                match self {
+                    $( PrimitiveFunction::$name => Signature::new($inputs, $outputs), )*
+                }
+            }
+        }
+    };
+}
+
+// Defines an enum for built-in primitives (including their stack signature)
+primitive!(
+    (2, 1, Add),
+    (2, 1, Subtract),
+    (2, 1, Multiply),
+    (2, 1, Divide),
+    (2, 1, Xor),
+    (2, 1, And),
+    (2, 1, Or),
+    (2, 1, Not),
+    (1, 1, Negate),
+    (2, 1, Equal),
+    (2, 1, NotEqual),
+    (2, 1, Greater),
+    (2, 1, GreaterEqual),
+    (2, 1, Less),
+    (2, 1, LessEqual),
+    (1, 2, Dup),
+    (1, 0, Drop),
+    (2, 2, Swap),
+    (2, 3, Over),
+);
+
+impl Function {
+    pub fn signature(self) -> Signature {
+        match self {
+            Function::Anonymous(anonymous) => anonymous.signature,
+            Function::Primitive(primitive) => primitive.signature(),
+        }
+    }
+}
+
+pub type ParseWordResult = Result<Spanned<Word>, Spanned<ParseError>>;
+
+pub struct Parser<'a, TTokens>
 where
-    T: Iterator<Item = ParseTokenResult>,
+    TTokens: Iterator<Item = LexTokenResult>,
 {
-    tokens: Peekable<T>,
     source_code: &'a str,
+    tokens: Peekable<TTokens>,
     span: Span,
 }
 
-impl<'a, T> Parser<'a, T>
+impl<'a, TTokens> Parser<'a, TTokens>
 where
-    T: Iterator<Item = ParseTokenResult>,
+    TTokens: Iterator<Item = LexTokenResult>,
 {
-    fn new(source_code: &'a str, tokens: T) -> Self {
+    fn new(source_code: &'a str, tokens: TTokens) -> Self {
         Parser {
-            tokens: tokens.peekable(),
             source_code,
+            tokens: tokens.peekable(),
             span: Span::EMPTY,
         }
     }
 
-    fn parse_node(&mut self) -> Option<ParseNodeResult> {
-        match self.next()? {
-            Ok(token) => self.parse_node_from_token(token),
-            Err(lex_error) => self.error(Lex(lex_error.value)),
-        }
-    }
-
-    fn parse_node_from_token(&mut self, spanned_token: Spanned<Token>) -> Option<ParseNodeResult> {
-        match spanned_token.value {
-            Token::Number => self.integer(),
-            Token::OpenBracket => self.array(),
-            Token::Identifier => match self.next_if_token(&Token::Colon) {
-                Some(_) => self.binding(spanned_token),
-                None => self.identifier(),
+    fn parse_word(&mut self) -> Option<ParseWordResult> {
+        match self.current_token()? {
+            Err(lex_error) => {
+                let error = lex_error.value.clone(); // only clone the value, not the whole result
+                self.advance();
+                Some(self.make_error(Lex(error)))
+            }
+            Ok(token) => match &token.value {
+                Token::Symbol => {
+                    self.advance();
+                    Some(self.parse_identifier())
+                }
+                Token::Number => {
+                    self.advance();
+                    Some(self.parse_integer())
+                }
+                Token::OpenBracket => {
+                    self.advance();
+                    Some(self.parse_array())
+                }
+                Token::OpenParenthesis => todo!(),
+                Token::Plus => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Add))
+                }
+                Token::Minus => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Subtract))
+                }
+                Token::Star => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Multiply))
+                }
+                Token::Slash => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Divide))
+                }
+                Token::Ampersand => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::And))
+                }
+                Token::Pipe => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Or))
+                }
+                Token::Caret => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Xor))
+                }
+                Token::Bang => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Not))
+                }
+                Token::Underscore => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Negate))
+                }
+                Token::Equal => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Equal))
+                }
+                Token::NotEqual => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::NotEqual))
+                }
+                Token::Greater => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Greater))
+                }
+                Token::GreaterEqual => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::GreaterEqual))
+                }
+                Token::Less => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::Less))
+                }
+                Token::LessEqual => {
+                    self.advance();
+                    Some(self.parse_primitive_function(PrimitiveFunction::LessEqual))
+                }
+                _ => {
+                    let actual_token = token.value.clone();
+                    self.advance();
+                    Some(self.make_error(ParseError::Unexpected(actual_token)))
+                }
             },
-            Token::Plus => self.operation(Op::Add),
-            Token::Minus => self.operation(Op::Subtract),
-            Token::Star => self.operation(Op::Multiply),
-            Token::Slash => self.operation(Op::Divide),
-            Token::Ampersand => self.operation(Op::And),
-            Token::Pipe => self.operation(Op::Or),
-            Token::Caret => self.operation(Op::Xor),
-            Token::Bang => self.operation(Op::Not),
-            Token::Underscore => self.operation(Op::Negate),
-            Token::Equal => self.operation(Op::Equal),
-            Token::NotEqual => self.operation(Op::NotEqual),
-            Token::Greater => self.operation(Op::Greater),
-            Token::GreaterEqual => self.operation(Op::GreaterEqual),
-            Token::Less => self.operation(Op::Less),
-            Token::LessEqual => self.operation(Op::LessEqual),
-            Token::Dup => self.operation(Op::Dup),
-            Token::Drop => self.operation(Op::Drop),
-            Token::Swap => self.operation(Op::Swap),
-            Token::Over => self.operation(Op::Over),
-            Token::CloseBracket => self.error(ParseError::Unexpected(spanned_token.value)),
-            Token::Colon => self.error(ParseError::Unexpected(spanned_token.value)),
-            Token::Newline => self.parse_node(),
-            Token::Whitespace => self.parse_node(),
-            Token::Comment => self.parse_node(),
-            Token::EndOfFile => None,
         }
     }
 
-    fn integer(&mut self) -> Option<ParseNodeResult> {
+    fn parse_integer(&mut self) -> ParseWordResult {
         let number = i64::from_str(self.lexeme(&self.span)).unwrap();
-        self.node(Integer(number))
+        self.make_word(Word::Integer(number))
     }
 
-    fn identifier(&mut self) -> Option<ParseNodeResult> {
-        let name = self.lexeme(&self.span);
-        self.node(Identifier(name.to_string()))
+    fn parse_identifier(&mut self) -> ParseWordResult {
+        match self.lexeme(&self.span) {
+            "dup" => self.parse_primitive_function(PrimitiveFunction::Dup),
+            "drop" => self.parse_primitive_function(PrimitiveFunction::Drop),
+            "swap" => self.parse_primitive_function(PrimitiveFunction::Swap),
+            "over" => self.parse_primitive_function(PrimitiveFunction::Over),
+            name => self.make_word(Word::Symbol(name.to_string())),
+        }
     }
 
-    fn operation(&self, operator: Op) -> Option<ParseNodeResult> {
-        self.node(Operation(operator))
+    fn parse_primitive_function(&self, primitive: PrimitiveFunction) -> ParseWordResult {
+        self.make_word(Word::Function(Box::new(Function::Primitive(primitive))))
     }
 
-    fn array(&mut self) -> Option<ParseNodeResult> {
+    fn parse_array(&mut self) -> ParseWordResult {
         let start_span = self.span.clone();
-        let mut elements: Vec<Spanned<Node>> = Vec::new();
+        let mut elements: Vec<Spanned<Word>> = Vec::new();
 
+        // TODO: convert to helper function to parse something multiple times
         loop {
-            match self.next() {
-                None => return self.error(ParseError::UnterminatedArray),
-                Some(Err(lex_error)) => return self.error(Lex(lex_error.value)),
+            match self.current_token() {
+                None => return self.make_error(ParseError::UnterminatedArray),
+                Some(Err(lex_error)) => {
+                    let error = lex_error.value.clone();
+                    self.advance();
+                    return self.make_error(Lex(error));
+                }
                 Some(Ok(token)) if token.value == Token::CloseBracket => {
+                    self.advance();
                     self.span = start_span.merge(&self.span);
-                    return self.node(Node::Array(elements));
+                    return self.make_word(Word::Array(elements));
                 }
-                Some(Ok(token)) => match self.parse_node_from_token(token)? {
-                    Err(error) => return Some(Err(error)),
-                    Ok(element) => elements.push(element),
+                Some(Ok(_)) => match self.parse_word() {
+                    None => return self.make_error(ParseError::UnterminatedArray),
+                    Some(Err(error)) => return self.make_error(error.value),
+                    Some(Ok(element)) => elements.push(element),
                 },
             }
         }
     }
 
-    fn binding(&mut self, identifier: Spanned<Token>) -> Option<ParseNodeResult> {
-        let mut body: Vec<Spanned<Node>> = Vec::new();
-
-        loop {
-            match self.next() {
-                None => {
-                    self.span = identifier.span.merge(&self.span);
-                    return self.node(Node::Binding(
-                        self.lexeme(&identifier.span).to_string(),
-                        body,
-                    ));
-                }
-                Some(Ok(token)) if token.value == Token::Newline => {
-                    self.span = identifier.span.merge(&self.span);
-                    return self.node(Node::Binding(
-                        self.lexeme(&identifier.span).to_string(),
-                        body,
-                    ));
-                }
-                Some(Err(lex_error)) => return self.error(Lex(lex_error.value)),
-                Some(Ok(token)) => match self.parse_node_from_token(token)? {
-                    Err(error) => return Some(Err(error)),
-                    Ok(element) => body.push(element),
-                },
-            }
-        }
+    fn make_word(&self, word: Word) -> ParseWordResult {
+        Ok(self.spanned(word))
     }
 
-    fn node(&self, node: Node) -> Option<ParseNodeResult> {
-        Some(Ok(self.spanned(node)))
-    }
-
-    fn error(&self, error: ParseError) -> Option<ParseNodeResult> {
-        Some(Err(self.spanned(error)))
+    fn make_error(&mut self, error: ParseError) -> ParseWordResult {
+        Err(self.spanned(error))
     }
 
     fn lexeme(&self, span: &Span) -> &'a str {
         &self.source_code[span.position as usize..(span.position + span.length as u32) as usize]
     }
 
-    fn next(&mut self) -> Option<ParseTokenResult> {
-        self.next_if(|_| true)
+    fn current_token(&mut self) -> Option<&LexTokenResult> {
+        self.tokens.peek()
     }
 
-    fn next_if_token(&mut self, token: &Token) -> Option<ParseTokenResult> {
-        self.tokens.next_if(|parse_result| match parse_result {
-            Ok(spanned_token) => &spanned_token.value == token,
-            _ => false,
-        })
-    }
-
-    fn next_if(&mut self, func: impl Fn(&ParseTokenResult) -> bool) -> Option<ParseTokenResult> {
+    fn advance(&mut self) {
         self.tokens
-            .next_if(func)
-            .inspect(|token_result| self.update_span(token_result))
+            .next()
+            .inspect(|lex_result| self.update_span(lex_result));
     }
 
-    fn update_span(&mut self, token_result: &ParseTokenResult) {
+    fn update_span(&mut self, token_result: &LexTokenResult) {
         match token_result {
-            Ok(token) => self.span = token.span.clone(),
             Err(error) => self.span = error.span.clone(),
+            Ok(token) => self.span = token.span.clone(),
         }
     }
 
@@ -227,18 +313,18 @@ where
     }
 }
 
-impl<'a, T> Iterator for Parser<'a, T>
+impl<'a, TTokens> Iterator for Parser<'a, TTokens>
 where
-    T: Iterator<Item = ParseTokenResult>,
+    TTokens: Iterator<Item = LexTokenResult>,
 {
-    type Item = ParseNodeResult;
+    type Item = ParseWordResult;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.parse_node()
+        self.parse_word()
     }
 }
 
-pub fn parse(source: &str) -> impl Iterator<Item = ParseNodeResult> + '_ {
+pub fn parse(source: &str) -> impl Iterator<Item = ParseWordResult> + '_ {
     let tokens = tokenize(source);
     Parser::new(source, tokens)
 }

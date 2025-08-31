@@ -1,5 +1,7 @@
 use crate::location::{Span, Spanned};
-use crate::parser::{Node, Op, ParseError, ParseNodeResult, parse};
+use crate::parser::{
+    parse, AnonymousFunction, Function, ParseError, ParseWordResult, PrimitiveFunction, Word,
+};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -11,8 +13,8 @@ pub enum RuntimeError {
     InvalidNumberOfArguments(u8, u8),
     IncompatibleShapes,
     DifferentArrayElementShapes,
-    UnknownIdentifier(String),
-    IdentifierAlreadyExists(String),
+    UnknownSymbol(String),
+    SymbolAlreadyExists(String),
 }
 
 impl Display for RuntimeError {
@@ -26,8 +28,8 @@ impl Display for RuntimeError {
             RuntimeError::DifferentArrayElementShapes => {
                 write!(f, "Not all rows in the array have the same shape")
             }
-            RuntimeError::UnknownIdentifier(name) => write!(f, "Unknown identifier: {name}"),
-            RuntimeError::IdentifierAlreadyExists(name) => {
+            RuntimeError::UnknownSymbol(name) => write!(f, "Unknown identifier: {name}"),
+            RuntimeError::SymbolAlreadyExists(name) => {
                 write!(f, "Identifier already exists: {name}")
             }
         }
@@ -136,17 +138,17 @@ pub type InterpretResult = Result<Vec<Spanned<Value>>, Spanned<RuntimeError>>;
 
 pub struct Interpreter<T>
 where
-    T: Iterator<Item = ParseNodeResult>,
+    T: Iterator<Item = ParseWordResult>,
 {
     nodes: Peekable<T>,
-    bindings: HashMap<String, Vec<Spanned<Node>>>,
+    bindings: HashMap<String, Vec<Spanned<Word>>>,
     stack: Vec<Spanned<Value>>,
     span: Span,
 }
 
 impl<T> Interpreter<T>
 where
-    T: Iterator<Item = ParseNodeResult>,
+    T: Iterator<Item = ParseWordResult>,
 {
     pub fn new(nodes: T) -> Self {
         Self {
@@ -174,15 +176,15 @@ where
         Ok(self.stack.clone())
     }
 
-    fn evaluate(&mut self, node: &Spanned<Node>) -> EvaluateResult {
+    fn evaluate(&mut self, node: &Spanned<Word>) -> EvaluateResult {
         match &node.value {
-            Node::Integer(i) => self.integer(i),
-            Node::Operation(op) => self.operator(op),
-            Node::Array(elements) => self.array(elements),
-            Node::Identifier(name) => {
+            Word::Integer(i) => self.integer(i),
+            Word::Function(func) => self.function(&*func),
+            Word::Array(elements) => self.array(elements),
+            Word::Symbol(name) => {
                 let binding = &self.bindings.get_mut(name);
                 match binding {
-                    None => self.error(RuntimeError::UnknownIdentifier(name.clone())),
+                    None => self.error(RuntimeError::UnknownSymbol(name.clone())),
                     Some(nodes) => {
                         for node in nodes.to_vec() {
                             self.evaluate(&node)?
@@ -191,10 +193,6 @@ where
                     }
                 }
             }
-            Node::Binding(name, body) => match self.bindings.insert(name.clone(), body.to_vec()) {
-                None => Ok(()),
-                Some(_) => self.error(RuntimeError::IdentifierAlreadyExists(name.clone())),
-            },
         }
     }
 
@@ -204,33 +202,48 @@ where
         Ok(())
     }
 
-    fn operator(&mut self, op: &Op) -> EvaluateResult {
-        match op {
-            Op::Add => self.binary_operation(|l, r| l + r),
-            Op::Subtract => self.binary_operation(|l, r| l - r),
-            Op::Multiply => self.binary_operation(|l, r| l * r),
-            Op::Divide => self.binary_operation(|l, r| l / r),
-            Op::And => self.binary_operation(|l, r| l & r),
-            Op::Or => self.binary_operation(|l, r| l | r),
-            Op::Xor => self.binary_operation(|l, r| l ^ r),
-            Op::Equal => self.binary_operation(|l, r| (l == r) as i64),
-            Op::NotEqual => self.binary_operation(|l, r| (l != r) as i64),
-            Op::Greater => self.binary_operation(|l, r| (l > r) as i64),
-            Op::GreaterEqual => self.binary_operation(|l, r| (l >= r) as i64),
-            Op::Less => self.binary_operation(|l, r| (l < r) as i64),
-            Op::LessEqual => self.binary_operation(|l, r| (l <= r) as i64),
-            Op::Not => self.unary_operation(|value| !value),
-            Op::Negate => self.unary_operation(|value| -value),
-            Op::Dup => self.unary_stack_operation(|value| vec![value.clone(), value.clone()]),
-            Op::Drop => self.unary_stack_operation(|_| vec![]),
-            Op::Swap => self.binary_stack_operation(|lhs, rhs| vec![rhs.clone(), lhs.clone()]),
-            Op::Over => {
+    fn function(&mut self, func: &Function) -> EvaluateResult {
+        match func {
+            Function::Anonymous(anonymous_func) => self.anonymous_function(anonymous_func),
+            Function::Primitive(primitive_func) => self.primitive_function(primitive_func),
+        }
+    }
+
+    fn anonymous_function(&mut self, func: &AnonymousFunction) -> EvaluateResult {
+        todo!()
+    }
+
+    fn primitive_function(&mut self, func: &PrimitiveFunction) -> EvaluateResult {
+        match func {
+            PrimitiveFunction::Add => self.binary_operation(|l, r| l + r),
+            PrimitiveFunction::Subtract => self.binary_operation(|l, r| l - r),
+            PrimitiveFunction::Multiply => self.binary_operation(|l, r| l * r),
+            PrimitiveFunction::Divide => self.binary_operation(|l, r| l / r),
+            PrimitiveFunction::And => self.binary_operation(|l, r| l & r),
+            PrimitiveFunction::Or => self.binary_operation(|l, r| l | r),
+            PrimitiveFunction::Xor => self.binary_operation(|l, r| l ^ r),
+            PrimitiveFunction::Equal => self.binary_operation(|l, r| (l == r) as i64),
+            PrimitiveFunction::NotEqual => self.binary_operation(|l, r| (l != r) as i64),
+            PrimitiveFunction::Greater => self.binary_operation(|l, r| (l > r) as i64),
+            PrimitiveFunction::GreaterEqual => self.binary_operation(|l, r| (l >= r) as i64),
+            PrimitiveFunction::Less => self.binary_operation(|l, r| (l < r) as i64),
+            PrimitiveFunction::LessEqual => self.binary_operation(|l, r| (l <= r) as i64),
+            PrimitiveFunction::Not => self.unary_operation(|value| !value),
+            PrimitiveFunction::Negate => self.unary_operation(|value| -value),
+            PrimitiveFunction::Dup => {
+                self.unary_stack_operation(|value| vec![value.clone(), value.clone()])
+            }
+            PrimitiveFunction::Drop => self.unary_stack_operation(|_| vec![]),
+            PrimitiveFunction::Swap => {
+                self.binary_stack_operation(|lhs, rhs| vec![rhs.clone(), lhs.clone()])
+            }
+            PrimitiveFunction::Over => {
                 self.binary_stack_operation(|lhs, rhs| vec![lhs.clone(), rhs.clone(), lhs.clone()])
             }
         }
     }
 
-    fn array(&mut self, elements: &Vec<Spanned<Node>>) -> EvaluateResult {
+    fn array(&mut self, elements: &Vec<Spanned<Word>>) -> EvaluateResult {
         let mut array_shape: Option<Shape> = None;
         let mut array_values: Vec<i64> = Vec::new();
 
@@ -260,6 +273,14 @@ where
         self.push(value);
 
         Ok(())
+    }
+
+    fn comment(&self) -> Option<ParseWordResult> {
+        todo!()
+    }
+
+    fn whitepace(&self) -> Option<ParseWordResult> {
+        todo!()
     }
 
     fn push(&mut self, value: Value) {
