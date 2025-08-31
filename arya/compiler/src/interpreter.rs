@@ -219,11 +219,7 @@ where
     }
 
     fn anonymous_function(&mut self, func: &AnonymousFunction) -> EvaluateResult {
-        self.verify_stack_size(func.signature.num_inputs)?;
-
-        for word in &func.body {
-            self.queue.push_back(word.clone());
-        }
+        // TODO: put on stack
 
         Ok(())
     }
@@ -254,6 +250,12 @@ where
             }
             PrimitiveFunction::Over => {
                 self.binary_stack_operation(|lhs, rhs| vec![lhs.clone(), rhs.clone(), lhs.clone()])
+            }
+            PrimitiveFunction::Reduce => {
+                self.binary_stack_operation(|lhs, rhs| {
+                    todo!("implement fold")
+
+                })
             }
         }
     }

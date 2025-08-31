@@ -131,7 +131,9 @@ primitive!(
     (1, 0, Drop),
     (2, 2, Swap),
     (2, 3, Over),
+    (2, 1, Reduce),    
 );
+// TODO: fold
 
 impl Function {
     pub fn signature(self) -> Signature {
