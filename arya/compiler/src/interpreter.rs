@@ -141,7 +141,7 @@ where
     T: Iterator<Item=ParseWordResult>,
 {
     nodes: Peekable<T>,
-    queue: VecDeque<T::Item>,
+    queue: VecDeque<Spanned<Word>>,
     bindings: HashMap<String, Vec<Spanned<Word>>>,
     stack: Vec<Spanned<Value>>,
     span: Span,
@@ -179,11 +179,10 @@ where
     }
 
     fn next(&mut self) -> Option<ParseWordResult> {
-        let x = self.nodes.next();
-        let y = self.queue.pop_front();
-        None
-        // self.queue.pop_front().or(|| )
-
+        match self.queue.pop_front() {
+            None => self.nodes.next(),
+            Some(word) => Some(Ok(word))
+        }
     }
 
     fn evaluate(&mut self, node: &Spanned<Word>) -> EvaluateResult {
@@ -220,7 +219,13 @@ where
     }
 
     fn anonymous_function(&mut self, func: &AnonymousFunction) -> EvaluateResult {
-        todo!()
+        self.verify_stack_size(func.signature.num_inputs)?;
+
+        for word in &func.body {
+            self.queue.push_back(word.clone());
+        }
+
+        Ok(())
     }
 
     fn primitive_function(&mut self, func: &PrimitiveFunction) -> EvaluateResult {
