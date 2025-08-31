@@ -26,13 +26,18 @@ impl Display for ParseError {
 
 impl Error for ParseError {}
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Signature {
     pub num_inputs: u8,
     pub num_outputs: u8,
 }
 
 impl Signature {
+    pub const EMPTY: Self = Self {
+        num_inputs: 0,
+        num_outputs: 0,
+    };
+
     pub fn new(num_inputs: u8, num_outputs: u8) -> Self {
         Self {
             num_inputs,
@@ -40,12 +45,14 @@ impl Signature {
         }
     }
 
-    pub fn from_words(words: &Vec<Spanned<Word>>) -> Self {
-        // let num_inputs = words.iter().map(|word| word.value.signature()).sum();
-        // let num_outputs = words.iter().map(|word| word.value.signature()).sum();
+    pub fn merge(&self, other: &Self) -> Self {
+        let required_inputs = self.num_inputs + (other.num_inputs as i8 - self.num_outputs as i8).max(0) as u8;
+        let produced_outputs = (self.num_outputs as i8 - other.num_inputs as i8).max(0) as u8 + other.num_outputs;
+        Self::new(required_inputs, produced_outputs)
+    }
 
-        // TODO:
-        Self::new(0, 0)
+    pub fn from_words(words: &Vec<Spanned<Word>>) -> Self {
+        words.iter().fold(Signature::EMPTY, |acc, word| acc.merge(&word.value.signature()))
     }
 }
 
@@ -297,4 +304,87 @@ where
 pub fn parse(source: &str) -> impl Iterator<Item=ParseWordResult> + '_ {
     let tokens = tokenize(source);
     Parser::new(source, tokens)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_merge_empty_signatures() {
+        let lhs = Signature::EMPTY;
+        let rhs = Signature::EMPTY;
+        let signature = lhs.merge(&rhs);
+        assert_eq!(signature, Signature::EMPTY);
+    }
+
+    #[test]
+    fn test_merge_signatures_with_perfect_overlap() {
+        let lhs = Signature::new(1, 2);
+        let rhs = Signature::new(2, 1);
+        let signature = lhs.merge(&rhs);
+        assert_eq!(signature, Signature::new(1, 1));
+    }
+
+    #[test]
+    fn test_merge_signatures_requiring_extra_inputs() {
+        let lhs = Signature::new(1, 2);
+        let rhs = Signature::new(3, 2);
+        let signature = lhs.merge(&rhs);
+        assert_eq!(signature, Signature::new(2, 2));
+    }
+
+    #[test]
+    fn test_merge_signatures_producing_extra_outputs() {
+        let lhs = Signature::new(1, 1);
+        let rhs = Signature::new(1, 2);
+        let signature = lhs.merge(&rhs);
+        assert_eq!(signature, Signature::new(1, 2));
+    }
+
+    #[test]
+    fn test_merge_signatures_producing_less_outputs() {
+        let lhs = Signature::new(1, 2);
+        let rhs = Signature::new(2, 0);
+        let signature = lhs.merge(&rhs);
+        assert_eq!(signature, Signature::new(1, 0));
+    }
+
+    #[test]
+    fn test_signature_from_words_with_perfect_overlap() {
+        let words: Vec<Spanned<Word>> = vec![
+            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Dup))), Span::new(1, 1)),
+            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Multiply))), Span::new(2, 1)),
+            Spanned::new(Word::Integer(1), Span::new(3, 1)),
+            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Add))), Span::new(4, 1)),
+        ];
+        let signature = Signature::from_words(&words);
+        assert_eq!(signature, Signature::new(1, 1));
+    }
+
+    #[test]
+    fn test_signature_from_words_requiring_extra_inputs() {
+        let words: Vec<Spanned<Word>> = vec![
+            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Multiply))), Span::new(1, 1)),
+            Spanned::new(Word::Integer(1), Span::new(2, 1)),
+            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Add))), Span::new(3, 1)),
+            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Divide))), Span::new(4, 1)),
+        ];
+        let signature = Signature::from_words(&words);
+        assert_eq!(signature, Signature::new(3, 1));
+    }
+
+    #[test]
+    fn test_signature_from_words_producing_extra_outputs() {
+        let words: Vec<Spanned<Word>> = vec![
+            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Multiply))), Span::new(1, 1)),
+            Spanned::new(Word::Integer(1), Span::new(2, 1)),
+            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Dup))), Span::new(3, 1)),
+            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Negate))), Span::new(4, 1)),
+            Spanned::new(Word::Integer(7), Span::new(5, 1)),
+            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Swap))), Span::new(6, 1)),
+        ];
+        let signature = Signature::from_words(&words);
+        assert_eq!(signature, Signature::new(2, 4));
+    }
 }

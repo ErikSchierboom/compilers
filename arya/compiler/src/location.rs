@@ -93,7 +93,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_merge() {
+    fn test_valid_merge_of_spans() {
         let lhs = Span::new(4, 3);
         let rhs = Span::new(9, 1);
         let result = lhs.merge(&rhs);
@@ -103,14 +103,14 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn test_bad_merge() {
+    fn test_bad_merge_of_spans() {
         let lhs = Span::new(2, 3);
         let rhs = Span::new(0, 2);
         lhs.merge(&rhs);
     }
 
     #[test]
-    fn test_location() {
+    fn test_location_from_span() {
         const SOURCE: &str = "1 2 3\n4 5 6";
         let line_endings = LineEndings::new(SOURCE);
 
