@@ -1,4 +1,4 @@
-use crate::lexer::{tokenize, LexError, LexTokenResult, Token};
+use crate::lexer::{LexError, LexTokenResult, Token, tokenize};
 use crate::location::{Span, Spanned};
 use crate::parser::ParseError::Lex;
 use std::error::Error;

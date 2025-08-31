@@ -1,6 +1,6 @@
 use crate::location::{Span, Spanned};
 use crate::parser::{
-    parse, AnonymousFunction, Function, ParseError, ParseWordResult, PrimitiveFunction, Word,
+    AnonymousFunction, Function, ParseError, ParseWordResult, PrimitiveFunction, Word, parse,
 };
 use std::collections::HashMap;
 use std::error::Error;
