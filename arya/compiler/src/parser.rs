@@ -279,8 +279,7 @@ where
     }
 
     fn next(&mut self) -> Option<LexTokenResult> {
-        self.tokens
-            .next()
+        self.tokens.next()
             .inspect(|lex_result| self.update_span(lex_result))
     }
 
