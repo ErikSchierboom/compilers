@@ -15,6 +15,7 @@ pub enum RuntimeError {
     DifferentArrayElementShapes,
     UnknownSymbol(String),
     SymbolAlreadyExists(String),
+    InvalidArgumentType(String, String),
 }
 
 impl Display for RuntimeError {
@@ -32,6 +33,7 @@ impl Display for RuntimeError {
             RuntimeError::SymbolAlreadyExists(name) => {
                 write!(f, "Identifier already exists: {name}")
             }
+            RuntimeError::InvalidArgumentType(expected, actual) => write!(f, "Invalid argument. Expected: {expected}, actual: {actual}")
         }
     }
 }
@@ -64,12 +66,30 @@ impl Display for Shape {
 #[derive(Clone, Debug)]
 pub enum Value {
     Array(Array),
+    Function(Function),
+}
+
+impl Value {
+    fn as_array(&self) -> Option<&Array> {
+        match self {
+            Value::Array(array) => Some(array),
+            _ => None
+        }
+    }
+
+    fn as_function(&self) -> Option<&Function> {
+        match self {
+            Value::Function(function) => Some(function),
+            _ => None
+        }
+    }
 }
 
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::Array(array) => write!(f, "{array}"),
+            Value::Function(function) => write!(f, "{:?}", function),
         }
     }
 }
@@ -166,7 +186,7 @@ where
             match node {
                 Ok(node) => {
                     self.span = node.span.clone();
-                    self.evaluate(&node)?
+                    self.evaluate(node)?
                 }
                 Err(error) => {
                     self.span = error.span.clone();
@@ -185,18 +205,18 @@ where
         }
     }
 
-    fn evaluate(&mut self, node: &Spanned<Word>) -> EvaluateResult {
-        match &node.value {
+    fn evaluate(&mut self, node: Spanned<Word>) -> EvaluateResult {
+        match node.value {
             Word::Integer(i) => self.integer(i),
-            Word::Function(func) => self.function(&*func),
+            Word::Function(func) => self.function(*func),
             Word::Array(elements) => self.array(elements),
             Word::Symbol(name) => {
-                let binding = &self.bindings.get_mut(name);
+                let binding = &self.bindings.get_mut(&name);
                 match binding {
                     None => self.error(RuntimeError::UnknownSymbol(name.clone())),
                     Some(nodes) => {
                         for node in nodes.to_vec() {
-                            self.evaluate(&node)?
+                            self.evaluate(node)?
                         }
                         Ok(())
                     }
@@ -205,26 +225,26 @@ where
         }
     }
 
-    fn integer(&mut self, i: &i64) -> EvaluateResult {
+    fn integer(&mut self, i: i64) -> EvaluateResult {
         let value = Value::Array(Array::scalar(i.clone()));
         self.push(value);
         Ok(())
     }
 
-    fn function(&mut self, func: &Function) -> EvaluateResult {
+    fn function(&mut self, func: Function) -> EvaluateResult {
         match func {
             Function::Anonymous(anonymous_func) => self.anonymous_function(anonymous_func),
             Function::Primitive(primitive_func) => self.primitive_function(primitive_func),
         }
     }
 
-    fn anonymous_function(&mut self, func: &AnonymousFunction) -> EvaluateResult {
-        // TODO: put on stack
+    fn anonymous_function(&mut self, func: AnonymousFunction) -> EvaluateResult {
+        self.push(Value::Function(Function::Anonymous(func)));
 
         Ok(())
     }
 
-    fn primitive_function(&mut self, func: &PrimitiveFunction) -> EvaluateResult {
+    fn primitive_function(&mut self, func: PrimitiveFunction) -> EvaluateResult {
         match func {
             PrimitiveFunction::Add => self.binary_operation(|l, r| l + r),
             PrimitiveFunction::Subtract => self.binary_operation(|l, r| l - r),
@@ -253,18 +273,30 @@ where
             }
             PrimitiveFunction::Reduce => {
                 self.binary_stack_operation(|lhs, rhs| {
-                    todo!("implement fold")
-
+                    todo!("implement")
+                    // TODO: error handling of stack values
+                    // let func = rhs.as_function().unwrap();
+                    // let array = lhs.as_array().unwrap();
+                    // TODO: error if array is empty
+                    // TODO: check which shapes to reduce on
+                    // for element in array.values {
+                    //     // TODO: iterate over shapes
+                    //     self.stack.push(Spanned::new(Value::Array(Array::new(Shape::SCALAR, vec![element])), Span::EMPTY))
+                    //     self.stack.push(Spanned::new(Value::Function(func.clone()), Span::EMPTY);
+                    //     self.e
+                    // }
                 })
             }
         }
     }
 
-    fn array(&mut self, elements: &Vec<Spanned<Word>>) -> EvaluateResult {
+    fn array(&mut self, elements: Vec<Spanned<Word>>) -> EvaluateResult {
         let mut array_shape: Option<Shape> = None;
         let mut array_values: Vec<i64> = Vec::new();
+        let num_rows = elements.len();
 
         for spanned_element in elements {
+            self.span = spanned_element.span.clone();
             self.evaluate(spanned_element)?;
             let spanned_value = self.pop().unwrap();
             match spanned_value.value {
@@ -272,7 +304,6 @@ where
                     let value_shape = array.shape;
                     let existing_shape = array_shape.get_or_insert(value_shape.clone());
                     if *existing_shape != value_shape {
-                        self.span = spanned_element.span.clone();
                         return self.error(RuntimeError::DifferentArrayElementShapes);
                     }
 
@@ -280,11 +311,14 @@ where
                         array_values.push(integer)
                     }
                 }
+                Value::Function(_) => {
+                    return self.error(RuntimeError::InvalidArgumentType("Array".to_string(), "Function".to_string()));
+                }
             }
         }
 
         let mut shape = array_shape.get_or_insert(Shape::SCALAR).clone();
-        shape.prepend_dimension(elements.len());
+        shape.prepend_dimension(num_rows);
 
         let value = Value::Array(Array::new(shape, array_values));
         self.push(value);
@@ -346,6 +380,7 @@ where
                     self.error(RuntimeError::IncompatibleShapes)
                 }
             }
+            _ => self.error(RuntimeError::InvalidArgumentType("Array".to_string(), "Function".to_string())),
         }
     }
 
@@ -359,6 +394,7 @@ where
                 let value = Value::Array(Array::new(array.shape, transformed_values));
                 self.push(value);
             }
+            _ => return self.error(RuntimeError::InvalidArgumentType("Array".to_string(), "Function".to_string()))
         }
 
         Ok(())

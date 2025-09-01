@@ -207,6 +207,7 @@ where
             "drop" => self.parse_primitive_function(PrimitiveFunction::Drop),
             "swap" => self.parse_primitive_function(PrimitiveFunction::Swap),
             "over" => self.parse_primitive_function(PrimitiveFunction::Over),
+            "reduce" => self.parse_primitive_function(PrimitiveFunction::Reduce),
             name => self.make_word(Word::Symbol(name.to_string())),
         }
     }
