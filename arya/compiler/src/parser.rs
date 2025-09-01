@@ -12,6 +12,7 @@ pub enum ParseError {
     Lex(LexError),
     Unexpected(Token),
     Expected(Token),
+    UnknownIdentifier(String),
 }
 
 impl Display for ParseError {
@@ -20,6 +21,7 @@ impl Display for ParseError {
             Lex(lex_error) => write!(f, "{lex_error}"),
             ParseError::Unexpected(token) => write!(f, "Unexpected token: {:?}", token),
             ParseError::Expected(token) => write!(f, "Expected token: {:?}", token),
+            ParseError::UnknownIdentifier(name) => write!(f, "Unknown identifier '{name}'")
         }
     }
 }
@@ -59,7 +61,6 @@ impl Signature {
 #[derive(Clone, Debug)]
 pub enum Word {
     Integer(i64),
-    Symbol(String),
     Array(Vec<Spanned<Word>>),
     Function(Box<Function>),
 }
@@ -69,7 +70,6 @@ impl Word {
         match self {
             Word::Integer(_) => Signature::new(0, 1),
             Word::Array(_) => Signature::new(0, 1),
-            Word::Symbol(_) => Signature::new(0, 1),
             Word::Function(function) => function.to_owned().signature(),
         }
     }
@@ -208,7 +208,7 @@ where
             "swap" => self.parse_primitive_function(PrimitiveFunction::Swap),
             "over" => self.parse_primitive_function(PrimitiveFunction::Over),
             "reduce" => self.parse_primitive_function(PrimitiveFunction::Reduce),
-            name => self.make_word(Word::Symbol(name.to_string())),
+            name => self.make_error(ParseError::UnknownIdentifier(name.to_string()))
         }
     }
 

@@ -2,7 +2,7 @@ use crate::location::{Span, Spanned};
 use crate::parser::{
     parse, AnonymousFunction, Function, ParseError, ParseWordResult, PrimitiveFunction, Word,
 };
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
@@ -162,7 +162,6 @@ where
 {
     nodes: Peekable<T>,
     queue: VecDeque<Spanned<Word>>,
-    bindings: HashMap<String, Vec<Spanned<Word>>>,
     stack: Vec<Spanned<Value>>,
     span: Span,
 }
@@ -175,7 +174,6 @@ where
         Self {
             nodes: nodes.peekable(),
             queue: VecDeque::new(),
-            bindings: HashMap::new(),
             stack: Vec::new(),
             span: Span::EMPTY,
         }
@@ -210,18 +208,6 @@ where
             Word::Integer(i) => self.integer(i),
             Word::Function(func) => self.function(*func),
             Word::Array(elements) => self.array(elements),
-            Word::Symbol(name) => {
-                let binding = &self.bindings.get_mut(&name);
-                match binding {
-                    None => self.error(RuntimeError::UnknownSymbol(name.clone())),
-                    Some(nodes) => {
-                        for node in nodes.to_vec() {
-                            self.evaluate(node)?
-                        }
-                        Ok(())
-                    }
-                }
-            }
         }
     }
 
