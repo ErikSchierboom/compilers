@@ -134,6 +134,9 @@ primitive!(
     (2, 1, Reduce),    
 );
 // TODO: fold
+// TODO: fork
+// TODO: bracket
+// TODO: both
 
 impl Function {
     pub fn signature(self) -> Signature {
@@ -172,7 +175,7 @@ where
         match self.next()? {
             Err(lex_error) => Some(self.make_error(Lex(lex_error.value.clone()))),
             Ok(token) => match &token.value {
-                Token::Symbol => Some(self.parse_identifier()),
+                Token::Identifier => Some(self.parse_identifier()),
                 Token::Number => Some(self.parse_integer()),
                 Token::OpenBracket => Some(self.parse_array()),
                 Token::OpenParenthesis => Some(self.parse_anonymous_function()),

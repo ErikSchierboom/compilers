@@ -23,7 +23,7 @@ pub enum Token {
     // TODO: String
     // TODO: Char
     Number,
-    Symbol,
+    Identifier,
 
     // Delimiters
     OpenBracket,
@@ -56,7 +56,7 @@ pub type LexTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
 
 struct Lexer<TChars>
 where
-    TChars: Iterator<Item = char>,
+    TChars: Iterator<Item=char>,
 {
     chars: Peekable<TChars>,
     start: u32,
@@ -65,7 +65,7 @@ where
 
 impl<TChars> Lexer<TChars>
 where
-    TChars: Iterator<Item = char>,
+    TChars: Iterator<Item=char>,
 {
     fn new(source_code: TChars) -> Self {
         Self {
@@ -132,7 +132,7 @@ where
 
     fn lex_symbol(&mut self) -> LexTokenResult {
         self.next_while_chars_match(char::is_ascii_alphanumeric);
-        self.make_token(Token::Symbol)
+        self.make_token(Token::Identifier)
     }
 
     fn skip_whitespace(&mut self) {
@@ -174,21 +174,21 @@ where
 
 impl<TChars> Iterator for Lexer<TChars>
 where
-    TChars: Iterator<Item = char>,
+    TChars: Iterator<Item=char>,
 {
     type Item = LexTokenResult;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.lex_token() {
             Ok(Spanned {
-                value: Token::EndOfFile,
-                ..
-            }) => None,
+                   value: Token::EndOfFile,
+                   ..
+               }) => None,
             token_result => Some(token_result),
         }
     }
 }
 
-pub fn tokenize(source: &str) -> impl Iterator<Item = LexTokenResult> + '_ {
+pub fn tokenize(source: &str) -> impl Iterator<Item=LexTokenResult> + '_ {
     Lexer::new(source.chars())
 }
