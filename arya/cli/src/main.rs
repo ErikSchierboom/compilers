@@ -7,7 +7,7 @@ fn main() {
     match interpret(&source) {
         Ok(mut values) => {
             while let Some(value) = values.pop() {
-                println!("{:}", value.value)
+                println!("{:}", value)
             }
         }
         Err(error) => {

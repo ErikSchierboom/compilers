@@ -154,15 +154,15 @@ impl Display for Array {
 }
 
 pub type EvaluateResult = Result<(), Spanned<RuntimeError>>;
-pub type InterpretResult = Result<Vec<Spanned<Value>>, Spanned<RuntimeError>>;
+pub type InterpretResult = Result<Vec<Value>, Spanned<RuntimeError>>;
 
 pub struct Interpreter<T>
 where
     T: Iterator<Item=ParseWordResult>,
 {
-    nodes: Peekable<T>,
+    words: Peekable<T>,
     queue: VecDeque<Spanned<Word>>,
-    stack: Vec<Spanned<Value>>,
+    stack: Vec<Value>,
     span: Span,
 }
 
@@ -172,7 +172,7 @@ where
 {
     pub fn new(nodes: T) -> Self {
         Self {
-            nodes: nodes.peekable(),
+            words: nodes.peekable(),
             queue: VecDeque::new(),
             stack: Vec::new(),
             span: Span::EMPTY,
@@ -198,17 +198,24 @@ where
 
     fn next(&mut self) -> Option<ParseWordResult> {
         match self.queue.pop_front() {
-            None => self.nodes.next(),
+            None => self.words.next(),
             Some(word) => Some(Ok(word))
         }
     }
 
-    fn evaluate(&mut self, node: Spanned<Word>) -> EvaluateResult {
-        match node.value {
+    fn evaluate(&mut self, word: Spanned<Word>) -> EvaluateResult {
+        match word.value {
             Word::Integer(i) => self.integer(i),
             Word::Function(func) => self.function(*func),
             Word::Array(elements) => self.array(elements),
         }
+    }
+
+    fn evaluate_words(&mut self, words: Vec<Spanned<Word>>) -> EvaluateResult {
+        for word in words {
+            self.evaluate(word)?
+        }
+        Ok(())
     }
 
     fn integer(&mut self, i: i64) -> EvaluateResult {
@@ -226,7 +233,6 @@ where
 
     fn anonymous_function(&mut self, func: AnonymousFunction) -> EvaluateResult {
         self.push(Value::Function(Function::Anonymous(func)));
-
         Ok(())
     }
 
@@ -259,10 +265,11 @@ where
             }
             PrimitiveFunction::Reduce => {
                 self.binary_stack_operation(|lhs, rhs| {
-                    todo!("implement")
                     // TODO: error handling of stack values
-                    // let func = rhs.as_function().unwrap();
-                    // let array = lhs.as_array().unwrap();
+                    let func = rhs.as_function().unwrap();
+                    let array = lhs.as_array().unwrap();
+
+                    todo!("")
                     // TODO: error if array is empty
                     // TODO: check which shapes to reduce on
                     // for element in array.values {
@@ -284,8 +291,8 @@ where
         for spanned_element in elements {
             self.span = spanned_element.span.clone();
             self.evaluate(spanned_element)?;
-            let spanned_value = self.pop().unwrap();
-            match spanned_value.value {
+            let value = self.pop().unwrap();
+            match value {
                 Value::Array(array) => {
                     let value_shape = array.shape;
                     let existing_shape = array_shape.get_or_insert(value_shape.clone());
@@ -313,10 +320,10 @@ where
     }
 
     fn push(&mut self, value: Value) {
-        self.stack.push(self.spanned(value))
+        self.stack.push(value)
     }
 
-    fn pop(&mut self) -> Option<Spanned<Value>> {
+    fn pop(&mut self) -> Option<Value> {
         self.stack.pop()
     }
 
@@ -330,7 +337,7 @@ where
         let rhs = self.pop().unwrap();
         let lhs = self.pop().unwrap();
 
-        match (lhs.value, rhs.value) {
+        match (lhs, rhs) {
             (Value::Array(lhs_value), Value::Array(rhs_value)) => {
                 if lhs_value.shape.is_scalar() {
                     let lhs_value = lhs_value.values.first().unwrap();
@@ -374,7 +381,7 @@ where
         self.verify_stack_size(1)?;
 
         let operand = self.pop().unwrap();
-        match operand.value {
+        match operand {
             Value::Array(array) => {
                 let transformed_values: Vec<i64> = array.values.iter().map(operation).collect();
                 let value = Value::Array(Array::new(array.shape, transformed_values));
@@ -394,7 +401,7 @@ where
 
         let rhs = self.pop().unwrap();
         let lhs = self.pop().unwrap();
-        for value in operation(&lhs.value, &rhs.value) {
+        for value in operation(&lhs, &rhs) {
             self.push(value)
         }
 
@@ -408,7 +415,7 @@ where
         self.verify_stack_size(1)?;
 
         let operand = self.pop().unwrap();
-        for value in operation(&operand.value) {
+        for value in operation(&operand) {
             self.push(value)
         }
 
@@ -433,7 +440,7 @@ where
 }
 
 pub fn interpret<'a>(source: &str) -> InterpretResult {
-    let nodes = parse(source);
-    let mut interpreter = Interpreter::new(nodes);
+    let words = parse(source);
+    let mut interpreter = Interpreter::new(words);
     interpreter.interpret()
 }
