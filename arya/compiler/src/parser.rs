@@ -150,7 +150,7 @@ impl Function {
 pub type ParseWordResult = ParseResult<Spanned<Word>>;
 type ParseResult<T> = Result<T, Spanned<ParseError>>;
 
-pub struct Parser<'a, TTokens>
+struct Parser<'a, TTokens>
 where
     TTokens: Iterator<Item=LexTokenResult>,
 {
