@@ -1,6 +1,5 @@
 use crate::lexer::{tokenize, LexError, LexTokenResult, Token};
 use crate::location::{Span, Spanned};
-use crate::parser::Function::Anonymous;
 use crate::parser::ParseError::Lex;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -62,32 +61,30 @@ impl Signature {
 pub enum Word {
     Integer(i64),
     Array(Vec<Spanned<Word>>),
-    Function(Box<Function>),
+    Matrix(Vec<Vec<Spanned<Word>>>),
+    Primitive(Primitive),
+    Lambda(Lambda),
 }
 
 impl Word {
     pub fn signature(&self) -> Signature {
         match self {
-            Word::Integer(_) => Signature::new(0, 1),
-            Word::Array(_) => Signature::new(0, 1),
-            Word::Function(function) => function.to_owned().signature(),
+            Word::Integer(_) |
+            Word::Array(_) |
+            Word::Matrix(_) => Signature::new(0, 1),
+            Word::Primitive(primitive) => primitive.signature(),
+            Word::Lambda(lambda) => lambda.to_owned().signature,
         }
     }
 }
 
 #[derive(Clone, Debug)]
-pub enum Function {
-    Anonymous(AnonymousFunction),
-    Primitive(PrimitiveFunction),
-}
-
-#[derive(Clone, Debug)]
-pub struct AnonymousFunction {
+pub struct Lambda {
     pub signature: Signature,
     pub body: Vec<Spanned<Word>>,
 }
 
-impl AnonymousFunction {
+impl Lambda {
     pub fn new(signature: Signature, body: Vec<Spanned<Word>>) -> Self {
         Self { signature, body }
     }
@@ -96,14 +93,14 @@ impl AnonymousFunction {
 macro_rules! primitive {
     ($( ($num_inputs:expr, $num_outputs:expr, $name:ident) ),* $(,)?) => {
         #[derive(Clone, Debug)]
-        pub enum PrimitiveFunction {
+        pub enum Primitive {
             $($name),*
         }
 
-        impl PrimitiveFunction {
+        impl Primitive {
             pub fn signature(&self) -> Signature {
                 match self {
-                    $( PrimitiveFunction::$name => Signature::new($num_inputs, $num_outputs), )*
+                    $( Primitive::$name => Signature::new($num_inputs, $num_outputs), )*
                 }
             }
         }
@@ -138,15 +135,6 @@ primitive!(
 // TODO: bracket
 // TODO: both
 
-impl Function {
-    pub fn signature(self) -> Signature {
-        match self {
-            Function::Anonymous(anonymous) => anonymous.signature,
-            Function::Primitive(primitive) => primitive.signature(),
-        }
-    }
-}
-
 pub type ParseWordResult = ParseResult<Spanned<Word>>;
 type ParseResult<T> = Result<T, Spanned<ParseError>>;
 
@@ -178,22 +166,22 @@ where
                 Token::Identifier => Some(self.parse_identifier()),
                 Token::Number => Some(self.parse_integer()),
                 Token::OpenBracket => Some(self.parse_array()),
-                Token::OpenParenthesis => Some(self.parse_anonymous_function()),
-                Token::Plus => Some(self.parse_primitive_function(PrimitiveFunction::Add)),
-                Token::Minus => Some(self.parse_primitive_function(PrimitiveFunction::Subtract)),
-                Token::Star => Some(self.parse_primitive_function(PrimitiveFunction::Multiply)),
-                Token::Slash => Some(self.parse_primitive_function(PrimitiveFunction::Divide)),
-                Token::Ampersand => Some(self.parse_primitive_function(PrimitiveFunction::And)),
-                Token::Pipe => Some(self.parse_primitive_function(PrimitiveFunction::Or)),
-                Token::Caret => Some(self.parse_primitive_function(PrimitiveFunction::Xor)),
-                Token::Bang => Some(self.parse_primitive_function(PrimitiveFunction::Not)),
-                Token::Underscore => Some(self.parse_primitive_function(PrimitiveFunction::Negate)),
-                Token::Equal => Some(self.parse_primitive_function(PrimitiveFunction::Equal)),
-                Token::NotEqual => Some(self.parse_primitive_function(PrimitiveFunction::NotEqual)),
-                Token::Greater => Some(self.parse_primitive_function(PrimitiveFunction::Greater)),
-                Token::GreaterEqual => Some(self.parse_primitive_function(PrimitiveFunction::GreaterEqual)),
-                Token::Less => Some(self.parse_primitive_function(PrimitiveFunction::Less)),
-                Token::LessEqual => Some(self.parse_primitive_function(PrimitiveFunction::LessEqual)),
+                Token::OpenParenthesis => Some(self.parse_lambda()),
+                Token::Plus => Some(self.parse_primitive(Primitive::Add)),
+                Token::Minus => Some(self.parse_primitive(Primitive::Subtract)),
+                Token::Star => Some(self.parse_primitive(Primitive::Multiply)),
+                Token::Slash => Some(self.parse_primitive(Primitive::Divide)),
+                Token::Ampersand => Some(self.parse_primitive(Primitive::And)),
+                Token::Pipe => Some(self.parse_primitive(Primitive::Or)),
+                Token::Caret => Some(self.parse_primitive(Primitive::Xor)),
+                Token::Bang => Some(self.parse_primitive(Primitive::Not)),
+                Token::Underscore => Some(self.parse_primitive(Primitive::Negate)),
+                Token::Equal => Some(self.parse_primitive(Primitive::Equal)),
+                Token::NotEqual => Some(self.parse_primitive(Primitive::NotEqual)),
+                Token::Greater => Some(self.parse_primitive(Primitive::Greater)),
+                Token::GreaterEqual => Some(self.parse_primitive(Primitive::GreaterEqual)),
+                Token::Less => Some(self.parse_primitive(Primitive::Less)),
+                Token::LessEqual => Some(self.parse_primitive(Primitive::LessEqual)),
                 _ => Some(self.make_error(ParseError::Unexpected(token.value.clone()))),
             },
         }
@@ -206,35 +194,36 @@ where
 
     fn parse_identifier(&mut self) -> ParseWordResult {
         match self.lexeme(&self.span) {
-            "dup" => self.parse_primitive_function(PrimitiveFunction::Dup),
-            "drop" => self.parse_primitive_function(PrimitiveFunction::Drop),
-            "swap" => self.parse_primitive_function(PrimitiveFunction::Swap),
-            "over" => self.parse_primitive_function(PrimitiveFunction::Over),
-            "reduce" => self.parse_primitive_function(PrimitiveFunction::Reduce),
+            "dup" => self.parse_primitive(Primitive::Dup),
+            "drop" => self.parse_primitive(Primitive::Drop),
+            "swap" => self.parse_primitive(Primitive::Swap),
+            "over" => self.parse_primitive(Primitive::Over),
+            "reduce" => self.parse_primitive(Primitive::Reduce),
             name => self.make_error(ParseError::UnknownIdentifier(name.to_string()))
         }
     }
 
-    fn parse_primitive_function(&self, primitive: PrimitiveFunction) -> ParseWordResult {
-        self.make_word(Word::Function(Box::new(Function::Primitive(primitive))))
+    fn parse_primitive(&self, primitive: Primitive) -> ParseWordResult {
+        self.make_word(Word::Primitive(primitive))
     }
 
     fn parse_array(&mut self) -> ParseWordResult {
-        self.parse_delimited(Word::Array, Token::CloseBracket)
+        self.parse_delimited(Token::CloseBracket, |words| {
+            Word::Array(words)
+        })
     }
 
-    fn parse_anonymous_function(&mut self) -> ParseWordResult {
-        self.parse_delimited(|words| {
+    fn parse_lambda(&mut self) -> ParseWordResult {
+        self.parse_delimited(Token::CloseParenthesis, |words| {
             let signature = Signature::from_words(&words);
-            let anonymous_function = AnonymousFunction::new(signature, words);
-            Word::Function(Box::new(Anonymous(anonymous_function)))
-        }, Token::CloseParenthesis)
+            Word::Lambda(Lambda::new(signature, words))
+        })
     }
 
     fn parse_delimited(
         &mut self,
-        word: impl Fn(Vec<Spanned<Word>>) -> Word,
         closing_token: Token,
+        word: impl Fn(Vec<Spanned<Word>>) -> Word,
     ) -> ParseWordResult
     {
         let start_span = self.span.clone();
@@ -358,10 +347,10 @@ mod tests {
     #[test]
     fn test_signature_from_words_with_perfect_overlap() {
         let words: Vec<Spanned<Word>> = vec![
-            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Dup))), Span::new(1, 1)),
-            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Multiply))), Span::new(2, 1)),
+            Spanned::new(Word::Primitive(Primitive::Dup), Span::new(1, 1)),
+            Spanned::new(Word::Primitive(Primitive::Multiply), Span::new(2, 1)),
             Spanned::new(Word::Integer(1), Span::new(3, 1)),
-            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Add))), Span::new(4, 1)),
+            Spanned::new(Word::Primitive(Primitive::Add), Span::new(4, 1)),
         ];
         let signature = Signature::from_words(&words);
         assert_eq!(signature, Signature::new(1, 1));
@@ -370,10 +359,10 @@ mod tests {
     #[test]
     fn test_signature_from_words_requiring_extra_inputs() {
         let words: Vec<Spanned<Word>> = vec![
-            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Multiply))), Span::new(1, 1)),
+            Spanned::new(Word::Primitive(Primitive::Multiply), Span::new(1, 1)),
             Spanned::new(Word::Integer(1), Span::new(2, 1)),
-            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Add))), Span::new(3, 1)),
-            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Divide))), Span::new(4, 1)),
+            Spanned::new(Word::Primitive(Primitive::Add), Span::new(3, 1)),
+            Spanned::new(Word::Primitive(Primitive::Divide), Span::new(4, 1)),
         ];
         let signature = Signature::from_words(&words);
         assert_eq!(signature, Signature::new(3, 1));
@@ -382,12 +371,12 @@ mod tests {
     #[test]
     fn test_signature_from_words_producing_extra_outputs() {
         let words: Vec<Spanned<Word>> = vec![
-            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Multiply))), Span::new(1, 1)),
+            Spanned::new(Word::Primitive(Primitive::Multiply), Span::new(1, 1)),
             Spanned::new(Word::Integer(1), Span::new(2, 1)),
-            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Dup))), Span::new(3, 1)),
-            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Negate))), Span::new(4, 1)),
+            Spanned::new(Word::Primitive(Primitive::Dup), Span::new(3, 1)),
+            Spanned::new(Word::Primitive(Primitive::Negate), Span::new(4, 1)),
             Spanned::new(Word::Integer(7), Span::new(5, 1)),
-            Spanned::new(Word::Function(Box::new(Function::Primitive(PrimitiveFunction::Swap))), Span::new(6, 1)),
+            Spanned::new(Word::Primitive(Primitive::Swap), Span::new(6, 1)),
         ];
         let signature = Signature::from_words(&words);
         assert_eq!(signature, Signature::new(2, 4));
