@@ -130,21 +130,21 @@ where
                 '_' => self.make_token(Token::Underscore),
                 '=' => self.make_token(Token::Equal),
                 '!' => {
-                    if self.next_if_char_matches('=') {
+                    if self.next_if_char_is('=') {
                         self.make_token(Token::NotEqual)
                     } else {
                         self.make_token(Token::Bang)
                     }
                 }
                 '>' => {
-                    if self.next_if_char_matches('=') {
+                    if self.next_if_char_is('=') {
                         self.make_token(Token::GreaterEqual)
                     } else {
                         self.make_token(Token::Greater)
                     }
                 }
                 '<' => {
-                    if self.next_if_char_matches('=') {
+                    if self.next_if_char_is('=') {
                         self.make_token(Token::LessEqual)
                     } else {
                         self.make_token(Token::Less)
@@ -180,11 +180,7 @@ where
     }
 
     fn spanned<V>(&self, value: V) -> Spanned<V> {
-        Spanned::new(value, self.span())
-    }
-
-    fn span(&self) -> Span {
-        Span::new(self.start, self.length)
+        Spanned::new(value, Span::new(self.start, self.length))
     }
 
     fn next_char(&mut self) -> Option<char> {
@@ -199,7 +195,7 @@ where
         while self.next_char_if(&predicate).is_some() {}
     }
 
-    fn next_if_char_matches(&mut self, expected: char) -> bool {
+    fn next_if_char_is(&mut self, expected: char) -> bool {
         self.next_char_if(|&c| c == expected).is_some()
     }
 }
