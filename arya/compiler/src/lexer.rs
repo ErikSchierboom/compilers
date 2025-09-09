@@ -130,21 +130,21 @@ where
                 '_' => self.make_token(Token::Underscore),
                 '=' => self.make_token(Token::Equal),
                 '!' => {
-                    if self.next_if_char_is('=') {
+                    if self.next_if_char_is(&'=') {
                         self.make_token(Token::NotEqual)
                     } else {
                         self.make_token(Token::Bang)
                     }
                 }
                 '>' => {
-                    if self.next_if_char_is('=') {
+                    if self.next_if_char_is(&'=') {
                         self.make_token(Token::GreaterEqual)
                     } else {
                         self.make_token(Token::Greater)
                     }
                 }
                 '<' => {
-                    if self.next_if_char_is('=') {
+                    if self.next_if_char_is(&'=') {
                         self.make_token(Token::LessEqual)
                     } else {
                         self.make_token(Token::Less)
@@ -195,8 +195,8 @@ where
         while self.next_char_if(&predicate).is_some() {}
     }
 
-    fn next_if_char_is(&mut self, expected: char) -> bool {
-        self.next_char_if(|&c| c == expected).is_some()
+    fn next_if_char_is(&mut self, expected: &char) -> bool {
+        self.next_char_if(|c| c == expected).is_some()
     }
 }
 

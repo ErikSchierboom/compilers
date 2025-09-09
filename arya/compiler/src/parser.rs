@@ -57,10 +57,12 @@ impl Signature {
     }
 }
 
+
 #[derive(Clone, Debug)]
 pub enum Word {
     Integer(i64),
     Array(Vec<Spanned<Word>>),
+    Matrix(Vec<Vec<Spanned<Word>>>),
     Primitive(Primitive),
     Lambda(Lambda),
 }
@@ -69,7 +71,8 @@ impl Word {
     pub fn signature(&self) -> Signature {
         match self {
             Word::Integer(_) |
-            Word::Array(_) => Signature::new(0, 1),
+            Word::Array(_) |
+            Word::Matrix(_) => Signature::new(0, 1),
             Word::Primitive(primitive) => primitive.signature(),
             Word::Lambda(lambda) => lambda.to_owned().signature,
         }
@@ -206,27 +209,31 @@ where
     }
 
     fn parse_array(&mut self) -> ParseWordResult {
-        self.parse_delimited(Token::CloseBracket, |words| {
-            Word::Array(words)
-        })
+        let elements = self.parse_delimited(|parser| parser.try_parse_integer(), Token::Semicolon)?;
+
+        match elements.len() {
+            0 => self.make_word(Word::Array(vec![])),
+            1 => self.make_word(Word::Array(elements.first().unwrap().to_owned())),
+            _ => self.make_word(Word::Matrix(elements))
+        }
     }
 
     fn parse_lambda(&mut self) -> ParseWordResult {
-        self.parse_delimited(Token::CloseParenthesis, |words| {
+        self.parse_until(Token::CloseParenthesis, |words| {
             let signature = Signature::from_words(&words);
             Word::Lambda(Lambda::new(signature, words))
         })
     }
 
     fn try_parse_integer(&mut self) -> Option<ParseWordResult> {
-    self.next_if_token_is(Token::Number)
-        .map(|_| self.parse_integer())
+    self.next_if_token_is(&Token::Number)
+            .map(|_| self.parse_integer())
     }
 
-    fn parse_series(
+    fn parse_series<T>(
         &mut self,
-        parser: impl Fn(&mut Self) -> Option<ParseWordResult>,
-    ) -> ParseResult<Vec<Spanned<Word>>>
+        parser: impl Fn(&mut Self) -> Option<ParseResult<T>>,
+    ) -> ParseResult<Vec<T>>
     {
         let mut elements = Vec::new();
         
@@ -237,7 +244,26 @@ where
         Ok(elements)
     }
 
-    fn parse_delimited(
+    fn parse_delimited<T>(
+        &mut self,
+        parser: impl Fn(&mut Self) -> Option<ParseResult<T>>,
+        delimiter: Token
+    ) -> ParseResult<Vec<Vec<T>>>
+    {
+        let mut delimited_elements = Vec::new();
+
+        loop {
+            let series = self.parse_series(&parser)?;
+            delimited_elements.push(series);
+            if let None = self.next_if_token_is(&delimiter) {
+                break;
+            }
+        }
+
+        Ok(delimited_elements)
+    }
+
+    fn parse_until(
         &mut self,
         closing_token: Token,
         to_word: impl Fn(Vec<Spanned<Word>>) -> Word,
@@ -288,8 +314,8 @@ where
         self.next_token_if(|_| true)
     }
 
-    fn next_if_token_is(&mut self, token: Token) -> Option<LexTokenResult> {
-        self.next_token_if(|spanned_token| spanned_token.value == token)
+    fn next_if_token_is(&mut self, token: &Token) -> Option<LexTokenResult> {
+        self.next_token_if(|spanned_token| spanned_token.value == *token)
     }
 
     fn next_token_if(&mut self, predicate: impl FnOnce(&Spanned<Token>) -> bool) -> Option<LexTokenResult> {
