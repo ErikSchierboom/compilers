@@ -12,6 +12,7 @@ pub enum ParseError {
     Unexpected(Token),
     Expected(Token),
     UnknownIdentifier(String),
+    IrregularMatrix,
 }
 
 impl Display for ParseError {
@@ -20,7 +21,8 @@ impl Display for ParseError {
             Lex(lex_error) => write!(f, "{lex_error}"),
             ParseError::Unexpected(token) => write!(f, "Unexpected token: {:?}", token),
             ParseError::Expected(token) => write!(f, "Expected token: {:?}", token),
-            ParseError::UnknownIdentifier(name) => write!(f, "Unknown identifier '{name}'")
+            ParseError::UnknownIdentifier(name) => write!(f, "Unknown identifier '{name}'"),
+            ParseError::IrregularMatrix => write!(f, "Not all rows of the matrix have the same length"),
         }
     }
 }
@@ -213,8 +215,16 @@ where
 
         match elements.len() {
             0 => self.make_word(Word::Array(vec![])),
-            1 => self.make_word(Word::Array(elements.first().unwrap().to_owned())),
-            _ => self.make_word(Word::Matrix(elements))
+            1 => {
+                self.make_word(Word::Array(elements.first().unwrap().to_owned()))
+            },
+            _ => {
+                if elements.windows(2).all(|pair| pair[0].len() == pair[1].len()) {
+                    self.make_word(Word::Matrix(elements))    
+                } else {
+                    self.make_error(ParseError::IrregularMatrix)
+                }
+            }
         }
     }
 
