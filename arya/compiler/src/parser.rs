@@ -61,7 +61,6 @@ impl Signature {
 pub enum Word {
     Integer(i64),
     Array(Vec<Spanned<Word>>),
-    Matrix(Vec<Vec<Spanned<Word>>>),
     Primitive(Primitive),
     Lambda(Lambda),
 }
@@ -70,8 +69,7 @@ impl Word {
     pub fn signature(&self) -> Signature {
         match self {
             Word::Integer(_) |
-            Word::Array(_) |
-            Word::Matrix(_) => Signature::new(0, 1),
+            Word::Array(_) => Signature::new(0, 1),
             Word::Primitive(primitive) => primitive.signature(),
             Word::Lambda(lambda) => lambda.to_owned().signature,
         }
@@ -160,7 +158,7 @@ where
     }
 
     fn parse_word(&mut self) -> Option<ParseWordResult> {
-        match self.next()? {
+        match self.next_token()? {
             Err(lex_error) => Some(self.make_error(Lex(lex_error.value.clone()))),
             Ok(token) => match &token.value {
                 Token::Identifier => Some(self.parse_identifier()),
@@ -220,10 +218,29 @@ where
         })
     }
 
+    fn try_parse_integer(&mut self) -> Option<ParseWordResult> {
+    self.next_if_token_is(Token::Number)
+        .map(|_| self.parse_integer())
+    }
+
+    fn parse_series(
+        &mut self,
+        parser: impl Fn(&mut Self) -> Option<ParseWordResult>,
+    ) -> ParseResult<Vec<Spanned<Word>>>
+    {
+        let mut elements = Vec::new();
+        
+        while let Some(result) = parser(self) {
+            elements.push(result?);
+        }
+
+        Ok(elements)
+    }
+
     fn parse_delimited(
         &mut self,
         closing_token: Token,
-        word: impl Fn(Vec<Spanned<Word>>) -> Word,
+        to_word: impl Fn(Vec<Spanned<Word>>) -> Word,
     ) -> ParseWordResult
     {
         let start_span = self.span.clone();
@@ -234,13 +251,13 @@ where
                 None => return self.make_error(ParseError::Expected(closing_token)),
                 Some(Err(lex_error)) => {
                     let error = lex_error.value.clone();
-                    self.next();
+                    self.next_token();
                     return self.make_error(Lex(error));
                 }
                 Some(Ok(token)) if token.value == closing_token => {
-                    self.next();
+                    self.next_token();
                     self.span = start_span.merge(&self.span);
-                    return self.make_word(word(elements));
+                    return self.make_word(to_word(elements));
                 }
                 Some(Ok(_)) => match self.parse_word() {
                     None => return self.make_error(ParseError::Expected(closing_token)),
@@ -267,8 +284,17 @@ where
         self.tokens.peek()
     }
 
-    fn next(&mut self) -> Option<LexTokenResult> {
-        self.tokens.next()
+    fn next_token(&mut self) -> Option<LexTokenResult> {
+        self.next_token_if(|_| true)
+    }
+
+    fn next_if_token_is(&mut self, token: Token) -> Option<LexTokenResult> {
+        self.next_token_if(|spanned_token| spanned_token.value == token)
+    }
+
+    fn next_token_if(&mut self, predicate: impl FnOnce(&Spanned<Token>) -> bool) -> Option<LexTokenResult> {
+        self.tokens
+            .next_if(|lex_result | lex_result.as_ref().map(predicate).unwrap_or_default())
             .inspect(|lex_result| self.update_span(lex_result))
     }
 
