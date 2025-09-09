@@ -1,6 +1,6 @@
 use crate::location::{Span, Spanned};
 use std::error::Error;
-use std::fmt::{Display, Formatter};
+use std::fmt::{write, Display, Formatter};
 use std::iter::Peekable;
 
 #[derive(Clone, Debug)]
@@ -51,6 +51,36 @@ pub enum Token {
 
     // Synthetic
     EndOfFile,
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Number => write!(f, "number"),
+            Token::Identifier => write!(f, "identifier"),
+            Token::OpenBracket => write!(f, "["),
+            Token::CloseBracket => write!(f, "]"),
+            Token::OpenParenthesis => write!(f, "("),
+            Token::CloseParenthesis => write!(f, ")"),
+            Token::Semicolon => write!(f, ";"),
+            Token::Plus => write!(f, "+"),
+            Token::Minus => write!(f, "-"),
+            Token::Star => write!(f, "*"),
+            Token::Slash => write!(f, "/"),
+            Token::Caret => write!(f, "^"),
+            Token::Ampersand => write!(f, "&"),
+            Token::Pipe => write!(f, "|"),
+            Token::Bang => write!(f, "!"),
+            Token::Underscore => write!(f, "_"),
+            Token::Equal => write!(f, "="),
+            Token::NotEqual => write!(f, "!="),
+            Token::Greater => write!(f, ">"),
+            Token::GreaterEqual => write!(f, ">="),
+            Token::Less => write!(f, "<"),
+            Token::LessEqual => write!(f, "<="),
+            Token::EndOfFile => write!(f, "EOF"),
+        }
+    }
 }
 
 pub type LexTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
