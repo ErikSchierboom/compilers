@@ -130,8 +130,7 @@ mod tests {
                            " 7 8 9]"));
 
         let column_values_are_padded = Array::matrix(vec![vec![1, 222, 3], vec![44, 55, 6], vec![7, 8, 90]]);
-        let column_values_are_padddd = column_values_are_padded.to_string();
-        assert_eq!(column_values_are_padddd.to_string(), 
+        assert_eq!(column_values_are_padded.to_string(),
                    concat!("[ 1 222  3\n",
                            " 44  55  6\n",
                            "  7   8 90]"));
