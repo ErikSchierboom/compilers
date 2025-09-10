@@ -1,6 +1,6 @@
 use crate::location::{Span, Spanned};
 use std::error::Error;
-use std::fmt::{write, Display, Formatter};
+use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 
 #[derive(Clone, Debug)]
@@ -90,8 +90,7 @@ where
     TChars: Iterator<Item=char>,
 {
     chars: Peekable<TChars>,
-    start: u32,
-    length: u16,
+    span: Span,
 }
 
 impl<TChars> Lexer<TChars>
@@ -101,16 +100,13 @@ where
     fn new(source_code: TChars) -> Self {
         Self {
             chars: source_code.peekable(),
-            start: 0,
-            length: 0,
+            span: Span::EMPTY,
         }
     }
 
     fn lex_token(&mut self) -> LexTokenResult {
         self.skip_whitespace();
-
-        self.start += self.length as u32;
-        self.length = 0;
+        self.update_position();
 
         match self.next_char() {
             None => self.make_token(Token::EndOfFile),
@@ -157,18 +153,39 @@ where
         }
     }
 
+    fn update_position(&mut self) {
+        self.span.position += self.span.length as u32;
+        self.span.length = 0;
+    }
+
     fn lex_number(&mut self) -> LexTokenResult {
-        self.next_while_chars_match(char::is_ascii_digit);
+        self.skip_while(char::is_ascii_digit);
         self.make_token(Token::Number)
     }
 
     fn lex_symbol(&mut self) -> LexTokenResult {
-        self.next_while_chars_match(char::is_ascii_alphanumeric);
+        self.skip_while(char::is_ascii_alphanumeric);
         self.make_token(Token::Identifier)
     }
 
     fn skip_whitespace(&mut self) {
-        self.next_while_chars_match(char::is_ascii_whitespace);
+        self.skip_while(char::is_ascii_whitespace)
+    }
+
+    fn next_char(&mut self) -> Option<char> {
+        self.next_char_if(|_| true)
+    }
+
+    fn next_char_if(&mut self, predicate: impl Fn(&char) -> bool) -> Option<char> {
+        self.chars.next_if(predicate).inspect(|_| self.span.length += 1)
+    }
+
+    fn next_if_char_is(&mut self, expected: &char) -> bool {
+        self.next_char_if(|c| c == expected).is_some()
+    }
+
+    fn skip_while(&mut self, predicate: impl Fn(&char) -> bool) {
+        while self.next_char_if(&predicate).is_some() {}
     }
 
     fn make_token(&mut self, token: Token) -> LexTokenResult {
@@ -180,23 +197,7 @@ where
     }
 
     fn spanned<V>(&self, value: V) -> Spanned<V> {
-        Spanned::new(value, Span::new(self.start, self.length))
-    }
-
-    fn next_char(&mut self) -> Option<char> {
-        self.next_char_if(|_| true)
-    }
-
-    fn next_char_if(&mut self, predicate: impl Fn(&char) -> bool) -> Option<char> {
-        self.chars.next_if(predicate).inspect(|_| self.length += 1)
-    }
-
-    fn next_while_chars_match(&mut self, predicate: impl Fn(&char) -> bool) {
-        while self.next_char_if(&predicate).is_some() {}
-    }
-
-    fn next_if_char_is(&mut self, expected: &char) -> bool {
-        self.next_char_if(|c| c == expected).is_some()
+        Spanned::new(value, self.span.clone())
     }
 }
 
