@@ -226,7 +226,7 @@ where
     }
 
     fn parse_array(&mut self) -> ParseWordResult {
-        let elements = self.parse_delimited(|parser| parser.try_parse_scalar(), Token::Semicolon)?;
+        let elements = self.parse_until(|s| s.parse_array_elements(), Token::CloseBracket)?;
 
         match elements.len() {
             0 => self.make_word(Word::Array(Array::linear(Vec::new()))),
@@ -243,11 +243,16 @@ where
         }
     }
 
+    fn parse_array_elements(&mut self) -> ParseResult<Vec<Vec<Spanned<Scalar>>>> {
+        self.parse_delimited(|parser| parser.try_parse_scalar(), Token::Semicolon)
+    }
+
     fn parse_lambda(&mut self) -> ParseWordResult {
-        self.parse_until(Token::CloseParenthesis, |words| {
-            let signature = Signature::from_words(&words);
-            Word::Lambda(Lambda::new(signature, words))
-        })
+        todo!("parse lambda")
+        // self.parse_until(Token::CloseParenthesis, |words| {
+        //     let signature = Signature::from_words(&words);
+        //     Word::Lambda(Lambda::new(signature, words))
+        // })
     }
 
     fn parse_series<T>(
@@ -283,34 +288,16 @@ where
         Ok(delimited_elements)
     }
 
-    fn parse_until(
+    fn parse_until<T>(
         &mut self,
-        closing_token: Token,
-        to_word: impl Fn(Vec<Spanned<Word>>) -> Word,
-    ) -> ParseWordResult
+        parser: impl Fn(&mut Self) -> ParseResult<T>,
+        close_token: Token,
+    ) -> ParseResult<T>
     {
-        let start_span = self.span.clone();
-        let mut elements = Vec::new();
-
-        loop {
-            match self.peek() {
-                None => return self.make_error(ParseError::Expected(closing_token)),
-                Some(Err(lex_error)) => {
-                    let error = lex_error.value.clone();
-                    self.next_token();
-                    return self.make_error(Lex(error));
-                }
-                Some(Ok(token)) if token.value == closing_token => {
-                    self.next_token();
-                    self.span = start_span.merge(&self.span);
-                    return self.make_word(to_word(elements));
-                }
-                Some(Ok(_)) => match self.parse_word() {
-                    None => return self.make_error(ParseError::Expected(closing_token)),
-                    Some(Err(error)) => return self.make_error(error.value),
-                    Some(Ok(element)) => elements.push(element),
-                },
-            }
+        let result = parser(self)?;
+        match self.next_if_token_is(&Token::CloseBracket) {
+            None => self.make_error(ParseError::Expected(close_token)),
+            Some(_) => Ok(result)
         }
     }
 
@@ -322,7 +309,7 @@ where
         Ok(self.spanned(word))
     }
 
-    fn make_error(&mut self, error: ParseError) -> ParseWordResult {
+    fn make_error<T>(&mut self, error: ParseError) -> ParseResult<T> {
         Err(self.spanned(error))
     }
 
