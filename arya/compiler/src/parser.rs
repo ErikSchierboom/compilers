@@ -1,4 +1,4 @@
-use crate::array::Array;
+use crate::array::{Array, Scalar};
 use crate::lexer::{tokenize, LexError, LexTokenResult, Token};
 use crate::location::{Span, Spanned};
 use crate::parser::ParseError::Lex;
@@ -61,21 +61,8 @@ impl Signature {
 }
 
 #[derive(Clone, Debug)]
-pub enum Scalar {
-    Integer(i64),
-}
-
-impl Display for Scalar {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Scalar::Integer(i) => write!(f, "{i}")
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
 pub enum Word {
-    Array(Array<Spanned<Scalar>>),
+    Array(Array),
     Primitive(Primitive),
     Lambda(Lambda),
 }

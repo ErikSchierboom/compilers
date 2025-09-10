@@ -1,51 +1,60 @@
-﻿use std::fmt::{Display, Formatter};
+﻿use crate::location::Spanned;
+use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug)]
-pub enum Array<T> {
-    Scalar(Scalar<T>),
-    Linear(Linear<T>),
-    Matrix(Matrix<T>),
+pub enum Scalar {
+    Integer(i64),
+}
+
+impl Display for Scalar {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Scalar::Integer(i) => write!(f, "{i}")
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
-pub struct Scalar<T> {
-    pub value: T,
+pub enum Array {
+    Scalar(Spanned<Scalar>),
+    Linear(Linear),
+    Matrix(Matrix),
 }
 
 #[derive(Clone, Debug)]
-pub struct Linear<T> {
-    pub values: Vec<T>,
+pub struct Linear {
+    pub values: Vec<Spanned<Scalar>>,
     pub len: u16,
 }
 
 #[derive(Clone, Debug)]
-pub struct Matrix<T> {
-    pub values: Vec<Vec<T>>,
+pub struct Matrix {
+    pub values: Vec<Vec<Spanned<Scalar>>>,
     pub rows: u16,
     pub columns: u16,
 }
 
-impl<T> Array<T> {
-    pub fn scalar(element: T) -> Self {
-        Array::Scalar(Scalar { value: element })
+impl Array {
+    pub fn scalar(element: Spanned<Scalar>) -> Self {
+        Array::Scalar(element)
     }
 
-    pub fn linear(elements: Vec<T>) -> Self {
+    pub fn linear(elements: Vec<Spanned<Scalar>>) -> Self {
         let length = elements.len() as u16;
         Array::Linear(Linear { values: elements, len: length })
     }
 
-    pub fn matrix(elements: Vec<Vec<T>>) -> Self {
+    pub fn matrix(elements: Vec<Vec<Spanned<Scalar>>>) -> Self {
         let num_rows = elements.len() as u16;
         let num_columns = elements.get(0).map(|x| x.len()).unwrap_or(0) as u16;
         Array::Matrix(Matrix { values: elements, rows: num_rows, columns: num_columns })
     }
 }
 
-impl<T: Display> Display for Array<T> {
+impl Display for Array {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Array::Scalar(scalar) => write!(f, "{}", scalar.value),
+            Array::Scalar(scalar) => write!(f, "{}", scalar),
             Array::Linear(linear) => {
                 write!(f, "[")?;
                 for (i, value) in linear.values.iter().enumerate() {
@@ -100,7 +109,7 @@ mod tests {
 
     #[test]
     fn test_display_linear() {
-        let empty: Array<i32> = Array::linear(vec![]);
+        let empty = Array::linear(vec![]);
         assert_eq!(empty.to_string(), "[]");
 
         let single = Array::linear(vec![13]);
@@ -112,31 +121,31 @@ mod tests {
 
     #[test]
     fn test_display_matrix() {
-        let empty: Array<i32> = Array::matrix(vec![]);
+        let empty = Array::matrix(vec![]);
         assert_eq!(empty.to_string(), "[]");
 
-        let single_row_no_columns: Array<i32> = Array::matrix(vec![vec![]]);
+        let single_row_no_columns = Array::matrix(vec![vec![]]);
         assert_eq!(single_row_no_columns.to_string(), "[]");
 
         let single_row_one_column = Array::matrix(vec![vec![2]]);
         assert_eq!(single_row_one_column.to_string(), "[2]");
 
         let multiple_rows_one_column = Array::matrix(vec![vec![2], vec![3], vec![4]]);
-        assert_eq!(multiple_rows_one_column.to_string(), 
+        assert_eq!(multiple_rows_one_column.to_string(),
                    concat!("[2\n",
-                           " 3\n",
-                           " 4]"));
+                   " 3\n",
+                   " 4]"));
 
         let multiples_rows_multiple_columns = Array::matrix(vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]]);
-        assert_eq!(multiples_rows_multiple_columns.to_string(), 
+        assert_eq!(multiples_rows_multiple_columns.to_string(),
                    concat!("[1 2 3\n",
-                           " 4 5 6\n",
-                           " 7 8 9]"));
+                   " 4 5 6\n",
+                   " 7 8 9]"));
 
         let column_values_are_padded = Array::matrix(vec![vec![1, 222, 3], vec![44, 55, 6], vec![7, 8, 90]]);
         assert_eq!(column_values_are_padded.to_string(),
                    concat!("[ 1 222  3\n",
-                           " 44  55  6\n",
-                           "  7   8 90]"));
+                   " 44  55  6\n",
+                   "  7   8 90]"));
     }
 }
