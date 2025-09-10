@@ -163,31 +163,32 @@ where
     }
 
     fn parse_word(&mut self) -> Option<ParseWordResult> {
-        match self.next_token()? {
-            Err(lex_error) => Some(self.make_error(Lex(lex_error.value.clone()))),
+        let parse_word_result = match self.next_token()? {
+            Err(lex_error) => self.make_error(Lex(lex_error.value.clone())),
             Ok(token) => match &token.value {
-                Token::Identifier => Some(self.parse_identifier()),
-                Token::Number => Some(self.parse_integer()),
-                Token::OpenBracket => Some(self.parse_array()),
-                Token::OpenParenthesis => Some(self.parse_lambda()),
-                Token::Plus => Some(self.parse_primitive(Primitive::Add)),
-                Token::Minus => Some(self.parse_primitive(Primitive::Subtract)),
-                Token::Star => Some(self.parse_primitive(Primitive::Multiply)),
-                Token::Slash => Some(self.parse_primitive(Primitive::Divide)),
-                Token::Ampersand => Some(self.parse_primitive(Primitive::And)),
-                Token::Pipe => Some(self.parse_primitive(Primitive::Or)),
-                Token::Caret => Some(self.parse_primitive(Primitive::Xor)),
-                Token::Bang => Some(self.parse_primitive(Primitive::Not)),
-                Token::Underscore => Some(self.parse_primitive(Primitive::Negate)),
-                Token::Equal => Some(self.parse_primitive(Primitive::Equal)),
-                Token::NotEqual => Some(self.parse_primitive(Primitive::NotEqual)),
-                Token::Greater => Some(self.parse_primitive(Primitive::Greater)),
-                Token::GreaterEqual => Some(self.parse_primitive(Primitive::GreaterEqual)),
-                Token::Less => Some(self.parse_primitive(Primitive::Less)),
-                Token::LessEqual => Some(self.parse_primitive(Primitive::LessEqual)),
-                _ => Some(self.make_error(ParseError::Unexpected(token.value.clone()))),
+                Token::Identifier => self.parse_identifier(),
+                Token::Number => self.parse_integer(),
+                Token::OpenBracket => self.parse_array(),
+                Token::OpenParenthesis => self.parse_lambda(),
+                Token::Plus => self.parse_primitive(Primitive::Add),
+                Token::Minus => self.parse_primitive(Primitive::Subtract),
+                Token::Star => self.parse_primitive(Primitive::Multiply),
+                Token::Slash => self.parse_primitive(Primitive::Divide),
+                Token::Ampersand => self.parse_primitive(Primitive::And),
+                Token::Pipe => self.parse_primitive(Primitive::Or),
+                Token::Caret => self.parse_primitive(Primitive::Xor),
+                Token::Bang => self.parse_primitive(Primitive::Not),
+                Token::Underscore => self.parse_primitive(Primitive::Negate),
+                Token::Equal => self.parse_primitive(Primitive::Equal),
+                Token::NotEqual => self.parse_primitive(Primitive::NotEqual),
+                Token::Greater => self.parse_primitive(Primitive::Greater),
+                Token::GreaterEqual => self.parse_primitive(Primitive::GreaterEqual),
+                Token::Less => self.parse_primitive(Primitive::Less),
+                Token::LessEqual => self.parse_primitive(Primitive::LessEqual),
+                _ => self.make_error(ParseError::Unexpected(token.value.clone())),
             },
-        }
+        };
+        Some(parse_word_result)
     }
 
     fn parse_integer(&mut self) -> ParseWordResult {
