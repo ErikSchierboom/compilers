@@ -37,6 +37,12 @@ impl<T> Spanned<T> {
     }
 }
 
+impl<T: Display> Display for Spanned<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Location {
     pub line: u16,
@@ -79,10 +85,10 @@ impl LineEndings {
             + 1;
         let column = span.position
             - self
-                .line_starts
-                .get(line as usize - 1)
-                .copied()
-                .unwrap_or_default()
+            .line_starts
+            .get(line as usize - 1)
+            .copied()
+            .unwrap_or_default()
             + 1;
         Location::new(line as u16, column as u16)
     }

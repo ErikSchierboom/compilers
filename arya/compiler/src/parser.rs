@@ -65,6 +65,14 @@ pub enum Scalar {
     Integer(i64),
 }
 
+impl Display for Scalar {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Scalar::Integer(i) => write!(f, "{i}")
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum Word {
     Array(Array<Spanned<Scalar>>),
@@ -82,6 +90,16 @@ impl Word {
     }
 }
 
+impl Display for Word {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Word::Array(array) => write!(f, "{array}"),
+            Word::Primitive(primitive) => write!(f, "{primitive}"),
+            Word::Lambda(lambda) => write!(f, "{lambda}"),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Lambda {
     pub signature: Signature,
@@ -91,6 +109,12 @@ pub struct Lambda {
 impl Lambda {
     pub fn new(signature: Signature, body: Vec<Spanned<Word>>) -> Self {
         Self { signature, body }
+    }
+}
+
+impl Display for Lambda {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "TODO: lambda display")
     }
 }
 
@@ -105,6 +129,14 @@ macro_rules! primitive {
             pub fn signature(&self) -> Signature {
                 match self {
                     $( Primitive::$name => Signature::new($num_inputs, $num_outputs), )*
+                }
+            }
+        }
+
+        impl Display for Primitive {
+            fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    $( Primitive::$name => write!(f, "$name"), )*
                 }
             }
         }
