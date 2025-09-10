@@ -1,3 +1,4 @@
+use crate::array::Array;
 use crate::lexer::{tokenize, LexError, LexTokenResult, Token};
 use crate::location::{Span, Spanned};
 use crate::parser::ParseError::Lex;
@@ -59,12 +60,14 @@ impl Signature {
     }
 }
 
+#[derive(Clone, Debug)]
+pub enum Scalar {
+    Integer(i64),
+}
 
 #[derive(Clone, Debug)]
 pub enum Word {
-    Integer(i64),
-    Array(Vec<Spanned<Word>>),
-    Matrix(Vec<Vec<Spanned<Word>>>),
+    Array(Array<Spanned<Scalar>>),
     Primitive(Primitive),
     Lambda(Lambda),
 }
@@ -72,9 +75,7 @@ pub enum Word {
 impl Word {
     pub fn signature(&self) -> Signature {
         match self {
-            Word::Integer(_) |
-            Word::Array(_) |
-            Word::Matrix(_) => Signature::new(0, 1),
+            Word::Array(_) => Signature::new(0, 1),
             Word::Primitive(primitive) => primitive.signature(),
             Word::Lambda(lambda) => lambda.to_owned().signature,
         }
@@ -139,6 +140,7 @@ primitive!(
 // TODO: both
 
 pub type ParseWordResult = ParseResult<Spanned<Word>>;
+type ParseScalarResult = ParseResult<Spanned<Scalar>>;
 type ParseResult<T> = Result<T, Spanned<ParseError>>;
 
 struct Parser<'a, TTokens>
@@ -163,73 +165,81 @@ where
     }
 
     fn parse_word(&mut self) -> Option<ParseWordResult> {
-        let word = if let Some(integer) = self.parse_integer() {
-            integer
-        } else if let Some(primitive) = self.parse_primitive() {
-            primitive
-        } else {
-            todo!()
+        let parse_word_result = match self.next_token()? {
+            Err(lex_error) => self.make_error(Lex(lex_error.value.clone())),
+            Ok(token) => match &token.value {
+                Token::Identifier => self.parse_identifier(),
+                Token::Number => self.parse_integer(),
+                Token::OpenBracket => self.parse_array(),
+                Token::OpenParenthesis => self.parse_lambda(),
+                Token::Plus => self.parse_primitive(Primitive::Add),
+                Token::Minus => self.parse_primitive(Primitive::Subtract),
+                Token::Star => self.parse_primitive(Primitive::Multiply),
+                Token::Slash => self.parse_primitive(Primitive::Divide),
+                Token::Ampersand => self.parse_primitive(Primitive::And),
+                Token::Pipe => self.parse_primitive(Primitive::Or),
+                Token::Caret => self.parse_primitive(Primitive::Xor),
+                Token::Bang => self.parse_primitive(Primitive::Not),
+                Token::Underscore => self.parse_primitive(Primitive::Negate),
+                Token::Equal => self.parse_primitive(Primitive::Equal),
+                Token::NotEqual => self.parse_primitive(Primitive::NotEqual),
+                Token::Greater => self.parse_primitive(Primitive::Greater),
+                Token::GreaterEqual => self.parse_primitive(Primitive::GreaterEqual),
+                Token::Less => self.parse_primitive(Primitive::Less),
+                Token::LessEqual => self.parse_primitive(Primitive::LessEqual),
+                _ => self.make_error(ParseError::Unexpected(token.value.clone())),
+            },
         };
-        Some(word)
-
-
-        // let parse_word_result = match self.next_token()? {
-        //     Err(lex_error) => self.make_error(Lex(lex_error.value.clone())),
-        //     Ok(token) => match &token.value {
-        //         Token::Identifier => self.parse_identifier(),
-        //         Token::Number => self.parse_integer(),
-        //         Token::OpenBracket => self.parse_array(),
-        //         Token::OpenParenthesis => self.parse_lambda(),
-        //         _ => self.make_error(ParseError::Unexpected(token.value.clone())),
-        //     },
-        // };
-        // Some(parse_word_result)
+        Some(parse_word_result)
     }
 
-    fn parse_integer(&mut self) -> Option<ParseWordResult> {
-        self.next_if_token_is(&Token::Number)?;
+    fn parse_integer(&mut self) -> ParseWordResult {
+        self.parse_scalar_integer().and_then(|scalar| self.make_word(Word::Array(Array::scalar(scalar))))
+    }
+
+    fn parse_scalar_integer(&mut self) -> ParseScalarResult {
         let number = i64::from_str(self.lexeme(&self.span)).unwrap();
-        Some(self.make_word(Word::Integer(number)))
+        self.make_scalar(Scalar::Integer(number))
     }
 
-    fn parse_identifier(&mut self) -> Option<ParseWordResult> {
-        self.next_if_token_is(&Token::Identifier)?;
+    fn try_parse_scalar_integer(&mut self) -> Option<ParseScalarResult> {
+        self.next_if_token_is(&Token::Number).map(|_| self.parse_scalar_integer())
+    }
+
+    fn try_parse_scalar(&mut self) -> Option<ParseScalarResult> {
+        self.try_parse_scalar_integer()
+    }
+
+    fn parse_identifier(&mut self) -> ParseWordResult {
         match self.lexeme(&self.span) {
-            "dup" => self.parse_primitive(),
-            "drop" => self.parse_primitive(),
-            "swap" => self.parse_primitive(),
-            "over" => self.parse_primitive(),
-            "reduce" => self.parse_primitive(),
-            name => Some(self.make_error(ParseError::UnknownIdentifier(name.to_string())))
+            "dup" => self.parse_primitive(Primitive::Dup),
+            "drop" => self.parse_primitive(Primitive::Drop),
+            "swap" => self.parse_primitive(Primitive::Swap),
+            "over" => self.parse_primitive(Primitive::Over),
+            "reduce" => self.parse_primitive(Primitive::Reduce),
+            name => self.make_error(ParseError::UnknownIdentifier(name.to_string()))
         }
     }
 
-    fn parse_primitive(&mut self) -> Option<ParseWordResult> {
-        if self.next_if_token_is(&Token::Plus).is_some() {
-            Some(self.make_word(Word::Primitive(Primitive::Add)))
-        } else {
-            None
-        }
+    fn parse_primitive(&self, primitive: Primitive) -> ParseWordResult {
+        self.make_word(Word::Primitive(primitive))
     }
 
-    fn parse_array(&mut self) -> Option<ParseWordResult> {
-        match self.parse_delimited(|parser| parser.parse_integer(), Token::Semicolon) {
-            Ok(elements) => {
-                match elements.len() {
-                    0 => Some(self.make_word(Word::Array(vec![]))),
-                    1 => {
-                        Some(self.make_word(Word::Array(elements.first().unwrap().to_owned())))
-                    }
-                    _ => {
-                        if elements.windows(2).all(|pair| pair[0].len() == pair[1].len()) {
-                            Some(self.make_word(Word::Matrix(elements)))
-                        } else {
-                            Some(self.make_error(ParseError::IrregularMatrix))
-                        }
-                    }
+    fn parse_array(&mut self) -> ParseWordResult {
+        let elements = self.parse_delimited(|parser| parser.try_parse_scalar(), Token::Semicolon)?;
+
+        match elements.len() {
+            0 => self.make_word(Word::Array(Array::linear(Vec::new()))),
+            1 => {
+                self.make_word(Word::Array(Array::linear(elements.first().unwrap().to_owned())))
+            }
+            _ => {
+                if elements.windows(2).all(|pair| pair[0].len() == pair[1].len()) {
+                    self.make_word(Word::Array(Array::matrix(elements)))
+                } else {
+                    self.make_error(ParseError::IrregularMatrix)
                 }
             }
-            Err(error) => Some(Err(error))
         }
     }
 
@@ -302,6 +312,10 @@ where
                 },
             }
         }
+    }
+
+    fn make_scalar(&self, scalar: Scalar) -> ParseScalarResult {
+        Ok(self.spanned(scalar))
     }
 
     fn make_word(&self, word: Word) -> ParseWordResult {
@@ -411,7 +425,7 @@ mod tests {
         let words: Vec<Spanned<Word>> = vec![
             Spanned::new(Word::Primitive(Primitive::Dup), Span::new(1, 1)),
             Spanned::new(Word::Primitive(Primitive::Multiply), Span::new(2, 1)),
-            Spanned::new(Word::Integer(1), Span::new(3, 1)),
+            Spanned::new(Word::Array(Array::scalar(Spanned::new(Scalar::Integer(1), Span::EMPTY))), Span::new(3, 1)),
             Spanned::new(Word::Primitive(Primitive::Add), Span::new(4, 1)),
         ];
         let signature = Signature::from_words(&words);
@@ -422,7 +436,7 @@ mod tests {
     fn test_signature_from_words_requiring_extra_inputs() {
         let words: Vec<Spanned<Word>> = vec![
             Spanned::new(Word::Primitive(Primitive::Multiply), Span::new(1, 1)),
-            Spanned::new(Word::Integer(1), Span::new(2, 1)),
+            Spanned::new(Word::Array(Array::scalar(Spanned::new(Scalar::Integer(1), Span::EMPTY))), Span::new(2, 1)),
             Spanned::new(Word::Primitive(Primitive::Add), Span::new(3, 1)),
             Spanned::new(Word::Primitive(Primitive::Divide), Span::new(4, 1)),
         ];
@@ -434,10 +448,10 @@ mod tests {
     fn test_signature_from_words_producing_extra_outputs() {
         let words: Vec<Spanned<Word>> = vec![
             Spanned::new(Word::Primitive(Primitive::Multiply), Span::new(1, 1)),
-            Spanned::new(Word::Integer(1), Span::new(2, 1)),
+            Spanned::new(Word::Array(Array::scalar(Spanned::new(Scalar::Integer(1), Span::EMPTY))), Span::new(2, 1)),
             Spanned::new(Word::Primitive(Primitive::Dup), Span::new(3, 1)),
             Spanned::new(Word::Primitive(Primitive::Negate), Span::new(4, 1)),
-            Spanned::new(Word::Integer(7), Span::new(5, 1)),
+            Spanned::new(Word::Array(Array::scalar(Spanned::new(Scalar::Integer(7), Span::EMPTY))), Span::new(5, 1)),
             Spanned::new(Word::Primitive(Primitive::Swap), Span::new(6, 1)),
         ];
         let signature = Signature::from_words(&words);

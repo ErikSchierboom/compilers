@@ -1,20 +1,24 @@
 ﻿use std::fmt::{Display, Formatter};
 
+#[derive(Clone, Debug)]
 pub enum Array<T> {
     Scalar(Scalar<T>),
     Linear(Linear<T>),
     Matrix(Matrix<T>),
 }
 
+#[derive(Clone, Debug)]
 pub struct Scalar<T> {
     pub value: T,
 }
 
+#[derive(Clone, Debug)]
 pub struct Linear<T> {
     pub values: Vec<T>,
     pub len: u16,
 }
 
+#[derive(Clone, Debug)]
 pub struct Matrix<T> {
     pub values: Vec<Vec<T>>,
     pub rows: u16,
