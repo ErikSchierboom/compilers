@@ -3,16 +3,16 @@
 pub enum Array<T> {
     Scalar(Scalar<T>),
     Linear(Linear<T>),
-    Matrix(Matrix<T>)
+    Matrix(Matrix<T>),
 }
 
 pub struct Scalar<T> {
-    pub value: T
+    pub value: T,
 }
 
 pub struct Linear<T> {
     pub values: Vec<T>,
-    pub len: u16
+    pub len: u16,
 }
 
 pub struct Matrix<T> {
@@ -38,7 +38,7 @@ impl<T> Array<T> {
     }
 }
 
-impl<T : Display> Display for Array<T> {
+impl<T: Display> Display for Array<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Array::Scalar(scalar) => write!(f, "{}", scalar.value),
@@ -51,7 +51,7 @@ impl<T : Display> Display for Array<T> {
                     }
                 }
                 write!(f, "]")
-            },
+            }
             Array::Matrix(matrix) => {
                 let column_widths: Vec<usize> = (0..matrix.columns).map(|c| matrix.values
                     .iter()
@@ -108,29 +108,32 @@ mod tests {
 
     #[test]
     fn test_display_matrix() {
-        // let empty: Array<i32> = Array::matrix(vec![]);
-        // assert_eq!(empty.to_string(), "[]");
-        //
-        // let single_row_no_columns: Array<i32> = Array::matrix(vec![vec![]]);
-        // assert_eq!(single_row_no_columns.to_string(), "[]");
-        //
-        // let single_row_one_column = Array::matrix(vec![vec![2]]);
-        // assert_eq!(single_row_one_column.to_string(), "[2]");
-        //
-        // let multiple_rows_one_column = Array::matrix(vec![vec![2], vec![3], vec![4]]);
-        // assert_eq!(multiple_rows_one_column.to_string(), "[2\n\
-        //                                                    3\n\
-        //                                                    4]");
-        //
-        // let multiples_rows_multiple_columns = Array::matrix(vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]]);
-        // assert_eq!(multiples_rows_multiple_columns.to_string(), "[1 2 3\n\
-        //                                                           4 5 6\n\
-        //                                                           7 8 9]");
+        let empty: Array<i32> = Array::matrix(vec![]);
+        assert_eq!(empty.to_string(), "[]");
+
+        let single_row_no_columns: Array<i32> = Array::matrix(vec![vec![]]);
+        assert_eq!(single_row_no_columns.to_string(), "[]");
+
+        let single_row_one_column = Array::matrix(vec![vec![2]]);
+        assert_eq!(single_row_one_column.to_string(), "[2]");
+
+        let multiple_rows_one_column = Array::matrix(vec![vec![2], vec![3], vec![4]]);
+        assert_eq!(multiple_rows_one_column.to_string(), 
+                   concat!("[2\n",
+                           " 3\n",
+                           " 4]"));
+
+        let multiples_rows_multiple_columns = Array::matrix(vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]]);
+        assert_eq!(multiples_rows_multiple_columns.to_string(), 
+                   concat!("[1 2 3\n",
+                           " 4 5 6\n",
+                           " 7 8 9]"));
 
         let column_values_are_padded = Array::matrix(vec![vec![1, 222, 3], vec![44, 55, 6], vec![7, 8, 90]]);
         let column_values_are_padddd = column_values_are_padded.to_string();
-        assert_eq!(column_values_are_padddd.to_string(), "[ 1 222  3\n\
-                                                           44  55  6\n\
-                                                            7   8 90]");
+        assert_eq!(column_values_are_padddd.to_string(), 
+                   concat!("[ 1 222  3\n",
+                           " 44  55  6\n",
+                           "  7   8 90]"));
     }
 }
