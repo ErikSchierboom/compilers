@@ -170,7 +170,7 @@ where
         } else {
             todo!()
         };
-        Some(Ok(word))
+        Some(word)
 
 
         // let parse_word_result = match self.next_token()? {
@@ -180,21 +180,6 @@ where
         //         Token::Number => self.parse_integer(),
         //         Token::OpenBracket => self.parse_array(),
         //         Token::OpenParenthesis => self.parse_lambda(),
-        //         Token::Plus => self.parse_primitive(Primitive::Add),
-        //         Token::Minus => self.parse_primitive(Primitive::Subtract),
-        //         Token::Star => self.parse_primitive(Primitive::Multiply),
-        //         Token::Slash => self.parse_primitive(Primitive::Divide),
-        //         Token::Ampersand => self.parse_primitive(Primitive::And),
-        //         Token::Pipe => self.parse_primitive(Primitive::Or),
-        //         Token::Caret => self.parse_primitive(Primitive::Xor),
-        //         Token::Bang => self.parse_primitive(Primitive::Not),
-        //         Token::Underscore => self.parse_primitive(Primitive::Negate),
-        //         Token::Equal => self.parse_primitive(Primitive::Equal),
-        //         Token::NotEqual => self.parse_primitive(Primitive::NotEqual),
-        //         Token::Greater => self.parse_primitive(Primitive::Greater),
-        //         Token::GreaterEqual => self.parse_primitive(Primitive::GreaterEqual),
-        //         Token::Less => self.parse_primitive(Primitive::Less),
-        //         Token::LessEqual => self.parse_primitive(Primitive::LessEqual),
         //         _ => self.make_error(ParseError::Unexpected(token.value.clone())),
         //     },
         // };
@@ -228,20 +213,23 @@ where
     }
 
     fn parse_array(&mut self) -> Option<ParseWordResult> {
-        let elements = self.parse_delimited(|parser| parser.parse_integer(), Token::Semicolon)?;
-
-        match elements.len() {
-            0 => Some(self.make_word(Word::Array(vec![]))),
-            1 => {
-                Some(self.make_word(Word::Array(elements.first().unwrap().to_owned())))
-            }
-            _ => {
-                if elements.windows(2).all(|pair| pair[0].len() == pair[1].len()) {
-                    Some(self.make_word(Word::Matrix(elements)))
-                } else {
-                    Some(self.make_error(ParseError::IrregularMatrix))
+        match self.parse_delimited(|parser| parser.parse_integer(), Token::Semicolon) {
+            Ok(elements) => {
+                match elements.len() {
+                    0 => Some(self.make_word(Word::Array(vec![]))),
+                    1 => {
+                        Some(self.make_word(Word::Array(elements.first().unwrap().to_owned())))
+                    }
+                    _ => {
+                        if elements.windows(2).all(|pair| pair[0].len() == pair[1].len()) {
+                            Some(self.make_word(Word::Matrix(elements)))
+                        } else {
+                            Some(self.make_error(ParseError::IrregularMatrix))
+                        }
+                    }
                 }
             }
+            Err(error) => Some(Err(error))
         }
     }
 
