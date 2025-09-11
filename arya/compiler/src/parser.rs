@@ -75,6 +75,13 @@ impl Word {
             Word::Lambda(lambda) => lambda.to_owned().signature,
         }
     }
+
+    pub fn as_scalar(&self) -> Option<Spanned<Scalar>> {
+        match self {
+            Word::Array(Array::Scalar(scalar)) => Some(scalar.clone()),
+            _ => None
+        }
+    }
 }
 
 impl Display for Word {
@@ -158,33 +165,7 @@ primitive!(
 // TODO: bracket
 // TODO: both
 
-impl TryInto<Primitive> for Token {
-    type Error = ();
-
-    fn try_into(self) -> Result<Primitive, Self::Error> {
-        match self {
-            Token::Plus => Ok(Primitive::Add),
-            Token::Minus => Ok(Primitive::Subtract),
-            Token::Star => Ok(Primitive::Multiply),
-            Token::Slash => Ok(Primitive::Divide),
-            Token::Ampersand => Ok(Primitive::And),
-            Token::Pipe => Ok(Primitive::Or),
-            Token::Caret => Ok(Primitive::Xor),
-            Token::Bang => Ok(Primitive::Not),
-            Token::Underscore => Ok(Primitive::Negate),
-            Token::Equal => Ok(Primitive::Equal),
-            Token::NotEqual => Ok(Primitive::NotEqual),
-            Token::Greater => Ok(Primitive::Greater),
-            Token::GreaterEqual => Ok(Primitive::GreaterEqual),
-            Token::Less => Ok(Primitive::Less),
-            Token::LessEqual => Ok(Primitive::LessEqual),
-            _ => Err(())
-        }
-    }
-}
-
 pub type ParseWordResult = ParseResult<Spanned<Word>>;
-type ParseScalarResult = ParseResult<Spanned<Scalar>>;
 type ParseResult<T> = Result<T, Spanned<ParseError>>;
 
 struct Parser<'a, TTokens>
@@ -209,54 +190,23 @@ where
     }
 
     fn parse_word(&mut self) -> Option<ParseWordResult> {
-        let parse_word_result = match self.next_token()? {
-            Err(lex_error) => self.make_error(Lex(lex_error.value.clone())),
-            Ok(token) => match &token.value {
-                Token::Identifier => self.parse_identifier(),
-                Token::Number => self.parse_integer(),
-                Token::OpenBracket => self.parse_array(),
-                Token::OpenParenthesis => self.parse_lambda(),
-                Token::Plus => self.parse_primitive(Primitive::Add),
-                Token::Minus => self.parse_primitive(Primitive::Subtract),
-                Token::Star => self.parse_primitive(Primitive::Multiply),
-                Token::Slash => self.parse_primitive(Primitive::Divide),
-                Token::Ampersand => self.parse_primitive(Primitive::And),
-                Token::Pipe => self.parse_primitive(Primitive::Or),
-                Token::Caret => self.parse_primitive(Primitive::Xor),
-                Token::Bang => self.parse_primitive(Primitive::Not),
-                Token::Underscore => self.parse_primitive(Primitive::Negate),
-                Token::Equal => self.parse_primitive(Primitive::Equal),
-                Token::NotEqual => self.parse_primitive(Primitive::NotEqual),
-                Token::Greater => self.parse_primitive(Primitive::Greater),
-                Token::GreaterEqual => self.parse_primitive(Primitive::GreaterEqual),
-                Token::Less => self.parse_primitive(Primitive::Less),
-                Token::LessEqual => self.parse_primitive(Primitive::LessEqual),
-                _ => self.make_error(ParseError::Unexpected(token.value.clone())),
-            },
-        };
-        Some(parse_word_result)
+        self.try_parse_integer()
+            .or_else(|| self.try_parse_identifier())
+            .or_else(|| self.try_parse_primitive())
+            .or_else(|| self.try_parse_array())
+            .or_else(|| self.try_parse_lambda())
+            .or_else(|| self.try_parse_error())
     }
 
-    fn try_parse_integer(&mut self) -> ParseWordResult {
-        self.parse_scalar_integer().and_then(|scalar| self.make_word(Word::Array(Array::scalar(scalar))))
+    fn try_parse_integer(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::Number)
+            .map(|_| self.parse_integer())
     }
 
     fn parse_integer(&mut self) -> ParseWordResult {
-        self.parse_scalar_integer().and_then(|scalar| self.make_word(Word::Array(Array::scalar(scalar))))
-    }
-
-    fn parse_scalar_integer(&mut self) -> ParseScalarResult {
         let number = i64::from_str(self.lexeme(&self.span)).unwrap();
-        self.make_scalar(Scalar::Integer(number))
-    }
-
-    fn try_parse_scalar_integer(&mut self) -> Option<ParseScalarResult> {
-        self.next_if_token_is(&Token::Number)
-            .map(|_| self.parse_scalar_integer())
-    }
-
-    fn try_parse_scalar(&mut self) -> Option<ParseScalarResult> {
-        self.try_parse_scalar_integer()
+        let scalar = self.spanned(Scalar::Integer(number));
+        self.make_word(Word::Array(Array::scalar(scalar)))
     }
 
     fn try_parse_identifier(&mut self) -> Option<ParseWordResult> {
@@ -276,14 +226,31 @@ where
     }
 
     fn try_parse_primitive(&mut self) -> Option<ParseWordResult> {
-        self.peek_token()
-            .and_then(|lex_result| lex_result.clone().ok())
-            .and_then(|spanned_token| spanned_token.value.try_into().ok())
-            .map(|primitive| self.parse_primitive(primitive))
+        self.next_if_token_is(&Token::Plus).map(|_| self.parse_primitive(Primitive::Add))
+            .or_else(|| self.next_if_token_is(&Token::Plus).map(|_| self.parse_primitive(Primitive::Add)))
+            .or_else(|| self.next_if_token_is(&Token::Minus).map(|_| self.parse_primitive(Primitive::Subtract)))
+            .or_else(|| self.next_if_token_is(&Token::Star).map(|_| self.parse_primitive(Primitive::Multiply)))
+            .or_else(|| self.next_if_token_is(&Token::Slash).map(|_| self.parse_primitive(Primitive::Divide)))
+            .or_else(|| self.next_if_token_is(&Token::Ampersand).map(|_| self.parse_primitive(Primitive::And)))
+            .or_else(|| self.next_if_token_is(&Token::Pipe).map(|_| self.parse_primitive(Primitive::Or)))
+            .or_else(|| self.next_if_token_is(&Token::Caret).map(|_| self.parse_primitive(Primitive::Xor)))
+            .or_else(|| self.next_if_token_is(&Token::Bang).map(|_| self.parse_primitive(Primitive::Not)))
+            .or_else(|| self.next_if_token_is(&Token::Underscore).map(|_| self.parse_primitive(Primitive::Negate)))
+            .or_else(|| self.next_if_token_is(&Token::Equal).map(|_| self.parse_primitive(Primitive::Equal)))
+            .or_else(|| self.next_if_token_is(&Token::NotEqual).map(|_| self.parse_primitive(Primitive::NotEqual)))
+            .or_else(|| self.next_if_token_is(&Token::Greater).map(|_| self.parse_primitive(Primitive::Greater)))
+            .or_else(|| self.next_if_token_is(&Token::GreaterEqual).map(|_| self.parse_primitive(Primitive::GreaterEqual)))
+            .or_else(|| self.next_if_token_is(&Token::Less).map(|_| self.parse_primitive(Primitive::Less)))
+            .or_else(|| self.next_if_token_is(&Token::LessEqual).map(|_| self.parse_primitive(Primitive::LessEqual)))
     }
 
     fn parse_primitive(&self, primitive: Primitive) -> ParseWordResult {
         self.make_word(Word::Primitive(primitive))
+    }
+
+    fn try_parse_array(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::OpenBracket)
+            .map(|_| self.parse_array())
     }
 
     fn parse_array(&mut self) -> ParseWordResult {
@@ -305,7 +272,21 @@ where
     }
 
     fn parse_array_elements(&mut self) -> ParseResult<Vec<Vec<Spanned<Scalar>>>> {
-        self.parse_delimited(|parser| parser.try_parse_scalar(), Token::Semicolon)
+        let rows = self.parse_delimited(|parser| parser.try_parse_integer(), Token::Semicolon)?;
+        rows.into_iter().map(|row| {
+            row.into_iter().map(|col| {
+                if let Word::Array(Array::Scalar(scalar)) = col.value {
+                    Ok(scalar)
+                } else {
+                    return self.make_error(ParseError::IrregularMatrix);
+                }
+            }).collect()
+        }).collect()
+    }
+
+    fn try_parse_lambda(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::OpenParenthesis)
+            .map(|_| self.parse_lambda())
     }
 
     fn parse_lambda(&mut self) -> ParseWordResult {
@@ -314,6 +295,13 @@ where
         //     let signature = Signature::from_words(&words);
         //     Word::Lambda(Lambda::new(signature, words))
         // })
+    }
+
+    fn try_parse_error(&mut self) -> Option<ParseWordResult> {
+        match self.next_token()? {
+            Ok(token) => Some(self.make_error(ParseError::Unexpected(token.value.clone()))),
+            Err(lex_error) => Some(self.make_error(Lex(lex_error.value)))
+        }
     }
 
     fn parse_series<T>(
@@ -362,10 +350,6 @@ where
         }
     }
 
-    fn make_scalar(&self, scalar: Scalar) -> ParseScalarResult {
-        Ok(self.spanned(scalar))
-    }
-
     fn make_word(&self, word: Word) -> ParseWordResult {
         Ok(self.spanned(word))
     }
@@ -378,10 +362,6 @@ where
         &self.source_code[span.position as usize..(span.position + span.length as u32) as usize]
     }
 
-    fn peek_token(&mut self) -> Option<&LexTokenResult> {
-        self.tokens.peek()
-    }
-
     fn next_token(&mut self) -> Option<LexTokenResult> {
         self.next_token_if(|_| true)
     }
@@ -391,8 +371,7 @@ where
     }
 
     fn next_token_if(&mut self, predicate: impl FnOnce(&Spanned<Token>) -> bool) -> Option<LexTokenResult> {
-        self.tokens
-            .next_if(|lex_result| lex_result.as_ref().map(predicate).unwrap_or_default())
+        self.tokens.next_if(|lex_result| lex_result.as_ref().map(predicate).unwrap_or_default())
             .inspect(|lex_result| self.update_span(lex_result))
     }
 
