@@ -99,11 +99,18 @@ impl Display for Array {
 
 #[cfg(test)]
 mod tests {
+    use crate::location::Span;
     use super::*;
+    
+    impl Into<Spanned<Scalar>> for i64 {
+        fn into(self) -> Spanned<Scalar> {
+            Spanned::new(Scalar::Integer(self), Span::EMPTY)
+        }
+    }
 
     #[test]
     fn test_display_scalar() {
-        let scalar = Array::scalar(5);
+        let scalar = Array::scalar(5.into());
         assert_eq!(scalar.to_string(), "5");
     }
 
@@ -112,10 +119,10 @@ mod tests {
         let empty = Array::linear(vec![]);
         assert_eq!(empty.to_string(), "[]");
 
-        let single = Array::linear(vec![13]);
+        let single = Array::linear(vec![13.into()]);
         assert_eq!(single.to_string(), "[13]");
 
-        let multiples = Array::linear(vec![27, 9, 1]);
+        let multiples = Array::linear(vec![27.into(), 9.into(), 1.into()]);
         assert_eq!(multiples.to_string(), "[27 9 1]");
     }
 
@@ -127,22 +134,34 @@ mod tests {
         let single_row_no_columns = Array::matrix(vec![vec![]]);
         assert_eq!(single_row_no_columns.to_string(), "[]");
 
-        let single_row_one_column = Array::matrix(vec![vec![2]]);
+        let single_row_one_column = Array::matrix(vec![vec![2.into()]]);
         assert_eq!(single_row_one_column.to_string(), "[2]");
 
-        let multiple_rows_one_column = Array::matrix(vec![vec![2], vec![3], vec![4]]);
+        let multiple_rows_one_column = Array::matrix(
+        vec![
+                    vec![2.into()], 
+                    vec![3.into()],
+                    vec![4.into()]]);
         assert_eq!(multiple_rows_one_column.to_string(),
                    concat!("[2\n",
                    " 3\n",
                    " 4]"));
 
-        let multiples_rows_multiple_columns = Array::matrix(vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]]);
+        let multiples_rows_multiple_columns = Array::matrix(
+        vec![
+                    vec![1.into(), 2.into(), 3.into()],
+                    vec![4.into(), 5.into(), 6.into()],
+                    vec![7.into(), 8.into(), 9.into()]]);
         assert_eq!(multiples_rows_multiple_columns.to_string(),
                    concat!("[1 2 3\n",
                    " 4 5 6\n",
                    " 7 8 9]"));
 
-        let column_values_are_padded = Array::matrix(vec![vec![1, 222, 3], vec![44, 55, 6], vec![7, 8, 90]]);
+        let column_values_are_padded = Array::matrix(
+        vec![
+                    vec![1.into(), 222.into(), 3.into()],
+                    vec![44.into(), 55.into(), 6.into()],
+                    vec![7.into(), 8.into(), 90.into()]]);
         assert_eq!(column_values_are_padded.to_string(),
                    concat!("[ 1 222  3\n",
                    " 44  55  6\n",

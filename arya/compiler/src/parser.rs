@@ -101,7 +101,7 @@ impl Lambda {
 
 impl Display for Lambda {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "TODO: lambda display")
+        write!(f, "(lambda)")
     }
 }
 
@@ -334,10 +334,6 @@ where
 
     fn lexeme(&self, span: &Span) -> &'a str {
         &self.source_code[span.position as usize..(span.position + span.length as u32) as usize]
-    }
-
-    fn peek(&mut self) -> Option<&LexTokenResult> {
-        self.tokens.peek()
     }
 
     fn next_token(&mut self) -> Option<LexTokenResult> {
