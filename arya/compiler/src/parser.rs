@@ -158,6 +158,31 @@ primitive!(
 // TODO: bracket
 // TODO: both
 
+impl TryInto<Primitive> for Token {
+    type Error = ();
+
+    fn try_into(self) -> Result<Primitive, Self::Error> {
+        match self {
+            Token::Plus => Ok(Primitive::Add),
+            Token::Minus => Ok(Primitive::Subtract),
+            Token::Star => Ok(Primitive::Multiply),
+            Token::Slash => Ok(Primitive::Divide),
+            Token::Ampersand => Ok(Primitive::And),
+            Token::Pipe => Ok(Primitive::Or),
+            Token::Caret => Ok(Primitive::Xor),
+            Token::Bang => Ok(Primitive::Not),
+            Token::Underscore => Ok(Primitive::Negate),
+            Token::Equal => Ok(Primitive::Equal),
+            Token::NotEqual => Ok(Primitive::NotEqual),
+            Token::Greater => Ok(Primitive::Greater),
+            Token::GreaterEqual => Ok(Primitive::GreaterEqual),
+            Token::Less => Ok(Primitive::Less),
+            Token::LessEqual => Ok(Primitive::LessEqual),
+            _ => Err(())
+        }
+    }
+}
+
 pub type ParseWordResult = ParseResult<Spanned<Word>>;
 type ParseScalarResult = ParseResult<Spanned<Scalar>>;
 type ParseResult<T> = Result<T, Spanned<ParseError>>;
@@ -212,6 +237,10 @@ where
         Some(parse_word_result)
     }
 
+    fn try_parse_integer(&mut self) -> ParseWordResult {
+        self.parse_scalar_integer().and_then(|scalar| self.make_word(Word::Array(Array::scalar(scalar))))
+    }
+
     fn parse_integer(&mut self) -> ParseWordResult {
         self.parse_scalar_integer().and_then(|scalar| self.make_word(Word::Array(Array::scalar(scalar))))
     }
@@ -222,11 +251,17 @@ where
     }
 
     fn try_parse_scalar_integer(&mut self) -> Option<ParseScalarResult> {
-        self.next_if_token_is(&Token::Number).map(|_| self.parse_scalar_integer())
+        self.next_if_token_is(&Token::Number)
+            .map(|_| self.parse_scalar_integer())
     }
 
     fn try_parse_scalar(&mut self) -> Option<ParseScalarResult> {
         self.try_parse_scalar_integer()
+    }
+
+    fn try_parse_identifier(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::Identifier)
+            .map(|_| self.parse_identifier())
     }
 
     fn parse_identifier(&mut self) -> ParseWordResult {
@@ -238,6 +273,13 @@ where
             "reduce" => self.parse_primitive(Primitive::Reduce),
             name => self.make_error(ParseError::UnknownIdentifier(name.to_string()))
         }
+    }
+
+    fn try_parse_primitive(&mut self) -> Option<ParseWordResult> {
+        self.peek_token()
+            .and_then(|lex_result| lex_result.clone().ok())
+            .and_then(|spanned_token| spanned_token.value.try_into().ok())
+            .map(|primitive| self.parse_primitive(primitive))
     }
 
     fn parse_primitive(&self, primitive: Primitive) -> ParseWordResult {
@@ -334,6 +376,10 @@ where
 
     fn lexeme(&self, span: &Span) -> &'a str {
         &self.source_code[span.position as usize..(span.position + span.length as u32) as usize]
+    }
+
+    fn peek_token(&mut self) -> Option<&LexTokenResult> {
+        self.tokens.peek()
     }
 
     fn next_token(&mut self) -> Option<LexTokenResult> {
