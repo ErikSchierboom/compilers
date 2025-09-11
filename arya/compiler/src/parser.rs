@@ -189,7 +189,7 @@ where
         }
     }
 
-    fn parse_word(&mut self) -> Option<ParseWordResult> {
+    fn try_parse_word(&mut self) -> Option<ParseWordResult> {
         self.try_parse_integer()
             .or_else(|| self.try_parse_identifier())
             .or_else(|| self.try_parse_primitive())
@@ -344,7 +344,7 @@ where
     ) -> ParseResult<T>
     {
         let result = parser(self)?;
-        match self.next_if_token_is(&Token::CloseBracket) {
+        match self.next_if_token_is(&close_token) {
             None => self.make_error(ParseError::Expected(close_token)),
             Some(_) => Ok(result)
         }
@@ -363,7 +363,7 @@ where
     }
 
     fn next_token(&mut self) -> Option<LexTokenResult> {
-        self.next_token_if(|_| true)
+        self.advance()
     }
 
     fn next_if_token_is(&mut self, token: &Token) -> Option<LexTokenResult> {
@@ -371,8 +371,16 @@ where
     }
 
     fn next_token_if(&mut self, predicate: impl FnOnce(&Spanned<Token>) -> bool) -> Option<LexTokenResult> {
-        self.tokens.next_if(|lex_result| lex_result.as_ref().map(predicate).unwrap_or_default())
-            .inspect(|lex_result| self.update_span(lex_result))
+        match self.tokens.peek()? {
+            Ok(spanned_token) if predicate(spanned_token) => self.advance(),
+            _ => None
+        }
+    }
+
+    fn advance(&mut self) -> Option<LexTokenResult> {
+        let lex_result = self.tokens.next()?;
+        self.update_span(&lex_result);
+        Some(lex_result)
     }
 
     fn update_span(&mut self, token_result: &LexTokenResult) {
@@ -394,7 +402,7 @@ where
     type Item = ParseWordResult;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.parse_word()
+        self.try_parse_word()
     }
 }
 
