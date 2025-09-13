@@ -219,34 +219,97 @@ where
 
     fn parse_identifier(&mut self) -> ParseWordResult {
         match self.lexeme(&self.span) {
-            "dup" => self.parse_primitive(Primitive::Dup),
-            "drop" => self.parse_primitive(Primitive::Drop),
-            "swap" => self.parse_primitive(Primitive::Swap),
-            "over" => self.parse_primitive(Primitive::Over),
-            "reduce" => self.parse_primitive(Primitive::Reduce),
+            "dup" => self.make_primitive(Primitive::Dup),
+            "drop" => self.make_primitive(Primitive::Drop),
+            "swap" => self.make_primitive(Primitive::Swap),
+            "over" => self.make_primitive(Primitive::Over),
+            "reduce" => self.make_primitive(Primitive::Reduce),
             name => self.make_error(ParseError::UnknownIdentifier(name.to_string()))
         }
     }
 
     fn try_parse_primitive(&mut self) -> Option<ParseWordResult> {
-        self.next_if_token_is(&Token::Plus).map(|_| self.parse_primitive(Primitive::Add))
-            .or_else(|| self.next_if_token_is(&Token::Minus).map(|_| self.parse_primitive(Primitive::Subtract)))
-            .or_else(|| self.next_if_token_is(&Token::Star).map(|_| self.parse_primitive(Primitive::Multiply)))
-            .or_else(|| self.next_if_token_is(&Token::Slash).map(|_| self.parse_primitive(Primitive::Divide)))
-            .or_else(|| self.next_if_token_is(&Token::Ampersand).map(|_| self.parse_primitive(Primitive::And)))
-            .or_else(|| self.next_if_token_is(&Token::Pipe).map(|_| self.parse_primitive(Primitive::Or)))
-            .or_else(|| self.next_if_token_is(&Token::Caret).map(|_| self.parse_primitive(Primitive::Xor)))
-            .or_else(|| self.next_if_token_is(&Token::Bang).map(|_| self.parse_primitive(Primitive::Not)))
-            .or_else(|| self.next_if_token_is(&Token::Underscore).map(|_| self.parse_primitive(Primitive::Negate)))
-            .or_else(|| self.next_if_token_is(&Token::Equal).map(|_| self.parse_primitive(Primitive::Equal)))
-            .or_else(|| self.next_if_token_is(&Token::NotEqual).map(|_| self.parse_primitive(Primitive::NotEqual)))
-            .or_else(|| self.next_if_token_is(&Token::Greater).map(|_| self.parse_primitive(Primitive::Greater)))
-            .or_else(|| self.next_if_token_is(&Token::GreaterEqual).map(|_| self.parse_primitive(Primitive::GreaterEqual)))
-            .or_else(|| self.next_if_token_is(&Token::Less).map(|_| self.parse_primitive(Primitive::Less)))
-            .or_else(|| self.next_if_token_is(&Token::LessEqual).map(|_| self.parse_primitive(Primitive::LessEqual)))
+        self.parse_one_of(
+            vec![
+                Self::try_parse_add,
+                Self::try_parse_subtract,
+                Self::try_parse_multiply,
+                Self::try_parse_divide,
+                Self::try_parse_and,
+                Self::try_parse_or,
+                Self::try_parse_xor,
+                Self::try_parse_not,
+                Self::try_parse_negate,
+                Self::try_parse_equal,
+                Self::try_parse_not_equal,
+                Self::try_parse_greater,
+                Self::try_parse_greater_or_equal,
+                Self::try_parse_less,
+                Self::try_parse_less_or_equal,
+            ])
     }
 
-    fn parse_primitive(&self, primitive: Primitive) -> ParseWordResult {
+    fn try_parse_add(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::Plus).map(|_| self.make_primitive(Primitive::Add))
+    }
+
+    fn try_parse_subtract(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::Minus).map(|_| self.make_primitive(Primitive::Subtract))
+    }
+
+    fn try_parse_multiply(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::Star).map(|_| self.make_primitive(Primitive::Multiply))
+    }
+
+    fn try_parse_divide(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::Slash).map(|_| self.make_primitive(Primitive::Divide))
+    }
+
+    fn try_parse_and(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::Ampersand).map(|_| self.make_primitive(Primitive::And))
+    }
+
+    fn try_parse_or(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::Pipe).map(|_| self.make_primitive(Primitive::Or))
+    }
+
+    fn try_parse_xor(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::Caret).map(|_| self.make_primitive(Primitive::Xor))
+    }
+
+    fn try_parse_not(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::Bang).map(|_| self.make_primitive(Primitive::Not))
+    }
+
+    fn try_parse_negate(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::Underscore).map(|_| self.make_primitive(Primitive::Negate))
+    }
+
+    fn try_parse_equal(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::Equal).map(|_| self.make_primitive(Primitive::Equal))
+    }
+
+    fn try_parse_not_equal(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::NotEqual).map(|_| self.make_primitive(Primitive::NotEqual))
+    }
+
+    fn try_parse_greater(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::Greater).map(|_| self.make_primitive(Primitive::Greater))
+    }
+
+    fn try_parse_greater_or_equal(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::GreaterEqual).map(|_| self.make_primitive(Primitive::GreaterEqual))
+    }
+
+    fn try_parse_less(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::Less).map(|_| self.make_primitive(Primitive::Less))
+    }
+
+    fn try_parse_less_or_equal(&mut self) -> Option<ParseWordResult> {
+        self.next_if_token_is(&Token::LessEqual).map(|_| self.make_primitive(Primitive::LessEqual))
+    }
+
+    fn make_primitive(&self, primitive: Primitive) -> ParseWordResult {
         self.make_word(Word::Primitive(primitive))
     }
 
