@@ -130,7 +130,7 @@ macro_rules! primitive {
         impl Display for Primitive {
             fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
                 match self {
-                    $( Primitive::$name => write!(f, "$name"), )*
+                    $( Primitive::$name => write!(f, stringify!($name)), )*
                 }
             }
         }
