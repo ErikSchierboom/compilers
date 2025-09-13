@@ -190,12 +190,15 @@ where
     }
 
     fn try_parse_word(&mut self) -> Option<ParseWordResult> {
-        self.try_parse_integer()
-            .or_else(|| self.try_parse_identifier())
-            .or_else(|| self.try_parse_primitive())
-            .or_else(|| self.try_parse_array())
-            .or_else(|| self.try_parse_lambda())
-            .or_else(|| self.try_parse_error())
+        self.parse_one_of(
+            vec![
+                Self::try_parse_integer,
+                Self::try_parse_identifier,
+                Self::try_parse_primitive,
+                Self::try_parse_array,
+                Self::try_parse_lambda,
+                Self::try_parse_error
+            ])
     }
 
     fn try_parse_integer(&mut self) -> Option<ParseWordResult> {
@@ -227,7 +230,6 @@ where
 
     fn try_parse_primitive(&mut self) -> Option<ParseWordResult> {
         self.next_if_token_is(&Token::Plus).map(|_| self.parse_primitive(Primitive::Add))
-            .or_else(|| self.next_if_token_is(&Token::Plus).map(|_| self.parse_primitive(Primitive::Add)))
             .or_else(|| self.next_if_token_is(&Token::Minus).map(|_| self.parse_primitive(Primitive::Subtract)))
             .or_else(|| self.next_if_token_is(&Token::Star).map(|_| self.parse_primitive(Primitive::Multiply)))
             .or_else(|| self.next_if_token_is(&Token::Slash).map(|_| self.parse_primitive(Primitive::Divide)))
@@ -302,6 +304,12 @@ where
             Ok(token) => Some(self.make_error(ParseError::Unexpected(token.value.clone()))),
             Err(lex_error) => Some(self.make_error(Lex(lex_error.value)))
         }
+    }
+
+    fn parse_one_of<T>(
+        &mut self,
+        parsers: Vec<impl Fn(&mut Self) -> Option<ParseResult<T>>>) -> Option<ParseResult<T>> {
+        parsers.iter().find_map(|parser| parser(self))
     }
 
     fn parse_series<T>(
