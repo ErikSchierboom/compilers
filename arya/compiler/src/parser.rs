@@ -357,11 +357,24 @@ where
     }
 
     fn parse_lambda(&mut self) -> ParseWordResult {
-        todo!("parse lambda")
-        // self.parse_until(Token::CloseParenthesis, |words| {
-        //     let signature = Signature::from_words(&words);
-        //     Word::Lambda(Lambda::new(signature, words))
-        // })
+        let words = self.parse_until(|s| s.try_parse_lambda_words(), Token::CloseParenthesis)?;
+        let signature = Signature::from_words(&words);
+        self.make_word(Word::Lambda(Lambda::new(signature, words)))
+    }
+
+
+    fn try_parse_lambda_words(&mut self) -> ParseResult<Vec<Spanned<Word>>> {
+        self.parse_series(Self::try_parse_lambda_word)
+    }
+
+    fn try_parse_lambda_word(&mut self) -> Option<ParseWordResult> {
+        self.parse_one_of(
+            vec![
+                Self::try_parse_integer,
+                Self::try_parse_identifier,
+                Self::try_parse_primitive,
+                Self::try_parse_array
+            ])
     }
 
     fn try_parse_error(&mut self) -> Option<ParseWordResult> {
@@ -418,8 +431,8 @@ where
     {
         let result = parser(self)?;
         match self.next_if_token_is(&close_token) {
-            None => self.make_error(ParseError::Expected(close_token)),
-            Some(_) => Ok(result)
+            Some(_) => Ok(result),
+            None => self.make_error(ParseError::Expected(close_token))
         }
     }
 
