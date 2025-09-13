@@ -14,6 +14,7 @@ pub enum ParseError {
     Expected(Token),
     UnknownIdentifier(String),
     IrregularMatrix,
+    NonScalarArrayElement,
 }
 
 impl Display for ParseError {
@@ -24,6 +25,7 @@ impl Display for ParseError {
             ParseError::Expected(token) => write!(f, "Expected token: {:?}", token),
             ParseError::UnknownIdentifier(name) => write!(f, "Unknown identifier '{name}'"),
             ParseError::IrregularMatrix => write!(f, "Not all rows of the matrix have the same length"),
+            ParseError::NonScalarArrayElement => write!(f, "Array contains a non-scalar element"),
         }
     }
 }
@@ -343,7 +345,7 @@ where
                 if let Word::Array(Array::Scalar(scalar)) = col.value {
                     Ok(scalar)
                 } else {
-                    return self.make_error(ParseError::IrregularMatrix);
+                    return self.make_error(ParseError::NonScalarArrayElement);
                 }
             }).collect()
         }).collect()
