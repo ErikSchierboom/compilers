@@ -8,7 +8,7 @@ use std::iter::Peekable;
 #[derive(Debug)]
 pub enum RuntimeError {
     Parse(ParseError),
-    InvalidNumberOfArguments(u8, u8),
+    MissingArgument,
     InvalidArgumentType(String, String),
     IncompatibleShapes,
     UnknownSymbol(String),
@@ -19,9 +19,7 @@ impl Display for RuntimeError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             RuntimeError::Parse(parse_error) => write!(f, "{parse_error}"),
-            RuntimeError::InvalidNumberOfArguments(expected, actual) => {
-                write!(f, "Expected {expected} arguments, got {actual}")
-            }
+            RuntimeError::MissingArgument => write!(f, "Missing argument"),
             RuntimeError::IncompatibleShapes => write!(f, "Incompatible shapes"),
             RuntimeError::UnknownSymbol(name) => write!(f, "Unknown identifier: {name}"),
             RuntimeError::InvalidArgumentType(expected, actual) => write!(f, "Invalid argument. Expected: {expected}, actual: {actual}"),
@@ -190,21 +188,37 @@ where
         self.stack.push(value)
     }
 
-    fn pop(&mut self) -> Option<Value> {
-        self.stack.pop()
+    fn pop(&mut self) -> EvaluateResult<Value> {
+        self.stack.pop().ok_or_else(|| self.make_error(RuntimeError::MissingArgument()))
     }
+
+    pub fn pop_map<V>(
+        &mut self,
+        f: impl FnOnce(&mut Self, &Value) -> EvaluateResult<V>,
+    ) -> EvaluateResult<V> {
+        let value = self.pop()?;
+        f(self, &value)
+    }
+
+    fn pop_array() -> EvaluateResult {}
 
     fn spanned<V>(&self, value: V) -> Spanned<V> {
         Spanned::new(value, self.span.clone())
     }
 
     fn binary_array_operation(&mut self, operation: impl Fn(&i64, &i64) -> i64) -> EvaluateResult {
+        // TODO: convert to just pop() operations
         self.verify_stack_size(2)?;
 
         // TODO: convert to array
         // TODO: error handling
-        let rhs = self.pop().unwrap();
-        let lhs = self.pop().ok_or_else(|| return self.spanned(RuntimeError::ExpectedArray));
+        let rhs = self.pop()?
+            .as_array()
+            .ok_or_else(|| return self.spanned(RuntimeError::ExpectedArray));
+        let lhs = self.pop()
+            .ok_or_else(|| return self.spanned(RuntimeError::ExpectedArray))?
+            .as_array()
+            .ok_or_else(|| return self.spanned(RuntimeError::ExpectedArray));
 
         todo!("binary");
         Ok(())
@@ -252,7 +266,7 @@ where
     fn verify_stack_size(&mut self, expected: u8) -> Result<(), Spanned<RuntimeError>> {
         let actual = self.stack.len() as u8;
         if actual < expected {
-            Err(self.spanned(RuntimeError::InvalidNumberOfArguments(
+            Err(self.spanned(RuntimeError::MissingArgument(
                 expected,
                 self.stack.len() as u8,
             )))
