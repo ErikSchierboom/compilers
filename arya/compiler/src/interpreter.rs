@@ -1,4 +1,4 @@
-use crate::array::Array;
+use crate::array::{Array, Shape};
 use crate::location::{Span, Spanned};
 use crate::parser::{parse, Lambda, ParseError, ParseWordResult, Primitive, Word};
 use std::error::Error;
@@ -9,10 +9,10 @@ use std::iter::Peekable;
 pub enum RuntimeError {
     Parse(ParseError),
     MissingArgument,
-    InvalidArgumentType(String, String),
     IncompatibleShapes,
     UnknownSymbol(String),
     ExpectedArray,
+    ExpectedInteger,
 }
 
 impl Display for RuntimeError {
@@ -22,7 +22,6 @@ impl Display for RuntimeError {
             RuntimeError::MissingArgument => write!(f, "Missing argument"),
             RuntimeError::IncompatibleShapes => write!(f, "Incompatible shapes"),
             RuntimeError::UnknownSymbol(name) => write!(f, "Unknown identifier: {name}"),
-            RuntimeError::InvalidArgumentType(expected, actual) => write!(f, "Invalid argument. Expected: {expected}, actual: {actual}"),
             RuntimeError::ExpectedArray => write!(f, "Expected array argument")
         }
     }
@@ -189,38 +188,39 @@ where
     }
 
     fn pop(&mut self) -> EvaluateResult<Value> {
-        self.stack.pop().ok_or_else(|| self.make_error(RuntimeError::MissingArgument()))
+        self.stack.pop().ok_or_else(|| self.spanned(RuntimeError::MissingArgument))
     }
 
     pub fn pop_map<V>(
         &mut self,
-        f: impl FnOnce(&mut Self, &Value) -> EvaluateResult<V>,
+        f: impl FnOnce(&mut Self, Value) -> EvaluateResult<V>,
     ) -> EvaluateResult<V> {
         let value = self.pop()?;
-        f(self, &value)
+        f(self, value)
     }
 
-    fn pop_array() -> EvaluateResult {}
+    fn pop_array(&mut self) -> EvaluateResult<Array> {
+        self.pop_map(|s, value| {
+            value.as_array().cloned().ok_or_else(|| s.spanned(RuntimeError::ExpectedArray))
+        })
+    }
 
     fn spanned<V>(&self, value: V) -> Spanned<V> {
         Spanned::new(value, self.span.clone())
     }
 
     fn binary_array_operation(&mut self, operation: impl Fn(&i64, &i64) -> i64) -> EvaluateResult {
-        // TODO: convert to just pop() operations
-        self.verify_stack_size(2)?;
+        let rhs = self.pop_array()?;
+        let lhs = self.pop_array()?;
 
-        // TODO: convert to array
-        // TODO: error handling
-        let rhs = self.pop()?
-            .as_array()
-            .ok_or_else(|| return self.spanned(RuntimeError::ExpectedArray));
-        let lhs = self.pop()
-            .ok_or_else(|| return self.spanned(RuntimeError::ExpectedArray))?
-            .as_array()
-            .ok_or_else(|| return self.spanned(RuntimeError::ExpectedArray));
-
-        todo!("binary");
+        match (&lhs.shape, &rhs.shape) {
+            (Shape::Linear(_), Shape::Scalar) => {
+                let rhs_value = rhs.as_integers().first().unwrap();
+                let lhs_values = lhs.as_integers();
+                let new_values = lhs_values.into_iter().map(move |lhs_value| operation(lhs_value, rhs_value)).collect();
+                self.push(Value::Array(Array::linear(new_values)))
+            }
+        }
         Ok(())
     }
 
@@ -266,10 +266,7 @@ where
     fn verify_stack_size(&mut self, expected: u8) -> Result<(), Spanned<RuntimeError>> {
         let actual = self.stack.len() as u8;
         if actual < expected {
-            Err(self.spanned(RuntimeError::MissingArgument(
-                expected,
-                self.stack.len() as u8,
-            )))
+            Err(self.spanned(RuntimeError::MissingArgument))
         } else {
             Ok(())
         }

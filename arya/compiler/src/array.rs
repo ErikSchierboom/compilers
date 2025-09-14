@@ -2,8 +2,24 @@
 use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug)]
+pub enum Shape {
+    Scalar,
+    Linear(u16),
+    Matrix(u16, u16)
+}
+
+#[derive(Clone, Debug)]
 pub enum Scalar {
     Integer(i64),
+}
+
+impl Scalar {
+    pub fn as_integer(&self) -> Option<&i64> {
+        match self {
+            Scalar::Integer(i) => Some(i),
+            _ => None
+        }
+    }
 }
 
 impl Display for Scalar {
@@ -15,82 +31,79 @@ impl Display for Scalar {
 }
 
 #[derive(Clone, Debug)]
-pub enum Array {
-    Scalar(Spanned<Scalar>),
-    Linear(Linear),
-    Matrix(Matrix),
-}
-
-#[derive(Clone, Debug)]
-pub struct Linear {
+pub struct Array {
+    pub shape: Shape,
     pub values: Vec<Spanned<Scalar>>,
-    pub len: u16,
-}
-
-#[derive(Clone, Debug)]
-pub struct Matrix {
-    pub values: Vec<Vec<Spanned<Scalar>>>,
-    pub rows: u16,
-    pub columns: u16,
 }
 
 impl Array {
+    pub fn new(shape: Shape, values: Vec<Spanned<Scalar>>) -> Self {
+        Array { shape, values }
+    }
+
     pub fn scalar(element: Spanned<Scalar>) -> Self {
-        Array::Scalar(element)
+        Self::new(Shape::Scalar, vec![element])
     }
 
     pub fn linear(elements: Vec<Spanned<Scalar>>) -> Self {
-        let length = elements.len() as u16;
-        Array::Linear(Linear { values: elements, len: length })
+        Self::new(Shape::Linear(elements.len() as u16), elements)
     }
 
     pub fn matrix(elements: Vec<Vec<Spanned<Scalar>>>) -> Self {
         let num_rows = elements.len() as u16;
         let num_columns = elements.get(0).map(|x| x.len()).unwrap_or(0) as u16;
-        Array::Matrix(Matrix { values: elements, rows: num_rows, columns: num_columns })
+        let elements = elements.into_iter().flatten().collect();
+        Self::new(Shape::Matrix(num_columns, num_rows), elements)
+    }
+    
+    // TODO: add error handling
+    pub fn as_integers(&self) -> Vec<&i64> {
+        self.values.iter().map(|spanned_value| spanned_value.value.as_integer().unwrap()).collect()
     }
 }
 
 impl Display for Array {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Array::Scalar(scalar) => write!(f, "{}", scalar),
-            Array::Linear(linear) => {
+        match self.shape {
+            Shape::Scalar => write!(f, "{}", self.values.first().unwrap().value),
+            Shape::Linear(num_elements) => {
                 write!(f, "[")?;
-                for (i, value) in linear.values.iter().enumerate() {
+                for (column, value) in self.values.iter().enumerate() {
                     write!(f, "{}", value)?;
-                    if (i as u16) < linear.len - 1 {
+                    if (column as u16) < num_elements - 1 {
                         write!(f, " ")?;
                     }
                 }
                 write!(f, "]")
             }
-            Array::Matrix(matrix) => {
-                let column_widths: Vec<usize> = (0..matrix.columns).map(|c| matrix.values
-                    .iter()
-                    .map(|row| row.get(c as usize).unwrap().to_string().len())
-                    .max()
-                    .unwrap_or_default())
+            Shape::Matrix(num_columns, num_rows) => {
+                let column_widths: Vec<usize> = (0..num_columns).map(|column|
+                         (0..num_rows).map(|row|
+                            self.values.get((row * num_columns + column) as usize).unwrap().to_string().len()
+                     ).max().unwrap_or_default())
                     .collect();
 
                 write!(f, "[")?;
-                for (y, row) in matrix.values.iter().enumerate() {
-                    if y > 0 {
+
+                for row in 0..num_rows {
+                    if row > 0 {
                         write!(f, " ")?;
                     }
 
-                    for (x, col) in row.iter().enumerate() {
-                        let column_width = column_widths[x];
-                        write!(f, "{:>column_width$}", col)?;
-                        if (x as u16) < matrix.columns - 1 {
+                    for column in 0..num_columns {
+                        let column_width = column_widths[column];
+                        let value = self.values.get((row * num_columns + column) as usize).unwrap();
+                        write!(f, "{:>column_width$}", value)?;
+                        if column < num_columns - 1 {
                             write!(f, " ")?;
                         }
                     }
 
-                    if (y as u16) < matrix.rows - 1 {
+                    if row < num_rows - 1 {
                         write!(f, "\n")?;
                     }
                 }
+          
                 write!(f, "]")
             }
         }
@@ -99,9 +112,9 @@ impl Display for Array {
 
 #[cfg(test)]
 mod tests {
-    use crate::location::Span;
     use super::*;
-    
+    use crate::location::Span;
+
     impl Into<Spanned<Scalar>> for i64 {
         fn into(self) -> Spanned<Scalar> {
             Spanned::new(Scalar::Integer(self), Span::EMPTY)
