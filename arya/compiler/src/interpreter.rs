@@ -204,7 +204,7 @@ where
         // TODO: convert to array
         // TODO: error handling
         let rhs = self.pop().unwrap();
-        let lhs = self.pop().ok_or_else(|| return self.make_error(RuntimeError::ExpectedArray));
+        let lhs = self.pop().ok_or_else(|| return self.spanned(RuntimeError::ExpectedArray));
 
         todo!("binary");
         Ok(())
