@@ -1,4 +1,3 @@
-use crate::array::{Array, Scalar};
 use crate::lexer::{tokenize, LexError, LexTokenResult, Token};
 use crate::location::{Span, Spanned};
 use crate::parser::ParseError::Lex;
@@ -64,24 +63,19 @@ impl Signature {
 
 #[derive(Clone, Debug)]
 pub enum Word {
-    Array(Array),
+    Integer(i64),
     Primitive(Primitive),
+    Array(Vec<Spanned<Word>>),
     Lambda(Lambda),
 }
 
 impl Word {
     pub fn signature(&self) -> Signature {
         match self {
+            Word::Integer(_) |
             Word::Array(_) => Signature::new(0, 1),
             Word::Primitive(primitive) => primitive.signature(),
             Word::Lambda(lambda) => lambda.to_owned().signature,
-        }
-    }
-
-    pub fn as_scalar(&self) -> Option<Spanned<Scalar>> {
-        match self {
-            Word::Array(Array::Scalar(scalar)) => Some(scalar.clone()),
-            _ => None
         }
     }
 }
@@ -89,7 +83,14 @@ impl Word {
 impl Display for Word {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Word::Array(array) => write!(f, "{array}"),
+            Word::Integer(i) => write!(f, "{i}"),
+            Word::Array(array) => {
+                write!(f, "[")?;
+                for element in array {
+                    write!(f, "{}", element.value)?;
+                }
+                write!(f, "]")
+            }
             Word::Primitive(primitive) => write!(f, "{primitive}"),
             Word::Lambda(lambda) => write!(f, "{lambda}"),
         }
@@ -209,9 +210,8 @@ where
     }
 
     fn parse_integer(&mut self) -> ParseWordResult {
-        let number = i64::from_str(self.lexeme(&self.span)).unwrap();
-        let scalar = self.spanned(Scalar::Integer(number));
-        self.make_word(Word::Array(Array::scalar(scalar)))
+        let int = i64::from_str(self.lexeme(&self.span)).unwrap();
+        self.make_word(Word::Integer(int))
     }
 
     fn try_parse_identifier(&mut self) -> Option<ParseWordResult> {
@@ -321,34 +321,16 @@ where
     }
 
     fn parse_array(&mut self) -> ParseWordResult {
-        let elements = self.parse_until(|s| s.parse_array_elements(), Token::CloseBracket)?;
-
-        match elements.len() {
-            0 => self.make_word(Word::Array(Array::linear(Vec::new()))),
-            1 => {
-                self.make_word(Word::Array(Array::linear(elements.first().unwrap().to_owned())))
-            }
-            _ => {
-                if elements.windows(2).all(|pair| pair[0].len() == pair[1].len()) {
-                    self.make_word(Word::Array(Array::matrix(elements)))
-                } else {
-                    self.make_error(ParseError::IrregularMatrix)
-                }
-            }
-        }
+        let words = self.parse_until(|parser| parser.parse_series(Self::try_parse_array_element), Token::CloseBracket)?;
+        self.make_word(Word::Array(words))
     }
 
-    fn parse_array_elements(&mut self) -> ParseResult<Vec<Vec<Spanned<Scalar>>>> {
-        let rows = self.parse_delimited(|parser| parser.try_parse_integer(), Token::Semicolon)?;
-        rows.into_iter().map(|row| {
-            row.into_iter().map(|col| {
-                if let Word::Array(Array::Scalar(scalar)) = col.value {
-                    Ok(scalar)
-                } else {
-                    return self.make_error(ParseError::NonScalarArrayElement);
-                }
-            }).collect()
-        }).collect()
+    fn try_parse_array_element(&mut self) -> Option<ParseWordResult> {
+        self.parse_one_of(
+            vec![
+                Self::try_parse_integer,
+                Self::try_parse_array,
+            ])
     }
 
     fn try_parse_lambda(&mut self) -> Option<ParseWordResult> {
@@ -357,14 +339,9 @@ where
     }
 
     fn parse_lambda(&mut self) -> ParseWordResult {
-        let words = self.parse_until(|s| s.try_parse_lambda_words(), Token::CloseParenthesis)?;
+        let words = self.parse_until(|parser| parser.parse_series(Self::try_parse_lambda_word), Token::CloseParenthesis)?;
         let signature = Signature::from_words(&words);
         self.make_word(Word::Lambda(Lambda::new(signature, words)))
-    }
-
-
-    fn try_parse_lambda_words(&mut self) -> ParseResult<Vec<Spanned<Word>>> {
-        self.parse_series(Self::try_parse_lambda_word)
     }
 
     fn try_parse_lambda_word(&mut self) -> Option<ParseWordResult> {
@@ -402,25 +379,6 @@ where
         }
 
         Ok(elements)
-    }
-
-    fn parse_delimited<T>(
-        &mut self,
-        parser: impl Fn(&mut Self) -> Option<ParseResult<T>>,
-        delimiter: Token,
-    ) -> ParseResult<Vec<Vec<T>>>
-    {
-        let mut delimited_elements = Vec::new();
-
-        loop {
-            let series = self.parse_series(&parser)?;
-            delimited_elements.push(series);
-            if let None = self.next_if_token_is(&delimiter) {
-                break;
-            }
-        }
-
-        Ok(delimited_elements)
     }
 
     fn parse_until<T>(

@@ -30,7 +30,6 @@ pub enum Token {
     CloseBracket,
     OpenParenthesis,
     CloseParenthesis,
-    Semicolon,
 
     // Symbols
     Plus,
@@ -62,7 +61,6 @@ impl Display for Token {
             Token::CloseBracket => write!(f, "]"),
             Token::OpenParenthesis => write!(f, "("),
             Token::CloseParenthesis => write!(f, ")"),
-            Token::Semicolon => write!(f, ";"),
             Token::Plus => write!(f, "+"),
             Token::Minus => write!(f, "-"),
             Token::Star => write!(f, "*"),
@@ -115,7 +113,6 @@ where
                 ']' => self.make_token(Token::CloseBracket),
                 '(' => self.make_token(Token::OpenParenthesis),
                 ')' => self.make_token(Token::CloseParenthesis),
-                ';' => self.make_token(Token::Semicolon),
                 '+' => self.make_token(Token::Plus),
                 '-' => self.make_token(Token::Minus),
                 '*' => self.make_token(Token::Star),
