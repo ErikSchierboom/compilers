@@ -86,8 +86,11 @@ impl Display for Word {
             Word::Integer(i) => write!(f, "{i}"),
             Word::Array(array) => {
                 write!(f, "[")?;
-                for element in array {
+                for (i, element) in array.iter().enumerate() {
                     write!(f, "{}", element.value)?;
+                    if i < array.len() - 1 {
+                        write!(f, " ")?;
+                    }
                 }
                 write!(f, "]")
             }
