@@ -209,7 +209,7 @@ where
 
     fn parse_integer(&mut self) -> ParseWordResult {
         let int = i64::from_str(self.lexeme(&self.span)).unwrap();
-        self.make_word(Word::Integer(int))
+        Ok(self.make_word(Word::Integer(int)))
     }
 
     fn try_parse_primitive(&mut self) -> Option<ParseWordResult> {
@@ -236,7 +236,7 @@ where
     }
 
     fn make_primitive(&self, primitive: Primitive) -> ParseWordResult {
-        self.make_word(Word::Primitive(primitive))
+        Ok(self.make_word(Word::Primitive(primitive)))
     }
 
     fn try_parse_array(&mut self) -> Option<ParseWordResult> {
@@ -244,8 +244,9 @@ where
     }
 
     fn parse_array(&mut self) -> ParseWordResult {
-        let words = self.parse_until(|parser| parser.parse_series(Self::try_parse_array_element), &Token::CloseBracket)?;
-        self.make_word(Word::Array(words))
+        let words = self.parse_series(Self::try_parse_array_element)?;
+        self.parse_if_token(&Token::CloseBracket, |parser| Ok(parser.make_word(Word::Array(words))))
+            .unwrap_or_else(|| Err(self.make_error(ParseError::Expected(Token::CloseBracket))))
     }
 
     fn try_parse_array_element(&mut self) -> Option<ParseWordResult> {
@@ -259,9 +260,10 @@ where
     }
 
     fn parse_lambda(&mut self) -> ParseWordResult {
-        let words = self.parse_until(|parser| parser.parse_series(Self::try_parse_lambda_word), &Token::CloseParenthesis)?;
+        let words = self.parse_series(Self::try_parse_lambda_word)?;
         let signature = Signature::from_words(&words);
-        self.make_word(Word::Lambda(Lambda::new(signature, words)))
+        self.parse_if_token(&Token::CloseParenthesis, |parser| Ok(parser.make_word(Word::Lambda(Lambda::new(signature, words)))))
+            .unwrap_or_else(|| Err(self.make_error(ParseError::Expected(Token::CloseParenthesis))))
     }
 
     fn try_parse_lambda_word(&mut self) -> Option<ParseWordResult> {
@@ -272,8 +274,8 @@ where
 
     fn try_parse_error(&mut self) -> Option<ParseWordResult> {
         match &self.token {
-            Some(Ok(token)) => Some(self.make_error(ParseError::Unexpected(token.value.clone()))),
-            Some(Err(lex_error)) => Some(self.make_error(Lex(lex_error.value.clone()))),
+            Some(Ok(token)) => Some(Err(self.make_error(ParseError::Unexpected(token.value.clone())))),
+            Some(Err(lex_error)) => Some(Err(self.make_error(Lex(lex_error.value.clone())))),
             None => None
         }
     }
@@ -292,19 +294,7 @@ where
         Ok(elements)
     }
 
-    fn parse_until<T>(
-        &mut self,
-        parser: impl FnOnce(&mut Self) -> ParseResult<T>,
-        close_token: &Token,
-    ) -> ParseResult<T>
-    {
-        let result = parser(self)?;
-        match self.advance_if_token(close_token) {
-            Some(_) => Ok(result),
-            None => self.make_error(ParseError::Expected(close_token.clone()))
-        }
-    }
-
+    // TODO: make generic
     fn parse_if_token(&mut self, expected: &Token, parse: impl FnOnce(&mut Self) -> ParseWordResult) -> Option<ParseWordResult> {
         self.advance_if_token(expected)?;
         Some(parse(self))
@@ -332,12 +322,12 @@ where
         }
     }
 
-    fn make_word(&self, word: Word) -> ParseWordResult {
-        Ok(self.spanned(word))
+    fn make_word(&self, word: Word) -> Spanned<Word> {
+        self.spanned(word)
     }
 
-    fn make_error<T>(&mut self, error: ParseError) -> ParseResult<T> {
-        Err(self.spanned(error))
+    fn make_error(&mut self, error: ParseError) -> Spanned<ParseError> {
+        self.spanned(error)
     }
 
     fn spanned<V>(&self, value: V) -> Spanned<V> {
