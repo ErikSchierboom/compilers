@@ -23,7 +23,6 @@ pub enum Token {
     // TODO: String
     // TODO: Char
     Number,
-    Identifier,
 
     // Delimiters
     OpenBracket,
@@ -48,6 +47,13 @@ pub enum Token {
     Less,
     LessEqual,
 
+    // Words
+    Dup,
+    Drop,
+    Swap,
+    Over,
+    Reduce,
+
     // Synthetic
     EndOfFile,
 }
@@ -56,7 +62,6 @@ impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Token::Number => write!(f, "number"),
-            Token::Identifier => write!(f, "identifier"),
             Token::OpenBracket => write!(f, "["),
             Token::CloseBracket => write!(f, "]"),
             Token::OpenParenthesis => write!(f, "("),
@@ -76,6 +81,11 @@ impl Display for Token {
             Token::GreaterEqual => write!(f, ">="),
             Token::Less => write!(f, "<"),
             Token::LessEqual => write!(f, "<="),
+            Token::Dup => write!(f, "dup"),
+            Token::Drop => write!(f, "drop"),
+            Token::Swap => write!(f, "swap"),
+            Token::Over => write!(f, "over"),
+            Token::Reduce => write!(f, "reduce"),
             Token::EndOfFile => write!(f, "EOF"),
         }
     }
@@ -143,8 +153,19 @@ where
                         self.make_token(Token::Less)
                     }
                 }
+                'd' => {
+                    if self.next_if_chars_are("up") {
+                        self.make_token(Token::Dup)
+                    } else if self.next_if_chars_are("rop") {
+                        self.make_token(Token::Drop)
+                    } else {
+                        self.make_error(LexError::UnexpectedCharacter(c))
+                    }
+                }
+                's' if self.next_if_chars_are("wap") => self.make_token(Token::Swap),
+                'o' if self.next_if_chars_are("ver") => self.make_token(Token::Over),
+                'r' if self.next_if_chars_are("educe") => self.make_token(Token::Reduce),
                 c if c.is_ascii_digit() => self.lex_number(),
-                c if c.is_ascii_alphabetic() => self.lex_symbol(),
                 c => self.make_error(LexError::UnexpectedCharacter(c)),
             },
         }
@@ -158,11 +179,6 @@ where
     fn lex_number(&mut self) -> LexTokenResult {
         self.skip_while(char::is_ascii_digit);
         self.make_token(Token::Number)
-    }
-
-    fn lex_symbol(&mut self) -> LexTokenResult {
-        self.skip_while(char::is_ascii_alphanumeric);
-        self.make_token(Token::Identifier)
     }
 
     fn skip_whitespace(&mut self) {
@@ -179,6 +195,16 @@ where
 
     fn next_if_char_is(&mut self, expected: &char) -> bool {
         self.next_char_if(|c| c == expected).is_some()
+    }
+
+    fn next_if_chars_are(&mut self, expected: &str) -> bool {
+        for expected_char in expected.chars() {
+            if self.next_char_if(|&c| c == expected_char).is_none() {
+                return false;
+            }
+        }
+
+        true
     }
 
     fn skip_while(&mut self, predicate: impl Fn(&char) -> bool) {
