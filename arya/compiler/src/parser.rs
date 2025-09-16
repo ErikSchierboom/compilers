@@ -9,16 +9,16 @@ use std::str::FromStr;
 #[derive(Debug)]
 pub enum ParseError {
     Lex(LexError),
-    Unexpected(Token),
-    Expected(Token),
+    UnexpectedToken(Token),
+    ExpectedToken(Token),
 }
 
 impl Display for ParseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Lex(lex_error) => write!(f, "{lex_error}"),
-            ParseError::Unexpected(token) => write!(f, "Unexpected token: {:?}", token),
-            ParseError::Expected(token) => write!(f, "Expected token: {:?}", token),
+            ParseError::UnexpectedToken(token) => write!(f, "Unexpected token: {:?}", token),
+            ParseError::ExpectedToken(token) => write!(f, "Expected token: {:?}", token),
         }
     }
 }
@@ -240,7 +240,7 @@ where
     fn parse_array(&mut self) -> ParseWordResult {
         let words = self.parse_series(Self::try_parse_array_element)?;
         self.advance_map_if_token(&Token::CloseBracket, |parser| Ok(parser.make_word(Word::Array(words))))
-            .unwrap_or_else(|| Err(self.make_error(ParseError::Expected(Token::CloseBracket))))
+            .unwrap_or_else(|| Err(self.make_error(ParseError::ExpectedToken(Token::CloseBracket))))
     }
 
     fn try_parse_array_element(&mut self) -> Option<ParseWordResult> {
@@ -257,7 +257,7 @@ where
         let words = self.parse_series(Self::try_parse_lambda_word)?;
         let signature = Signature::from_words(&words);
         self.advance_map_if_token(&Token::CloseParenthesis, |parser| parser.make_word(Word::Lambda(Lambda::new(signature, words))))
-            .ok_or_else(|| self.make_error(ParseError::Expected(Token::CloseParenthesis)))
+            .ok_or_else(|| self.make_error(ParseError::ExpectedToken(Token::CloseParenthesis)))
     }
 
     fn try_parse_lambda_word(&mut self) -> Option<ParseWordResult> {
@@ -268,7 +268,7 @@ where
 
     fn try_parse_error(&mut self) -> Option<ParseWordResult> {
         match &self.token {
-            Some(Ok(token)) => Some(Err(self.make_error(ParseError::Unexpected(token.value.clone())))),
+            Some(Ok(token)) => Some(Err(self.make_error(ParseError::UnexpectedToken(token.value.clone())))),
             Some(Err(lex_error)) => Some(Err(self.make_error(Lex(lex_error.value.clone())))),
             None => None
         }
