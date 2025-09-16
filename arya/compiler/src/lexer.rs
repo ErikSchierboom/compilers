@@ -106,10 +106,7 @@ where
     TChars: Iterator<Item=char>,
 {
     fn new(source_code: TChars) -> Self {
-        Self {
-            chars: source_code.peekable(),
-            span: Span::EMPTY,
-        }
+        Self { chars: source_code.peekable(), span: Span::EMPTY, }
     }
 
     fn lex_token(&mut self) -> LexTokenResult {
