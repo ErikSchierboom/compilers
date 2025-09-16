@@ -165,8 +165,7 @@ primitive!(
 // TODO: bracket
 // TODO: both
 
-pub type ParseWordResult = ParseResult<Spanned<Word>>;
-type ParseResult<T> = Result<T, Spanned<ParseError>>;
+pub type ParseResult<T = Spanned<Word>> = Result<T, Spanned<ParseError>>;
 
 struct Parser<'a, TTokens>
 where
@@ -189,7 +188,7 @@ where
         Parser { source_code, tokens, token, span: Span::EMPTY }
     }
 
-    fn try_parse_word(&mut self) -> Option<ParseWordResult> {
+    fn try_parse_word(&mut self) -> Option<ParseResult<Spanned<Word>>> {
         self.try_parse_integer()
             .or_else(|| self.try_parse_primitive())
             .or_else(|| self.try_parse_array())
@@ -197,16 +196,16 @@ where
             .or_else(|| self.try_parse_error())
     }
 
-    fn try_parse_integer(&mut self) -> Option<ParseWordResult> {
+    fn try_parse_integer(&mut self) -> Option<ParseResult<Spanned<Word>>> {
         self.advance_map_if_token(&Token::Number, Self::parse_integer)
     }
 
-    fn parse_integer(&mut self) -> ParseWordResult {
+    fn parse_integer(&mut self) -> ParseResult<Spanned<Word>> {
         let int = i64::from_str(self.lexeme(&self.span)).unwrap();
         Ok(self.make_word(Word::Integer(int)))
     }
 
-    fn try_parse_primitive(&mut self) -> Option<ParseWordResult> {
+    fn try_parse_primitive(&mut self) -> Option<ParseResult<Spanned<Word>>> {
         self.advance_map_if_token(&Token::Plus, |parser| parser.make_primitive(Primitive::Add))
             .or_else(|| self.advance_map_if_token(&Token::Minus, |parser| parser.make_primitive(Primitive::Subtract)))
             .or_else(|| self.advance_map_if_token(&Token::Star, |parser| parser.make_primitive(Primitive::Multiply)))
@@ -229,44 +228,44 @@ where
             .or_else(|| self.advance_map_if_token(&Token::Reduce, |parser| parser.make_primitive(Primitive::Reduce)))
     }
 
-    fn make_primitive(&self, primitive: Primitive) -> ParseWordResult {
+    fn make_primitive(&self, primitive: Primitive) -> ParseResult<Spanned<Word>> {
         Ok(self.make_word(Word::Primitive(primitive)))
     }
 
-    fn try_parse_array(&mut self) -> Option<ParseWordResult> {
+    fn try_parse_array(&mut self) -> Option<ParseResult<Spanned<Word>>> {
         self.advance_map_if_token(&Token::OpenBracket, Self::parse_array)
     }
 
-    fn parse_array(&mut self) -> ParseWordResult {
+    fn parse_array(&mut self) -> ParseResult<Spanned<Word>> {
         let words = self.parse_series(Self::try_parse_array_element)?;
         self.advance_map_if_token(&Token::CloseBracket, |parser| Ok(parser.make_word(Word::Array(words))))
             .unwrap_or_else(|| Err(self.make_error(ParseError::ExpectedToken(Token::CloseBracket))))
     }
 
-    fn try_parse_array_element(&mut self) -> Option<ParseWordResult> {
+    fn try_parse_array_element(&mut self) -> Option<ParseResult<Spanned<Word>>> {
         self.try_parse_integer()
             .or_else(|| self.try_parse_primitive())
             .or_else(|| self.try_parse_array())
     }
 
-    fn try_parse_lambda(&mut self) -> Option<ParseWordResult> {
+    fn try_parse_lambda(&mut self) -> Option<ParseResult<Spanned<Word>>> {
         self.advance_map_if_token(&Token::OpenParenthesis, Self::parse_lambda)
     }
 
-    fn parse_lambda(&mut self) -> ParseWordResult {
+    fn parse_lambda(&mut self) -> ParseResult<Spanned<Word>> {
         let words = self.parse_series(Self::try_parse_lambda_word)?;
         let signature = Signature::from_words(&words);
         self.advance_map_if_token(&Token::CloseParenthesis, |parser| parser.make_word(Word::Lambda(Lambda::new(signature, words))))
             .ok_or_else(|| self.make_error(ParseError::ExpectedToken(Token::CloseParenthesis)))
     }
 
-    fn try_parse_lambda_word(&mut self) -> Option<ParseWordResult> {
+    fn try_parse_lambda_word(&mut self) -> Option<ParseResult<Spanned<Word>>> {
         self.try_parse_integer()
             .or_else(|| self.try_parse_primitive())
             .or_else(|| self.try_parse_array())
     }
 
-    fn try_parse_error(&mut self) -> Option<ParseWordResult> {
+    fn try_parse_error(&mut self) -> Option<ParseResult<Spanned<Word>>> {
         match &self.token {
             Some(Ok(token)) => Some(Err(self.make_error(ParseError::UnexpectedToken(token.value.clone())))),
             Some(Err(lex_error)) => Some(Err(self.make_error(Lex(lex_error.value.clone())))),
@@ -331,14 +330,14 @@ impl<'a, TTokens> Iterator for Parser<'a, TTokens>
 where
     TTokens: Iterator<Item=LexTokenResult>,
 {
-    type Item = ParseWordResult;
+    type Item = ParseResult<Spanned<Word>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.try_parse_word()
     }
 }
 
-pub fn parse(source: &str) -> impl Iterator<Item=ParseWordResult> + '_ {
+pub fn parse(source: &str) -> impl Iterator<Item=ParseResult<Spanned<Word>>> + '_ {
     let tokens = tokenize(source);
     Parser::new(source, tokens)
 }
