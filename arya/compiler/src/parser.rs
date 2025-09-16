@@ -185,7 +185,7 @@ where
         let mut tokens = tokens.peekable();
         let token = tokens.next();
 
-        Parser { source_code, tokens, token, span: Span::EMPTY }
+        Self { source_code, tokens, token, span: Span::EMPTY }
     }
 
     fn try_parse_word(&mut self) -> Option<ParseResult<Spanned<Word>>> {
