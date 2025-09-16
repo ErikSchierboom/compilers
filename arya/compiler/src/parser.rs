@@ -262,8 +262,8 @@ where
     fn parse_lambda(&mut self) -> ParseWordResult {
         let words = self.parse_series(Self::try_parse_lambda_word)?;
         let signature = Signature::from_words(&words);
-        self.parse_if_token(&Token::CloseParenthesis, |parser| Ok(parser.make_word(Word::Lambda(Lambda::new(signature, words)))))
-            .unwrap_or_else(|| Err(self.make_error(ParseError::Expected(Token::CloseParenthesis))))
+        self.parse_if_token(&Token::CloseParenthesis, |parser| parser.make_word(Word::Lambda(Lambda::new(signature, words))))
+            .ok_or_else(|| self.make_error(ParseError::Expected(Token::CloseParenthesis)))
     }
 
     fn try_parse_lambda_word(&mut self) -> Option<ParseWordResult> {
@@ -294,8 +294,7 @@ where
         Ok(elements)
     }
 
-    // TODO: make generic
-    fn parse_if_token(&mut self, expected: &Token, parse: impl FnOnce(&mut Self) -> ParseWordResult) -> Option<ParseWordResult> {
+    fn parse_if_token<T>(&mut self, expected: &Token, parse: impl FnOnce(&mut Self) -> T) -> Option<T> {
         self.advance_if_token(expected)?;
         Some(parse(self))
     }
