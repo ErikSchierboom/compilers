@@ -46,13 +46,33 @@ macro_rules! dyadic_value_operation {
     };
 }
 
+macro_rules! monadic_value_operation {
+    ($name:ident, $operation:tt) => {
+        impl Value {
+            fn $name(a: Value) -> InterpretResult<Value> {
+                match a {
+                    Value::Numbers(array_a) => {
+                        // TODO: check shapes
+                        // TODO: maybe move some functionality to array type
+                        let updated_values = array_a.values.into_iter().map(|v| $operation v).collect();
+                        Ok(Value::Numbers(Array::new(array_a.shape, updated_values)))
+                    }
+                }
+            }
+        }
+    };
+}
+
 dyadic_value_operation!(add, +);
-dyadic_value_operation!(sub, -);
-dyadic_value_operation!(mul, *);
-dyadic_value_operation!(div, /);
+dyadic_value_operation!(subtract, -);
+dyadic_value_operation!(multiply, *);
+dyadic_value_operation!(divide, /);
 dyadic_value_operation!(xor, ^);
 dyadic_value_operation!(and, &);
 dyadic_value_operation!(or, |);
+
+monadic_value_operation!(not, !);
+monadic_value_operation!(negate, -);
 
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -78,6 +98,15 @@ impl Environment {
 
     fn pop(&mut self) -> InterpretResult<Value> {
         self.stack.pop().ok_or_else(|| self.spanned(RuntimeError::EmptyStack))
+    }
+
+    pub(crate) fn execute_monadic(
+        &mut self,
+        f: fn(Value) -> InterpretResult<Value>,
+    ) -> InterpretResult {
+        let a = self.pop()?;
+        self.push(f(a)?);
+        Ok(())
     }
 
     pub(crate) fn execute_dyadic(
@@ -107,14 +136,14 @@ impl Executable for Primitive {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
             Primitive::Add => env.execute_dyadic(Value::add)?,
-            Primitive::Subtract => env.execute_dyadic(Value::sub)?,
-            Primitive::Multiply => env.execute_dyadic(Value::mul)?,
-            Primitive::Divide => env.execute_dyadic(Value::div)?,
+            Primitive::Subtract => env.execute_dyadic(Value::subtract)?,
+            Primitive::Multiply => env.execute_dyadic(Value::multiply)?,
+            Primitive::Divide => env.execute_dyadic(Value::divide)?,
             Primitive::Xor => env.execute_dyadic(Value::xor)?,
             Primitive::And => env.execute_dyadic(Value::and)?,
             Primitive::Or => env.execute_dyadic(Value::or)?,
-            Primitive::Not => todo!(),
-            Primitive::Negate => todo!(),
+            Primitive::Not => env.execute_monadic(Value::not)?,
+            Primitive::Negate => env.execute_monadic(Value::negate)?,
             Primitive::Equal => todo!(),
             Primitive::NotEqual => todo!(),
             Primitive::Greater => todo!(),
@@ -122,9 +151,9 @@ impl Executable for Primitive {
             Primitive::Less => todo!(),
             Primitive::LessEqual => todo!(),
             Primitive::Dup => {
-                let value = env.pop()?;
-                env.push(value.clone());
-                env.push(value);
+                let a = env.pop()?;
+                env.push(a.clone());
+                env.push(a);
             }
             Primitive::Drop => {
                 env.pop()?;
