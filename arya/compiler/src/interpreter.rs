@@ -29,6 +29,14 @@ pub enum Value {
     Numbers(Array<i64>)
 }
 
+impl Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Numbers(array) => write!(f, "{}", array)
+        }
+    }
+}
+
 pub struct Environment {
     stack: Vec<Value>,
     span: Span,
@@ -98,7 +106,7 @@ impl Executable for Primitive {
                 let a = env.pop()?;
                 let b = env.pop()?;
                 env.push(a);
-                env.push(b)                
+                env.push(b)
             }
             Primitive::Over => {
                 let a = env.pop()?;
@@ -121,7 +129,7 @@ impl Executable for Word {
                 // TODO: maybe add function to more easily create scalar
                 env.push(Value::Numbers(Array::new(Shape::Scalar, vec![i.clone()])))
             },
-            Word::Primitive(_) => todo!(),
+            Word::Primitive(primitive) => return primitive.execute(env),
             Word::Array(array) => {
                 if array.iter().all(|element| matches!(element.value, Word::Integer(_))) {
                     todo!()
