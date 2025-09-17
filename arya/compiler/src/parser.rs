@@ -197,7 +197,7 @@ where
     }
 
     fn try_parse_integer(&mut self) -> Option<ParseResult<Spanned<Word>>> {
-        self.advance_map_if_token(&Token::Number, Self::parse_integer)
+        self.advance_if_token_map(&Token::Number, Self::parse_integer)
     }
 
     fn parse_integer(&mut self) -> ParseResult<Spanned<Word>> {
@@ -206,26 +206,26 @@ where
     }
 
     fn try_parse_primitive(&mut self) -> Option<ParseResult<Spanned<Word>>> {
-        self.advance_map_if_token(&Token::Plus, |parser| parser.make_primitive(Primitive::Add))
-            .or_else(|| self.advance_map_if_token(&Token::Minus, |parser| parser.make_primitive(Primitive::Subtract)))
-            .or_else(|| self.advance_map_if_token(&Token::Star, |parser| parser.make_primitive(Primitive::Multiply)))
-            .or_else(|| self.advance_map_if_token(&Token::Slash, |parser| parser.make_primitive(Primitive::Divide)))
-            .or_else(|| self.advance_map_if_token(&Token::Ampersand, |parser| parser.make_primitive(Primitive::And)))
-            .or_else(|| self.advance_map_if_token(&Token::Pipe, |parser| parser.make_primitive(Primitive::Or)))
-            .or_else(|| self.advance_map_if_token(&Token::Caret, |parser| parser.make_primitive(Primitive::Xor)))
-            .or_else(|| self.advance_map_if_token(&Token::Bang, |parser| parser.make_primitive(Primitive::Not)))
-            .or_else(|| self.advance_map_if_token(&Token::Underscore, |parser| parser.make_primitive(Primitive::Negate)))
-            .or_else(|| self.advance_map_if_token(&Token::Equal, |parser| parser.make_primitive(Primitive::Equal)))
-            .or_else(|| self.advance_map_if_token(&Token::NotEqual, |parser| parser.make_primitive(Primitive::NotEqual)))
-            .or_else(|| self.advance_map_if_token(&Token::Greater, |parser| parser.make_primitive(Primitive::Greater)))
-            .or_else(|| self.advance_map_if_token(&Token::GreaterEqual, |parser| parser.make_primitive(Primitive::GreaterEqual)))
-            .or_else(|| self.advance_map_if_token(&Token::Less, |parser| parser.make_primitive(Primitive::Less)))
-            .or_else(|| self.advance_map_if_token(&Token::LessEqual, |parser| parser.make_primitive(Primitive::LessEqual)))
-            .or_else(|| self.advance_map_if_token(&Token::Dup, |parser| parser.make_primitive(Primitive::Dup)))
-            .or_else(|| self.advance_map_if_token(&Token::Drop, |parser| parser.make_primitive(Primitive::Drop)))
-            .or_else(|| self.advance_map_if_token(&Token::Swap, |parser| parser.make_primitive(Primitive::Swap)))
-            .or_else(|| self.advance_map_if_token(&Token::Over, |parser| parser.make_primitive(Primitive::Over)))
-            .or_else(|| self.advance_map_if_token(&Token::Reduce, |parser| parser.make_primitive(Primitive::Reduce)))
+        self.advance_if_token_map(&Token::Plus, |parser| parser.make_primitive(Primitive::Add))
+            .or_else(|| self.advance_if_token_map(&Token::Minus, |parser| parser.make_primitive(Primitive::Subtract)))
+            .or_else(|| self.advance_if_token_map(&Token::Star, |parser| parser.make_primitive(Primitive::Multiply)))
+            .or_else(|| self.advance_if_token_map(&Token::Slash, |parser| parser.make_primitive(Primitive::Divide)))
+            .or_else(|| self.advance_if_token_map(&Token::Ampersand, |parser| parser.make_primitive(Primitive::And)))
+            .or_else(|| self.advance_if_token_map(&Token::Pipe, |parser| parser.make_primitive(Primitive::Or)))
+            .or_else(|| self.advance_if_token_map(&Token::Caret, |parser| parser.make_primitive(Primitive::Xor)))
+            .or_else(|| self.advance_if_token_map(&Token::Bang, |parser| parser.make_primitive(Primitive::Not)))
+            .or_else(|| self.advance_if_token_map(&Token::Underscore, |parser| parser.make_primitive(Primitive::Negate)))
+            .or_else(|| self.advance_if_token_map(&Token::Equal, |parser| parser.make_primitive(Primitive::Equal)))
+            .or_else(|| self.advance_if_token_map(&Token::NotEqual, |parser| parser.make_primitive(Primitive::NotEqual)))
+            .or_else(|| self.advance_if_token_map(&Token::Greater, |parser| parser.make_primitive(Primitive::Greater)))
+            .or_else(|| self.advance_if_token_map(&Token::GreaterEqual, |parser| parser.make_primitive(Primitive::GreaterEqual)))
+            .or_else(|| self.advance_if_token_map(&Token::Less, |parser| parser.make_primitive(Primitive::Less)))
+            .or_else(|| self.advance_if_token_map(&Token::LessEqual, |parser| parser.make_primitive(Primitive::LessEqual)))
+            .or_else(|| self.advance_if_token_map(&Token::Dup, |parser| parser.make_primitive(Primitive::Dup)))
+            .or_else(|| self.advance_if_token_map(&Token::Drop, |parser| parser.make_primitive(Primitive::Drop)))
+            .or_else(|| self.advance_if_token_map(&Token::Swap, |parser| parser.make_primitive(Primitive::Swap)))
+            .or_else(|| self.advance_if_token_map(&Token::Over, |parser| parser.make_primitive(Primitive::Over)))
+            .or_else(|| self.advance_if_token_map(&Token::Reduce, |parser| parser.make_primitive(Primitive::Reduce)))
     }
 
     fn make_primitive(&self, primitive: Primitive) -> ParseResult<Spanned<Word>> {
@@ -233,12 +233,12 @@ where
     }
 
     fn try_parse_array(&mut self) -> Option<ParseResult<Spanned<Word>>> {
-        self.advance_map_if_token(&Token::OpenBracket, Self::parse_array)
+        self.advance_if_token_map(&Token::OpenBracket, Self::parse_array)
     }
 
     fn parse_array(&mut self) -> ParseResult<Spanned<Word>> {
         let words = self.parse_series(Self::try_parse_array_element)?;
-        self.advance_map_if_token(&Token::CloseBracket, |parser| Ok(parser.make_word(Word::Array(words))))
+        self.advance_if_token_map(&Token::CloseBracket, |parser| Ok(parser.make_word(Word::Array(words))))
             .unwrap_or_else(|| Err(self.make_error(ParseError::ExpectedToken(Token::CloseBracket))))
     }
 
@@ -249,13 +249,13 @@ where
     }
 
     fn try_parse_lambda(&mut self) -> Option<ParseResult<Spanned<Word>>> {
-        self.advance_map_if_token(&Token::OpenParenthesis, Self::parse_lambda)
+        self.advance_if_token_map(&Token::OpenParenthesis, Self::parse_lambda)
     }
 
     fn parse_lambda(&mut self) -> ParseResult<Spanned<Word>> {
         let words = self.parse_series(Self::try_parse_lambda_word)?;
         let signature = Signature::from_words(&words);
-        self.advance_map_if_token(&Token::CloseParenthesis, |parser| parser.make_word(Word::Lambda(Lambda::new(signature, words))))
+        self.advance_if_token_map(&Token::CloseParenthesis, |parser| parser.make_word(Word::Lambda(Lambda::new(signature, words))))
             .ok_or_else(|| self.make_error(ParseError::ExpectedToken(Token::CloseParenthesis)))
     }
 
@@ -292,7 +292,7 @@ where
             .inspect(|_| self.update_span());
     }
 
-    fn advance_map_if_token<T>(&mut self, expected: &Token, parse: impl FnOnce(&mut Self) -> T) -> Option<T> {
+    fn advance_if_token_map<T>(&mut self, expected: &Token, parse: impl FnOnce(&mut Self) -> T) -> Option<T> {
         if let Some(Ok(spanned_token)) = &self.token && &spanned_token.value == expected {
             self.advance();
             Some(parse(self))
