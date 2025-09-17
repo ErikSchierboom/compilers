@@ -39,14 +39,14 @@ macro_rules! dyadic_operation_env {
                     (Value::Numbers(array_a), Value::Numbers(array_b)) => {
                         let mapped_array = if array_a.shape.is_scalar() {
                             let scalar = array_a.values.first().unwrap();
-                            let mapped_values = array_b.values.iter().map(|b| (*scalar $operation *b) as i64).collect();
+                            let mapped_values = array_b.values.iter().map(|&b| (*scalar $operation b) as i64).collect();
                             Array::new(array_b.shape.clone(), mapped_values)
                         } else if array_b.shape.is_scalar() {
                             let scalar = array_b.values.first().unwrap();
-                            let mapped_values = array_a.values.iter().map(|a| (*a $operation *scalar) as i64).collect();
+                            let mapped_values = array_a.values.iter().map(|&a| (a $operation *scalar) as i64).collect();
                             Array::new(array_a.shape.clone(), mapped_values)
                         } else if array_a.shape == array_b.shape {
-                            let mapped_values = array_a.values.iter().zip(&array_b.values).map(|(a, b)| (*a $operation *b) as i64).collect();
+                            let mapped_values = array_a.values.iter().zip(&array_b.values).map(|(&a, &b)| (a $operation b) as i64).collect();
                             Array::new(array_a.shape.clone(), mapped_values)
                         } else {
                             return Err(env.make_error(RuntimeError::IncompatibleArrayShapes))
