@@ -1,4 +1,4 @@
-use crate::array::Array;
+use crate::array::{Array, Shape};
 use crate::location::{Span, Spanned};
 use crate::parser::{parse, ParseError, ParseResult, Primitive, Word};
 use std::error::Error;
@@ -9,7 +9,6 @@ use std::iter::Peekable;
 pub enum RuntimeError {
     Parse(ParseError),
     EmptyStack,
-    NonRectangularArray,
     IncompatibleArrayShapes,
 }
 
@@ -18,7 +17,6 @@ impl Display for RuntimeError {
         match self {
             RuntimeError::Parse(parse_error) => write!(f, "{parse_error}"),
             RuntimeError::EmptyStack => write!(f, "Missing argument"),
-            RuntimeError::NonRectangularArray => write!(f, "Non rectangular array"),
             RuntimeError::IncompatibleArrayShapes => write!(f, "Incompatible array shapes"),
         }
     }
@@ -29,6 +27,28 @@ impl Error for RuntimeError {}
 #[derive(Debug, Clone)]
 pub enum Value {
     Numbers(Array<i64>)
+}
+
+impl Value {
+    pub fn shape(&self) -> &Shape {
+        match self {
+            Value::Numbers(array) => &array.shape
+        }
+    }
+
+    pub fn as_numbers(&self) -> Option<&Vec<i64>> {
+        match self {
+            Value::Numbers(array) => Some(&array.values)
+        }
+    }
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Numbers(array) => write!(f, "{}", array)
+        }
+    }
 }
 
 macro_rules! dyadic_operation_env {
@@ -92,14 +112,6 @@ dyadic_operation_env!(less_equal, <=);
 monadic_operation!(not, !);
 monadic_operation!(negate, -);
 
-impl Display for Value {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Value::Numbers(array) => write!(f, "{}", array)
-        }
-    }
-}
-
 pub struct Environment {
     stack: Vec<Value>,
     span: Span,
@@ -116,6 +128,21 @@ impl Environment {
 
     fn pop(&mut self) -> InterpretResult<Value> {
         self.stack.pop().ok_or_else(|| self.spanned(RuntimeError::EmptyStack))
+    }
+
+    fn pop_n(&mut self, n: usize) -> InterpretResult<Vec<Value>> {
+        if n <= self.stack.len() {
+            Ok(self.stack.drain((self.stack.len() - n)..).collect())
+        } else {
+            Err(self.spanned(RuntimeError::EmptyStack))
+        }
+    }
+
+    pub fn pop_map<T>(
+        &mut self,
+        f: impl FnOnce(&Value, &mut Self) -> InterpretResult<T>,
+    ) -> InterpretResult<T> {
+        f(&self.pop()?, self)
     }
 
     pub(crate) fn execute_monadic(
@@ -202,15 +229,33 @@ impl Executable for Word {
             Word::Integer(i) => env.push(Value::Numbers(Array::scalar(i.clone()))),
             Word::Primitive(primitive) => return primitive.execute(env),
             Word::Array(array) => {
-                if array.values.iter().all(|element| matches!(element.value, Word::Integer(_))) {
-                    let values = array.values.iter().map(|spanned_word| spanned_word.value.as_integer().unwrap());
-                    let array = Value::Numbers(Array::linear(values.collect()));
-                    env.push(array)
-                } else if array.values.iter().all(|element| matches!(element.value, Word::Array(_))) {
-                    todo!()
-                } else {
-                    return Err(env.make_error(RuntimeError::NonRectangularArray))
+                let stack_count_before = env.stack.len();
+
+                for spanned_word in &array.values {
+                    spanned_word.value.execute(env)?;
                 }
+
+                let stack_count_after = env.stack.len();
+
+                let pushed_values = env.pop_n(stack_count_after - stack_count_before)?;
+                if !pushed_values.windows(2).all(|window| window[0].shape() == window[1].shape()) {
+                    return Err(env.make_error(RuntimeError::IncompatibleArrayShapes));
+                }
+
+                let array = if let Some(first) = pushed_values.first() {
+                    let numbers: Vec<i64> = pushed_values.iter()
+                        .map(|value| value.as_numbers().unwrap().clone())
+                        .flatten()
+                        .collect();
+                    let mut shape = first.shape().clone();
+                    shape.prepend_dimension(array.values.len());
+
+                    Array::new(shape, numbers)
+                } else {
+                    Array::empty()
+                };
+
+                env.push(Value::Numbers(array))
             }
             Word::Lambda(_) => todo!(),
         }

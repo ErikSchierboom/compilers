@@ -25,6 +25,10 @@ impl Shape {
     pub fn is_scalar(&self) -> bool {
         self.dimensions.is_empty()
     }
+    
+    pub fn prepend_dimension(&mut self, dimension: usize) {
+        self.dimensions.insert(0, dimension)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -40,6 +44,10 @@ impl<T> Array<T> {
 
     pub fn scalar(element: T) -> Self {
         Self::new(Shape::scalar(), vec![element])
+    }
+
+    pub fn empty() -> Self {
+        Self::new(Shape::new(vec![0]), Vec::new())
     }
 
     pub fn linear(elements: Vec<T>) -> Self {
