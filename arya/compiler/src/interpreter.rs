@@ -29,6 +29,17 @@ pub enum Value {
     Numbers(Array<i64>)
 }
 
+impl Value {
+    fn add(self: Value, other: Value) -> InterpretResult<Value> {
+        match (self, other) {
+            (Value::Numbers(a), Value::Numbers(b)) => {
+                // TODO: somehow simplify this
+                Ok(Value::Numbers(Array::new(a.shape, a.values.into_iter().zip(b.values).map(|(l, r)| l + r).collect())))
+            }
+        }
+    }
+}
+
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -55,12 +66,14 @@ impl Environment {
         self.stack.pop().ok_or_else(|| self.spanned(RuntimeError::EmptyStack))
     }
 
-    fn pop_map<V>(
+    pub(crate) fn exec_dyadic(
         &mut self,
-        f: impl FnOnce(&mut Self, Value) -> InterpretResult<V>,
-    ) -> InterpretResult<V> {
-        let value = self.pop()?;
-        f(self, value)
+        f: fn(Value, Value) -> InterpretResult<Value>,
+    ) -> InterpretResult {
+        let a = self.pop()?;
+        let b = self.pop()?;
+        self.push(f(a, b)?);
+        Ok(())
     }
 
     fn spanned<V>(&self, value: V) -> Spanned<V> {
@@ -79,25 +92,25 @@ pub trait Executable {
 impl Executable for Primitive {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
-            Primitive::Add => {}
-            Primitive::Subtract => {}
-            Primitive::Multiply => {}
-            Primitive::Divide => {}
-            Primitive::Xor => {}
-            Primitive::And => {}
-            Primitive::Or => {}
-            Primitive::Not => {}
-            Primitive::Negate => {}
-            Primitive::Equal => {}
-            Primitive::NotEqual => {}
-            Primitive::Greater => {}
-            Primitive::GreaterEqual => {}
-            Primitive::Less => {}
-            Primitive::LessEqual => {}
+            Primitive::Add => env.exec_dyadic(Value::add)?,
+            Primitive::Subtract => todo!(),
+            Primitive::Multiply => todo!(),
+            Primitive::Divide => todo!(),
+            Primitive::Xor => todo!(),
+            Primitive::And => todo!(),
+            Primitive::Or => todo!(),
+            Primitive::Not => todo!(),
+            Primitive::Negate => todo!(),
+            Primitive::Equal => todo!(),
+            Primitive::NotEqual => todo!(),
+            Primitive::Greater => todo!(),
+            Primitive::GreaterEqual => todo!(),
+            Primitive::Less => todo!(),
+            Primitive::LessEqual => todo!(),
             Primitive::Dup => {
                 let value = env.pop()?;
                 env.push(value.clone());
-                env.push(value)
+                env.push(value);
             }
             Primitive::Drop => {
                 env.pop()?;
@@ -106,7 +119,7 @@ impl Executable for Primitive {
                 let a = env.pop()?;
                 let b = env.pop()?;
                 env.push(a);
-                env.push(b)
+                env.push(b);
             }
             Primitive::Over => {
                 let a = env.pop()?;
