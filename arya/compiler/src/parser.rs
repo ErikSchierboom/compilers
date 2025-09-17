@@ -28,26 +28,26 @@ impl Error for ParseError {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Signature {
-    pub num_inputs: u8,
-    pub num_outputs: u8,
+    pub input_count: u8,
+    pub output_count: u8,
 }
 
 impl Signature {
     pub const EMPTY: Self = Self {
-        num_inputs: 0,
-        num_outputs: 0,
+        input_count: 0,
+        output_count: 0,
     };
 
-    pub fn new(num_inputs: u8, num_outputs: u8) -> Self {
+    pub fn new(input_count: u8, output_count: u8) -> Self {
         Self {
-            num_inputs,
-            num_outputs,
+            input_count,
+            output_count,
         }
     }
 
     pub fn merge(&self, other: &Self) -> Self {
-        let required_inputs = self.num_inputs + (other.num_inputs as i8 - self.num_outputs as i8).max(0) as u8;
-        let produced_outputs = (self.num_outputs as i8 - other.num_inputs as i8).max(0) as u8 + other.num_outputs;
+        let required_inputs = self.input_count + (other.input_count as i8 - self.output_count as i8).max(0) as u8;
+        let produced_outputs = (self.output_count as i8 - other.input_count as i8).max(0) as u8 + other.output_count;
         Self::new(required_inputs, produced_outputs)
     }
 

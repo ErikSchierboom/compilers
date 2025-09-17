@@ -1,4 +1,4 @@
-use crate::array::{Array, Shape};
+use crate::array::Array;
 use crate::location::{Span, Spanned};
 use crate::parser::{parse, ParseError, ParseResult, Primitive, Word};
 use std::error::Error;
@@ -10,6 +10,7 @@ pub enum RuntimeError {
     Parse(ParseError),
     EmptyStack,
     NonRectangularArray,
+    IncompatibleArrayShapes,
 }
 
 impl Display for RuntimeError {
@@ -17,7 +18,8 @@ impl Display for RuntimeError {
         match self {
             RuntimeError::Parse(parse_error) => write!(f, "{parse_error}"),
             RuntimeError::EmptyStack => write!(f, "Missing argument"),
-            RuntimeError::NonRectangularArray => write!(f, "Non rectangular array")
+            RuntimeError::NonRectangularArray => write!(f, "Non rectangular array"),
+            RuntimeError::IncompatibleArrayShapes => write!(f, "Incompatible array shapes"),
         }
     }
 }
@@ -29,17 +31,28 @@ pub enum Value {
     Numbers(Array<i64>)
 }
 
-macro_rules! dyadic_value_operation {
+macro_rules! dyadic_operation_env {
     ($name:ident, $operation:tt) => {
         impl Value {
-            fn $name(a: Value, b: Value) -> InterpretResult<Value> {
+            fn $name(a: Value, b: Value, env: &Environment) -> InterpretResult<Value> {
                 match (a, b) {
                     (Value::Numbers(array_a), Value::Numbers(array_b)) => {
-                        // TODO: check shapes
-                        // TODO: maybe move some functionality to array type
-                        // TODO: support different shapes
-                        let updated_values = array_a.values.into_iter().zip(array_b.values).map(|(l, r)| (l $operation r) as i64).collect();
-                        Ok(Value::Numbers(Array::new(array_a.shape, updated_values)))
+                        let mapped_array = if array_a.shape.is_scalar() {
+                            let scalar = array_a.values.first().unwrap();
+                            let mapped_values = array_b.values.iter().map(|b| (*scalar $operation *b) as i64).collect();
+                            Array::new(array_b.shape.clone(), mapped_values)
+                        } else if array_b.shape.is_scalar() {
+                            let scalar = array_b.values.first().unwrap();
+                            let mapped_values = array_a.values.iter().map(|a| (*a $operation *scalar) as i64).collect();
+                            Array::new(array_a.shape.clone(), mapped_values)
+                        } else if array_a.shape == array_b.shape {
+                            let mapped_values = array_a.values.iter().zip(&array_b.values).map(|(a, b)| (*a $operation *b) as i64).collect();
+                            Array::new(array_a.shape.clone(), mapped_values)
+                        } else {
+                            return Err(env.make_error(RuntimeError::IncompatibleArrayShapes))
+                        };
+
+                        Ok(Value::Numbers(mapped_array))
                     }
                 }
             }
@@ -47,16 +60,14 @@ macro_rules! dyadic_value_operation {
     };
 }
 
-macro_rules! monadic_value_operation {
+macro_rules! monadic_operation {
     ($name:ident, $operation:tt) => {
         impl Value {
             fn $name(a: Value) -> InterpretResult<Value> {
                 match a {
                     Value::Numbers(array_a) => {
-                        // TODO: check shapes
-                        // TODO: maybe move some functionality to array type
-                        let updated_values = array_a.values.into_iter().map(|v| ($operation v) as i64).collect();
-                        Ok(Value::Numbers(Array::new(array_a.shape, updated_values)))
+                        let mapped_values = array_a.values.into_iter().map(|v| ($operation v) as i64).collect();
+                        Ok(Value::Numbers(Array::new(array_a.shape, mapped_values)))
                     }
                 }
             }
@@ -64,22 +75,22 @@ macro_rules! monadic_value_operation {
     };
 }
 
-dyadic_value_operation!(add, +);
-dyadic_value_operation!(subtract, -);
-dyadic_value_operation!(multiply, *);
-dyadic_value_operation!(divide, /);
-dyadic_value_operation!(xor, ^);
-dyadic_value_operation!(and, &);
-dyadic_value_operation!(or, |);
-dyadic_value_operation!(equal, ==);
-dyadic_value_operation!(not_equal, !=);
-dyadic_value_operation!(greater, >);
-dyadic_value_operation!(greater_equal, >=);
-dyadic_value_operation!(less, <);
-dyadic_value_operation!(less_equal, <=);
+dyadic_operation_env!(add, +);
+dyadic_operation_env!(subtract, -);
+dyadic_operation_env!(multiply, *);
+dyadic_operation_env!(divide, /);
+dyadic_operation_env!(xor, ^);
+dyadic_operation_env!(and, &);
+dyadic_operation_env!(or, |);
+dyadic_operation_env!(equal, ==);
+dyadic_operation_env!(not_equal, !=);
+dyadic_operation_env!(greater, >);
+dyadic_operation_env!(greater_equal, >=);
+dyadic_operation_env!(less, <);
+dyadic_operation_env!(less_equal, <=);
 
-monadic_value_operation!(not, !);
-monadic_value_operation!(negate, -);
+monadic_operation!(not, !);
+monadic_operation!(negate, -);
 
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -116,13 +127,13 @@ impl Environment {
         Ok(())
     }
 
-    pub(crate) fn execute_dyadic(
+    pub(crate) fn execute_dyadic_env(
         &mut self,
-        f: fn(Value, Value) -> InterpretResult<Value>,
+        f: fn(Value, Value, &Self) -> InterpretResult<Value>,
     ) -> InterpretResult {
         let a = self.pop()?;
         let b = self.pop()?;
-        self.push(f(a, b)?);
+        self.push(f(a, b, self)?);
         Ok(())
     }
 
@@ -130,7 +141,7 @@ impl Environment {
         Spanned::new(value, self.span.clone())
     }
 
-    fn make_error(&mut self, error: RuntimeError) -> Spanned<RuntimeError> {
+    fn make_error(&self, error: RuntimeError) -> Spanned<RuntimeError> {
         self.spanned(error)
     }
 }
@@ -142,21 +153,21 @@ pub trait Executable {
 impl Executable for Primitive {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
-            Primitive::Add => env.execute_dyadic(Value::add)?,
-            Primitive::Subtract => env.execute_dyadic(Value::subtract)?,
-            Primitive::Multiply => env.execute_dyadic(Value::multiply)?,
-            Primitive::Divide => env.execute_dyadic(Value::divide)?,
-            Primitive::Xor => env.execute_dyadic(Value::xor)?,
-            Primitive::And => env.execute_dyadic(Value::and)?,
-            Primitive::Or => env.execute_dyadic(Value::or)?,
+            Primitive::Add => env.execute_dyadic_env(Value::add)?,
+            Primitive::Subtract => env.execute_dyadic_env(Value::subtract)?,
+            Primitive::Multiply => env.execute_dyadic_env(Value::multiply)?,
+            Primitive::Divide => env.execute_dyadic_env(Value::divide)?,
+            Primitive::Xor => env.execute_dyadic_env(Value::xor)?,
+            Primitive::And => env.execute_dyadic_env(Value::and)?,
+            Primitive::Or => env.execute_dyadic_env(Value::or)?,
             Primitive::Not => env.execute_monadic(Value::not)?,
             Primitive::Negate => env.execute_monadic(Value::negate)?,
-            Primitive::Equal => env.execute_dyadic(Value::equal)?,
-            Primitive::NotEqual => env.execute_dyadic(Value::not_equal)?,
-            Primitive::Greater => env.execute_dyadic(Value::greater)?,
-            Primitive::GreaterEqual => env.execute_dyadic(Value::greater_equal)?,
-            Primitive::Less => env.execute_dyadic(Value::less)?,
-            Primitive::LessEqual => env.execute_dyadic(Value::less_equal)?,
+            Primitive::Equal => env.execute_dyadic_env(Value::equal)?,
+            Primitive::NotEqual => env.execute_dyadic_env(Value::not_equal)?,
+            Primitive::Greater => env.execute_dyadic_env(Value::greater)?,
+            Primitive::GreaterEqual => env.execute_dyadic_env(Value::greater_equal)?,
+            Primitive::Less => env.execute_dyadic_env(Value::less)?,
+            Primitive::LessEqual => env.execute_dyadic_env(Value::less_equal)?,
             Primitive::Dup => {
                 let a = env.pop()?;
                 env.push(a.clone());
@@ -188,10 +199,7 @@ impl Executable for Primitive {
 impl Executable for Word {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
-            Word::Integer(i) => {
-                // TODO: maybe add function to more easily create scalar
-                env.push(Value::Numbers(Array::new(Shape::Scalar, vec![i.clone()])))
-            },
+            Word::Integer(i) => env.push(Value::Numbers(Array::scalar(i.clone()))),
             Word::Primitive(primitive) => return primitive.execute(env),
             Word::Array(array) => {
                 if array.values.iter().all(|element| matches!(element.value, Word::Integer(_))) {

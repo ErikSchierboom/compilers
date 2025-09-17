@@ -1,11 +1,30 @@
 ﻿use std::fmt::{Display, Formatter};
 
-// TODO: convert to use dimensions instead of enum cases
-#[derive(Clone, Debug)]
-pub enum Shape {
-    Scalar,
-    Linear(u16),
-    Matrix(u16, u16),
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Shape {
+    dimensions: Vec<usize>
+}
+
+impl Shape {
+    pub fn new(dimensions: Vec<usize>) -> Self {
+        Self { dimensions }
+    }
+
+    pub fn scalar() -> Self {
+        Self { dimensions: Vec::new() }
+    }
+
+    pub fn row_count(&self) -> usize {
+        self.dimensions.first().copied().unwrap_or(0)
+    }
+
+    pub fn row_len(&self) -> usize {
+        self.dimensions.iter().skip(1).product()
+    }
+
+    pub fn is_scalar(&self) -> bool {
+        self.dimensions.is_empty()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -16,22 +35,19 @@ pub struct Array<T> {
 
 impl<T> Array<T> {
     pub fn new(shape: Shape, values: Vec<T>) -> Self {
-        Array { shape, values }
+        Self { shape, values }
     }
 
     pub fn scalar(element: T) -> Self {
-        Self::new(Shape::Scalar, vec![element])
+        Self::new(Shape::scalar(), vec![element])
     }
 
     pub fn linear(elements: Vec<T>) -> Self {
-        Self::new(Shape::Linear(elements.len() as u16), elements)
+        Self::new(Shape::new(vec![elements.len()]), elements)
     }
 
     pub fn matrix(elements: Vec<Vec<T>>) -> Self {
-        let num_rows = elements.len() as u16;
-        let num_columns = elements.get(0).map(|x| x.len()).unwrap_or(0) as u16;
-        let elements = elements.into_iter().flatten().collect();
-        Self::new(Shape::Matrix(num_columns, num_rows), elements)
+        Self::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect())
     }
 }
 
@@ -40,48 +56,52 @@ where
     T: Display,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self.shape {
-            Shape::Scalar => write!(f, "{}", self.values.first().unwrap()),
-            Shape::Linear(num_elements) => {
+        match self.shape.dimensions.len() {
+            0 => write!(f, "{}", self.values.first().unwrap()),
+            1 => {
                 write!(f, "[")?;
                 for (column, value) in self.values.iter().enumerate() {
                     write!(f, "{}", value)?;
-                    if (column as u16) < num_elements - 1 {
+                    if column < self.shape.dimensions[0] - 1 {
                         write!(f, " ")?;
                     }
                 }
                 write!(f, "]")
             }
-            Shape::Matrix(num_columns, num_rows) => {
-                let column_widths: Vec<usize> = (0..num_columns).map(|column|
-                    (0..num_rows).map(|row|
-                        self.values.get((row * num_columns + column) as usize).unwrap().to_string().len()
+            2 => {
+                let row_len = self.shape.row_len();
+                let row_count = self.shape.row_count();
+
+                let column_widths: Vec<usize> = (0..row_len).map(|column|
+                    (0..row_count).map(|row|
+                        self.values.get(row * row_len + column).unwrap().to_string().len()
                     ).max().unwrap_or_default())
                     .collect();
 
                 write!(f, "[")?;
 
-                for row in 0..num_rows {
+                for row in 0..row_count {
                     if row > 0 {
                         write!(f, " ")?;
                     }
 
-                    for column in 0..num_columns {
-                        let column_width = column_widths[column as usize];
-                        let value = self.values.get((row * num_columns + column) as usize).unwrap();
+                    for column in 0..row_len {
+                        let column_width = column_widths[column];
+                        let value = self.values.get(row * row_len + column).unwrap();
                         write!(f, "{:>column_width$}", value)?;
-                        if column < num_columns - 1 {
+                        if column < row_len - 1 {
                             write!(f, " ")?;
                         }
                     }
 
-                    if row < num_rows - 1 {
+                    if row < row_count - 1 {
                         write!(f, "\n")?;
                     }
                 }
 
                 write!(f, "]")
-            }
+            },
+            n => write!(f, "{n}-dimensional array")
         }
     }
 }
