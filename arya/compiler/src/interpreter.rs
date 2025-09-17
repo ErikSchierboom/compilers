@@ -1,6 +1,6 @@
 use crate::array::{Array, Shape};
 use crate::location::{Span, Spanned};
-use crate::parser::{parse, ParseError, ParseResult, Word};
+use crate::parser::{parse, ParseError, ParseResult, Primitive, Word};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
@@ -8,7 +8,7 @@ use std::iter::Peekable;
 #[derive(Debug)]
 pub enum RuntimeError {
     Parse(ParseError),
-    MissingArgument,
+    EmptyStack,
     NonRectangularArray,
 }
 
@@ -16,7 +16,7 @@ impl Display for RuntimeError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             RuntimeError::Parse(parse_error) => write!(f, "{parse_error}"),
-            RuntimeError::MissingArgument => write!(f, "Missing argument"),
+            RuntimeError::EmptyStack => write!(f, "Missing argument"),
             RuntimeError::NonRectangularArray => write!(f, "Non rectangular array")
         }
     }
@@ -39,13 +39,12 @@ impl Environment {
         Self { stack: Vec::new(), span: Span::EMPTY }
     }
 
-    fn push(&mut self, value: Value) -> InterpretResult {
-        self.stack.push(value);
-        Ok(())
+    fn push(&mut self, value: Value) {
+        self.stack.push(value)
     }
 
     fn pop(&mut self) -> InterpretResult<Value> {
-        self.stack.pop().ok_or_else(|| self.spanned(RuntimeError::MissingArgument))
+        self.stack.pop().ok_or_else(|| self.spanned(RuntimeError::EmptyStack))
     }
 
     fn pop_map<V>(
@@ -69,24 +68,73 @@ pub trait Executable {
     fn execute(&self, env: &mut Environment) -> InterpretResult;
 }
 
+impl Executable for Primitive {
+    fn execute(&self, env: &mut Environment) -> InterpretResult {
+        match self {
+            Primitive::Add => {}
+            Primitive::Subtract => {}
+            Primitive::Multiply => {}
+            Primitive::Divide => {}
+            Primitive::Xor => {}
+            Primitive::And => {}
+            Primitive::Or => {}
+            Primitive::Not => {}
+            Primitive::Negate => {}
+            Primitive::Equal => {}
+            Primitive::NotEqual => {}
+            Primitive::Greater => {}
+            Primitive::GreaterEqual => {}
+            Primitive::Less => {}
+            Primitive::LessEqual => {}
+            Primitive::Dup => {
+                let value = env.pop()?;
+                env.push(value.clone());
+                env.push(value)
+            }
+            Primitive::Drop => {
+                env.pop()?;
+            }
+            Primitive::Swap => {
+                let a = env.pop()?;
+                let b = env.pop()?;
+                env.push(a);
+                env.push(b)                
+            }
+            Primitive::Over => {
+                let a = env.pop()?;
+                let b = env.pop()?;
+                env.push(b.clone());
+                env.push(a);
+                env.push(b);
+            }
+            Primitive::Reduce => todo!()
+        }
+
+        Ok(())
+    }
+}
+
 impl Executable for Word {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
             Word::Integer(i) => {
+                // TODO: maybe add function to more easily create scalar
                 env.push(Value::Numbers(Array::new(Shape::Scalar, vec![i.clone()])))
-            }
+            },
             Word::Primitive(_) => todo!(),
             Word::Array(array) => {
                 if array.iter().all(|element| matches!(element.value, Word::Integer(_))) {
                     todo!()
-                } else if array.iter().all(|element| matches!(element.value, Word::Integer(_))) {
+                } else if array.iter().all(|element| matches!(element.value, Word::Array(_))) {
                     todo!()
                 } else {
-                    Err(env.make_error(RuntimeError::NonRectangularArray))
+                    return Err(env.make_error(RuntimeError::NonRectangularArray))
                 }
             }
             Word::Lambda(_) => todo!(),
         }
+
+        Ok(())
     }
 }
 
