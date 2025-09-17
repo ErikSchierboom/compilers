@@ -29,16 +29,30 @@ pub enum Value {
     Numbers(Array<i64>)
 }
 
-impl Value {
-    fn add(self: Value, other: Value) -> InterpretResult<Value> {
-        match (self, other) {
-            (Value::Numbers(a), Value::Numbers(b)) => {
-                // TODO: somehow simplify this
-                Ok(Value::Numbers(Array::new(a.shape, a.values.into_iter().zip(b.values).map(|(l, r)| l + r).collect())))
+macro_rules! dyadic_value_operation {
+    ($name:ident, $operation:tt) => {
+        impl Value {
+            fn $name(a: Value, b: Value) -> InterpretResult<Value> {
+                match (a, b) {
+                    (Value::Numbers(array_a), Value::Numbers(array_b)) => {
+                        // TODO: check shapes
+                        // TODO: maybe move some functionality to array type
+                        let updated_values = array_a.values.into_iter().zip(array_b.values).map(|(l, r)| l $operation r).collect();
+                        Ok(Value::Numbers(Array::new(array_a.shape, updated_values)))
+                    }
+                }
             }
         }
-    }
+    };
 }
+
+dyadic_value_operation!(add, +);
+dyadic_value_operation!(sub, -);
+dyadic_value_operation!(mul, *);
+dyadic_value_operation!(div, /);
+dyadic_value_operation!(xor, ^);
+dyadic_value_operation!(and, &);
+dyadic_value_operation!(or, |);
 
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -66,7 +80,7 @@ impl Environment {
         self.stack.pop().ok_or_else(|| self.spanned(RuntimeError::EmptyStack))
     }
 
-    pub(crate) fn exec_dyadic(
+    pub(crate) fn execute_dyadic(
         &mut self,
         f: fn(Value, Value) -> InterpretResult<Value>,
     ) -> InterpretResult {
@@ -92,13 +106,13 @@ pub trait Executable {
 impl Executable for Primitive {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
-            Primitive::Add => env.exec_dyadic(Value::add)?,
-            Primitive::Subtract => todo!(),
-            Primitive::Multiply => todo!(),
-            Primitive::Divide => todo!(),
-            Primitive::Xor => todo!(),
-            Primitive::And => todo!(),
-            Primitive::Or => todo!(),
+            Primitive::Add => env.execute_dyadic(Value::add)?,
+            Primitive::Subtract => env.execute_dyadic(Value::sub)?,
+            Primitive::Multiply => env.execute_dyadic(Value::mul)?,
+            Primitive::Divide => env.execute_dyadic(Value::div)?,
+            Primitive::Xor => env.execute_dyadic(Value::xor)?,
+            Primitive::And => env.execute_dyadic(Value::and)?,
+            Primitive::Or => env.execute_dyadic(Value::or)?,
             Primitive::Not => todo!(),
             Primitive::Negate => todo!(),
             Primitive::Equal => todo!(),
