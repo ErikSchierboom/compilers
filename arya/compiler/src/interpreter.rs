@@ -1,6 +1,6 @@
 use crate::array::{Array, Shape};
 use crate::location::{Span, Spanned};
-use crate::parser::{parse, ParseError, ParseResult, Primitive, Word};
+use crate::parser::{parse, Lambda, ParseError, ParseResult, Primitive, Word};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
@@ -26,7 +26,8 @@ impl Error for RuntimeError {}
 
 #[derive(Debug, Clone)]
 pub enum Value {
-    Numbers(Array<i64>)
+    Numbers(Array<i64>),
+    Lambda(Lambda),
 }
 
 impl Value {
@@ -238,7 +239,6 @@ impl Executable for Primitive {
                 env.push(a);
                 env.push(b);
             }
-            Primitive::Reduce => todo!()
         }
 
         Ok(())
@@ -248,7 +248,10 @@ impl Executable for Primitive {
 impl Executable for Word {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
-            Word::Integer(i) => env.push(Value::Numbers(Array::scalar(i.clone()))),
+            Word::Integer(i) => {
+                let value = Value::Numbers(Array::scalar(i.clone()));
+                env.push(value)
+            }
             Word::Primitive(primitive) => return primitive.execute(env),
             Word::Array(array) => {
                 let stack_count_before = env.stack.len();
@@ -262,7 +265,11 @@ impl Executable for Word {
                 let value = env.make_array(stack_count_after - stack_count_before)?;
                 env.push(value)
             }
-            Word::Lambda(_) => todo!(),
+            Word::Modifier(modifier) => {
+                todo!()
+                // let value = Value::Lambda(lambda);
+                // env.
+            }
         }
 
         Ok(())

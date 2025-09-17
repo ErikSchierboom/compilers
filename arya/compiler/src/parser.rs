@@ -1,3 +1,5 @@
+use crate::array::Array;
+use crate::interpreter::RuntimeError;
 use crate::lexer::{tokenize, LexError, LexTokenResult, Token};
 use crate::location::{Span, Spanned};
 use crate::parser::ParseError::Lex;
@@ -5,7 +7,6 @@ use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 use std::str::FromStr;
-use crate::array::Array;
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -60,8 +61,8 @@ impl Signature {
 pub enum Word {
     Integer(i64),
     Primitive(Primitive),
+    Modifier(Modifier),
     Array(Array<Spanned<Word>>),
-    Lambda(Lambda),
 }
 
 impl Word {
@@ -70,7 +71,7 @@ impl Word {
             Word::Integer(_) |
             Word::Array(_) => Signature::new(0, 1),
             Word::Primitive(primitive) => primitive.signature(),
-            Word::Lambda(lambda) => lambda.to_owned().signature,
+            Word::Modifier(modifier) => modifier.signature(),
         }
     }
 
@@ -104,7 +105,7 @@ impl Display for Word {
                 write!(f, "]")
             }
             Word::Primitive(primitive) => write!(f, "{primitive}"),
-            Word::Lambda(lambda) => write!(f, "{lambda}"),
+            Word::Modifier(modifier) => write!(f, "{modifier}"),
         }
     }
 }
@@ -173,12 +174,45 @@ primitive!(
     (1, 0, Drop),
     (2, 2, Swap),
     (2, 3, Over),
-    (2, 1, Reduce),    
 );
-// TODO: fold
-// TODO: fork
-// TODO: bracket
-// TODO: both
+
+macro_rules! modifier {
+    ($( ($num_inputs:expr, $num_outputs:expr, $name:ident) ),* $(,)?) => {
+        #[derive(Clone, Debug)]
+        pub enum Modifier {
+            $($name(Spanned<Lambda>)),*
+        }
+
+        impl Modifier {
+            pub fn signature(&self) -> Signature {
+                match self {
+                    $( Modifier::$name(_) => Signature::new($num_inputs, $num_outputs), )*
+                }
+            }
+
+            pub fn lambda(&self) -> &Lambda {
+                match self {
+                    $( Modifier::$name(spanned_lambda) => &spanned_lambda.value, )*
+                }
+            }
+        }
+
+        impl Display for Modifier {
+            fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    $( Modifier::$name(_) => write!(f, stringify!($name)), )*
+                }
+            }
+        }
+    };
+}
+
+modifier!(
+    (2, 1, Reduce),
+    (3, 1, Fold),
+    (3, 1, Bracket),
+    (3, 1, Both),
+);
 
 pub type ParseResult<T = Spanned<Word>> = Result<T, Spanned<ParseError>>;
 
@@ -206,8 +240,8 @@ where
     fn try_parse_word(&mut self) -> Option<ParseResult<Spanned<Word>>> {
         self.try_parse_integer()
             .or_else(|| self.try_parse_primitive())
+            .or_else(|| self.try_parse_modifier())
             .or_else(|| self.try_parse_array())
-            .or_else(|| self.try_parse_lambda())
             .or_else(|| self.try_parse_error())
     }
 
@@ -240,11 +274,20 @@ where
             .or_else(|| self.advance_if_token_map(&Token::Drop, |parser| parser.make_primitive(Primitive::Drop)))
             .or_else(|| self.advance_if_token_map(&Token::Swap, |parser| parser.make_primitive(Primitive::Swap)))
             .or_else(|| self.advance_if_token_map(&Token::Over, |parser| parser.make_primitive(Primitive::Over)))
-            .or_else(|| self.advance_if_token_map(&Token::Reduce, |parser| parser.make_primitive(Primitive::Reduce)))
     }
 
     fn make_primitive(&self, primitive: Primitive) -> ParseResult<Spanned<Word>> {
         Ok(self.make_word(Word::Primitive(primitive)))
+    }
+
+    fn try_parse_modifier(&mut self) -> Option<ParseResult<Spanned<Word>>> {
+        self.try_parse_lambda()?.map(|lambda| {
+            self.advance_if_token_map(&Token::Reduce, |parser| {
+                parser.make_word(Word::Modifier(Modifier::Reduce(lambda)))
+            }).ok_or_else(Err(RuntimeError::EmptyStack))
+            // .or_else(|| self.advance_if_token_map(&Token::Minus, |parser| parser.make_primitive(Primitive::Subtract)))
+            // .or_else(|| self.advance_if_token_map(&Token::Star, |parser| parser.make_primitive(Primitive::Multiply)))
+        })
     }
 
     fn try_parse_array(&mut self) -> Option<ParseResult<Spanned<Word>>> {
@@ -264,14 +307,14 @@ where
             .or_else(|| self.try_parse_array())
     }
 
-    fn try_parse_lambda(&mut self) -> Option<ParseResult<Spanned<Word>>> {
+    fn try_parse_lambda(&mut self) -> Option<ParseResult<Spanned<Lambda>>> {
         self.advance_if_token_map(&Token::OpenParenthesis, Self::parse_lambda)
     }
 
-    fn parse_lambda(&mut self) -> ParseResult<Spanned<Word>> {
+    fn parse_lambda(&mut self) -> ParseResult<Spanned<Lambda>> {
         let words = self.parse_series(Self::try_parse_lambda_word)?;
         let signature = Signature::from_words(&words);
-        self.advance_if_token_map(&Token::CloseParenthesis, |parser| parser.make_word(Word::Lambda(Lambda::new(signature, words))))
+        self.advance_if_token_map(&Token::CloseParenthesis, |parser| parser.spanned(Lambda::new(signature, words)))
             .ok_or_else(|| self.make_error(ParseError::ExpectedToken(Token::CloseParenthesis)))
     }
 
@@ -325,10 +368,12 @@ where
         }
     }
 
+    // TODO: inline
     fn make_word(&self, word: Word) -> Spanned<Word> {
         self.spanned(word)
     }
 
+    // TODO: inline
     fn make_error(&mut self, error: ParseError) -> Spanned<ParseError> {
         self.spanned(error)
     }

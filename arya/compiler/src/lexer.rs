@@ -53,6 +53,9 @@ pub enum Token {
     Swap,
     Over,
     Reduce,
+    Fold,
+    Bracket,
+    Both,
 
     // Synthetic
     EndOfFile,
@@ -106,13 +109,14 @@ where
     TChars: Iterator<Item=char>,
 {
     fn new(source_code: TChars) -> Self {
-        Self { chars: source_code.peekable(), span: Span::EMPTY, }
+        Self { chars: source_code.peekable(), span: Span::EMPTY }
     }
 
     fn lex_token(&mut self) -> LexTokenResult {
         self.skip_whitespace();
         self.update_position();
 
+        // TODO: inline make_token and assign match result token into variable
         match self.next_char() {
             None => self.make_token(Token::EndOfFile),
             Some(c) => match c {
