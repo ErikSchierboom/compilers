@@ -37,7 +37,7 @@ macro_rules! dyadic_value_operation {
                     (Value::Numbers(array_a), Value::Numbers(array_b)) => {
                         // TODO: check shapes
                         // TODO: maybe move some functionality to array type
-                        let updated_values = array_a.values.into_iter().zip(array_b.values).map(|(l, r)| l $operation r).collect();
+                        let updated_values = array_a.values.into_iter().zip(array_b.values).map(|(l, r)| (l $operation r) as i64).collect();
                         Ok(Value::Numbers(Array::new(array_a.shape, updated_values)))
                     }
                 }
@@ -54,7 +54,7 @@ macro_rules! monadic_value_operation {
                     Value::Numbers(array_a) => {
                         // TODO: check shapes
                         // TODO: maybe move some functionality to array type
-                        let updated_values = array_a.values.into_iter().map(|v| $operation v).collect();
+                        let updated_values = array_a.values.into_iter().map(|v| ($operation v) as i64).collect();
                         Ok(Value::Numbers(Array::new(array_a.shape, updated_values)))
                     }
                 }
@@ -70,6 +70,12 @@ dyadic_value_operation!(divide, /);
 dyadic_value_operation!(xor, ^);
 dyadic_value_operation!(and, &);
 dyadic_value_operation!(or, |);
+dyadic_value_operation!(equal, ==);
+dyadic_value_operation!(not_equal, !=);
+dyadic_value_operation!(greater, >);
+dyadic_value_operation!(greater_equal, >=);
+dyadic_value_operation!(less, <);
+dyadic_value_operation!(less_equal, <=);
 
 monadic_value_operation!(not, !);
 monadic_value_operation!(negate, -);
@@ -144,12 +150,12 @@ impl Executable for Primitive {
             Primitive::Or => env.execute_dyadic(Value::or)?,
             Primitive::Not => env.execute_monadic(Value::not)?,
             Primitive::Negate => env.execute_monadic(Value::negate)?,
-            Primitive::Equal => todo!(),
-            Primitive::NotEqual => todo!(),
-            Primitive::Greater => todo!(),
-            Primitive::GreaterEqual => todo!(),
-            Primitive::Less => todo!(),
-            Primitive::LessEqual => todo!(),
+            Primitive::Equal => env.execute_dyadic(Value::equal)?,
+            Primitive::NotEqual => env.execute_dyadic(Value::not_equal)?,
+            Primitive::Greater => env.execute_dyadic(Value::greater)?,
+            Primitive::GreaterEqual => env.execute_dyadic(Value::greater_equal)?,
+            Primitive::Less => env.execute_dyadic(Value::less)?,
+            Primitive::LessEqual => env.execute_dyadic(Value::less_equal)?,
             Primitive::Dup => {
                 let a = env.pop()?;
                 env.push(a.clone());
