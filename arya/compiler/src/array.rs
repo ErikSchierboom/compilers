@@ -1,5 +1,6 @@
 ﻿use std::fmt::{Display, Formatter};
 
+// TODO: convert to use dimensions instead of enum cases
 #[derive(Clone, Debug)]
 pub enum Shape {
     Scalar,

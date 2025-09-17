@@ -37,6 +37,7 @@ macro_rules! dyadic_value_operation {
                     (Value::Numbers(array_a), Value::Numbers(array_b)) => {
                         // TODO: check shapes
                         // TODO: maybe move some functionality to array type
+                        // TODO: support different shapes
                         let updated_values = array_a.values.into_iter().zip(array_b.values).map(|(l, r)| (l $operation r) as i64).collect();
                         Ok(Value::Numbers(Array::new(array_a.shape, updated_values)))
                     }
@@ -193,9 +194,11 @@ impl Executable for Word {
             },
             Word::Primitive(primitive) => return primitive.execute(env),
             Word::Array(array) => {
-                if array.iter().all(|element| matches!(element.value, Word::Integer(_))) {
-                    todo!()
-                } else if array.iter().all(|element| matches!(element.value, Word::Array(_))) {
+                if array.values.iter().all(|element| matches!(element.value, Word::Integer(_))) {
+                    let values = array.values.iter().map(|spanned_word| spanned_word.value.as_integer().unwrap());
+                    let array = Value::Numbers(Array::linear(values.collect()));
+                    env.push(array)
+                } else if array.values.iter().all(|element| matches!(element.value, Word::Array(_))) {
                     todo!()
                 } else {
                     return Err(env.make_error(RuntimeError::NonRectangularArray))

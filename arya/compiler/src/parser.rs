@@ -5,6 +5,7 @@ use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 use std::str::FromStr;
+use crate::array::Array;
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -59,7 +60,7 @@ impl Signature {
 pub enum Word {
     Integer(i64),
     Primitive(Primitive),
-    Array(Vec<Spanned<Word>>),
+    Array(Array<Spanned<Word>>),
     Lambda(Lambda),
 }
 
@@ -72,6 +73,20 @@ impl Word {
             Word::Lambda(lambda) => lambda.to_owned().signature,
         }
     }
+
+    pub fn as_integer(&self) -> Option<i64> {
+        match self {
+            Word::Integer(i) => Some(i.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_array(&self) -> Option<Array<Spanned<Word>>> {
+        match self {
+            Word::Array(array) => Some(array.clone()),
+            _ => None,
+        }
+    }
 }
 
 impl Display for Word {
@@ -80,9 +95,9 @@ impl Display for Word {
             Word::Integer(i) => write!(f, "{i}"),
             Word::Array(array) => {
                 write!(f, "[")?;
-                for (i, element) in array.iter().enumerate() {
+                for (i, element) in array.values.iter().enumerate() {
                     write!(f, "{}", element.value)?;
-                    if i < array.len() - 1 {
+                    if i < array.values.len() - 1 {
                         write!(f, " ")?;
                     }
                 }
@@ -238,7 +253,8 @@ where
 
     fn parse_array(&mut self) -> ParseResult<Spanned<Word>> {
         let words = self.parse_series(Self::try_parse_array_element)?;
-        self.advance_if_token_map(&Token::CloseBracket, |parser| Ok(parser.make_word(Word::Array(words))))
+        let array = Array::linear(words);
+        self.advance_if_token_map(&Token::CloseBracket, |parser| Ok(parser.make_word(Word::Array(array))))
             .unwrap_or_else(|| Err(self.make_error(ParseError::ExpectedToken(Token::CloseBracket))))
     }
 
@@ -391,7 +407,7 @@ mod tests {
         let words: Vec<Spanned<Word>> = vec![
             Spanned::new(Word::Primitive(Primitive::Dup), Span::new(1, 1)),
             Spanned::new(Word::Primitive(Primitive::Multiply), Span::new(2, 1)),
-            Spanned::new(Word::Array(vec![Spanned::new(Word::Integer(7), Span::EMPTY)]), Span::new(3, 1)),
+            Spanned::new(Word::Array(Array::linear(vec![Spanned::new(Word::Integer(7), Span::EMPTY)])), Span::new(3, 1)),
             Spanned::new(Word::Primitive(Primitive::Add), Span::new(4, 1)),
         ];
         let signature = Signature::from_words(&words);
@@ -402,7 +418,7 @@ mod tests {
     fn test_signature_from_words_requiring_extra_inputs() {
         let words: Vec<Spanned<Word>> = vec![
             Spanned::new(Word::Primitive(Primitive::Multiply), Span::new(1, 1)),
-            Spanned::new(Word::Array(vec![Spanned::new(Word::Integer(7), Span::EMPTY)]), Span::new(2, 1)),
+            Spanned::new(Word::Array(Array::linear(vec![Spanned::new(Word::Integer(7), Span::EMPTY)])), Span::new(2, 1)),
             Spanned::new(Word::Primitive(Primitive::Add), Span::new(3, 1)),
             Spanned::new(Word::Primitive(Primitive::Divide), Span::new(4, 1)),
         ];
@@ -414,10 +430,10 @@ mod tests {
     fn test_signature_from_words_producing_extra_outputs() {
         let words: Vec<Spanned<Word>> = vec![
             Spanned::new(Word::Primitive(Primitive::Multiply), Span::new(1, 1)),
-            Spanned::new(Word::Array(vec![Spanned::new(Word::Integer(1), Span::EMPTY)]), Span::new(2, 1)),
+            Spanned::new(Word::Array(Array::linear(vec![Spanned::new(Word::Integer(1), Span::EMPTY)])), Span::new(2, 1)),
             Spanned::new(Word::Primitive(Primitive::Dup), Span::new(3, 1)),
             Spanned::new(Word::Primitive(Primitive::Negate), Span::new(4, 1)),
-            Spanned::new(Word::Array(vec![Spanned::new(Word::Integer(7), Span::EMPTY)]), Span::new(5, 1)),
+            Spanned::new(Word::Array(Array::linear(vec![Spanned::new(Word::Integer(7), Span::EMPTY)])), Span::new(5, 1)),
             Spanned::new(Word::Primitive(Primitive::Swap), Span::new(6, 1)),
         ];
         let signature = Signature::from_words(&words);
