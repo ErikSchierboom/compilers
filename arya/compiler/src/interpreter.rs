@@ -164,6 +164,28 @@ impl Environment {
         Ok(())
     }
 
+    pub fn make_array(&mut self, size: usize) -> InterpretResult<Value> {
+        let pushed_values = self.pop_n(size)?;
+        if !pushed_values.windows(2).all(|window| window[0].shape() == window[1].shape()) {
+            return Err(self.make_error(RuntimeError::IncompatibleArrayShapes));
+        }
+
+        let array = if let Some(first) = pushed_values.first() {
+            let numbers: Vec<i64> = pushed_values.iter()
+                .map(|value| value.as_numbers().unwrap().clone())
+                .flatten()
+                .collect();
+            let mut shape = first.shape().clone();
+            shape.prepend_dimension(size);
+
+            Array::new(shape, numbers)
+        } else {
+            Array::empty()
+        };
+
+        Ok(Value::Numbers(array))
+    }
+
     fn spanned<V>(&self, value: V) -> Spanned<V> {
         Spanned::new(value, self.span.clone())
     }
@@ -237,25 +259,8 @@ impl Executable for Word {
 
                 let stack_count_after = env.stack.len();
 
-                let pushed_values = env.pop_n(stack_count_after - stack_count_before)?;
-                if !pushed_values.windows(2).all(|window| window[0].shape() == window[1].shape()) {
-                    return Err(env.make_error(RuntimeError::IncompatibleArrayShapes));
-                }
-
-                let array = if let Some(first) = pushed_values.first() {
-                    let numbers: Vec<i64> = pushed_values.iter()
-                        .map(|value| value.as_numbers().unwrap().clone())
-                        .flatten()
-                        .collect();
-                    let mut shape = first.shape().clone();
-                    shape.prepend_dimension(array.values.len());
-
-                    Array::new(shape, numbers)
-                } else {
-                    Array::empty()
-                };
-
-                env.push(Value::Numbers(array))
+                let value = env.make_array(stack_count_after - stack_count_before)?;
+                env.push(value)
             }
             Word::Lambda(_) => todo!(),
         }
