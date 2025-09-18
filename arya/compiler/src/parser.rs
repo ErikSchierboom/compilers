@@ -285,15 +285,9 @@ where
         match self.try_parse_lambda()? {
             Ok(spanned_lambda) => {
                 let result = self.advance_if_token_map(&Token::Reduce, |parser| parser.make_word(Word::Modifier(Modifier::Reduce(spanned_lambda.clone()))))
-                    .or_else(|| {
-                        self.advance_if_token_map(&Token::Fold, |parser| parser.make_word(Word::Modifier(Modifier::Fold(spanned_lambda.clone()))))
-                    })
-                    .or_else(|| {
-                        self.advance_if_token_map(&Token::Bracket, |parser| parser.make_word(Word::Modifier(Modifier::Bracket(spanned_lambda.clone()))))
-                    })
-                    .or_else(|| {
-                        self.advance_if_token_map(&Token::Both, |parser| parser.make_word(Word::Modifier(Modifier::Both(spanned_lambda))))
-                    })
+                    .or_else(|| self.advance_if_token_map(&Token::Fold, |parser| parser.make_word(Word::Modifier(Modifier::Fold(spanned_lambda.clone())))))
+                    .or_else(|| self.advance_if_token_map(&Token::Bracket, |parser| parser.make_word(Word::Modifier(Modifier::Bracket(spanned_lambda.clone())))))
+                    .or_else(|| self.advance_if_token_map(&Token::Both, |parser| parser.make_word(Word::Modifier(Modifier::Both(spanned_lambda)))))
                     .ok_or_else(|| self.make_error(ParseError::ExpectedModifier));
                 Some(result)
             }
