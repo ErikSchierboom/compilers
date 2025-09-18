@@ -89,6 +89,9 @@ impl Display for Token {
             Token::Swap => write!(f, "swap"),
             Token::Over => write!(f, "over"),
             Token::Reduce => write!(f, "reduce"),
+            Token::Fold => write!(f, "fold"),
+            Token::Bracket => write!(f, "bracket"),
+            Token::Both => write!(f, "both"),
             Token::EndOfFile => write!(f, "EOF"),
         }
     }
