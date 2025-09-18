@@ -157,6 +157,15 @@ where
                         self.make_token(Token::Less)
                     }
                 }
+                'b' => {
+                    if self.next_if_chars_are("oth") {
+                        self.make_token(Token::Both)
+                    } else if self.next_if_chars_are("racket") {
+                        self.make_token(Token::Bracket)
+                    } else {
+                        self.make_error(LexError::UnexpectedCharacter(c))
+                    }
+                }
                 'd' => {
                     if self.next_if_chars_are("up") {
                         self.make_token(Token::Dup)
@@ -166,9 +175,10 @@ where
                         self.make_error(LexError::UnexpectedCharacter(c))
                     }
                 }
-                's' if self.next_if_chars_are("wap") => self.make_token(Token::Swap),
+                'f' if self.next_if_chars_are("old") => self.make_token(Token::Fold),
                 'o' if self.next_if_chars_are("ver") => self.make_token(Token::Over),
                 'r' if self.next_if_chars_are("educe") => self.make_token(Token::Reduce),
+                's' if self.next_if_chars_are("wap") => self.make_token(Token::Swap),
                 c if c.is_ascii_digit() => self.lex_number(),
                 c => self.make_error(LexError::UnexpectedCharacter(c)),
             },

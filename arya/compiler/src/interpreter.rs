@@ -251,6 +251,7 @@ impl Executable for Modifier {
         match self {
             Modifier::Reduce(lambda) => {
                 let value = env.pop()?;
+
                 match value {
                     Value::Numbers(array) => {
                         let first_value = array.values.first().ok_or_else(|| env.make_error(RuntimeError::CannotReduceEmptyArray))?;
@@ -266,7 +267,24 @@ impl Executable for Modifier {
                     }
                 }
             }
-            Modifier::Fold(lambda) => todo!("fold"),
+            Modifier::Fold(lambda) => {
+                let initial = env.pop()?;
+                let value = env.pop()?;
+
+                match value {
+                    Value::Numbers(array) => {
+                        env.push(initial);
+
+                        for value in array.values {
+                            env.push(Value::Numbers(Array::scalar(value.clone())));
+
+                            for word in &lambda.value.body {
+                                word.value.execute(env)?;
+                            }
+                        }
+                    }
+                }
+            }
             Modifier::Bracket(lambda) => todo!("bracket"),
             Modifier::Both(lambda) => todo!("both"),
         }
