@@ -119,70 +119,42 @@ where
         self.skip_whitespace();
         self.update_position();
 
-        // TODO: inline make_token and assign match result token into variable
-        match self.next_char() {
-            None => self.make_token(Token::EndOfFile),
+        let token = match self.next_char() {
+            None => Token::EndOfFile,
             Some(c) => match c {
-                '[' => self.make_token(Token::OpenBracket),
-                ']' => self.make_token(Token::CloseBracket),
-                '(' => self.make_token(Token::OpenParenthesis),
-                ')' => self.make_token(Token::CloseParenthesis),
-                '+' => self.make_token(Token::Plus),
-                '-' => self.make_token(Token::Minus),
-                '*' => self.make_token(Token::Star),
-                '/' => self.make_token(Token::Slash),
-                '^' => self.make_token(Token::Caret),
-                '&' => self.make_token(Token::Ampersand),
-                '|' => self.make_token(Token::Pipe),
-                '_' => self.make_token(Token::Underscore),
-                '=' => self.make_token(Token::Equal),
-                '!' => {
-                    if self.next_if_char_is(&'=') {
-                        self.make_token(Token::NotEqual)
-                    } else {
-                        self.make_token(Token::Bang)
-                    }
-                }
-                '>' => {
-                    if self.next_if_char_is(&'=') {
-                        self.make_token(Token::GreaterEqual)
-                    } else {
-                        self.make_token(Token::Greater)
-                    }
-                }
-                '<' => {
-                    if self.next_if_char_is(&'=') {
-                        self.make_token(Token::LessEqual)
-                    } else {
-                        self.make_token(Token::Less)
-                    }
-                }
-                'b' => {
-                    if self.next_if_chars_are("oth") {
-                        self.make_token(Token::Both)
-                    } else if self.next_if_chars_are("racket") {
-                        self.make_token(Token::Bracket)
-                    } else {
-                        self.make_error(LexError::UnexpectedCharacter(c))
-                    }
-                }
-                'd' => {
-                    if self.next_if_chars_are("up") {
-                        self.make_token(Token::Dup)
-                    } else if self.next_if_chars_are("rop") {
-                        self.make_token(Token::Drop)
-                    } else {
-                        self.make_error(LexError::UnexpectedCharacter(c))
-                    }
-                }
-                'f' if self.next_if_chars_are("old") => self.make_token(Token::Fold),
-                'o' if self.next_if_chars_are("ver") => self.make_token(Token::Over),
-                'r' if self.next_if_chars_are("educe") => self.make_token(Token::Reduce),
-                's' if self.next_if_chars_are("wap") => self.make_token(Token::Swap),
+                '[' => Token::OpenBracket,
+                ']' => Token::CloseBracket,
+                '(' => Token::OpenParenthesis,
+                ')' => Token::CloseParenthesis,
+                '+' => Token::Plus,
+                '-' => Token::Minus,
+                '*' => Token::Star,
+                '/' => Token::Slash,
+                '^' => Token::Caret,
+                '&' => Token::Ampersand,
+                '|' => Token::Pipe,
+                '_' => Token::Underscore,
+                '=' => Token::Equal,
+                '!' if self.next_if_char_is(&'=') => Token::NotEqual,
+                '!' => Token::Bang,
+                '>' if self.next_if_char_is(&'=') => Token::GreaterEqual,
+                '>' => Token::Greater,
+                '<' if self.next_if_char_is(&'=') => Token::LessEqual,
+                '<' => Token::Less,
+                'b' if self.next_if_chars_are("oth") => Token::Both,
+                'b' if self.next_if_chars_are("racket") => Token::Bracket,
+                'd' if self.next_if_chars_are("up") => Token::Dup,
+                'd' if self.next_if_chars_are("rop") => Token::Drop,
+                'f' if self.next_if_chars_are("old") => Token::Fold,
+                'o' if self.next_if_chars_are("ver") => Token::Over,
+                'r' if self.next_if_chars_are("educe") => Token::Reduce,
+                's' if self.next_if_chars_are("wap") => Token::Swap,
                 c if c.is_ascii_digit() => self.lex_number(),
-                c => self.make_error(LexError::UnexpectedCharacter(c)),
+                c => return Err(self.spanned(LexError::UnexpectedCharacter(c))),
             },
-        }
+        };
+
+        Ok(self.spanned(token))
     }
 
     fn update_position(&mut self) {
@@ -190,9 +162,9 @@ where
         self.span.length = 0;
     }
 
-    fn lex_number(&mut self) -> LexTokenResult {
+    fn lex_number(&mut self) -> Token {
         self.skip_while(char::is_ascii_digit);
-        self.make_token(Token::Number)
+        Token::Number
     }
 
     fn skip_whitespace(&mut self) {
@@ -223,14 +195,6 @@ where
 
     fn skip_while(&mut self, predicate: impl Fn(&char) -> bool) {
         while self.next_char_if(&predicate).is_some() {}
-    }
-
-    fn make_token(&mut self, token: Token) -> LexTokenResult {
-        Ok(self.spanned(token))
-    }
-
-    fn make_error(&mut self, error: LexError) -> LexTokenResult {
-        Err(self.spanned(error))
     }
 
     fn spanned<V>(&self, value: V) -> Spanned<V> {
