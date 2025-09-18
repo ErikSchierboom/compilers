@@ -286,7 +286,20 @@ impl Executable for Modifier {
                 }
             }
             Modifier::Bracket(lambda) => todo!("bracket"),
-            Modifier::Both(lambda) => todo!("both"),
+            Modifier::Both(lambda) => {
+                let b = env.pop()?;
+                let a = env.pop()?;
+
+                env.push(a);
+                for word in &lambda.value.body {
+                    word.value.execute(env)?;
+                }
+
+                env.push(b);
+                for word in &lambda.value.body {
+                    word.value.execute(env)?;
+                }
+            }
         }
 
         Ok(())
