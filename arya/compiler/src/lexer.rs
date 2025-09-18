@@ -54,7 +54,6 @@ pub enum Token {
     Over,
     Reduce,
     Fold,
-    Bracket,
     Both,
 
     // Synthetic
@@ -90,7 +89,6 @@ impl Display for Token {
             Token::Over => write!(f, "over"),
             Token::Reduce => write!(f, "reduce"),
             Token::Fold => write!(f, "fold"),
-            Token::Bracket => write!(f, "bracket"),
             Token::Both => write!(f, "both"),
             Token::EndOfFile => write!(f, "EOF"),
         }
@@ -142,7 +140,6 @@ where
                 '<' if self.next_if_char_is(&'=') => Token::LessEqual,
                 '<' => Token::Less,
                 'b' if self.next_if_chars_are("oth") => Token::Both,
-                'b' if self.next_if_chars_are("racket") => Token::Bracket,
                 'd' if self.next_if_chars_are("up") => Token::Dup,
                 'd' if self.next_if_chars_are("rop") => Token::Drop,
                 'f' if self.next_if_chars_are("old") => Token::Fold,

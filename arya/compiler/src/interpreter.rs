@@ -285,7 +285,6 @@ impl Executable for Modifier {
                     }
                 }
             }
-            Modifier::Bracket(lambda) => todo!("bracket"),
             Modifier::Both(lambda) => {
                 let b = env.pop()?;
                 let a = env.pop()?;
