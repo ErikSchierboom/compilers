@@ -10,6 +10,7 @@ pub enum RuntimeError {
     Parse(ParseError),
     EmptyStack,
     IncompatibleArrayShapes,
+    CannotReduceEmptyArray,
 }
 
 impl Display for RuntimeError {
@@ -18,6 +19,7 @@ impl Display for RuntimeError {
             RuntimeError::Parse(parse_error) => write!(f, "{parse_error}"),
             RuntimeError::EmptyStack => write!(f, "Missing argument"),
             RuntimeError::IncompatibleArrayShapes => write!(f, "Incompatible array shapes"),
+            RuntimeError::CannotReduceEmptyArray => write!(f, "Cannot reduce empty array")
         }
     }
 }
@@ -247,7 +249,23 @@ impl Executable for Primitive {
 impl Executable for Modifier {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
-            Modifier::Reduce(lambda) => todo!("reduce"),
+            Modifier::Reduce(lambda) => {
+                let value = env.pop()?;
+                match value {
+                    Value::Numbers(array) => {
+                        let first_value = array.values.first().ok_or_else(|| env.make_error(RuntimeError::CannotReduceEmptyArray))?;
+                        env.push(Value::Numbers(Array::scalar(first_value.clone())));
+
+                        for value in array.values.iter().skip(1) {
+                            env.push(Value::Numbers(Array::scalar(value.clone())));
+
+                            for word in &lambda.value.body {
+                                word.value.execute(env)?;
+                            }
+                        }
+                    }
+                }
+            }
             Modifier::Fold(lambda) => todo!("fold"),
             Modifier::Bracket(lambda) => todo!("bracket"),
             Modifier::Both(lambda) => todo!("both"),
