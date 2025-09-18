@@ -5,7 +5,7 @@ use compiler::parser::parse;
 
 fn main() {
     // let source = "1 [1 8 3] + [[1 2 3] [4 5 6] [8 dup dup]] (-)";
-    let source = "[1 2 3] [4 5 6] (2 +) both";
+    let source = "[1 2 3] reverse";
     // let error_source = "? 1";
 
     // test_tokenize(source);

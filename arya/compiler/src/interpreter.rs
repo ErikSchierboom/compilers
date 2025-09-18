@@ -85,11 +85,11 @@ macro_rules! dyadic_operation_env {
 macro_rules! monadic_operation {
     ($name:ident, $operation:tt) => {
         impl Value {
-            fn $name(a: Value) -> InterpretResult<Value> {
-                match a {
-                    Value::Numbers(array_a) => {
-                        let mapped_values = array_a.values.into_iter().map(|v| ($operation v) as i64).collect();
-                        Ok(Value::Numbers(Array::new(array_a.shape, mapped_values)))
+            fn $name(value: Value) -> InterpretResult<Value> {
+                match value {
+                    Value::Numbers(array) => {
+                        let mapped_values = array.values.into_iter().map(|v| ($operation v) as i64).collect();
+                        Ok(Value::Numbers(Array::new(array.shape, mapped_values)))
                     }
                 }
             }
@@ -113,6 +113,23 @@ dyadic_operation_env!(less_equal, <=);
 
 monadic_operation!(not, !);
 monadic_operation!(negate, -);
+
+macro_rules! monadic_method {
+    ($name:ident, $operation:ident) => {
+        impl Value {
+            fn $name(value: Value) -> InterpretResult<Value> {
+                match value {
+                    Value::Numbers(mut array) => {
+                        array.values.$operation();
+                        Ok(Value::Numbers(array))
+                    }
+                }
+            }
+        }
+    };
+}
+
+monadic_method!(reverse, reverse);
 
 pub struct Environment {
     stack: Vec<Value>,
@@ -240,6 +257,7 @@ impl Executable for Primitive {
                 env.push(a);
                 env.push(b);
             }
+            Primitive::Reverse => env.execute_monadic(Value::reverse)?
         }
 
         Ok(())

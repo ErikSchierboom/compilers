@@ -58,6 +58,7 @@ pub enum Token {
 
     // Synthetic
     EndOfFile,
+    Reverse,
 }
 
 impl Display for Token {
@@ -91,6 +92,7 @@ impl Display for Token {
             Token::Fold => write!(f, "fold"),
             Token::Both => write!(f, "both"),
             Token::EndOfFile => write!(f, "EOF"),
+            Token::Reverse => write!(f, "reverse")
         }
     }
 }
@@ -133,18 +135,55 @@ where
                 '|' => Token::Pipe,
                 '_' => Token::Underscore,
                 '=' => Token::Equal,
-                '!' if self.next_if_char_is(&'=') => Token::NotEqual,
-                '!' => Token::Bang,
-                '>' if self.next_if_char_is(&'=') => Token::GreaterEqual,
-                '>' => Token::Greater,
-                '<' if self.next_if_char_is(&'=') => Token::LessEqual,
-                '<' => Token::Less,
+                '!' => {
+                    if self.next_if_char_is(&'=') {
+                        Token::NotEqual
+                    } else {
+                        Token::Bang
+                    }
+                }
+                '>' => {
+                    if self.next_if_char_is(&'=') {
+                        Token::GreaterEqual
+                    } else {
+                        Token::Greater
+                    }
+                }
+                '<' => {
+                    if self.next_if_char_is(&'=') {
+                        Token::LessEqual
+                    } else {
+                        Token::Less
+                    }
+                }
                 'b' if self.next_if_chars_are("oth") => Token::Both,
-                'd' if self.next_if_chars_are("up") => Token::Dup,
-                'd' if self.next_if_chars_are("rop") => Token::Drop,
+                'd' => {
+                    if self.next_if_chars_are("up") {
+                        Token::Dup
+                    } else if self.next_if_chars_are("rop") {
+                        Token::Drop
+                    } else {
+                        // TODO: get access to current char
+                        return Err(self.spanned(LexError::UnexpectedCharacter(c)))
+                    }
+                }
                 'f' if self.next_if_chars_are("old") => Token::Fold,
                 'o' if self.next_if_chars_are("ver") => Token::Over,
-                'r' if self.next_if_chars_are("educe") => Token::Reduce,
+                'r' => {
+                    if self.next_if_chars_are("e") {
+                        if self.next_if_chars_are("duce") {
+                            Token::Reduce
+                        } else if self.next_if_chars_are("verse") {
+                            Token::Reverse
+                        } else {
+                            // TODO: get access to current char
+                            return Err(self.spanned(LexError::UnexpectedCharacter(c)))
+                        }
+                    } else {
+                        // TODO: get access to current char
+                        return Err(self.spanned(LexError::UnexpectedCharacter(c)));
+                    }
+                }
                 's' if self.next_if_chars_are("wap") => Token::Swap,
                 c if c.is_ascii_digit() => self.lex_number(),
                 c => return Err(self.spanned(LexError::UnexpectedCharacter(c))),

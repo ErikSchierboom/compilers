@@ -175,6 +175,7 @@ primitive!(
     (1, 0, Drop),
     (2, 2, Swap),
     (2, 3, Over),
+    (1, 1, Reverse),
 );
 
 macro_rules! modifier {
@@ -274,6 +275,7 @@ where
             .or_else(|| self.advance_if_token_map(&Token::Drop, |parser| parser.make_primitive(Primitive::Drop)))
             .or_else(|| self.advance_if_token_map(&Token::Swap, |parser| parser.make_primitive(Primitive::Swap)))
             .or_else(|| self.advance_if_token_map(&Token::Over, |parser| parser.make_primitive(Primitive::Over)))
+            .or_else(|| self.advance_if_token_map(&Token::Reverse, |parser| parser.make_primitive(Primitive::Reverse)))
     }
 
     fn make_primitive(&self, primitive: Primitive) -> ParseResult {
