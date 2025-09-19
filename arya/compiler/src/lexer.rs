@@ -163,8 +163,7 @@ where
                     } else if self.next_if_chars_are("rop") {
                         Token::Drop
                     } else {
-                        // TODO: get access to current char
-                        return Err(self.spanned(LexError::UnexpectedCharacter(c)))
+                        return self.lex_token();
                     }
                 }
                 'f' if self.next_if_chars_are("old") => Token::Fold,
@@ -176,12 +175,10 @@ where
                         } else if self.next_if_chars_are("verse") {
                             Token::Reverse
                         } else {
-                            // TODO: get access to current char
-                            return Err(self.spanned(LexError::UnexpectedCharacter(c)))
+                            return self.lex_token();
                         }
                     } else {
-                        // TODO: get access to current char
-                        return Err(self.spanned(LexError::UnexpectedCharacter(c)));
+                        return self.lex_token();
                     }
                 }
                 's' if self.next_if_chars_are("wap") => Token::Swap,
