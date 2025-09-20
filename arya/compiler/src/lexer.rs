@@ -55,6 +55,7 @@ pub enum Token {
     Reduce,
     Fold,
     Both,
+    Keep,
 
     // Synthetic
     EndOfFile,
@@ -92,7 +93,8 @@ impl Display for Token {
             Token::Fold => write!(f, "fold"),
             Token::Both => write!(f, "both"),
             Token::EndOfFile => write!(f, "EOF"),
-            Token::Reverse => write!(f, "reverse")
+            Token::Reverse => write!(f, "reverse"),
+            Token::Keep => write!(f, "keep")
         }
     }
 }
@@ -166,6 +168,7 @@ where
                         return self.lex_token();
                     }
                 }
+                'k' if self.next_if_chars_are("eep") => Token::Keep,
                 'f' if self.next_if_chars_are("old") => Token::Fold,
                 'o' if self.next_if_chars_are("ver") => Token::Over,
                 'r' => {

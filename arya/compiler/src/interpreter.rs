@@ -11,6 +11,7 @@ pub enum RuntimeError {
     EmptyStack,
     IncompatibleArrayShapes,
     CannotReduceEmptyArray,
+    ExpectedLogicalArray,
 }
 
 impl Display for RuntimeError {
@@ -19,7 +20,8 @@ impl Display for RuntimeError {
             RuntimeError::Parse(parse_error) => write!(f, "{parse_error}"),
             RuntimeError::EmptyStack => write!(f, "Missing argument"),
             RuntimeError::IncompatibleArrayShapes => write!(f, "Incompatible array shapes"),
-            RuntimeError::CannotReduceEmptyArray => write!(f, "Cannot reduce empty array")
+            RuntimeError::CannotReduceEmptyArray => write!(f, "Cannot reduce empty array"),
+            RuntimeError::ExpectedLogicalArray => write!(f, "Expected logical array"),
         }
     }
 }
@@ -111,7 +113,6 @@ dyadic_operation_env!(greater_equal, >=);
 dyadic_operation_env!(less, <);
 dyadic_operation_env!(less_equal, <=);
 
-monadic_operation!(not, !);
 monadic_operation!(negate, -);
 
 macro_rules! monadic_method {
@@ -130,6 +131,46 @@ macro_rules! monadic_method {
 }
 
 monadic_method!(reverse, reverse);
+
+impl Value {
+    fn not(value: Value) -> InterpretResult<Value> {
+        match value {
+            Value::Numbers(mut array) => {
+                for value in array.values.iter_mut() {
+                    *value = if *value == 0 { 1 } else { 0 }
+                }
+                Ok(Value::Numbers(array))
+            }
+        }
+    }
+
+    fn keep(a: Value, b: Value, env: &Environment) -> InterpretResult<Value> {
+        match (a, b) {
+            (Value::Numbers(array_a), Value::Numbers(array_b)) => {
+                if !array_a.shape.is_one_dimensional() {
+                    Err(env.make_error(RuntimeError::ExpectedLogicalArray))
+                } else {
+                    let new_rows: Vec<Vec<i64>> = array_b
+                        .row_slices()
+                        .into_iter()
+                        .zip(&array_a.values)
+                        .filter_map(|(row, &keep)| {
+                            if keep == 0 {
+                                None
+                            } else {
+                                Some(row.iter().copied().collect())
+                            }
+                        })
+                        .collect();
+
+                    let mut new_shape = array_b.shape.clone();
+                    new_shape.replace_dimension(0, new_rows.len());
+                    Ok(Value::Numbers(Array::new(new_shape, new_rows.into_iter().flatten().collect())))
+                }
+            }
+        }
+    }
+}
 
 pub struct Environment {
     stack: Vec<Value>,
@@ -257,7 +298,8 @@ impl Executable for Primitive {
                 env.push(a);
                 env.push(b);
             }
-            Primitive::Reverse => env.execute_monadic(Value::reverse)?
+            Primitive::Reverse => env.execute_monadic(Value::reverse)?,
+            Primitive::Keep => env.execute_dyadic_env(Value::keep)?
         }
 
         Ok(())

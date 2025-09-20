@@ -2,7 +2,7 @@
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Shape {
-    dimensions: Vec<usize>
+    dimensions: Vec<usize>,
 }
 
 impl Shape {
@@ -25,9 +25,17 @@ impl Shape {
     pub fn is_scalar(&self) -> bool {
         self.dimensions.is_empty()
     }
-    
+
+    pub fn is_one_dimensional(&self) -> bool {
+        self.dimensions.len() == 1
+    }
+
     pub fn prepend_dimension(&mut self, dimension: usize) {
         self.dimensions.insert(0, dimension)
+    }
+
+    pub fn replace_dimension(&mut self, index: usize, dimension: usize) {
+        self.dimensions[index] = dimension
     }
 }
 
@@ -56,6 +64,10 @@ impl<T> Array<T> {
 
     pub fn matrix(elements: Vec<Vec<T>>) -> Self {
         Self::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect())
+    }
+
+    pub fn row_slices(&self) -> impl ExactSizeIterator<Item=&[T]> {
+        self.values.chunks_exact(self.shape.row_len())
     }
 }
 
@@ -108,7 +120,7 @@ where
                 }
 
                 write!(f, "]")
-            },
+            }
             n => write!(f, "{n}-dimensional array")
         }
     }
