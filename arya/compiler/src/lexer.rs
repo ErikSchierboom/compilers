@@ -46,6 +46,7 @@ pub enum Token {
     GreaterEqual,
     Less,
     LessEqual,
+    QuestionMark,
 
     // Words
     Dup,
@@ -56,10 +57,10 @@ pub enum Token {
     Fold,
     Both,
     Keep,
+    Reverse,
 
     // Synthetic
     EndOfFile,
-    Reverse,
 }
 
 impl Display for Token {
@@ -94,7 +95,8 @@ impl Display for Token {
             Token::Both => write!(f, "both"),
             Token::EndOfFile => write!(f, "EOF"),
             Token::Reverse => write!(f, "reverse"),
-            Token::Keep => write!(f, "keep")
+            Token::Keep => write!(f, "keep"),
+            Token::QuestionMark => write!(f, "?")
         }
     }
 }
@@ -136,6 +138,7 @@ where
                 '&' => Token::Ampersand,
                 '|' => Token::Pipe,
                 '_' => Token::Underscore,
+                '?' => Token::QuestionMark,
                 '=' => Token::Equal,
                 '!' => {
                     if self.next_if_char_is(&'=') {
@@ -193,14 +196,14 @@ where
         Ok(self.spanned(token))
     }
 
-    fn update_position(&mut self) {
-        self.span.position += self.span.length as u32;
-        self.span.length = 0;
-    }
-
     fn lex_number(&mut self) -> Token {
         self.skip_while(char::is_ascii_digit);
         Token::Number
+    }
+
+    fn update_position(&mut self) {
+        self.span.position += self.span.length as u32;
+        self.span.length = 0;
     }
 
     fn skip_whitespace(&mut self) {

@@ -299,7 +299,12 @@ impl Executable for Primitive {
                 env.push(b);
             }
             Primitive::Reverse => env.execute_monadic(Value::reverse)?,
-            Primitive::Keep => env.execute_dyadic_env(Value::keep)?
+            Primitive::Keep => env.execute_dyadic_env(Value::keep)?,
+            Primitive::Stack => {
+                for value in env.stack.iter().rev() {
+                    println!("{value}")
+                }
+            }
         }
 
         Ok(())

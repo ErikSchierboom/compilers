@@ -177,6 +177,7 @@ primitive!(
     (2, 3, Over),
     (1, 1, Reverse),
     (2, 1, Keep),
+    (0, 0, Stack),
 );
 
 macro_rules! modifier {
@@ -278,6 +279,7 @@ where
             .or_else(|| self.advance_if_token_map(&Token::Over, |parser| parser.make_primitive(Primitive::Over)))
             .or_else(|| self.advance_if_token_map(&Token::Reverse, |parser| parser.make_primitive(Primitive::Reverse)))
             .or_else(|| self.advance_if_token_map(&Token::Keep, |parser| parser.make_primitive(Primitive::Keep)))
+            .or_else(|| self.advance_if_token_map(&Token::QuestionMark, |parser| parser.make_primitive(Primitive::Stack)))
     }
 
     fn make_primitive(&self, primitive: Primitive) -> ParseResult {
