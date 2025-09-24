@@ -133,7 +133,6 @@ where
         let start = self.position;
 
         let lex_result = match self.char {
-            None => Ok(Token::EndOfFile),
             Some(c) => match c {
                 '[' => Ok(Token::OpenBracket),
                 ']' => Ok(Token::CloseBracket),
@@ -177,7 +176,7 @@ where
                     } else if self.advance_if_chars("rop") {
                         Ok(Token::Drop)
                     } else {
-                        self.unknown_word()
+                        self.unexpected_character()
                     }
                 }
                 'k' if self.advance_if_chars("eep") => Ok(Token::Keep),
@@ -190,18 +189,19 @@ where
                         } else if self.advance_if_chars("verse") {
                             Ok(Token::Reverse)
                         } else {
-                            self.unknown_word()
+                            self.unexpected_character()
                         }
                     } else {
-                        self.unknown_word()
+                        self.unexpected_character()
                     }
                 }
                 's' if self.advance_if_chars("wap") => Ok(Token::Swap),
                 '\'' => self.lex_char(),
                 '"' => self.lex_string(),
                 c if c.is_ascii_digit() => self.lex_number(),
-                c => Err(LexError::UnexpectedCharacter(c)),
+                _ => self.unexpected_character()
             },
+            None => Ok(Token::EndOfFile),
         };
 
         match lex_result {
@@ -231,7 +231,7 @@ where
         Ok(Token::Number)
     }
 
-    fn unknown_word(&mut self) -> Result<Token, LexError> {
+    fn unexpected_character(&mut self) -> Result<Token, LexError> {
         match self.char {
             None => Err(LexError::UnexpectedEndOfFile),
             Some(c) => Err(LexError::UnexpectedCharacter(c))
