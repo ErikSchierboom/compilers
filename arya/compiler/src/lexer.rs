@@ -5,6 +5,7 @@ use std::iter::Peekable;
 
 #[derive(Clone, Debug)]
 pub enum LexError {
+    UnexpectedEndOfFile,
     UnexpectedCharacter(char),
     ExpectedCharacter(char),
 }
@@ -14,6 +15,7 @@ impl Display for LexError {
         match self {
             LexError::UnexpectedCharacter(c) => write!(f, "Unexpected character '{c}'"),
             LexError::ExpectedCharacter(c) => write!(f, "Expected character '{c}'"),
+            LexError::UnexpectedEndOfFile => write!(f, "Unexpected end of file"),
         }
     }
 }
@@ -129,91 +131,102 @@ where
 
         let start = self.position;
 
-        let token = match self.char {
-            None => Token::EndOfFile,
+        let lex_result = match self.char {
+            None => Ok(Token::EndOfFile),
             Some(c) => match c {
-                '[' => Token::OpenBracket,
-                ']' => Token::CloseBracket,
-                '(' => Token::OpenParenthesis,
-                ')' => Token::CloseParenthesis,
-                '+' => Token::Plus,
-                '-' => Token::Minus,
-                '*' => Token::Star,
-                '/' => Token::Slash,
-                '^' => Token::Caret,
-                '&' => Token::Ampersand,
-                '|' => Token::Pipe,
-                '_' => Token::Underscore,
-                '?' => Token::QuestionMark,
-                '=' => Token::Equal,
+                '[' => Ok(Token::OpenBracket),
+                ']' => Ok(Token::CloseBracket),
+                '(' => Ok(Token::OpenParenthesis),
+                ')' => Ok(Token::CloseParenthesis),
+                '+' => Ok(Token::Plus),
+                '-' => Ok(Token::Minus),
+                '*' => Ok(Token::Star),
+                '/' => Ok(Token::Slash),
+                '^' => Ok(Token::Caret),
+                '&' => Ok(Token::Ampersand),
+                '|' => Ok(Token::Pipe),
+                '_' => Ok(Token::Underscore),
+                '?' => Ok(Token::QuestionMark),
+                '=' => Ok(Token::Equal),
                 '!' => {
                     if self.advance_if_char(&'=') {
-                        Token::NotEqual
+                        Ok(Token::NotEqual)
                     } else {
-                        Token::Bang
+                        Ok(Token::Bang)
                     }
                 }
                 '>' => {
                     if self.advance_if_char(&'=') {
-                        Token::GreaterEqual
+                        Ok(Token::GreaterEqual)
                     } else {
-                        Token::Greater
+                        Ok(Token::Greater)
                     }
                 }
                 '<' => {
                     if self.advance_if_char(&'=') {
-                        Token::LessEqual
+                        Ok(Token::LessEqual)
                     } else {
-                        Token::Less
+                        Ok(Token::Less)
                     }
                 }
-                'b' if self.advance_if_chars("oth") => Token::Both,
+                'b' if self.advance_if_chars("oth") => Ok(Token::Both),
                 'd' => {
                     if self.advance_if_chars("up") {
-                        Token::Dup
+                        Ok(Token::Dup)
                     } else if self.advance_if_chars("rop") {
-                        Token::Drop
+                        Ok(Token::Drop)
                     } else {
-                        return self.lex_token();
+                        match self.char {
+                            None => Err(LexError::UnexpectedEndOfFile),
+                            Some(c) => Err(LexError::UnexpectedCharacter(c))
+                        }
                     }
                 }
-                'k' if self.advance_if_chars("eep") => Token::Keep,
-                'f' if self.advance_if_chars("old") => Token::Fold,
-                'o' if self.advance_if_chars("ver") => Token::Over,
+                'k' if self.advance_if_chars("eep") => Ok(Token::Keep),
+                'f' if self.advance_if_chars("old") => Ok(Token::Fold),
+                'o' if self.advance_if_chars("ver") => Ok(Token::Over),
                 'r' => {
                     if self.advance_if_chars("e") {
                         if self.advance_if_chars("duce") {
-                            Token::Reduce
+                            Ok(Token::Reduce)
                         } else if self.advance_if_chars("verse") {
-                            Token::Reverse
+                            Ok(Token::Reverse)
                         } else {
-                            return self.lex_token();
+                            match self.char {
+                                None => Err(LexError::UnexpectedEndOfFile),
+                                Some(c) => Err(LexError::UnexpectedCharacter(c))
+                            }
                         }
                     } else {
-                        return self.lex_token();
+                        match self.char {
+                            None => Err(LexError::UnexpectedEndOfFile),
+                            Some(c) => Err(LexError::UnexpectedCharacter(c))
+                        }
                     }
                 }
-                's' if self.advance_if_chars("wap") => Token::Swap,
+                's' if self.advance_if_chars("wap") => Ok(Token::Swap),
                 '"' => {
                     self.advance();
                     // TODO: support escape characters
                     self.advance_while(|&c| c != '"');
                     if self.advance_if_char(&'"') {
-                        Token::String
+                        Ok(Token::String)
                     } else {
-                        return Err(self.spanned(LexError::ExpectedCharacter('"'), start));
+                        Err(LexError::ExpectedCharacter('"'))
                     }
                 }
                 c if c.is_ascii_digit() => {
                     self.advance_while(char::is_ascii_digit);
-                    Token::Number
+                    Ok(Token::Number)
                 }
-                c => return Err(self.spanned(LexError::UnexpectedCharacter(c), start)),
+                c => Err(LexError::UnexpectedCharacter(c)),
             },
         };
 
-
-        Ok(self.spanned(token, start))
+        match lex_result {
+            Ok(token) => Ok(self.spanned(token, start)),
+            Err(err) => Err(self.spanned(err, start))
+        }
     }
 
     fn skip_whitespace(&mut self) {
