@@ -77,8 +77,10 @@ where
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self.shape.dimensions.len() {
-            0 => write!(f, "{}", self.values.first().unwrap()),
+            // TODO: output char as char
+            0 => write!(f, "{}", self.values[0]),
             1 => {
+                // TODO: output string as string
                 write!(f, "[")?;
                 for (column, value) in self.values.iter().enumerate() {
                     write!(f, "{}", value)?;

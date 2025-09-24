@@ -57,11 +57,8 @@ impl Value {
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::Numbers(array) => write!(f, "{}", array),
-            Value::Chars(array) => {
-                let str = String::from_iter(array.values.iter());
-                write!(f, "{str}")
-            }
+            Value::Numbers(array) => write!(f, "{array}"),
+            Value::Chars(array) => write!(f, "{array}")
         }
     }
 }
