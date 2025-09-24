@@ -176,10 +176,7 @@ where
                     } else if self.advance_if_chars("rop") {
                         Ok(Token::Drop)
                     } else {
-                        match self.char {
-                            None => Err(LexError::UnexpectedEndOfFile),
-                            Some(c) => Err(LexError::UnexpectedCharacter(c))
-                        }
+                        self.unknown_word()
                     }
                 }
                 'k' if self.advance_if_chars("eep") => Ok(Token::Keep),
@@ -192,33 +189,15 @@ where
                         } else if self.advance_if_chars("verse") {
                             Ok(Token::Reverse)
                         } else {
-                            match self.char {
-                                None => Err(LexError::UnexpectedEndOfFile),
-                                Some(c) => Err(LexError::UnexpectedCharacter(c))
-                            }
+                            self.unknown_word()
                         }
                     } else {
-                        match self.char {
-                            None => Err(LexError::UnexpectedEndOfFile),
-                            Some(c) => Err(LexError::UnexpectedCharacter(c))
-                        }
+                        self.unknown_word()
                     }
                 }
                 's' if self.advance_if_chars("wap") => Ok(Token::Swap),
-                '"' => {
-                    self.advance();
-                    // TODO: support escape characters
-                    self.advance_while(|&c| c != '"');
-                    if self.advance_if_char(&'"') {
-                        Ok(Token::String)
-                    } else {
-                        Err(LexError::ExpectedCharacter('"'))
-                    }
-                }
-                c if c.is_ascii_digit() => {
-                    self.advance_while(char::is_ascii_digit);
-                    Ok(Token::Number)
-                }
+                '"' => self.lex_string(),
+                c if c.is_ascii_digit() => self.lex_number(),
                 c => Err(LexError::UnexpectedCharacter(c)),
             },
         };
@@ -226,6 +205,29 @@ where
         match lex_result {
             Ok(token) => Ok(self.spanned(token, start)),
             Err(err) => Err(self.spanned(err, start))
+        }
+    }
+
+    fn lex_string(&mut self) -> Result<Token, LexError> {
+        self.advance();
+        // TODO: support escape characters
+        self.advance_while(|&c| c != '"');
+        if self.advance_if_char(&'"') {
+            Ok(Token::String)
+        } else {
+            Err(LexError::ExpectedCharacter('"'))
+        }
+    }
+
+    fn lex_number(&mut self) -> Result<Token, LexError> {
+        self.advance_while(char::is_ascii_digit);
+        Ok(Token::Number)
+    }
+
+    fn unknown_word(&mut self) -> Result<Token, LexError> {
+        match self.char {
+            None => Err(LexError::UnexpectedEndOfFile),
+            Some(c) => Err(LexError::UnexpectedCharacter(c))
         }
     }
 
