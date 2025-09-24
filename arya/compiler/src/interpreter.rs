@@ -468,6 +468,10 @@ impl Executable for Word {
                 let value = Value::Chars(Array::linear(str.chars().collect()));
                 env.push(value)
             }
+            Word::Char(c) => {
+                let value = Value::Chars(Array::scalar(c.clone()));
+                env.push(value)
+            }
             Word::Array(array) => {
                 let stack_count_before = env.stack.len();
 

@@ -61,6 +61,7 @@ impl Signature {
 #[derive(Clone, Debug)]
 pub enum Word {
     String(String),
+    Char(char),
     Integer(i64),
     Primitive(Primitive),
     Modifier(Modifier),
@@ -70,11 +71,9 @@ pub enum Word {
 impl Word {
     pub fn signature(&self) -> Signature {
         match self {
-            Word::Integer(_) |
-            Word::String(_) |
-            Word::Array(_) => Signature::new(0, 1),
             Word::Primitive(primitive) => primitive.signature(),
             Word::Modifier(modifier) => modifier.signature(),
+            _ => Signature::new(0, 1),
         }
     }
 
@@ -97,7 +96,8 @@ impl Display for Word {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Word::Integer(i) => write!(f, "{i}"),
-            Word::String(str) => write!(f, "{str}"),
+            Word::Char(c) => write!(f, "'{c}'"),
+            Word::String(str) => write!(f, "\"{str}\""),
             Word::Array(array) => {
                 write!(f, "[")?;
                 for (i, element) in array.values.iter().enumerate() {
@@ -245,6 +245,7 @@ where
     fn try_parse_word(&mut self) -> Option<ParseResult> {
         self.try_parse_integer()
             .or_else(|| self.try_parse_string())
+            .or_else(|| self.try_parse_char())
             .or_else(|| self.try_parse_primitive())
             .or_else(|| self.try_parse_modifier())
             .or_else(|| self.try_parse_array())
@@ -267,6 +268,17 @@ where
     fn parse_string(&mut self) -> ParseResult {
         let str = String::from(self.lexeme(&self.span));
         Ok(self.make_word(Word::String(str)))
+    }
+
+    fn try_parse_char(&mut self) -> Option<ParseResult> {
+        self.advance_if_token_map(&Token::Char, Self::parse_char)
+    }
+
+    fn parse_char(&mut self) -> ParseResult {
+        let char = self.lexeme(&self.span);
+        // TODO: support escape character
+        let c = char.chars().nth(1).unwrap();
+        Ok(self.make_word(Word::Char(c)))
     }
 
     fn try_parse_primitive(&mut self) -> Option<ParseResult> {

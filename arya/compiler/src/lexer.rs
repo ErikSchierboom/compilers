@@ -24,7 +24,7 @@ impl Error for LexError {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
-    // TODO: Char
+    Char,
     String,
     Number,
 
@@ -72,6 +72,7 @@ impl Display for Token {
         match self {
             Token::Number => write!(f, "number"),
             Token::String => write!(f, "string"),
+            Token::Char => write!(f, "char"),
             Token::OpenBracket => write!(f, "["),
             Token::CloseBracket => write!(f, "]"),
             Token::OpenParenthesis => write!(f, "("),
@@ -196,6 +197,7 @@ where
                     }
                 }
                 's' if self.advance_if_chars("wap") => Ok(Token::Swap),
+                '\'' => self.lex_char(),
                 '"' => self.lex_string(),
                 c if c.is_ascii_digit() => self.lex_number(),
                 c => Err(LexError::UnexpectedCharacter(c)),
@@ -208,15 +210,20 @@ where
         }
     }
 
+    fn lex_char(&mut self) -> Result<Token, LexError> {
+        // TODO: support escape characters
+        self.advance();
+        self.advance();
+        self.expect_char('\'')?;
+        Ok(Token::Char)
+    }
+
     fn lex_string(&mut self) -> Result<Token, LexError> {
         self.advance();
         // TODO: support escape characters
         self.advance_while(|&c| c != '"');
-        if self.advance_if_char(&'"') {
-            Ok(Token::String)
-        } else {
-            Err(LexError::ExpectedCharacter('"'))
-        }
+        self.expect_char('"')?;
+        Ok(Token::String)
     }
 
     fn lex_number(&mut self) -> Result<Token, LexError> {
@@ -254,6 +261,13 @@ where
 
     fn advance_while(&mut self, predicate: impl Fn(&char) -> bool) {
         while self.advance_if(&predicate).is_some() {}
+    }
+
+    fn expect_char(&mut self, expected: char) -> Result<(), LexError> {
+        match self.char {
+            Some(c) if c == expected => Ok(()),
+            _ => Err(LexError::ExpectedCharacter(expected))
+        }
     }
 
     fn spanned<V>(&self, value: V, start: i32) -> Spanned<V> {
