@@ -8,14 +8,16 @@ pub enum LexError {
     UnexpectedEndOfFile,
     UnexpectedCharacter(char),
     ExpectedCharacter(char),
+    InvalidEscape(char),
 }
 
 impl Display for LexError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            LexError::UnexpectedEndOfFile => write!(f, "Unexpected end of file"),
             LexError::UnexpectedCharacter(c) => write!(f, "Unexpected character '{c}'"),
             LexError::ExpectedCharacter(c) => write!(f, "Expected character '{c}'"),
-            LexError::UnexpectedEndOfFile => write!(f, "Unexpected end of file"),
+            LexError::InvalidEscape(c) => write!(f, "Invalid escape: '\\{c}'")
         }
     }
 }
@@ -107,7 +109,7 @@ impl Display for Token {
     }
 }
 
-pub type LexTokenResult<T = Spanned<Token>, E = Spanned<LexError>> = Result<T, E>;
+pub type LexTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
 
 struct Lexer<TChars>
 where
@@ -213,22 +215,56 @@ where
     fn lex_char(&mut self) -> Result<Token, LexError> {
         // TODO: support escape characters
         self.advance();
-        self.advance();
-        self.expect_char('\'')?;
-        Ok(Token::Char)
+        self.lex_character()?;
+
+        if self.advance_if_char(&'\'') {
+            Ok(Token::Char)
+        } else {
+            Err(LexError::ExpectedCharacter('\''))
+        }
     }
 
     fn lex_string(&mut self) -> Result<Token, LexError> {
         self.advance();
-        // TODO: support escape characters
-        self.advance_while(|&c| c != '"');
-        self.expect_char('"')?;
+
+        loop {
+            if self.advance_if_char(&'"') {
+                break;
+            } else {
+                self.lex_character()?;
+            }
+        }
+
         Ok(Token::String)
     }
 
     fn lex_number(&mut self) -> Result<Token, LexError> {
         self.advance_while(char::is_ascii_digit);
         Ok(Token::Number)
+    }
+
+    fn lex_character(&mut self) -> Result<(), LexError> {
+        match self.char {
+            Some('\\') => {
+                self.advance();
+                if let Some(c) = self.char {
+                    match c {
+                        'n' | 'r' | 't' | '\\' => {
+                            self.advance();
+                            Ok(())
+                        }
+                        _ => Err(LexError::InvalidEscape(c))
+                    }
+                } else {
+                    Err(LexError::UnexpectedEndOfFile)
+                }
+            }
+            Some(_) => {
+                self.advance();
+                Ok(())
+            }
+            None => Err(LexError::UnexpectedEndOfFile)
+        }
     }
 
     fn unexpected_character(&mut self) -> Result<Token, LexError> {
@@ -261,13 +297,6 @@ where
 
     fn advance_while(&mut self, predicate: impl Fn(&char) -> bool) {
         while self.advance_if(&predicate).is_some() {}
-    }
-
-    fn expect_char(&mut self, expected: char) -> Result<(), LexError> {
-        match self.char {
-            Some(c) if c == expected => Ok(()),
-            _ => Err(LexError::ExpectedCharacter(expected))
-        }
     }
 
     fn spanned<V>(&self, value: V, start: i32) -> Spanned<V> {

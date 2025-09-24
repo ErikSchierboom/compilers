@@ -5,7 +5,7 @@ use compiler::parser::parse;
 
 fn main() {
     // let source = "1 [1 8 3] + [[1 2 3] [4 5 6] [8 dup dup]] (-)";
-    let source = "'a' \"hallo daar\"";
+    let source = r#"'\t' "hallo daar""#;
     // let error_source = "? 1";
 
     // test_tokenize(source);

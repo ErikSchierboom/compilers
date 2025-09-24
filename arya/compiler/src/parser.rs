@@ -275,9 +275,14 @@ where
     }
 
     fn parse_char(&mut self) -> ParseResult {
-        let char = self.lexeme(&self.span);
-        // TODO: support escape character
-        let c = char.chars().nth(1).unwrap();
+        let c = match self.lexeme(&self.span) {
+            r"'\n'" => '\n',
+            r"'\r'" => '\r',
+            r"'\t'" => '\t',
+            r"'\\'" => '\\',
+            raw_char => raw_char.chars().next().unwrap()
+        };
+
         Ok(self.make_word(Word::Char(c)))
     }
 
