@@ -6,12 +6,14 @@ use std::iter::Peekable;
 #[derive(Clone, Debug)]
 pub enum LexError {
     UnexpectedCharacter(char),
+    ExpectedCharacter(char),
 }
 
 impl Display for LexError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             LexError::UnexpectedCharacter(c) => write!(f, "Unexpected character '{c}'"),
+            LexError::ExpectedCharacter(c) => write!(f, "Expected character '{c}'"),
         }
     }
 }
@@ -102,14 +104,15 @@ impl Display for Token {
     }
 }
 
-pub type LexTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
+pub type LexTokenResult<T = Spanned<Token>, E = Spanned<LexError>> = Result<T, E>;
 
 struct Lexer<TChars>
 where
     TChars: Iterator<Item=char>,
 {
     chars: Peekable<TChars>,
-    span: Span,
+    char: Option<char>,
+    position: i32,
 }
 
 impl<TChars> Lexer<TChars>
@@ -117,14 +120,16 @@ where
     TChars: Iterator<Item=char>,
 {
     fn new(source_code: TChars) -> Self {
-        Self { chars: source_code.peekable(), span: Span::EMPTY }
+        Self { chars: source_code.peekable(), char: None, position: -1 }
     }
 
     fn lex_token(&mut self) -> LexTokenResult {
+        self.advance();
         self.skip_whitespace();
-        self.update_position();
 
-        let token = match self.next_char() {
+        let start = self.position;
+
+        let token = match self.char {
             None => Token::EndOfFile,
             Some(c) => match c {
                 '[' => Token::OpenBracket,
@@ -142,44 +147,44 @@ where
                 '?' => Token::QuestionMark,
                 '=' => Token::Equal,
                 '!' => {
-                    if self.next_if_char_is(&'=') {
+                    if self.advance_if_char(&'=') {
                         Token::NotEqual
                     } else {
                         Token::Bang
                     }
                 }
                 '>' => {
-                    if self.next_if_char_is(&'=') {
+                    if self.advance_if_char(&'=') {
                         Token::GreaterEqual
                     } else {
                         Token::Greater
                     }
                 }
                 '<' => {
-                    if self.next_if_char_is(&'=') {
+                    if self.advance_if_char(&'=') {
                         Token::LessEqual
                     } else {
                         Token::Less
                     }
                 }
-                'b' if self.next_if_chars_are("oth") => Token::Both,
+                'b' if self.advance_if_chars("oth") => Token::Both,
                 'd' => {
-                    if self.next_if_chars_are("up") {
+                    if self.advance_if_chars("up") {
                         Token::Dup
-                    } else if self.next_if_chars_are("rop") {
+                    } else if self.advance_if_chars("rop") {
                         Token::Drop
                     } else {
                         return self.lex_token();
                     }
                 }
-                'k' if self.next_if_chars_are("eep") => Token::Keep,
-                'f' if self.next_if_chars_are("old") => Token::Fold,
-                'o' if self.next_if_chars_are("ver") => Token::Over,
+                'k' if self.advance_if_chars("eep") => Token::Keep,
+                'f' if self.advance_if_chars("old") => Token::Fold,
+                'o' if self.advance_if_chars("ver") => Token::Over,
                 'r' => {
-                    if self.next_if_chars_are("e") {
-                        if self.next_if_chars_are("duce") {
+                    if self.advance_if_chars("e") {
+                        if self.advance_if_chars("duce") {
                             Token::Reduce
-                        } else if self.next_if_chars_are("verse") {
+                        } else if self.advance_if_chars("verse") {
                             Token::Reverse
                         } else {
                             return self.lex_token();
@@ -188,68 +193,57 @@ where
                         return self.lex_token();
                     }
                 }
-                's' if self.next_if_chars_are("wap") => Token::Swap,
-                '"' => self.lex_string(),
-                c if c.is_ascii_digit() => self.lex_number(),
-                c => return Err(self.spanned(LexError::UnexpectedCharacter(c))),
+                's' if self.advance_if_chars("wap") => Token::Swap,
+                '"' => {
+                    self.advance();
+                    // TODO: support escape characters
+                    self.advance_while(|&c| c != '"');
+                    if self.advance_if_char(&'"') {
+                        Token::String
+                    } else {
+                        return Err(self.spanned(LexError::ExpectedCharacter('"'), start));
+                    }
+                }
+                c if c.is_ascii_digit() => {
+                    self.advance_while(char::is_ascii_digit);
+                    Token::Number
+                }
+                c => return Err(self.spanned(LexError::UnexpectedCharacter(c), start)),
             },
         };
 
-        Ok(self.spanned(token))
-    }
 
-    fn lex_number(&mut self) -> Token {
-        self.skip_while(char::is_ascii_digit);
-        Token::Number
-    }
-
-    // TODO: support escape characters
-    fn lex_string(&mut self) -> Token {
-        self.next_if_char_is(&'"');
-        self.skip_while(|&c| c != '"');
-        // TODO: error handling
-        self.next_if_char_is(&'"');
-        Token::String
-    }
-
-    fn update_position(&mut self) {
-        self.span.position += self.span.length as u32;
-        self.span.length = 0;
+        Ok(self.spanned(token, start))
     }
 
     fn skip_whitespace(&mut self) {
-        self.skip_while(char::is_ascii_whitespace)
+        self.advance_while(char::is_ascii_whitespace)
     }
 
-    // TODO: convert to advance like in parser
-    fn next_char(&mut self) -> Option<char> {
-        self.next_char_if(|_| true)
+    fn advance(&mut self) {
+        self.char = self.chars.next();
+        self.position += 1
     }
 
-    fn next_char_if(&mut self, predicate: impl Fn(&char) -> bool) -> Option<char> {
-        self.chars.next_if(predicate).inspect(|_| self.span.length += 1)
+    fn advance_if(&mut self, predicate: impl FnOnce(&char) -> bool) -> Option<char> {
+        self.char.filter(predicate).inspect(|_| self.advance())
     }
 
-    fn next_if_char_is(&mut self, expected: &char) -> bool {
-        self.next_char_if(|c| c == expected).is_some()
+    fn advance_if_char(&mut self, expected: &char) -> bool {
+        self.advance_if(|c| c == expected).is_some()
     }
 
-    fn next_if_chars_are(&mut self, expected: &str) -> bool {
-        for expected_char in expected.chars() {
-            if self.next_char_if(|&c| c == expected_char).is_none() {
-                return false;
-            }
-        }
-
-        true
+    fn advance_if_chars(&mut self, expected: &str) -> bool {
+        expected.chars().all(|c| self.advance_if_char(&c))
     }
 
-    fn skip_while(&mut self, predicate: impl Fn(&char) -> bool) {
-        while self.next_char_if(&predicate).is_some() {}
+    fn advance_while(&mut self, predicate: impl Fn(&char) -> bool) {
+        while self.advance_if(&predicate).is_some() {}
     }
 
-    fn spanned<V>(&self, value: V) -> Spanned<V> {
-        Spanned::new(value, self.span.clone())
+    fn spanned<V>(&self, value: V, start: i32) -> Spanned<V> {
+        let span = Span::new(start as u32, (self.position - start) as u16);
+        Spanned::new(value, span)
     }
 }
 
