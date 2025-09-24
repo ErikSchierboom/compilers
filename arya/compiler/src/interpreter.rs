@@ -12,6 +12,8 @@ pub enum RuntimeError {
     IncompatibleArrayShapes,
     CannotReduceEmptyArray,
     ExpectedLogicalArray,
+    CannotNotCharacter,
+    KeepRequiresNumericArray,
 }
 
 impl Display for RuntimeError {
@@ -22,6 +24,8 @@ impl Display for RuntimeError {
             RuntimeError::IncompatibleArrayShapes => write!(f, "Incompatible array shapes"),
             RuntimeError::CannotReduceEmptyArray => write!(f, "Cannot reduce empty array"),
             RuntimeError::ExpectedLogicalArray => write!(f, "Expected logical array"),
+            RuntimeError::CannotNotCharacter => write!(f, "Cannot not character"),
+            RuntimeError::KeepRequiresNumericArray => write!(f, "Keep requires logical array"),
         }
     }
 }
@@ -30,19 +34,22 @@ impl Error for RuntimeError {}
 
 #[derive(Debug, Clone)]
 pub enum Value {
-    Numbers(Array<i64>)
+    Chars(Array<char>),
+    Numbers(Array<i64>),
 }
 
 impl Value {
     pub fn shape(&self) -> &Shape {
         match self {
-            Value::Numbers(array) => &array.shape
+            Value::Numbers(array) => &array.shape,
+            Value::Chars(array) => &array.shape
         }
     }
 
     pub fn as_numbers(&self) -> Option<&Vec<i64>> {
         match self {
-            Value::Numbers(array) => Some(&array.values)
+            Value::Numbers(array) => Some(&array.values),
+            Value::Chars(_) => None
         }
     }
 }
@@ -50,7 +57,11 @@ impl Value {
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::Numbers(array) => write!(f, "{}", array)
+            Value::Numbers(array) => write!(f, "{}", array),
+            Value::Chars(array) => {
+                let str = String::from_iter(array.values.iter());
+                write!(f, "{str}")
+            }
         }
     }
 }
@@ -77,21 +88,25 @@ macro_rules! dyadic_operation_env {
                         };
 
                         Ok(Value::Numbers(mapped_array))
-                    }
-                }
-            }
-        }
-    };
-}
-
-macro_rules! monadic_operation {
-    ($name:ident, $operation:tt) => {
-        impl Value {
-            fn $name(value: Value) -> InterpretResult<Value> {
-                match value {
-                    Value::Numbers(array) => {
-                        let mapped_values = array.values.into_iter().map(|v| ($operation v) as i64).collect();
-                        Ok(Value::Numbers(Array::new(array.shape, mapped_values)))
+                    },
+                    _ => {
+                        todo!()
+                        // let mapped_array = if array_a.shape.is_scalar() {
+                        //     let scalar = array_a.values.first().unwrap();
+                        //     let mapped_values = array_b.values.iter().map(|&b| (*scalar $operation b) as i64).collect();
+                        //     Array::new(array_b.shape.clone(), mapped_values)
+                        // } else if array_b.shape.is_scalar() {
+                        //     let scalar = array_b.values.first().unwrap();
+                        //     let mapped_values = array_a.values.iter().map(|&a| (a $operation *scalar) as i64).collect();
+                        //     Array::new(array_a.shape.clone(), mapped_values)
+                        // } else if array_a.shape == array_b.shape {
+                        //     let mapped_values = array_a.values.iter().zip(&array_b.values).map(|(&a, &b)| (a $operation b) as i64).collect();
+                        //     Array::new(array_a.shape.clone(), mapped_values)
+                        // } else {
+                        //     return Err(env.make_error(RuntimeError::IncompatibleArrayShapes))
+                        // };
+                        //
+                        // Ok(Value::Numbers(mapped_array))
                     }
                 }
             }
@@ -113,8 +128,6 @@ dyadic_operation_env!(greater_equal, >=);
 dyadic_operation_env!(less, <);
 dyadic_operation_env!(less_equal, <=);
 
-monadic_operation!(negate, -);
-
 macro_rules! monadic_method {
     ($name:ident, $operation:ident) => {
         impl Value {
@@ -123,6 +136,10 @@ macro_rules! monadic_method {
                     Value::Numbers(mut array) => {
                         array.values.$operation();
                         Ok(Value::Numbers(array))
+                    },
+                    Value::Chars(mut array) => {
+                        array.values.$operation();
+                        Ok(Value::Chars(array))
                     }
                 }
             }
@@ -133,13 +150,31 @@ macro_rules! monadic_method {
 monadic_method!(reverse, reverse);
 
 impl Value {
-    fn not(value: Value) -> InterpretResult<Value> {
+    fn not(value: Value, env: &Environment) -> InterpretResult<Value> {
         match value {
             Value::Numbers(mut array) => {
                 for value in array.values.iter_mut() {
                     *value = if *value == 0 { 1 } else { 0 }
                 }
                 Ok(Value::Numbers(array))
+            }
+            Value::Chars(_) => Err(env.make_error(RuntimeError::CannotNotCharacter))
+        }
+    }
+
+    fn negate(value: Value) -> InterpretResult<Value> {
+        match value {
+            Value::Numbers(mut array) => {
+                for value in array.values.iter_mut() {
+                    *value = -*value
+                }
+                Ok(Value::Numbers(array))
+            }
+            Value::Chars(mut array) => {
+                for value in array.values.iter_mut() {
+                    *value = value.to_ascii_uppercase()
+                }
+                Ok(Value::Chars(array))
             }
         }
     }
@@ -168,6 +203,29 @@ impl Value {
                     Ok(Value::Numbers(Array::new(new_shape, new_rows.into_iter().flatten().collect())))
                 }
             }
+            (Value::Numbers(array_a), Value::Chars(array_b)) => {
+                if !array_a.shape.is_one_dimensional() {
+                    Err(env.make_error(RuntimeError::ExpectedLogicalArray))
+                } else {
+                    let new_rows: Vec<Vec<char>> = array_b
+                        .row_slices()
+                        .into_iter()
+                        .zip(&array_a.values)
+                        .filter_map(|(row, &keep)| {
+                            if keep == 0 {
+                                None
+                            } else {
+                                Some(row.iter().copied().collect())
+                            }
+                        })
+                        .collect();
+
+                    let mut new_shape = array_b.shape.clone();
+                    new_shape.replace_dimension(0, new_rows.len());
+                    Ok(Value::Chars(Array::new(new_shape, new_rows.into_iter().flatten().collect())))
+                }
+            }
+            _ => Err(env.make_error(RuntimeError::KeepRequiresNumericArray))
         }
     }
 }
@@ -211,6 +269,15 @@ impl Environment {
     ) -> InterpretResult {
         let a = self.pop()?;
         self.push(f(a)?);
+        Ok(())
+    }
+
+    pub(crate) fn execute_monadic_env(
+        &mut self,
+        f: fn(Value, &Self) -> InterpretResult<Value>,
+    ) -> InterpretResult {
+        let a = self.pop()?;
+        self.push(f(a, self)?);
         Ok(())
     }
 
@@ -269,7 +336,7 @@ impl Executable for Primitive {
             Primitive::Xor => env.execute_dyadic_env(Value::xor)?,
             Primitive::And => env.execute_dyadic_env(Value::and)?,
             Primitive::Or => env.execute_dyadic_env(Value::or)?,
-            Primitive::Not => env.execute_monadic(Value::not)?,
+            Primitive::Not => env.execute_monadic_env(Value::not)?,
             Primitive::Negate => env.execute_monadic(Value::negate)?,
             Primitive::Equal => env.execute_dyadic_env(Value::equal)?,
             Primitive::NotEqual => env.execute_dyadic_env(Value::not_equal)?,
@@ -330,6 +397,18 @@ impl Executable for Modifier {
                             }
                         }
                     }
+                    Value::Chars(array) => {
+                        let first_value = array.values.first().ok_or_else(|| env.make_error(RuntimeError::CannotReduceEmptyArray))?;
+                        env.push(Value::Chars(Array::scalar(first_value.clone())));
+
+                        for value in array.values.iter().skip(1) {
+                            env.push(Value::Chars(Array::scalar(value.clone())));
+
+                            for word in &lambda.value.body {
+                                word.value.execute(env)?;
+                            }
+                        }
+                    }
                 }
             }
             Modifier::Fold(lambda) => {
@@ -342,6 +421,17 @@ impl Executable for Modifier {
 
                         for value in array.values {
                             env.push(Value::Numbers(Array::scalar(value.clone())));
+
+                            for word in &lambda.value.body {
+                                word.value.execute(env)?;
+                            }
+                        }
+                    }
+                    Value::Chars(array) => {
+                        env.push(initial);
+
+                        for value in array.values {
+                            env.push(Value::Chars(Array::scalar(value.clone())));
 
                             for word in &lambda.value.body {
                                 word.value.execute(env)?;
@@ -375,6 +465,10 @@ impl Executable for Word {
         match self {
             Word::Integer(i) => {
                 let value = Value::Numbers(Array::scalar(i.clone()));
+                env.push(value)
+            }
+            Word::String(str) => {
+                let value = Value::Chars(Array::linear(str.chars().collect()));
                 env.push(value)
             }
             Word::Array(array) => {

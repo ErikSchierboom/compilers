@@ -20,8 +20,8 @@ impl Error for LexError {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
-    // TODO: String
     // TODO: Char
+    String,
     Number,
 
     // Delimiters
@@ -67,6 +67,7 @@ impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Token::Number => write!(f, "number"),
+            Token::String => write!(f, "string"),
             Token::OpenBracket => write!(f, "["),
             Token::CloseBracket => write!(f, "]"),
             Token::OpenParenthesis => write!(f, "("),
@@ -188,6 +189,7 @@ where
                     }
                 }
                 's' if self.next_if_chars_are("wap") => Token::Swap,
+                '"' => self.lex_string(),
                 c if c.is_ascii_digit() => self.lex_number(),
                 c => return Err(self.spanned(LexError::UnexpectedCharacter(c))),
             },
@@ -201,6 +203,15 @@ where
         Token::Number
     }
 
+    // TODO: support escape characters
+    fn lex_string(&mut self) -> Token {
+        self.next_if_char_is(&'"');
+        self.skip_while(|&c| c != '"');
+        // TODO: error handling
+        self.next_if_char_is(&'"');
+        Token::String
+    }
+
     fn update_position(&mut self) {
         self.span.position += self.span.length as u32;
         self.span.length = 0;
@@ -210,6 +221,7 @@ where
         self.skip_while(char::is_ascii_whitespace)
     }
 
+    // TODO: convert to advance like in parser
     fn next_char(&mut self) -> Option<char> {
         self.next_char_if(|_| true)
     }

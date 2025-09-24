@@ -60,6 +60,7 @@ impl Signature {
 
 #[derive(Clone, Debug)]
 pub enum Word {
+    String(String),
     Integer(i64),
     Primitive(Primitive),
     Modifier(Modifier),
@@ -70,6 +71,7 @@ impl Word {
     pub fn signature(&self) -> Signature {
         match self {
             Word::Integer(_) |
+            Word::String(_) |
             Word::Array(_) => Signature::new(0, 1),
             Word::Primitive(primitive) => primitive.signature(),
             Word::Modifier(modifier) => modifier.signature(),
@@ -95,6 +97,7 @@ impl Display for Word {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Word::Integer(i) => write!(f, "{i}"),
+            Word::String(str) => write!(f, "{str}"),
             Word::Array(array) => {
                 write!(f, "[")?;
                 for (i, element) in array.values.iter().enumerate() {
@@ -234,14 +237,14 @@ where
     TTokens: Iterator<Item=LexTokenResult>,
 {
     fn new(source_code: &'a str, tokens: TTokens) -> Self {
-        let mut tokens = tokens.peekable();
-        let token = tokens.next();
-
-        Self { source_code, tokens, token, span: Span::EMPTY }
+        let mut parser = Self { source_code, tokens: tokens.peekable(), token: None, span: Span::EMPTY };
+        parser.advance();
+        parser
     }
 
     fn try_parse_word(&mut self) -> Option<ParseResult> {
         self.try_parse_integer()
+            .or_else(|| self.try_parse_string())
             .or_else(|| self.try_parse_primitive())
             .or_else(|| self.try_parse_modifier())
             .or_else(|| self.try_parse_array())
@@ -255,6 +258,15 @@ where
     fn parse_integer(&mut self) -> ParseResult {
         let int = i64::from_str(self.lexeme(&self.span)).unwrap();
         Ok(self.make_word(Word::Integer(int)))
+    }
+
+    fn try_parse_string(&mut self) -> Option<ParseResult> {
+        self.advance_if_token_map(&Token::String, Self::parse_string)
+    }
+
+    fn parse_string(&mut self) -> ParseResult {
+        let str = String::from(self.lexeme(&self.span));
+        Ok(self.make_word(Word::String(str)))
     }
 
     fn try_parse_primitive(&mut self) -> Option<ParseResult> {
@@ -356,14 +368,15 @@ where
     }
 
     fn advance(&mut self) {
-        self.token = self.tokens.next()
-            .inspect(|_| self.update_span());
+        self.token = self.tokens.next();
+        self.update_span();
     }
 
     fn advance_if_token_map<T>(&mut self, expected: &Token, parse: impl FnOnce(&mut Self) -> T) -> Option<T> {
         if let Some(Ok(spanned_token)) = &self.token && &spanned_token.value == expected {
+            let parsed = parse(self);
             self.advance();
-            Some(parse(self))
+            Some(parsed)
         } else {
             None
         }
