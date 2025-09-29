@@ -259,7 +259,7 @@ where
 
     fn parse_integer(&mut self) -> ParseResult {
         let int = i64::from_str(self.lexeme(&self.span)).unwrap();
-        Ok(self.make_word(Word::Integer(int)))
+        Ok(self.spanned(Word::Integer(int)))
     }
 
     fn try_parse_string(&mut self) -> Option<ParseResult> {
@@ -271,7 +271,7 @@ where
         let mut str = String::from(self.lexeme(&self.span));
         str.pop();
         str.remove(0);
-        Ok(self.make_word(Word::String(str)))
+        Ok(self.spanned(Word::String(str)))
     }
 
     fn try_parse_char(&mut self) -> Option<ParseResult> {
@@ -288,7 +288,7 @@ where
             raw_char => raw_char.chars().nth(1).unwrap()
         };
 
-        Ok(self.make_word(Word::Char(c)))
+        Ok(self.spanned(Word::Char(c)))
     }
 
     fn try_parse_primitive(&mut self) -> Option<ParseResult> {
@@ -326,7 +326,7 @@ where
     }
 
     fn make_primitive(&self, primitive: Primitive) -> ParseResult {
-        Ok(self.make_word(Word::Primitive(primitive)))
+        Ok(self.spanned(Word::Primitive(primitive)))
     }
 
     fn try_parse_modifier(&mut self) -> Option<ParseResult> {
@@ -337,12 +337,12 @@ where
                         Token::Reduce => Modifier::Reduce(spanned_lambda),
                         Token::Fold => Modifier::Fold(spanned_lambda),
                         Token::Both => Modifier::Both(spanned_lambda),
-                        _ => return Some(Err(self.make_error(ParseError::ExpectedModifier)))
+                        _ => return Some(Err(self.spanned(ParseError::ExpectedModifier)))
                     };
 
-                    Some(Ok(self.make_word(Word::Modifier(modifier))))
+                    Some(Ok(self.spanned(Word::Modifier(modifier))))
                 } else {
-                    Some(Err(self.make_error(ParseError::ExpectedModifier)))
+                    Some(Err(self.spanned(ParseError::ExpectedModifier)))
                 }
             }
             Err(err) => Some(Err(err))
@@ -358,8 +358,8 @@ where
         let words = self.parse_series(Self::try_parse_array_element)?;
         let array = Array::linear(words);
         match self.advance_if_token(&Token::CloseBracket) {
-            None => Err(self.make_error(ParseError::ExpectedToken(Token::CloseBracket))),
-            Some(_) => Ok(self.make_word(Word::Array(array)))
+            None => Err(self.spanned(ParseError::ExpectedToken(Token::CloseBracket))),
+            Some(_) => Ok(self.spanned(Word::Array(array)))
         }
     }
 
@@ -378,7 +378,7 @@ where
         let words = self.parse_series(Self::try_parse_lambda_word)?;
         let signature = Signature::from_words(&words);
         match self.advance_if_token(&Token::CloseParenthesis) {
-            None => Err(self.make_error(ParseError::ExpectedToken(Token::CloseParenthesis))),
+            None => Err(self.spanned(ParseError::ExpectedToken(Token::CloseParenthesis))),
             Some(_) => Ok(self.spanned(Lambda::new(signature, words)))
         }
     }
@@ -391,8 +391,8 @@ where
 
     fn try_parse_error(&mut self) -> Option<ParseResult> {
         match &self.token {
-            Some(Ok(token)) => Some(Err(self.make_error(ParseError::UnexpectedToken(token.value.clone())))),
-            Some(Err(lex_error)) => Some(Err(self.make_error(Lex(lex_error.value.clone())))),
+            Some(Ok(token)) => Some(Err(self.spanned(ParseError::UnexpectedToken(token.value.clone())))),
+            Some(Err(lex_error)) => Some(Err(self.spanned(Lex(lex_error.value.clone())))),
             None => None
         }
     }
@@ -431,16 +431,6 @@ where
             Some(Ok(token)) => self.span = token.span.clone(),
             _ => {}
         }
-    }
-
-    // TODO: inline
-    fn make_word(&self, word: Word) -> Spanned<Word> {
-        self.spanned(word)
-    }
-
-    // TODO: inline
-    fn make_error(&mut self, error: ParseError) -> Spanned<ParseError> {
-        self.spanned(error)
     }
 
     fn spanned<V>(&self, value: V) -> Spanned<V> {
