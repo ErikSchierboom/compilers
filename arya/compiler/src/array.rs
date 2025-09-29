@@ -1,4 +1,6 @@
-﻿use std::fmt::{Display, Formatter};
+﻿use crate::location::Spanned;
+use crate::parser::Word;
+use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Shape {
@@ -39,13 +41,32 @@ impl Shape {
     }
 }
 
+pub trait ArrayValue: Display {
+    const SCALAR_SEPARATOR: &'static str = " ";
+    const SCALAR_OPEN: &'static str = "";
+    const SCALAR_CLOSE: &'static str = "";
+    const ARRAY_OPEN: &'static str = "[";
+    const ARRAY_CLOSE: &'static str = "]";
+}
+
+impl ArrayValue for i64 {}
+impl ArrayValue for Spanned<Word> {}
+impl ArrayValue for char {
+    const SCALAR_SEPARATOR: &'static str = "";
+    const SCALAR_OPEN: &'static str = "'";
+    const SCALAR_CLOSE: &'static str = "'";
+    const ARRAY_OPEN: &'static str = "\"";
+    const ARRAY_CLOSE: &'static str = "\"";
+}
+
+
 #[derive(Clone, Debug)]
-pub struct Array<T> {
+pub struct Array<T: ArrayValue> {
     pub shape: Shape,
     pub values: Vec<T>,
 }
 
-impl<T> Array<T> {
+impl<T: ArrayValue> Array<T> {
     pub fn new(shape: Shape, values: Vec<T>) -> Self {
         Self { shape, values }
     }
@@ -71,24 +92,22 @@ impl<T> Array<T> {
     }
 }
 
-impl<T> Display for Array<T>
+impl<T: ArrayValue> Display for Array<T>
 where
     T: Display,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self.shape.dimensions.len() {
-            // TODO: output char as char
-            0 => write!(f, "{}", self.values[0]),
+            0 => write!(f, "{}{}{}", T::SCALAR_OPEN, self.values[0], T::SCALAR_CLOSE),
             1 => {
-                // TODO: output string as string
-                write!(f, "[")?;
+                write!(f, "{}", T::ARRAY_OPEN)?;
                 for (column, value) in self.values.iter().enumerate() {
                     write!(f, "{}", value)?;
                     if column < self.shape.dimensions[0] - 1 {
-                        write!(f, " ")?;
+                        write!(f, "{}", T::SCALAR_SEPARATOR)?;
                     }
                 }
-                write!(f, "]")
+                write!(f, "{}", T::ARRAY_CLOSE)
             }
             2 => {
                 let row_len = self.shape.row_len();
@@ -140,7 +159,7 @@ mod tests {
 
     #[test]
     fn test_display_linear() {
-        let empty: Array<i32> = Array::linear(vec![]);
+        let empty: Array<i64> = Array::linear(vec![]);
         assert_eq!(empty.to_string(), "[]");
 
         let single = Array::linear(vec![13]);
@@ -152,10 +171,10 @@ mod tests {
 
     #[test]
     fn test_display_matrix() {
-        let empty: Array<i32> = Array::matrix(vec![]);
+        let empty: Array<i64> = Array::matrix(vec![]);
         assert_eq!(empty.to_string(), "[]");
 
-        let single_row_no_columns: Array<i32> = Array::matrix(vec![vec![]]);
+        let single_row_no_columns: Array<i64> = Array::matrix(vec![vec![]]);
         assert_eq!(single_row_no_columns.to_string(), "[]");
 
         let single_row_one_column = Array::matrix(vec![vec![2]]);
