@@ -125,14 +125,13 @@ where
     TChars: Iterator<Item=char>,
 {
     fn new(source_code: TChars) -> Self {
-        Self { chars: source_code.peekable(), char: None, position: -1 }
+        Self { chars: source_code.peekable(), char: None, position: 0 }
     }
 
     fn lex_token(&mut self) -> LexTokenResult {
-        self.advance();
-        self.skip_whitespace();
-
         let start = self.position;
+
+        self.advance();
 
         let lex_result = match self.char {
             Some(c) => match c {
@@ -201,22 +200,18 @@ where
                 '\'' => self.lex_char(),
                 '"' => self.lex_string(),
                 c if c.is_ascii_digit() => self.lex_number(),
+                c if c.is_ascii_whitespace() => {
+                    self.advance_while(char::is_ascii_whitespace);
+                    return self.lex_token();
+                }
                 _ => self.unexpected_character()
             },
             None => Ok(Token::EndOfFile),
         };
 
         match lex_result {
-            Ok(token) => {
-                let spanned = self.spanned(token, start);
-                self.advance();
-                Ok(spanned)
-            }
-            Err(err) => {
-                let spanned = self.spanned(err, start);
-                self.advance();
-                Err(spanned)
-            }
+            Ok(token) => Ok(self.spanned(token, start)),
+            Err(err) => Err(self.spanned(err, start)),
         }
     }
 
@@ -282,17 +277,18 @@ where
         }
     }
 
-    fn skip_whitespace(&mut self) {
-        self.advance_while(char::is_ascii_whitespace)
-    }
-
     fn advance(&mut self) {
         self.char = self.chars.next();
         self.position += 1
     }
 
     fn advance_if(&mut self, predicate: impl FnOnce(&char) -> bool) -> Option<char> {
-        self.char.filter(predicate).inspect(|_| self.advance())
+        if self.chars.peek().map(predicate)? {
+            self.advance();
+            self.char
+        } else {
+            None
+        }
     }
 
     fn advance_if_char(&mut self, expected: &char) -> bool {
