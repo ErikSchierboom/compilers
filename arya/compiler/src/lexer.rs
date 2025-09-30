@@ -207,8 +207,16 @@ where
         };
 
         match lex_result {
-            Ok(token) => Ok(self.spanned(token, start)),
-            Err(err) => Err(self.spanned(err, start))
+            Ok(token) => {
+                let spanned = self.spanned(token, start);
+                self.advance();
+                Ok(spanned)
+            }
+            Err(err) => {
+                let spanned = self.spanned(err, start);
+                self.advance();
+                Err(spanned)
+            }
         }
     }
 
