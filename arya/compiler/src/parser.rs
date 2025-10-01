@@ -370,6 +370,8 @@ where
 
     fn try_parse_lambda(&mut self) -> Option<ParseResult<Spanned<Lambda>>> {
         self.expect_token(&Token::OpenParenthesis)?;
+        self.advance();
+
         match self.parse_series(Self::try_parse_lambda_word) {
             Ok(words) => {
                 let signature = Signature::from_words(&words);
