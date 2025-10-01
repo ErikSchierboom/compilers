@@ -1,5 +1,6 @@
 ﻿use crate::location::Spanned;
 use crate::parser::Word;
+use std::error::Error;
 use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -59,6 +60,20 @@ impl ArrayValue for char {
     const ARRAY_CLOSE: &'static str = "\"";
 }
 
+#[derive(Debug)]
+pub enum ArrayError {
+    IncompatibleShapes
+}
+
+impl Display for ArrayError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ArrayError::IncompatibleShapes => write!(f, "Incompatible array shapes"),
+        }
+    }
+}
+
+impl Error for ArrayError {}
 
 #[derive(Clone, Debug)]
 pub struct Array<T: ArrayValue> {
@@ -89,6 +104,46 @@ impl<T: ArrayValue> Array<T> {
 
     pub fn row_slices(&self) -> impl ExactSizeIterator<Item=&[T]> {
         self.values.chunks_exact(self.shape.row_len())
+    }
+
+    pub fn monadic_op<V: ArrayValue>(top: Self, bottom: Self, op: impl Fn(&T) -> V) -> Array<V> {
+        let new_values: Vec<V> = bottom.values.into_iter().map(|a| op(&a)).collect();
+        Array::new(top.shape.clone(), new_values)
+    }
+
+    pub fn monadic_op_mut(mut array: Self, op: impl Fn(&T) -> T) -> Self {
+        for a in array.values.iter_mut() {
+            *a = op(&a)
+        }
+
+        array
+    }
+
+    pub fn dyadic_op_mut(mut top: Self, mut bottom: Self, op: impl Fn(&T, &T) -> T) -> Result<Self, ArrayError> {
+        if top.shape == bottom.shape {
+            for (b, a) in bottom.values.iter_mut().zip(top.values) {
+                *b = op(&a, b)
+            }
+            Ok(bottom)
+        } else if top.shape.is_scalar() {
+            let a = top.values.pop().unwrap();
+
+            for b in bottom.values.iter_mut() {
+                *b = op(&a, b)
+            }
+
+            Ok(bottom)
+        } else if bottom.shape.is_scalar() {
+            let a = bottom.values.pop().unwrap();
+
+            for b in top.values.iter_mut() {
+                *b = op(&a, b)
+            }
+
+            Ok(top)
+        } else {
+            Err(ArrayError::IncompatibleShapes)
+        }
     }
 }
 

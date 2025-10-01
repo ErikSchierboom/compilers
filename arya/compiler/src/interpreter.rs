@@ -71,7 +71,7 @@ macro_rules! dyadic_operation_env {
                     (Value::Numbers(array_a), Value::Numbers(array_b)) => {
                         let mapped_array = if array_a.shape.is_scalar() {
                             let scalar = array_a.values.first().unwrap();
-                            let mapped_values = array_b.values.iter().map(|&b| (*scalar $operation b) as i64).collect();
+                            let mapped_values = array_b.values.iter().map(|&b| scalar.$operation(b) as i64).collect();
                             Array::new(array_b.shape.clone(), mapped_values)
                         } else if array_b.shape.is_scalar() {
                             let scalar = array_b.values.first().unwrap();
@@ -111,19 +111,20 @@ macro_rules! dyadic_operation_env {
     };
 }
 
-dyadic_operation_env!(add, +);
-dyadic_operation_env!(subtract, -);
-dyadic_operation_env!(multiply, *);
-dyadic_operation_env!(divide, /);
-dyadic_operation_env!(xor, ^);
-dyadic_operation_env!(and, &);
-dyadic_operation_env!(or, |);
-dyadic_operation_env!(equal, ==);
-dyadic_operation_env!(not_equal, !=);
-dyadic_operation_env!(greater, >);
-dyadic_operation_env!(greater_equal, >=);
-dyadic_operation_env!(less, <);
-dyadic_operation_env!(less_equal, <=);
+// dyadic_operation_env!(add, +);
+// dyadic_operation_env!(subtract, -);
+// dyadic_operation_env!(multiply, *);
+// dyadic_operation_env!(divide, /);
+// dyadic_operation_env!(xor, ^);
+// dyadic_operation_env!(and, &);
+// dyadic_operation_env!(or, |);
+// TODO:
+// dyadic_operation_env!(equal, ==);
+// dyadic_operation_env!(not_equal, !=);
+// dyadic_operation_env!(greater, >);
+// dyadic_operation_env!(greater_equal, >=);
+// dyadic_operation_env!(less, <);
+// dyadic_operation_env!(less_equal, <=);
 
 macro_rules! monadic_method {
     ($name:ident, $operation:ident) => {
@@ -326,51 +327,52 @@ pub trait Executable {
 impl Executable for Primitive {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
-            Primitive::Add => env.execute_dyadic_env(Value::add)?,
-            Primitive::Subtract => env.execute_dyadic_env(Value::subtract)?,
-            Primitive::Multiply => env.execute_dyadic_env(Value::multiply)?,
-            Primitive::Divide => env.execute_dyadic_env(Value::divide)?,
-            Primitive::Xor => env.execute_dyadic_env(Value::xor)?,
-            Primitive::And => env.execute_dyadic_env(Value::and)?,
-            Primitive::Or => env.execute_dyadic_env(Value::or)?,
-            Primitive::Not => env.execute_monadic_env(Value::not)?,
-            Primitive::Negate => env.execute_monadic(Value::negate)?,
-            Primitive::Equal => env.execute_dyadic_env(Value::equal)?,
-            Primitive::NotEqual => env.execute_dyadic_env(Value::not_equal)?,
-            Primitive::Greater => env.execute_dyadic_env(Value::greater)?,
-            Primitive::GreaterEqual => env.execute_dyadic_env(Value::greater_equal)?,
-            Primitive::Less => env.execute_dyadic_env(Value::less)?,
-            Primitive::LessEqual => env.execute_dyadic_env(Value::less_equal)?,
-            Primitive::Dup => {
-                let a = env.pop()?;
-                env.push(a.clone());
-                env.push(a);
-            }
-            Primitive::Drop => {
-                env.pop()?;
-            }
-            Primitive::Swap => {
-                let a = env.pop()?;
-                let b = env.pop()?;
-                env.push(a);
-                env.push(b);
-            }
-            Primitive::Over => {
-                let a = env.pop()?;
-                let b = env.pop()?;
-                env.push(b.clone());
-                env.push(a);
-                env.push(b);
-            }
-            Primitive::Reverse => env.execute_monadic(Value::reverse)?,
-            Primitive::Keep => env.execute_dyadic_env(Value::keep)?,
-            Primitive::Stack => {
-                for value in env.stack.iter().rev() {
-                    println!("{value}")
-                }
-            }
-            Primitive::Max => todo!(),
-            Primitive::Min => todo!(),
+            // Primitive::Add => env.execute_dyadic_env(Value::add)?,
+            // Primitive::Subtract => env.execute_dyadic_env(Value::subtract)?,
+            // Primitive::Multiply => env.execute_dyadic_env(Value::multiply)?,
+            // Primitive::Divide => env.execute_dyadic_env(Value::divide)?,
+            // Primitive::Xor => env.execute_dyadic_env(Value::xor)?,
+            // Primitive::And => env.execute_dyadic_env(Value::and)?,
+            // Primitive::Or => env.execute_dyadic_env(Value::or)?,
+            // Primitive::Not => env.execute_monadic_env(Value::not)?,
+            // Primitive::Negate => env.execute_monadic(Value::negate)?,
+            // Primitive::Equal => env.execute_dyadic_env(Value::equal)?,
+            // Primitive::NotEqual => env.execute_dyadic_env(Value::not_equal)?,
+            // Primitive::Greater => env.execute_dyadic_env(Value::greater)?,
+            // Primitive::GreaterEqual => env.execute_dyadic_env(Value::greater_equal)?,
+            // Primitive::Less => env.execute_dyadic_env(Value::less)?,
+            // Primitive::LessEqual => env.execute_dyadic_env(Value::less_equal)?,
+            // Primitive::Dup => {
+            //     let a = env.pop()?;
+            //     env.push(a.clone());
+            //     env.push(a);
+            // }
+            // Primitive::Drop => {
+            //     env.pop()?;
+            // }
+            // Primitive::Swap => {
+            //     let a = env.pop()?;
+            //     let b = env.pop()?;
+            //     env.push(a);
+            //     env.push(b);
+            // }
+            // Primitive::Over => {
+            //     let a = env.pop()?;
+            //     let b = env.pop()?;
+            //     env.push(b.clone());
+            //     env.push(a);
+            //     env.push(b);
+            // }
+            // Primitive::Reverse => env.execute_monadic(Value::reverse)?,
+            // Primitive::Keep => env.execute_dyadic_env(Value::keep)?,
+            // Primitive::Stack => {
+            //     for value in env.stack.iter().rev() {
+            //         println!("{value}")
+            //     }
+            // }
+            // Primitive::Max => todo!(),
+            // Primitive::Min => todo!(),
+            _ => todo!()
         }
 
         Ok(())
