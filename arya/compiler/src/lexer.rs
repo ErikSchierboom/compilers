@@ -64,9 +64,6 @@ pub enum Token {
     Both,
     Keep,
     Reverse,
-
-    // Synthetic
-    EndOfFile,
 }
 
 impl Display for Token {
@@ -101,10 +98,9 @@ impl Display for Token {
             Token::Reduce => write!(f, "reduce"),
             Token::Fold => write!(f, "fold"),
             Token::Both => write!(f, "both"),
-            Token::EndOfFile => write!(f, "EOF"),
             Token::Reverse => write!(f, "reverse"),
             Token::Keep => write!(f, "keep"),
-            Token::QuestionMark => write!(f, "?")
+            Token::QuestionMark => write!(f, "?"),
         }
     }
 }
@@ -113,114 +109,107 @@ pub type LexTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
 
 struct Lexer<TChars>
 where
-    TChars: Iterator<Item=char>,
+    TChars: Iterator<Item=(u32, char)>,
 {
     chars: Peekable<TChars>,
     char: Option<char>,
-    position: i32,
+    position: u32,
 }
 
 impl<TChars> Lexer<TChars>
 where
-    TChars: Iterator<Item=char>,
+    TChars: Iterator<Item=(u32, char)>,
 {
     fn new(source_code: TChars) -> Self {
         Self { chars: source_code.peekable(), char: None, position: 0 }
     }
 
-    fn lex_token(&mut self) -> LexTokenResult {
+    fn lex_token(&mut self) -> Option<LexTokenResult> {
+        self.skip_whitespace();
+
+        let c = self.next_char()?;
         let start = self.position;
 
-        self.advance();
-
-        let lex_result = match self.char {
-            Some(c) => match c {
-                '[' => Ok(Token::OpenBracket),
-                ']' => Ok(Token::CloseBracket),
-                '(' => Ok(Token::OpenParenthesis),
-                ')' => Ok(Token::CloseParenthesis),
-                '+' => Ok(Token::Plus),
-                '-' => Ok(Token::Minus),
-                '*' => Ok(Token::Star),
-                '/' => Ok(Token::Slash),
-                '^' => Ok(Token::Caret),
-                '&' => Ok(Token::Ampersand),
-                '|' => Ok(Token::Pipe),
-                '_' => Ok(Token::Underscore),
-                '?' => Ok(Token::QuestionMark),
-                '=' => Ok(Token::Equal),
-                '!' => {
-                    if self.advance_if_char(&'=') {
-                        Ok(Token::NotEqual)
-                    } else {
-                        Ok(Token::Bang)
-                    }
+        let result = match c {
+            '[' => Ok(Token::OpenBracket),
+            ']' => Ok(Token::CloseBracket),
+            '(' => Ok(Token::OpenParenthesis),
+            ')' => Ok(Token::CloseParenthesis),
+            '+' => Ok(Token::Plus),
+            '-' => Ok(Token::Minus),
+            '*' => Ok(Token::Star),
+            '/' => Ok(Token::Slash),
+            '^' => Ok(Token::Caret),
+            '&' => Ok(Token::Ampersand),
+            '|' => Ok(Token::Pipe),
+            '_' => Ok(Token::Underscore),
+            '?' => Ok(Token::QuestionMark),
+            '=' => Ok(Token::Equal),
+            '!' => {
+                if self.next_if_char_is('=') {
+                    Ok(Token::NotEqual)
+                } else {
+                    Ok(Token::Bang)
                 }
-                '>' => {
-                    if self.advance_if_char(&'=') {
-                        Ok(Token::GreaterEqual)
-                    } else {
-                        Ok(Token::Greater)
-                    }
+            }
+            '>' => {
+                if self.next_if_char_is('=') {
+                    Ok(Token::GreaterEqual)
+                } else {
+                    Ok(Token::Greater)
                 }
-                '<' => {
-                    if self.advance_if_char(&'=') {
-                        Ok(Token::LessEqual)
-                    } else {
-                        Ok(Token::Less)
-                    }
+            }
+            '<' => {
+                if self.next_if_char_is('=') {
+                    Ok(Token::LessEqual)
+                } else {
+                    Ok(Token::Less)
                 }
-                'b' if self.advance_if_chars("oth") => Ok(Token::Both),
-                'd' => {
-                    if self.advance_if_chars("up") {
-                        Ok(Token::Dup)
-                    } else if self.advance_if_chars("rop") {
-                        Ok(Token::Drop)
-                    } else {
-                        self.unexpected_character()
-                    }
+            }
+            'b' if self.next_if_followed_by("oth") => Ok(Token::Both),
+            'd' => {
+                if self.next_if_followed_by("up") {
+                    Ok(Token::Dup)
+                } else if self.next_if_followed_by("rop") {
+                    Ok(Token::Drop)
+                } else {
+                    self.unexpected_character()
                 }
-                'k' if self.advance_if_chars("eep") => Ok(Token::Keep),
-                'f' if self.advance_if_chars("old") => Ok(Token::Fold),
-                'o' if self.advance_if_chars("ver") => Ok(Token::Over),
-                'r' => {
-                    if self.advance_if_chars("e") {
-                        if self.advance_if_chars("duce") {
-                            Ok(Token::Reduce)
-                        } else if self.advance_if_chars("verse") {
-                            Ok(Token::Reverse)
-                        } else {
-                            self.unexpected_character()
-                        }
+            }
+            'k' if self.next_if_followed_by("eep") => Ok(Token::Keep),
+            'f' if self.next_if_followed_by("old") => Ok(Token::Fold),
+            'o' if self.next_if_followed_by("ver") => Ok(Token::Over),
+            'r' => {
+                if self.next_if_followed_by("e") {
+                    if self.next_if_followed_by("duce") {
+                        Ok(Token::Reduce)
+                    } else if self.next_if_followed_by("verse") {
+                        Ok(Token::Reverse)
                     } else {
                         self.unexpected_character()
                     }
+                } else {
+                    self.unexpected_character()
                 }
-                's' if self.advance_if_chars("wap") => Ok(Token::Swap),
-                '\'' => self.lex_char(),
-                '"' => self.lex_string(),
-                c if c.is_ascii_digit() => self.lex_number(),
-                c if c.is_ascii_whitespace() => {
-                    self.advance_while(char::is_ascii_whitespace);
-                    return self.lex_token();
-                }
-                _ => self.unexpected_character()
-            },
-            None => Ok(Token::EndOfFile),
+            }
+            's' if self.next_if_followed_by("wap") => Ok(Token::Swap),
+            '\'' => self.lex_char(),
+            '"' => self.lex_string(),
+            c if c.is_ascii_digit() => self.lex_number(),
+            _ => self.unexpected_character()
         };
 
-        match lex_result {
-            Ok(token) => Ok(self.spanned(token, start)),
-            Err(err) => Err(self.spanned(err, start)),
+        match result {
+            Ok(token) => Some(Ok(self.spanned(token, start))),
+            Err(err) => Some(Err(self.spanned(err, start))),
         }
     }
 
     fn lex_char(&mut self) -> Result<Token, LexError> {
-        // TODO: support escape characters
-        self.advance();
+        self.next_char();
         self.lex_character()?;
 
-        if self.advance_if_char(&'\'') {
+        if self.next_if_char_is('\'') {
             Ok(Token::Char)
         } else {
             Err(LexError::ExpectedCharacter('\''))
@@ -228,10 +217,10 @@ where
     }
 
     fn lex_string(&mut self) -> Result<Token, LexError> {
-        self.advance();
+        self.next_char();
 
         loop {
-            if self.advance_if_char(&'"') {
+            if self.next_if_char_is('"') {
                 break;
             } else {
                 self.lex_character()?;
@@ -242,18 +231,18 @@ where
     }
 
     fn lex_number(&mut self) -> Result<Token, LexError> {
-        self.advance_while(char::is_ascii_digit);
+        self.next_while_chars_match(char::is_ascii_digit);
         Ok(Token::Number)
     }
 
     fn lex_character(&mut self) -> Result<(), LexError> {
         match self.char {
             Some('\\') => {
-                self.advance();
+                self.next_char();
                 if let Some(c) = self.char {
                     match c {
                         'n' | 'r' | 't' | '\\' => {
-                            self.advance();
+                            self.next_char();
                             Ok(())
                         }
                         _ => Err(LexError::InvalidEscape(c))
@@ -263,7 +252,7 @@ where
                 }
             }
             Some(_) => {
-                self.advance();
+                self.next_char();
                 Ok(())
             }
             None => Err(LexError::UnexpectedEndOfFile)
@@ -277,55 +266,55 @@ where
         }
     }
 
-    fn advance(&mut self) {
-        self.char = self.chars.next();
-        self.position += 1
+    fn next_char(&mut self) -> Option<char> {
+        let (position, char) = self.chars.next()?;
+        self.position = position;
+        self.char = Some(char);
+        self.char
     }
 
-    fn advance_if(&mut self, predicate: impl FnOnce(&char) -> bool) -> Option<char> {
-        if self.chars.peek().map(predicate)? {
-            self.advance();
+    fn next_if_char_matches(&mut self, predicate: impl FnOnce(&char) -> bool) -> Option<char> {
+        if self.chars.peek().map(|(_, c)| predicate(c))? {
+            self.next_char();
             self.char
         } else {
             None
         }
     }
 
-    fn advance_if_char(&mut self, expected: &char) -> bool {
-        self.advance_if(|c| c == expected).is_some()
+    fn next_if_char_is(&mut self, expected: char) -> bool {
+        self.next_if_char_matches(|c| *c == expected).is_some()
     }
 
-    fn advance_if_chars(&mut self, expected: &str) -> bool {
-        expected.chars().all(|c| self.advance_if_char(&c))
+    fn next_if_followed_by(&mut self, expected: &str) -> bool {
+        expected.chars().all(|c| self.next_if_char_is(c))
     }
 
-    fn advance_while(&mut self, predicate: impl Fn(&char) -> bool) {
-        while self.advance_if(&predicate).is_some() {}
+    fn next_while_chars_match(&mut self, predicate: impl Fn(&char) -> bool) {
+        while self.next_if_char_matches(&predicate).is_some() {}
     }
 
-    fn spanned<V>(&self, value: V, start: i32) -> Spanned<V> {
-        let span = Span::new(start as u32, (self.position - start) as u16);
+    fn skip_whitespace(&mut self) {
+        self.next_while_chars_match(char::is_ascii_whitespace)
+    }
+
+    fn spanned<V>(&self, value: V, start: u32) -> Spanned<V> {
+        let span = Span::new(start, (self.position - start) as u16);
         Spanned::new(value, span)
     }
 }
 
 impl<TChars> Iterator for Lexer<TChars>
 where
-    TChars: Iterator<Item=char>,
+    TChars: Iterator<Item=(u32, char)>,
 {
     type Item = LexTokenResult;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.lex_token() {
-            Ok(Spanned {
-                   value: Token::EndOfFile,
-                   ..
-               }) => None,
-            token_result => Some(token_result),
-        }
+        self.lex_token()
     }
 }
 
 pub fn tokenize(source: &str) -> impl Iterator<Item=LexTokenResult> + '_ {
-    Lexer::new(source.chars())
+    Lexer::new(source.char_indices().map(|(i, c)| (i as u32, c)))
 }
