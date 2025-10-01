@@ -127,8 +127,7 @@ where
     fn lex_token(&mut self) -> Option<LexTokenResult> {
         self.skip_whitespace();
 
-        let c = self.next_char()?;
-        let start = self.position;
+        let (start, c) = self.next_char()?;
 
         let result = match c {
             '[' => Ok(Token::OpenBracket),
@@ -266,11 +265,11 @@ where
         }
     }
 
-    fn next_char(&mut self) -> Option<char> {
+    fn next_char(&mut self) -> Option<(u32, char)> {
         let (position, char) = self.chars.next()?;
         self.position = position;
         self.char = Some(char);
-        self.char
+        Some((position, char))
     }
 
     fn next_if_char_matches(&mut self, predicate: impl FnOnce(&char) -> bool) -> Option<char> {
@@ -299,7 +298,7 @@ where
     }
 
     fn spanned<V>(&self, value: V, start: u32) -> Spanned<V> {
-        let span = Span::new(start, (self.position - start) as u16);
+        let span = Span::new(start, (self.position - start) as u16 + 1);
         Spanned::new(value, span)
     }
 }
