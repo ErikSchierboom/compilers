@@ -369,6 +369,8 @@ impl Executable for Primitive {
                     println!("{value}")
                 }
             }
+            Primitive::Max => todo!(),
+            Primitive::Min => todo!(),
         }
 
         Ok(())

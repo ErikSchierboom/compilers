@@ -181,6 +181,8 @@ primitive!(
     (1, 1, Reverse),
     (2, 1, Keep),
     (0, 0, Stack),
+    (2, 1, Max),
+    (2, 1, Min),
 );
 
 macro_rules! modifier {

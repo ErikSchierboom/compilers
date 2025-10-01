@@ -64,6 +64,8 @@ pub enum Token {
     Both,
     Keep,
     Reverse,
+    Max,
+    Min,
 }
 
 impl Display for Token {
@@ -91,6 +93,7 @@ impl Display for Token {
             Token::GreaterEqual => write!(f, ">="),
             Token::Less => write!(f, "<"),
             Token::LessEqual => write!(f, "<="),
+            Token::QuestionMark => write!(f, "?"),
             Token::Dup => write!(f, "dup"),
             Token::Drop => write!(f, "drop"),
             Token::Swap => write!(f, "swap"),
@@ -100,7 +103,8 @@ impl Display for Token {
             Token::Both => write!(f, "both"),
             Token::Reverse => write!(f, "reverse"),
             Token::Keep => write!(f, "keep"),
-            Token::QuestionMark => write!(f, "?"),
+            Token::Max => write!(f, "max"),
+            Token::Min => write!(f, "min"),
         }
     }
 }
@@ -177,6 +181,15 @@ where
             }
             'k' if self.next_if_followed_by("eep") => Ok(Token::Keep),
             'f' if self.next_if_followed_by("old") => Ok(Token::Fold),
+            'm' => {
+                if self.next_if_followed_by("ax") {
+                    Ok(Token::Max)
+                } else if self.next_if_followed_by("in") {
+                    Ok(Token::Min)
+                } else {
+                    self.unexpected_character()
+                }
+            }
             'o' if self.next_if_followed_by("ver") => Ok(Token::Over),
             'r' => {
                 if self.next_if_followed_by("e") {
