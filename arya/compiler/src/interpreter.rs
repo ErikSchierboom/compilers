@@ -1,9 +1,10 @@
-use crate::array::{Array, Shape};
+use crate::array::{Array, ArrayError, Shape};
 use crate::location::{Span, Spanned};
 use crate::parser::{parse, Modifier, ParseError, ParseResult, Primitive, Word};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
+use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Sub};
 
 #[derive(Debug)]
 pub enum RuntimeError {
@@ -14,6 +15,14 @@ pub enum RuntimeError {
     ExpectedLogicalArray,
     CannotNotCharacter,
     KeepRequiresNumericArray,
+}
+
+impl From<ArrayError> for RuntimeError {
+    fn from(value: ArrayError) -> Self {
+        match value {
+            ArrayError::IncompatibleShapes => RuntimeError::IncompatibleArrayShapes
+        }
+    }
 }
 
 impl Display for RuntimeError {
@@ -64,69 +73,39 @@ impl Display for Value {
 }
 
 macro_rules! dyadic_operation_env {
-    ($name:ident, $operation:tt) => {
+    ($name:ident, $numbers_operation:expr) => {
         impl Value {
             fn $name(a: Value, b: Value, env: &Environment) -> InterpretResult<Value> {
                 match (a, b) {
                     (Value::Numbers(array_a), Value::Numbers(array_b)) => {
-                        let mapped_array = if array_a.shape.is_scalar() {
-                            let scalar = array_a.values.first().unwrap();
-                            let mapped_values = array_b.values.iter().map(|&b| scalar.$operation(b) as i64).collect();
-                            Array::new(array_b.shape.clone(), mapped_values)
-                        } else if array_b.shape.is_scalar() {
-                            let scalar = array_b.values.first().unwrap();
-                            let mapped_values = array_a.values.iter().map(|&a| (a $operation *scalar) as i64).collect();
-                            Array::new(array_a.shape.clone(), mapped_values)
-                        } else if array_a.shape == array_b.shape {
-                            let mapped_values = array_a.values.iter().zip(&array_b.values).map(|(&a, &b)| (a $operation b) as i64).collect();
-                            Array::new(array_a.shape.clone(), mapped_values)
-                        } else {
-                            return Err(env.make_error(RuntimeError::IncompatibleArrayShapes))
-                        };
-
-                        Ok(Value::Numbers(mapped_array))
-                    },
-                    _ => {
-                        todo!()
-                        // let mapped_array = if array_a.shape.is_scalar() {
-                        //     let scalar = array_a.values.first().unwrap();
-                        //     let mapped_values = array_b.values.iter().map(|&b| (*scalar $operation b) as i64).collect();
-                        //     Array::new(array_b.shape.clone(), mapped_values)
-                        // } else if array_b.shape.is_scalar() {
-                        //     let scalar = array_b.values.first().unwrap();
-                        //     let mapped_values = array_a.values.iter().map(|&a| (a $operation *scalar) as i64).collect();
-                        //     Array::new(array_a.shape.clone(), mapped_values)
-                        // } else if array_a.shape == array_b.shape {
-                        //     let mapped_values = array_a.values.iter().zip(&array_b.values).map(|(&a, &b)| (a $operation b) as i64).collect();
-                        //     Array::new(array_a.shape.clone(), mapped_values)
-                        // } else {
-                        //     return Err(env.make_error(RuntimeError::IncompatibleArrayShapes))
-                        // };
-                        //
-                        // Ok(Value::Numbers(mapped_array))
+                        Array::dyadic_op_mut(array_a, array_b, $numbers_operation)
+                            .map(Value::Numbers)
+                            .map_err(|err| env.spanned(RuntimeError::from(err)))
                     }
+                    _ => todo!()
                 }
             }
         }
     };
 }
 
-// dyadic_operation_env!(add, +);
-// dyadic_operation_env!(subtract, -);
-// dyadic_operation_env!(multiply, *);
-// dyadic_operation_env!(divide, /);
-// dyadic_operation_env!(xor, ^);
-// dyadic_operation_env!(and, &);
-// dyadic_operation_env!(or, |);
-// TODO:
-// dyadic_operation_env!(equal, ==);
-// dyadic_operation_env!(not_equal, !=);
-// dyadic_operation_env!(greater, >);
-// dyadic_operation_env!(greater_equal, >=);
-// dyadic_operation_env!(less, <);
-// dyadic_operation_env!(less_equal, <=);
+dyadic_operation_env!(add, |&a, &b| a.add(b));
+dyadic_operation_env!(subtract, |&a, &b| a.sub(b));
+dyadic_operation_env!(multiply, |&a, &b| a.mul(b));
+dyadic_operation_env!(divide, |&a, &b| a.div(b));
+dyadic_operation_env!(xor, |&a, &b| a.bitxor(b));
+dyadic_operation_env!(and, |&a, &b| a.bitand(b));
+dyadic_operation_env!(or, |&a, &b| a.bitor(b));
+dyadic_operation_env!(max, |&a, &b| a.max(b));
+dyadic_operation_env!(min, |&a, &b| a.min(b));
+dyadic_operation_env!(equal, |&a, &b| (a == b) as i64);
+dyadic_operation_env!(not_equal, |&a, &b| (a != b) as i64);
+dyadic_operation_env!(greater, |&a, &b| (a > b) as i64);
+dyadic_operation_env!(greater_equal, |&a, &b| (a >= b) as i64);
+dyadic_operation_env!(less, |&a, &b| (a < b) as i64);
+dyadic_operation_env!(less_equal, |&a, &b| (a <= b) as i64);
 
-macro_rules! monadic_method {
+macro_rules! monadic_operation {
     ($name:ident, $operation:ident) => {
         impl Value {
             fn $name(value: Value) -> InterpretResult<Value> {
@@ -145,7 +124,7 @@ macro_rules! monadic_method {
     };
 }
 
-monadic_method!(reverse, reverse);
+monadic_operation!(reverse, reverse);
 
 impl Value {
     fn not(value: Value, env: &Environment) -> InterpretResult<Value> {
@@ -327,52 +306,51 @@ pub trait Executable {
 impl Executable for Primitive {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
-            // Primitive::Add => env.execute_dyadic_env(Value::add)?,
-            // Primitive::Subtract => env.execute_dyadic_env(Value::subtract)?,
-            // Primitive::Multiply => env.execute_dyadic_env(Value::multiply)?,
-            // Primitive::Divide => env.execute_dyadic_env(Value::divide)?,
-            // Primitive::Xor => env.execute_dyadic_env(Value::xor)?,
-            // Primitive::And => env.execute_dyadic_env(Value::and)?,
-            // Primitive::Or => env.execute_dyadic_env(Value::or)?,
-            // Primitive::Not => env.execute_monadic_env(Value::not)?,
-            // Primitive::Negate => env.execute_monadic(Value::negate)?,
-            // Primitive::Equal => env.execute_dyadic_env(Value::equal)?,
-            // Primitive::NotEqual => env.execute_dyadic_env(Value::not_equal)?,
-            // Primitive::Greater => env.execute_dyadic_env(Value::greater)?,
-            // Primitive::GreaterEqual => env.execute_dyadic_env(Value::greater_equal)?,
-            // Primitive::Less => env.execute_dyadic_env(Value::less)?,
-            // Primitive::LessEqual => env.execute_dyadic_env(Value::less_equal)?,
-            // Primitive::Dup => {
-            //     let a = env.pop()?;
-            //     env.push(a.clone());
-            //     env.push(a);
-            // }
-            // Primitive::Drop => {
-            //     env.pop()?;
-            // }
-            // Primitive::Swap => {
-            //     let a = env.pop()?;
-            //     let b = env.pop()?;
-            //     env.push(a);
-            //     env.push(b);
-            // }
-            // Primitive::Over => {
-            //     let a = env.pop()?;
-            //     let b = env.pop()?;
-            //     env.push(b.clone());
-            //     env.push(a);
-            //     env.push(b);
-            // }
-            // Primitive::Reverse => env.execute_monadic(Value::reverse)?,
-            // Primitive::Keep => env.execute_dyadic_env(Value::keep)?,
-            // Primitive::Stack => {
-            //     for value in env.stack.iter().rev() {
-            //         println!("{value}")
-            //     }
-            // }
-            // Primitive::Max => todo!(),
-            // Primitive::Min => todo!(),
-            _ => todo!()
+            Primitive::Add => env.execute_dyadic_env(Value::add)?,
+            Primitive::Subtract => env.execute_dyadic_env(Value::subtract)?,
+            Primitive::Multiply => env.execute_dyadic_env(Value::multiply)?,
+            Primitive::Divide => env.execute_dyadic_env(Value::divide)?,
+            Primitive::Xor => env.execute_dyadic_env(Value::xor)?,
+            Primitive::And => env.execute_dyadic_env(Value::and)?,
+            Primitive::Or => env.execute_dyadic_env(Value::or)?,
+            Primitive::Not => env.execute_monadic_env(Value::not)?,
+            Primitive::Negate => env.execute_monadic(Value::negate)?,
+            Primitive::Equal => env.execute_dyadic_env(Value::equal)?,
+            Primitive::NotEqual => env.execute_dyadic_env(Value::not_equal)?,
+            Primitive::Greater => env.execute_dyadic_env(Value::greater)?,
+            Primitive::GreaterEqual => env.execute_dyadic_env(Value::greater_equal)?,
+            Primitive::Less => env.execute_dyadic_env(Value::less)?,
+            Primitive::LessEqual => env.execute_dyadic_env(Value::less_equal)?,
+            Primitive::Dup => {
+                let a = env.pop()?;
+                env.push(a.clone());
+                env.push(a);
+            }
+            Primitive::Drop => {
+                env.pop()?;
+            }
+            Primitive::Swap => {
+                let a = env.pop()?;
+                let b = env.pop()?;
+                env.push(a);
+                env.push(b);
+            }
+            Primitive::Over => {
+                let a = env.pop()?;
+                let b = env.pop()?;
+                env.push(b.clone());
+                env.push(a);
+                env.push(b);
+            }
+            Primitive::Reverse => env.execute_monadic(Value::reverse)?,
+            Primitive::Keep => env.execute_dyadic_env(Value::keep)?,
+            Primitive::Stack => {
+                for value in env.stack.iter().rev() {
+                    println!("{value}")
+                }
+            }
+            Primitive::Max => env.execute_dyadic_env(Value::max)?,
+            Primitive::Min => env.execute_dyadic_env(Value::min)?,
         }
 
         Ok(())
