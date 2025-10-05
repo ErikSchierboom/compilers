@@ -311,6 +311,8 @@ where
                 Token::Reverse => Primitive::Reverse,
                 Token::Keep => Primitive::Keep,
                 Token::QuestionMark => Primitive::Stack,
+                Token::Max => Primitive::Max,
+                Token::Min => Primitive::Min,
                 _ => return None
             };
 
