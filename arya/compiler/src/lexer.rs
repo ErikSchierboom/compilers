@@ -66,6 +66,7 @@ pub enum Token {
     Reverse,
     Max,
     Min,
+    Range,
 }
 
 impl Display for Token {
@@ -105,6 +106,7 @@ impl Display for Token {
             Token::Keep => write!(f, "keep"),
             Token::Max => write!(f, "max"),
             Token::Min => write!(f, "min"),
+            Token::Range => write!(f, "range"),
         }
     }
 }
@@ -192,7 +194,10 @@ where
             }
             'o' if self.next_if_followed_by("ver") => Ok(Token::Over),
             'r' => {
-                if self.next_if_followed_by("e") {
+                if self.next_if_followed_by("ange") {
+                    Ok(Token::Range)
+                }
+                else if self.next_if_followed_by("e") {
                     if self.next_if_followed_by("duce") {
                         Ok(Token::Reduce)
                     } else if self.next_if_followed_by("verse") {

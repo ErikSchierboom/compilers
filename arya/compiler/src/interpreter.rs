@@ -15,6 +15,7 @@ pub enum RuntimeError {
     ExpectedLogicalArray,
     CannotNotCharacter,
     KeepRequiresNumericArray,
+    ExpectedScalarNumber,
 }
 
 impl From<ArrayError> for RuntimeError {
@@ -35,6 +36,7 @@ impl Display for RuntimeError {
             RuntimeError::ExpectedLogicalArray => write!(f, "Expected logical array"),
             RuntimeError::CannotNotCharacter => write!(f, "Cannot not character"),
             RuntimeError::KeepRequiresNumericArray => write!(f, "Keep requires logical array"),
+            RuntimeError::ExpectedScalarNumber => write!(f, "Expected scalar number")
         }
     }
 }
@@ -136,6 +138,23 @@ impl Value {
                 Ok(Value::Numbers(array))
             }
             Value::Chars(_) => Err(env.make_error(RuntimeError::CannotNotCharacter))
+        }
+    }
+
+    fn range(value: Value, env: &Environment) -> InterpretResult<Value> {
+        match value {
+            Value::Numbers(mut array) if array.shape.is_scalar() => {
+                let count = array.values.pop().unwrap();
+
+                for i in 0..count {
+                    array.values.push(i)
+                }
+
+                array.shape.prepend_dimension(array.values.len());
+
+                Ok(Value::Numbers(array))
+            }
+            _ => Err(env.make_error(RuntimeError::ExpectedScalarNumber))
         }
     }
 
@@ -351,6 +370,7 @@ impl Executable for Primitive {
             }
             Primitive::Max => env.execute_dyadic_env(Value::max)?,
             Primitive::Min => env.execute_dyadic_env(Value::min)?,
+            Primitive::Range => env.execute_monadic_env(Value::range)?
         }
 
         Ok(())

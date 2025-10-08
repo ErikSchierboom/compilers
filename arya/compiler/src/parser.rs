@@ -183,6 +183,7 @@ primitive!(
     (0, 0, Stack),
     (2, 1, Max),
     (2, 1, Min),
+    (1, 1, Range),
 );
 
 macro_rules! modifier {
@@ -313,6 +314,7 @@ where
                 Token::QuestionMark => Primitive::Stack,
                 Token::Max => Primitive::Max,
                 Token::Min => Primitive::Min,
+                Token::Range => Primitive::Range,
                 _ => return None
             };
 

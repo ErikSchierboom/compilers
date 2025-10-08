@@ -5,7 +5,7 @@ use compiler::parser::parse;
 
 fn main() {
     // let source = "12  [1 8 3] + [[1 2 3] [4 5 6] [8 dup dup]] (-) reduce";
-    let source = "[1 2 3] (min) reduce";
+    let source = "5 range";
     // let source = r#"'a' "hallo daar" [1 2 3]"#;
     // let source = "[1   2]";
     // let error_source = "? 1";
