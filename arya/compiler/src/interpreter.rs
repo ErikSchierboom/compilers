@@ -12,9 +12,9 @@ pub enum RuntimeError {
     EmptyStack,
     IncompatibleArrayShapes,
     CannotReduceEmptyArray,
-    ExpectedLogicalArray,
     CannotNotCharacter,
-    KeepRequiresNumericArray,
+    ExpectedLogicalArray,
+    ExpectedNumericArray,
     ExpectedScalarNumber,
 }
 
@@ -34,9 +34,9 @@ impl Display for RuntimeError {
             RuntimeError::IncompatibleArrayShapes => write!(f, "Incompatible array shapes"),
             RuntimeError::CannotReduceEmptyArray => write!(f, "Cannot reduce empty array"),
             RuntimeError::ExpectedLogicalArray => write!(f, "Expected logical array"),
+            RuntimeError::ExpectedNumericArray => write!(f, "Expected numeric array"),
             RuntimeError::CannotNotCharacter => write!(f, "Cannot not character"),
-            RuntimeError::KeepRequiresNumericArray => write!(f, "Keep requires logical array"),
-            RuntimeError::ExpectedScalarNumber => write!(f, "Expected scalar number")
+            RuntimeError::ExpectedScalarNumber => write!(f, "Expected scalar number"),
         }
     }
 }
@@ -175,6 +175,34 @@ impl Value {
         }
     }
 
+    fn partition(a: Value, b: Value, env: &Environment) -> InterpretResult<Value> {
+        match (a, b) {
+            (Value::Numbers(mask), Value::Numbers(mut arr)) => {
+                let mut num_rows = 0;
+                let mut row_len: Option<usize> = None;
+                let mut position = mask.values.len() - 1;
+
+                for row in mask.values.split(|&v| v != 0).rev() {
+                    if *row_len.get_or_insert(row.len()) != row.len() {
+                        return Err(env.make_error(RuntimeError::IncompatibleArrayShapes));
+                    }
+
+                    position -= row.len();
+                    num_rows += 1;
+                    arr.values.remove(position);
+                }
+
+                // Fixup the dimensions
+                arr.shape.replace_dimension(0, row_len.unwrap());
+                arr.shape.prepend_dimension(num_rows);
+
+                Ok(Value::Numbers(arr))
+            }
+            // TODO: partition chars
+            _ => Err(env.make_error(RuntimeError::ExpectedNumericArray))
+        }
+    }
+
     fn keep(a: Value, b: Value, env: &Environment) -> InterpretResult<Value> {
         match (a, b) {
             (Value::Numbers(array_a), Value::Numbers(array_b)) => {
@@ -221,7 +249,7 @@ impl Value {
                     Ok(Value::Chars(Array::new(new_shape, new_rows.into_iter().flatten().collect())))
                 }
             }
-            _ => Err(env.make_error(RuntimeError::KeepRequiresNumericArray))
+            _ => Err(env.make_error(RuntimeError::ExpectedNumericArray))
         }
     }
 }
@@ -370,7 +398,8 @@ impl Executable for Primitive {
             }
             Primitive::Max => env.execute_dyadic_env(Value::max)?,
             Primitive::Min => env.execute_dyadic_env(Value::min)?,
-            Primitive::Range => env.execute_monadic_env(Value::range)?
+            Primitive::Range => env.execute_monadic_env(Value::range)?,
+            Primitive::Partition => env.execute_dyadic_env(Value::partition)?,
         }
 
         Ok(())

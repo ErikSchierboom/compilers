@@ -67,6 +67,7 @@ pub enum Token {
     Max,
     Min,
     Range,
+    Partition,
 }
 
 impl Display for Token {
@@ -107,6 +108,7 @@ impl Display for Token {
             Token::Max => write!(f, "max"),
             Token::Min => write!(f, "min"),
             Token::Range => write!(f, "range"),
+            Token::Partition => write!(f, "partition"),
         }
     }
 }
@@ -193,11 +195,11 @@ where
                 }
             }
             'o' if self.next_if_followed_by("ver") => Ok(Token::Over),
+            'p' if self.next_if_followed_by("artition") => Ok(Token::Partition),
             'r' => {
                 if self.next_if_followed_by("ange") {
                     Ok(Token::Range)
-                }
-                else if self.next_if_followed_by("e") {
+                } else if self.next_if_followed_by("e") {
                     if self.next_if_followed_by("duce") {
                         Ok(Token::Reduce)
                     } else if self.next_if_followed_by("verse") {

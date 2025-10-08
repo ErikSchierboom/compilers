@@ -184,6 +184,7 @@ primitive!(
     (2, 1, Max),
     (2, 1, Min),
     (1, 1, Range),
+    (2, 1, Partition),
 );
 
 macro_rules! modifier {
@@ -315,6 +316,7 @@ where
                 Token::Max => Primitive::Max,
                 Token::Min => Primitive::Min,
                 Token::Range => Primitive::Range,
+                Token::Partition => Primitive::Partition,
                 _ => return None
             };
 
