@@ -1,8 +1,10 @@
 #[derive(Debug)]
 pub enum Token {
+    Pipe,
     Int(i64),
     String(String),
-    Identifier(String),
+    Function(String),
+    Binding(String),
 }
 
 #[derive(Debug)]
@@ -32,7 +34,12 @@ impl<'a> Lexer<'a> {
     fn lex(mut self) -> (Vec<Token>, Vec<LexError>) {
         while let Some(char) = self.current() {
             match char {
+                '|' => {
+                    self.emit_token(Token::Pipe);
+                    self.advance()
+                }
                 '"' => self.string(),
+                '$' => self.binding(),
                 c if c.is_ascii_digit() => self.integer(),
                 c if c.is_ascii_alphabetic() => self.identifier(),
                 c if c.is_ascii_whitespace() => self.whitespace(),
@@ -46,12 +53,21 @@ impl<'a> Lexer<'a> {
         (self.tokens, self.errors)
     }
 
-    fn identifier(&mut self) {
+    fn binding(&mut self) {
         let start = self.position;
-        self.advance_while(char::is_ascii_alphabetic);
+        self.advance();
+        self.advance_while(|&c| c.is_ascii_alphanumeric() || c == '_');
 
         let str = self.source[start..self.position].to_string();
-        self.emit_token(Token::Identifier(str))
+        self.emit_token(Token::Binding(str))
+    }
+
+    fn identifier(&mut self) {
+        let start = self.position;
+        self.advance_while(|&c| c.is_ascii_alphanumeric() || c == '_');
+
+        let str = self.source[start..self.position].to_string();
+        self.emit_token(Token::Function(str))
     }
 
     fn string(&mut self) {
