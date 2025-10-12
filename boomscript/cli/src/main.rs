@@ -2,7 +2,7 @@ use compiler::lexer::tokenize;
 
 fn main() {
     const SOURCE: &str = r#"
-        "input.txt" | read_file | $file 
+        lines(read_file("input.txt"))
     "#;
 
     println!("{:?}", tokenize(SOURCE))

@@ -1,10 +1,12 @@
+use std::str::Chars;
+
 #[derive(Debug)]
 pub enum Token {
-    Pipe,
+    LeftParen,
+    RightParen,
     Int(i64),
     String(String),
-    Function(String),
-    Binding(String),
+    Identifier(String),
 }
 
 #[derive(Debug)]
@@ -14,17 +16,22 @@ pub enum LexError {
 
 struct Lexer<'a> {
     source: &'a str,
-    chars: Vec<char>,
+    chars: Chars<'a>,
+    char: Option<char>,
+    position: usize,
     tokens: Vec<Token>,
     errors: Vec<LexError>,
-    position: usize,
 }
 
 impl<'a> Lexer<'a> {
     fn new(source: &'a str) -> Self {
+        let mut chars = source.chars();
+        let char = chars.next();
+
         Self {
             source,
-            chars: source.chars().collect(),
+            chars,
+            char,
             tokens: Vec::new(),
             errors: Vec::new(),
             position: 0,
@@ -32,14 +39,17 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex(mut self) -> (Vec<Token>, Vec<LexError>) {
-        while let Some(char) = self.current() {
+        while let Some(char) = self.char {
             match char {
-                '|' => {
-                    self.emit_token(Token::Pipe);
+                '(' => {
+                    self.emit_token(Token::LeftParen);
+                    self.advance()
+                }
+                ')' => {
+                    self.emit_token(Token::RightParen);
                     self.advance()
                 }
                 '"' => self.string(),
-                '$' => self.binding(),
                 c if c.is_ascii_digit() => self.integer(),
                 c if c.is_ascii_alphabetic() => self.identifier(),
                 c if c.is_ascii_whitespace() => self.whitespace(),
@@ -53,39 +63,30 @@ impl<'a> Lexer<'a> {
         (self.tokens, self.errors)
     }
 
-    fn binding(&mut self) {
-        let start = self.position;
-        self.advance();
-        self.advance_while(|&c| c.is_ascii_alphanumeric() || c == '_');
-
-        let str = self.source[start..self.position].to_string();
-        self.emit_token(Token::Binding(str))
-    }
-
     fn identifier(&mut self) {
-        let start = self.position;
+        let start_pos = self.position;
         self.advance_while(|&c| c.is_ascii_alphanumeric() || c == '_');
 
-        let str = self.source[start..self.position].to_string();
-        self.emit_token(Token::Function(str))
+        let str = self.source[start_pos..self.position].to_string();
+        self.emit_token(Token::Identifier(str))
     }
 
     fn string(&mut self) {
-        let start = self.position;
+        let start_pos = self.position;
         self.advance();
         self.advance_while(|&c| c != '"');
         self.advance();
 
-        let str = self.source[start..self.position].to_string();
+        let str = self.source[start_pos..self.position].to_string();
         self.emit_token(Token::String(str))
     }
 
     fn integer(&mut self) {
-        let start = self.position;
+        let start_pos = self.position;
         self.advance();
         self.advance_while(char::is_ascii_digit);
 
-        let int: i64 = self.source[start..self.position].parse().unwrap();
+        let int: i64 = self.source[start_pos..self.position].parse().unwrap();
         self.emit_token(Token::Int(int))
     }
 
@@ -101,24 +102,25 @@ impl<'a> Lexer<'a> {
         self.advance_while(char::is_ascii_whitespace);
     }
 
-    fn current(&self) -> Option<&char> {
-        self.chars.get(self.position)
-    }
-
     fn advance(&mut self) {
+        self.char = self.chars.next();
         self.position += 1
     }
 
     fn advance_if(&mut self, condition: impl FnOnce(&char) -> bool) {
-        if self.current().map(condition).unwrap_or_default() {
+        if self.char_matches(condition) {
             self.advance()
         }
     }
 
     fn advance_while(&mut self, condition: impl Fn(&char) -> bool) {
-        while self.current().map(&condition).unwrap_or_default() {
+        while self.char_matches(&condition) {
             self.advance()
         }
+    }
+
+    fn char_matches(&self, condition: impl FnOnce(&char) -> bool) -> bool {
+        self.char.as_ref().map(condition).unwrap_or_default()
     }
 }
 
