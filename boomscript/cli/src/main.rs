@@ -1,9 +1,9 @@
-use compiler::lexer::tokenize;
+use compiler::lexer::{tokenize, LexTokenResult};
 
 fn main() {
     const SOURCE: &str = r#"
-        lines(read_file("input.txt"))
+        "input.txt" read-file lines -1
     "#;
 
-    println!("{:?}", tokenize(SOURCE))
+    println!("{:?}", tokenize(SOURCE).collect::<Vec<LexTokenResult>>())
 }
