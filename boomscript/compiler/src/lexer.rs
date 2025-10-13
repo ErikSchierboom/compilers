@@ -248,10 +248,6 @@ where
         self.next_if_char_matches(|c| *c == expected).is_some()
     }
 
-    fn next_if_followed_by(&mut self, expected: &str) -> bool {
-        expected.chars().all(|c| self.next_if_char_is(c))
-    }
-
     fn next_while_chars_match(&mut self, predicate: impl Fn(&char) -> bool) {
         while self.next_if_char_matches(&predicate).is_some() {}
     }
