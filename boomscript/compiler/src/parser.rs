@@ -30,6 +30,7 @@ impl Error for ParseError {}
 pub enum Word {
     Char(char),
     Integer(i64),
+    Float(f64),
     String(String),
     Invocation(String),
     Array(Vec<Spanned<Word>>),
@@ -40,6 +41,7 @@ impl Display for Word {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Word::Integer(i) => write!(f, "{i}"),
+            Word::Float(float) => write!(f, "{float}"),
             Word::Char(c) => write!(f, "'{c}'"),
             Word::String(str) => write!(f, "\"{str}\""),
             Word::Invocation(identifier) => write!(f, "{identifier}()"),
@@ -81,7 +83,7 @@ where
     }
 
     fn parse_word(&mut self) -> Option<ParseResult> {
-        self.parse_integer()
+        self.parse_number()
             .or_else(|| self.parse_string())
             .or_else(|| self.parse_char())
             .or_else(|| self.parse_invocation())
@@ -90,10 +92,19 @@ where
             .or_else(|| self.parse_error())
     }
 
-    fn parse_integer(&mut self) -> Option<ParseResult> {
+    fn parse_number(&mut self) -> Option<ParseResult> {
         self.expect_token(&Token::Number)?;
-        let int = i64::from_str(self.lexeme(&self.span)).unwrap();
-        let word = self.spanned(Word::Integer(int));
+        let src = self.lexeme(&self.span);
+        
+        let word = if src.contains('.') {
+            let float = f64::from_str(src).unwrap();
+            Word::Float(float)
+        } else {
+            let int = i64::from_str(src).unwrap();
+            Word::Integer(int)
+        };
+
+        let word = self.spanned(word);
         self.advance();
         Some(Ok(word))
     }
@@ -151,7 +162,7 @@ where
     }
 
     fn parse_array_element(&mut self) -> Option<ParseResult> {
-        self.parse_integer()
+        self.parse_number()
             .or_else(|| self.parse_string())
             .or_else(|| self.parse_array())
     }
@@ -177,7 +188,7 @@ where
     }
 
     fn parse_lambda_word(&mut self) -> Option<ParseResult> {
-        self.parse_integer()
+        self.parse_number()
             .or_else(|| self.parse_char())
             .or_else(|| self.parse_string())
             .or_else(|| self.parse_invocation())
