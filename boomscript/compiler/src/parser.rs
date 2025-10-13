@@ -11,6 +11,7 @@ pub enum ParseError {
     Lex(LexError),
     UnexpectedToken(Token),
     ExpectedToken(Token),
+    UnknownIdentifier(String),
 }
 
 impl Display for ParseError {
@@ -19,12 +20,12 @@ impl Display for ParseError {
             Lex(lex_error) => write!(f, "{lex_error}"),
             ParseError::UnexpectedToken(token) => write!(f, "Unexpected token: {token}"),
             ParseError::ExpectedToken(token) => write!(f, "Expected token: {token}"),
+            ParseError::UnknownIdentifier(identifier) => write!(f, "Unknown identifier: {identifier}"),
         }
     }
 }
 
 impl Error for ParseError {}
-
 
 #[derive(Clone, Debug)]
 pub enum Word {
@@ -32,9 +33,18 @@ pub enum Word {
     Integer(i64),
     Float(f64),
     String(String),
-    Invocation(String),
+    Invocation(Builtin),
     Array(Vec<Spanned<Word>>),
     Lambda(Vec<Spanned<Word>>),
+}
+
+#[derive(Clone, Debug)]
+pub enum Builtin {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Lines,
 }
 
 impl Display for Word {
@@ -56,6 +66,18 @@ impl Display for Word {
                 write!(f, "]")
             }
             Word::Lambda(_) => write!(f, "lambda")
+        }
+    }
+}
+
+impl Display for Builtin {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Builtin::Add => write!(f, "+"),
+            Builtin::Sub => write!(f, "-"),
+            Builtin::Mul => write!(f, "*"),
+            Builtin::Div => write!(f, "/"),
+            Builtin::Lines => write!(f, "lines")
         }
     }
 }
@@ -95,7 +117,7 @@ where
     fn parse_number(&mut self) -> Option<ParseResult> {
         self.expect_token(&Token::Number)?;
         let src = self.lexeme(&self.span);
-        
+
         let word = if src.contains('.') {
             let float = f64::from_str(src).unwrap();
             Word::Float(float)
@@ -134,9 +156,40 @@ where
     }
 
     fn parse_invocation(&mut self) -> Option<ParseResult> {
+        self.parse_operator()
+            .or_else(|| self.parse_identifier())
+    }
+
+    fn parse_operator(&mut self) -> Option<ParseResult> {
+        if let Some(Ok(spanned_token)) = &self.token {
+            let builtin = match spanned_token.value {
+                Token::Plus => Builtin::Add,
+                Token::Minus => Builtin::Sub,
+                Token::Star => Builtin::Mul,
+                Token::Slash => Builtin::Div,
+                _ => return None
+            };
+            let word = self.spanned(Word::Invocation(builtin));
+            self.advance();
+            Some(Ok(word))
+        } else {
+            None
+        }
+    }
+
+    fn parse_identifier(&mut self) -> Option<ParseResult> {
         self.expect_token(&Token::Identifier)?;
-        let identifier = String::from(self.lexeme(&self.span));
-        let word = self.spanned(Word::Invocation(identifier));
+
+        let builtin = match self.lexeme(&self.span) {
+            "lines" => Builtin::Lines,
+            identifier => {
+                let error = self.spanned(ParseError::UnknownIdentifier(identifier.to_string()));
+                self.advance();
+                return Some(Err(error));
+            }
+        };
+
+        let word = self.spanned(Word::Invocation(builtin));
         self.advance();
         Some(Ok(word))
     }
@@ -222,8 +275,16 @@ where
         self.update_span();
     }
 
-    fn expect_token(&mut self, expected: &Token) -> Option<()> {
+    fn token_matches(&mut self, expected: &Token) -> bool {
         if let Some(Ok(spanned_token)) = &self.token && &spanned_token.value == expected {
+            true
+        } else {
+            false
+        }
+    }
+
+    fn expect_token(&mut self, expected: &Token) -> Option<()> {
+        if self.token_matches(expected) {
             Some(())
         } else {
             None
