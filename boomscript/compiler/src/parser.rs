@@ -80,17 +80,17 @@ where
         parser
     }
 
-    fn try_parse_word(&mut self) -> Option<ParseResult> {
-        self.try_parse_integer()
-            .or_else(|| self.try_parse_string())
-            .or_else(|| self.try_parse_char())
-            .or_else(|| self.try_parse_invocation())
-            .or_else(|| self.try_parse_lambda())
-            .or_else(|| self.try_parse_array())
-            .or_else(|| self.try_parse_error())
+    fn parse_word(&mut self) -> Option<ParseResult> {
+        self.parse_integer()
+            .or_else(|| self.parse_string())
+            .or_else(|| self.parse_char())
+            .or_else(|| self.parse_invocation())
+            .or_else(|| self.parse_lambda())
+            .or_else(|| self.parse_array())
+            .or_else(|| self.parse_error())
     }
 
-    fn try_parse_integer(&mut self) -> Option<ParseResult> {
+    fn parse_integer(&mut self) -> Option<ParseResult> {
         self.expect_token(&Token::Number)?;
         let int = i64::from_str(self.lexeme(&self.span)).unwrap();
         let word = self.spanned(Word::Integer(int));
@@ -98,7 +98,7 @@ where
         Some(Ok(word))
     }
 
-    fn try_parse_string(&mut self) -> Option<ParseResult> {
+    fn parse_string(&mut self) -> Option<ParseResult> {
         self.expect_token(&Token::String)?;
         let mut str = String::from(self.lexeme(&self.span));
         str.pop();
@@ -108,7 +108,7 @@ where
         Some(Ok(word))
     }
 
-    fn try_parse_char(&mut self) -> Option<ParseResult> {
+    fn parse_char(&mut self) -> Option<ParseResult> {
         self.expect_token(&Token::Char)?;
         let c = match self.lexeme(&self.span) {
             r"'\n'" => '\n',
@@ -122,7 +122,7 @@ where
         Some(Ok(word))
     }
 
-    fn try_parse_invocation(&mut self) -> Option<ParseResult> {
+    fn parse_invocation(&mut self) -> Option<ParseResult> {
         self.expect_token(&Token::Identifier)?;
         let identifier = String::from(self.lexeme(&self.span));
         let word = self.spanned(Word::Invocation(identifier));
@@ -130,11 +130,11 @@ where
         Some(Ok(word))
     }
 
-    fn try_parse_array(&mut self) -> Option<ParseResult> {
+    fn parse_array(&mut self) -> Option<ParseResult> {
         self.expect_token(&Token::OpenBracket)?;
         self.advance();
 
-        match self.parse_series(Self::try_parse_array_element) {
+        match self.parse_series(Self::parse_array_element) {
             Ok(elements) => {
                 let result = match self.expect_token(&Token::CloseBracket) {
                     None => Err(self.spanned(ParseError::ExpectedToken(Token::CloseBracket))),
@@ -150,17 +150,17 @@ where
         }
     }
 
-    fn try_parse_array_element(&mut self) -> Option<ParseResult> {
-        self.try_parse_integer()
-            .or_else(|| self.try_parse_string())
-            .or_else(|| self.try_parse_array())
+    fn parse_array_element(&mut self) -> Option<ParseResult> {
+        self.parse_integer()
+            .or_else(|| self.parse_string())
+            .or_else(|| self.parse_array())
     }
 
-    fn try_parse_lambda(&mut self) -> Option<ParseResult> {
+    fn parse_lambda(&mut self) -> Option<ParseResult> {
         self.expect_token(&Token::OpenParenthesis)?;
         self.advance();
 
-        match self.parse_series(Self::try_parse_lambda_word) {
+        match self.parse_series(Self::parse_lambda_word) {
             Ok(words) => {
                 let result = match self.expect_token(&Token::CloseParenthesis) {
                     None => Err(self.spanned(ParseError::ExpectedToken(Token::CloseParenthesis))),
@@ -176,15 +176,15 @@ where
         }
     }
 
-    fn try_parse_lambda_word(&mut self) -> Option<ParseResult> {
-        self.try_parse_integer()
-            .or_else(|| self.try_parse_char())
-            .or_else(|| self.try_parse_string())
-            .or_else(|| self.try_parse_invocation())
-            .or_else(|| self.try_parse_array())
+    fn parse_lambda_word(&mut self) -> Option<ParseResult> {
+        self.parse_integer()
+            .or_else(|| self.parse_char())
+            .or_else(|| self.parse_string())
+            .or_else(|| self.parse_invocation())
+            .or_else(|| self.parse_array())
     }
 
-    fn try_parse_error(&mut self) -> Option<ParseResult> {
+    fn parse_error(&mut self) -> Option<ParseResult> {
         match &self.token {
             Some(Ok(token)) => Some(Err(self.spanned(ParseError::UnexpectedToken(token.value.clone())))),
             Some(Err(lex_error)) => Some(Err(self.spanned(Lex(lex_error.value.clone())))),
@@ -243,7 +243,7 @@ where
     type Item = ParseResult<Spanned<Word>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.try_parse_word()
+        self.parse_word()
     }
 }
 
