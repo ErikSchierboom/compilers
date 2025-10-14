@@ -33,18 +33,57 @@ pub enum Word {
     Integer(i64),
     Float(f64),
     String(String),
-    Invocation(Builtin),
+    Identifier(String),
+    Niladic(NiladicOperation),
+    Monadic(MonadicOperation),
+    Dyadic(DyadicOperation),
     Array(Vec<Spanned<Word>>),
     Lambda(Vec<Spanned<Word>>),
 }
 
 #[derive(Clone, Debug)]
-pub enum Builtin {
+pub enum NiladicOperation {
+    Stack
+}
+
+impl Display for NiladicOperation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NiladicOperation::Stack => write!(f, "?")
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum MonadicOperation {
+    Not
+}
+
+impl Display for MonadicOperation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MonadicOperation::Not => write!(f, "!")
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum DyadicOperation {
     Add,
     Sub,
     Mul,
     Div,
-    Lines,
+}
+
+impl Display for DyadicOperation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DyadicOperation::Add => write!(f, "+"),
+            DyadicOperation::Sub => write!(f, "-"),
+            DyadicOperation::Mul => write!(f, "*"),
+            DyadicOperation::Div => write!(f, "/"),
+        }
+    }
 }
 
 impl Display for Word {
@@ -54,7 +93,7 @@ impl Display for Word {
             Word::Float(float) => write!(f, "{float}"),
             Word::Char(c) => write!(f, "'{c}'"),
             Word::String(str) => write!(f, "\"{str}\""),
-            Word::Invocation(identifier) => write!(f, "{identifier}()"),
+            Word::Identifier(identifier) => write!(f, "{identifier}()"),
             Word::Array(array) => {
                 write!(f, "[")?;
                 for (i, element) in array.iter().enumerate() {
@@ -65,19 +104,10 @@ impl Display for Word {
                 }
                 write!(f, "]")
             }
-            Word::Lambda(_) => write!(f, "lambda")
-        }
-    }
-}
-
-impl Display for Builtin {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Builtin::Add => write!(f, "+"),
-            Builtin::Sub => write!(f, "-"),
-            Builtin::Mul => write!(f, "*"),
-            Builtin::Div => write!(f, "/"),
-            Builtin::Lines => write!(f, "lines")
+            Word::Lambda(_) => write!(f, "lambda"),
+            Word::Niladic(operation) => write!(f, "{operation}"),
+            Word::Monadic(operation) => write!(f, "{operation}"),
+            Word::Dyadic(operation) => write!(f, "{operation}"),
         }
     }
 }
@@ -108,7 +138,8 @@ where
         self.parse_number()
             .or_else(|| self.parse_string())
             .or_else(|| self.parse_char())
-            .or_else(|| self.parse_invocation())
+            .or_else(|| self.parse_operator())
+            .or_else(|| self.parse_identifier())
             .or_else(|| self.parse_lambda())
             .or_else(|| self.parse_array())
             .or_else(|| self.parse_error())
@@ -154,22 +185,18 @@ where
         self.advance();
         Some(Ok(word))
     }
-
-    fn parse_invocation(&mut self) -> Option<ParseResult> {
-        self.parse_operator()
-            .or_else(|| self.parse_identifier())
-    }
-
     fn parse_operator(&mut self) -> Option<ParseResult> {
         if let Some(Ok(spanned_token)) = &self.token {
-            let builtin = match spanned_token.value {
-                Token::Plus => Builtin::Add,
-                Token::Minus => Builtin::Sub,
-                Token::Star => Builtin::Mul,
-                Token::Slash => Builtin::Div,
+            let word = match spanned_token.value {
+                Token::Plus => Word::Dyadic(DyadicOperation::Add),
+                Token::Minus => Word::Dyadic(DyadicOperation::Sub),
+                Token::Star => Word::Dyadic(DyadicOperation::Mul),
+                Token::Slash => Word::Dyadic(DyadicOperation::Div),
+                Token::Bang => Word::Monadic(MonadicOperation::Not),
+                Token::QuestionMark => Word::Niladic(NiladicOperation::Stack),
                 _ => return None
             };
-            let word = self.spanned(Word::Invocation(builtin));
+            let word = self.spanned(word);
             self.advance();
             Some(Ok(word))
         } else {
@@ -180,16 +207,8 @@ where
     fn parse_identifier(&mut self) -> Option<ParseResult> {
         self.expect_token(&Token::Identifier)?;
 
-        let builtin = match self.lexeme(&self.span) {
-            "lines" => Builtin::Lines,
-            identifier => {
-                let error = self.spanned(ParseError::UnknownIdentifier(identifier.to_string()));
-                self.advance();
-                return Some(Err(error));
-            }
-        };
-
-        let word = self.spanned(Word::Invocation(builtin));
+        let identifier = self.lexeme(&self.span).to_string();
+        let word = self.spanned(Word::Identifier(identifier));
         self.advance();
         Some(Ok(word))
     }
@@ -244,7 +263,8 @@ where
         self.parse_number()
             .or_else(|| self.parse_char())
             .or_else(|| self.parse_string())
-            .or_else(|| self.parse_invocation())
+            .or_else(|| self.parse_operator())
+            .or_else(|| self.parse_identifier())
             .or_else(|| self.parse_array())
     }
 

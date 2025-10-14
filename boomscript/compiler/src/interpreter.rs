@@ -118,9 +118,12 @@ impl Executable for Word {
                 env.push(Value::Array(values))
             }
             Word::Lambda(words) => env.push(Value::Lambda(words.iter().map(|word| word.value.clone()).collect())),
-            Word::Invocation(identifier) => {
+            Word::Identifier(identifier) => {
                 todo!()
             }
+            Word::Niladic(_) => todo!(),
+            Word::Monadic(_) => todo!(),
+            Word::Dyadic(_) => todo!()
         }
 
         Ok(())
