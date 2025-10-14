@@ -1,5 +1,5 @@
-use crate::location::{Span, Spanned};
-use crate::parser::{parse, ParseError, ParseResult, Word};
+use crate::array::{Array, Shape};
+use crate::parser::{parse, DyadicOperation, MonadicOperation, NiladicOperation, ParseError, ParseResult, Word};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
@@ -8,6 +8,9 @@ use std::iter::Peekable;
 pub enum RuntimeError {
     Parse(ParseError),
     EmptyStack,
+    UnsupportedArgumentTypes, // TODO: store allows argument types
+    IncompatibleArrayShapes,
+    IncompatibleArrayValues,
 }
 
 impl Display for RuntimeError {
@@ -15,6 +18,9 @@ impl Display for RuntimeError {
         match self {
             RuntimeError::Parse(parse_error) => write!(f, "{parse_error}"),
             RuntimeError::EmptyStack => write!(f, "Missing argument"),
+            RuntimeError::UnsupportedArgumentTypes => write!(f, "Unsupported argument types"),
+            RuntimeError::IncompatibleArrayShapes => write!(f, "Incompatible array shapes"),
+            RuntimeError::IncompatibleArrayValues => write!(f, "Incompatible array values"),
         }
     }
 }
@@ -28,7 +34,44 @@ pub enum Value {
     Integer(i64),
     String(String),
     Lambda(Vec<Word>),
-    Array(Vec<Value>),
+    Array(Array<Value>),
+}
+
+impl Value {
+    pub fn as_char(&self) -> Option<&char> {
+        match self {
+            Value::Char(c) => Some(c),
+            _ => None
+        }
+    }
+
+    pub fn as_float(&self) -> Option<&f64> {
+        match self {
+            Value::Float(float) => Some(float),
+            _ => None
+        }
+    }
+
+    pub fn as_integer(&self) -> Option<&i64> {
+        match self {
+            Value::Integer(int) => Some(int),
+            _ => None
+        }
+    }
+
+    pub fn as_string(&self) -> Option<&String> {
+        match self {
+            Value::String(string) => Some(string),
+            _ => None
+        }
+    }
+
+    fn shape(&self) -> Shape {
+        match self {
+            Value::Array(array) => array.shape.clone(),
+            _ => Shape::empty()
+        }
+    }
 }
 
 impl Display for Value {
@@ -39,19 +82,18 @@ impl Display for Value {
             Value::Integer(int) => write!(f, "{int}"),
             Value::String(string) => write!(f, "{string}"),
             Value::Lambda(words) => write!(f, "({})", words.iter().map(|w| format!("{w}")).collect::<Vec<_>>().join(" ")),
-            Value::Array(elements) => write!(f, "({})", elements.iter().map(|w| format!("{w}")).collect::<Vec<_>>().join(" ")),
+            Value::Array(array) => write!(f, "{array}"),
         }
     }
 }
 
 pub struct Environment {
     stack: Vec<Value>,
-    span: Span,
 }
 
 impl Environment {
     fn new() -> Self {
-        Self { stack: Vec::new(), span: Span::EMPTY }
+        Self { stack: Vec::new() }
     }
 
     fn push(&mut self, value: Value) {
@@ -59,14 +101,14 @@ impl Environment {
     }
 
     fn pop(&mut self) -> InterpretResult<Value> {
-        self.stack.pop().ok_or_else(|| self.spanned(RuntimeError::EmptyStack))
+        self.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)
     }
 
     fn pop_n(&mut self, n: usize) -> InterpretResult<Vec<Value>> {
         if n <= self.stack.len() {
             Ok(self.stack.drain((self.stack.len() - n)..).collect())
         } else {
-            Err(self.spanned(RuntimeError::EmptyStack))
+            Err(RuntimeError::EmptyStack)
         }
     }
 
@@ -88,14 +130,6 @@ impl Environment {
         self.push(f(a, b, self)?);
         Ok(())
     }
-
-    fn spanned<V>(&self, value: V) -> Spanned<V> {
-        Spanned::new(value, self.span.clone())
-    }
-
-    fn make_error(&self, error: RuntimeError) -> Spanned<RuntimeError> {
-        self.spanned(error)
-    }
 }
 
 pub trait Executable {
@@ -109,28 +143,98 @@ impl Executable for Word {
             Word::Float(float) => env.push(Value::Float(float.clone())),
             Word::String(string) => env.push(Value::String(string.clone())),
             Word::Char(c) => env.push(Value::Char(c.clone())),
-            Word::Array(array) => {
-                for element in array {
-                    element.value.execute(env)?;
-                }
+            Word::Array(elements) => {
+                let array = if elements.is_empty() {
+                    Array::empty()
+                } else {
+                    for element in elements {
+                        element.value.execute(env)?;
+                    }
 
-                let values = env.pop_n(array.len())?;
-                env.push(Value::Array(values))
+                    let values = env.pop_n(elements.len())?;
+
+                    for window in values.windows(2) {
+                        if window[0].shape() != window[1].shape() {
+                            return Err(RuntimeError::IncompatibleArrayShapes);
+                        }
+                        
+                        // TODO: ensure array is homogenous
+                    }
+
+                    let shape = values.first().unwrap().shape();
+                    Array::new(shape, values)
+                };
+
+                env.push(Value::Array(array))
             }
             Word::Lambda(words) => env.push(Value::Lambda(words.iter().map(|word| word.value.clone()).collect())),
             Word::Identifier(identifier) => {
                 todo!()
             }
-            Word::Niladic(_) => todo!(),
-            Word::Monadic(_) => todo!(),
-            Word::Dyadic(_) => todo!()
+            Word::Niladic(niladic_op) => niladic_op.execute(env)?,
+            Word::Monadic(monadic_op) => monadic_op.execute(env)?,
+            Word::Dyadic(dyadic_op) => dyadic_op.execute(env)?,
         }
 
         Ok(())
     }
 }
 
-pub type InterpretResult<T = ()> = Result<T, Spanned<RuntimeError>>;
+impl Executable for NiladicOperation {
+    fn execute(&self, env: &mut Environment) -> InterpretResult {
+        match self {
+            NiladicOperation::Stack => {
+                for value in env.stack.iter().rev() {
+                    println!("{value}")
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+impl Executable for MonadicOperation {
+    fn execute(&self, env: &mut Environment) -> InterpretResult {
+        match self {
+            MonadicOperation::Not => {
+                todo!("implement not")
+            }
+        }
+    }
+}
+
+impl Executable for DyadicOperation {
+    fn execute(&self, env: &mut Environment) -> InterpretResult {
+        match self {
+            DyadicOperation::Add => {
+                let right_val = env.pop()?;
+                let left_val = env.pop()?;
+
+                match (left_val, right_val) {
+                    (Value::Integer(left), Value::Integer(right)) => {
+                        env.push(Value::Integer(left + right));
+                        Ok(())
+                    }
+                    (Value::Integer(left), Value::Array(mut right)) => {
+                        for right_element in right.elements.iter_mut() {
+                            let right_int = right_element.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            *right_element = Value::Integer(left + right_int)
+                        }
+
+                        env.push(Value::Array(right));
+                        Ok(())
+                    }
+                    _ => Err(RuntimeError::UnsupportedArgumentTypes)
+                }
+            }
+            DyadicOperation::Sub => todo!(),
+            DyadicOperation::Mul => todo!(),
+            DyadicOperation::Div => todo!()
+        }
+    }
+}
+
+pub type InterpretResult<T = ()> = Result<T, RuntimeError>;
 
 pub struct Interpreter<T>
 where
@@ -152,10 +256,7 @@ where
         while let Some(parse_result) = self.next() {
             match parse_result {
                 Ok(word) => word.value.execute(&mut self.environment)?,
-                Err(error) => {
-                    self.environment.span = error.span.clone();
-                    return Err(self.environment.make_error(RuntimeError::Parse(error.value)));
-                }
+                Err(error) => return Err(RuntimeError::Parse(error.value))
             }
         }
 

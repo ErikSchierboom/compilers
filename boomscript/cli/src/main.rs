@@ -1,9 +1,9 @@
-use compiler::parser::{parse, ParseResult};
+use compiler::interpreter::interpret;
 
 fn main() {
     const SOURCE: &str = r#"
-        -1 6 * ! ? "input.txt" lines
+        -1 [6 4 5] + ?
     "#;
 
-    println!("{:?}", parse(SOURCE).collect::<Vec<ParseResult>>())
+    println!("{:?}", interpret(SOURCE))
 }
