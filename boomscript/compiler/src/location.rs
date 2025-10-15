@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Span {
     pub position: u32,
     pub length: u16,
@@ -25,7 +25,7 @@ impl Span {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Spanned<T> {
     pub value: T,
     pub span: Span,

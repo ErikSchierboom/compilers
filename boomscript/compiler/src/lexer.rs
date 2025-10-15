@@ -3,7 +3,7 @@ use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum LexError {
     UnexpectedEndOfFile,
     UnexpectedCharacter(char),
@@ -26,7 +26,8 @@ impl Error for LexError {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
-    Number,
+    Integer,
+    Float,
     Char,
     String,
     Identifier,
@@ -55,7 +56,8 @@ pub enum Token {
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Token::Number => write!(f, "number"),
+            Token::Integer => write!(f, "integer"),
+            Token::Float => write!(f, "float"),
             Token::String => write!(f, "string"),
             Token::Identifier => write!(f, "identifier"),
             Token::Char => write!(f, "char"),
@@ -163,12 +165,9 @@ where
     fn lex_char(&mut self) -> Result<Token, LexError> {
         self.next_char();
         self.lex_character()?;
+        self.expect_character('\'')?;
 
-        if self.next_if_char_is('\'') {
-            Ok(Token::Char)
-        } else {
-            Err(LexError::ExpectedCharacter('\''))
-        }
+        Ok(Token::Char)
     }
 
     fn lex_identifier(&mut self) -> Result<Token, LexError> {
@@ -194,7 +193,13 @@ where
 
     fn lex_number(&mut self) -> Result<Token, LexError> {
         self.next_while_chars_match(char::is_ascii_digit);
-        Ok(Token::Number)
+
+        if self.next_if_char_is('.') {
+            self.next_while_chars_match(char::is_ascii_digit);
+            Ok(Token::Float)
+        } else {
+            Ok(Token::Integer)
+        }
     }
 
     fn lex_character(&mut self) -> Result<(), LexError> {
@@ -203,7 +208,7 @@ where
                 self.next_char();
                 if let Some(c) = self.char {
                     match c {
-                        'n' | 'r' | 't' | '\\' => {
+                        'n' | 'r' | 't' | '\\' | '\'' => {
                             self.next_char();
                             Ok(())
                         }
@@ -225,6 +230,14 @@ where
         match self.char {
             None => Err(LexError::UnexpectedEndOfFile),
             Some(c) => Err(LexError::UnexpectedCharacter(c))
+        }
+    }
+
+    fn expect_character(&mut self, expected: char) -> Result<(), LexError> {
+        if self.char == Some(expected) {
+            Ok(())
+        } else {
+            Err(LexError::ExpectedCharacter('\''))
         }
     }
 
@@ -276,4 +289,72 @@ where
 pub fn tokenize(source: &str) -> impl Iterator<Item=LexTokenResult> + '_ {
     let chars_with_index = source.char_indices().map(|(i, c)| (i as u32, c));
     Lexer::new(chars_with_index)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // String,
+    // Identifier,
+
+    #[test]
+    fn test_tokenize_numbers() {
+        let mut tokens = tokenize("1 23 -456 5.134 6.");
+
+        assert_eq!(Some(Ok(Spanned::new(Token::Integer, Span::new(0, 1)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Integer, Span::new(2, 2)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Integer, Span::new(5, 4)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Float, Span::new(10, 5)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Float, Span::new(16, 2)))), tokens.next());
+        assert_eq!(None, tokens.next())
+    }
+
+    #[test]
+    fn test_tokenize_characters() {
+        let mut tokens = tokenize("'a' '8' '\\n' '\\''");
+
+        assert_eq!(Some(Ok(Spanned::new(Token::Char, Span::new(0, 3)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Char, Span::new(4, 3)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Char, Span::new(8, 4)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Char, Span::new(13, 4)))), tokens.next());
+        assert_eq!(None, tokens.next())
+    }
+
+    #[test]
+    fn test_tokenize_delimiters() {
+        let mut tokens = tokenize("[()]");
+
+        assert_eq!(Some(Ok(Spanned::new(Token::OpenBracket, Span::new(0, 1)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::OpenParenthesis, Span::new(1, 1)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::CloseParenthesis, Span::new(2, 1)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::CloseBracket, Span::new(3, 1)))), tokens.next());
+        assert_eq!(None, tokens.next())
+    }
+
+    #[test]
+    fn test_tokenize_symbols() {
+        let mut tokens = tokenize("+-*/=!!=>>=<<=?");
+
+        assert_eq!(Some(Ok(Spanned::new(Token::Plus, Span::new(0, 1)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Minus, Span::new(1, 1)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Star, Span::new(2, 1)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Slash, Span::new(3, 1)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Equal, Span::new(4, 1)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Bang, Span::new(5, 1)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::BangEqual, Span::new(6, 2)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Greater, Span::new(8, 1)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::GreaterEqual, Span::new(9, 2)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Less, Span::new(11, 1)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::LessEqual, Span::new(12, 2)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::QuestionMark, Span::new(14, 1)))), tokens.next());
+        assert_eq!(None, tokens.next())
+    }
+
+    #[test]
+    fn test_tokenize_ignores_whitespace() {
+        let mut tokens = tokenize(" \r\n\t \n");
+
+        assert_eq!(None, tokens.next())
+    }
 }

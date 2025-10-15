@@ -146,7 +146,7 @@ where
     }
 
     fn parse_number(&mut self) -> Option<ParseResult> {
-        self.expect_token(&Token::Number)?;
+        self.expect_token(&Token::Integer)?;
         let src = self.lexeme(&self.span);
 
         let word = if src.contains('.') {
