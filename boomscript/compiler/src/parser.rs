@@ -235,6 +235,7 @@ where
 
     fn parse_array_element(&mut self) -> Option<ParseResult> {
         self.parse_number()
+            .or_else(|| self.parse_char())
             .or_else(|| self.parse_string())
             .or_else(|| self.parse_array())
     }

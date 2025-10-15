@@ -27,6 +27,15 @@ impl Display for RuntimeError {
 
 impl Error for RuntimeError {}
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum ArrayValueKind {
+    Empty,
+    Char,
+    Float,
+    Integer,
+    String,
+}
+
 #[derive(Debug, Clone)]
 pub enum Value {
     Char(char),
@@ -34,7 +43,7 @@ pub enum Value {
     Integer(i64),
     String(String),
     Lambda(Vec<Word>),
-    Array(Array<Value>),
+    Array(ArrayValueKind, Array<Value>),
 }
 
 impl Value {
@@ -68,8 +77,25 @@ impl Value {
 
     fn shape(&self) -> Shape {
         match self {
-            Value::Array(array) => array.shape.clone(),
+            Value::Array(_, array) => array.shape.clone(),
             _ => Shape::empty()
+        }
+    }
+
+    fn array_value_kind(&self) -> ArrayValueKind {
+        match self {
+            Value::Array(array_value_kind, array) => {
+                if array.elements.is_empty() {
+                    ArrayValueKind::Empty
+                } else {
+                    array_value_kind.clone()
+                }
+            }
+            Value::Char(_) => ArrayValueKind::Char,
+            Value::Float(_) => ArrayValueKind::Float,
+            Value::Integer(_) => ArrayValueKind::Integer,
+            Value::String(_) => ArrayValueKind::String,
+            Value::Lambda(_) => panic!("Arrays should not contain lambdas")
         }
     }
 }
@@ -82,7 +108,7 @@ impl Display for Value {
             Value::Integer(int) => write!(f, "{int}"),
             Value::String(string) => write!(f, "{string}"),
             Value::Lambda(words) => write!(f, "({})", words.iter().map(|w| format!("{w}")).collect::<Vec<_>>().join(" ")),
-            Value::Array(array) => write!(f, "{array}"),
+            Value::Array(_, array) => write!(f, "{array}"),
         }
     }
 }
@@ -144,8 +170,8 @@ impl Executable for Word {
             Word::String(string) => env.push(Value::String(string.clone())),
             Word::Char(c) => env.push(Value::Char(c.clone())),
             Word::Array(elements) => {
-                let array = if elements.is_empty() {
-                    Array::empty()
+                let (array_value_kind, array) = if elements.is_empty() {
+                    (ArrayValueKind::Empty, Array::empty())
                 } else {
                     for element in elements {
                         element.value.execute(env)?;
@@ -157,15 +183,23 @@ impl Executable for Word {
                         if window[0].shape() != window[1].shape() {
                             return Err(RuntimeError::IncompatibleArrayShapes);
                         }
-                        
-                        // TODO: ensure array is homogenous
+
+                        if window[0].array_value_kind() != window[1].array_value_kind() {
+                            return Err(RuntimeError::IncompatibleArrayShapes);
+                        }
                     }
 
-                    let shape = values.first().unwrap().shape();
-                    Array::new(shape, values)
+                    let mut shape = values.first().unwrap().shape();
+                    shape.prepend_dimension(values.len());
+
+                    let array_value_kind = values.iter().find_map(|value| {
+                        let kind = value.array_value_kind();
+                        if kind == ArrayValueKind::Empty { None } else { Some(kind) }
+                    });
+                    (array_value_kind.unwrap_or(ArrayValueKind::Empty), Array::new(shape, values))
                 };
 
-                env.push(Value::Array(array))
+                env.push(Value::Array(array_value_kind, array))
             }
             Word::Lambda(words) => env.push(Value::Lambda(words.iter().map(|word| word.value.clone()).collect())),
             Word::Identifier(identifier) => {
@@ -215,13 +249,13 @@ impl Executable for DyadicOperation {
                         env.push(Value::Integer(left + right));
                         Ok(())
                     }
-                    (Value::Integer(left), Value::Array(mut right)) => {
+                    (Value::Integer(left), Value::Array(ArrayValueKind::Integer, mut right)) => {
                         for right_element in right.elements.iter_mut() {
                             let right_int = right_element.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
                             *right_element = Value::Integer(left + right_int)
                         }
 
-                        env.push(Value::Array(right));
+                        env.push(Value::Array(ArrayValueKind::Integer, right));
                         Ok(())
                     }
                     _ => Err(RuntimeError::UnsupportedArgumentTypes)
