@@ -164,6 +164,7 @@ where
 
     fn parse_string(&mut self) -> Option<ParseResult> {
         self.expect_token(&Token::String)?;
+        // TODO: consider escapes
         let mut str = String::from(self.lexeme(&self.span));
         str.pop();
         str.remove(0);

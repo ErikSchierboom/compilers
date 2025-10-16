@@ -187,7 +187,7 @@ where
     fn lex_string(&mut self) -> Result<Token, LexError> {
         self.advance();
 
-        while !self.next_char_is('"') {
+        while let Some(c) = self.char && c != '"' {
             self.lex_character()?;
         }
 
@@ -324,11 +324,10 @@ mod tests {
 
     #[test]
     fn test_tokenize_strings() {
-        // let mut tokens = tokenize(r#""foo" "a b c" "\n""#);
-        let mut tokens = tokenize(r#""\n""#);
+        let mut tokens = tokenize(r#""foo" "a b c" "\n""#);
 
-        // assert_eq!(Some(Ok(Spanned::new(Token::String, Span::new(0, 5)))), tokens.next());
-        // assert_eq!(Some(Ok(Spanned::new(Token::String, Span::new(6, 7)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::String, Span::new(0, 5)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::String, Span::new(6, 7)))), tokens.next());
         assert_eq!(Some(Ok(Spanned::new(Token::String, Span::new(14, 4)))), tokens.next());
         assert_eq!(None, tokens.next())
     }
