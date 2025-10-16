@@ -172,7 +172,7 @@ where
 
     fn lex_identifier(&mut self) -> Result<Token, LexError> {
         self.next_char();
-        self.next_while_chars_match(|&c| c.is_ascii_alphanumeric() || c == '?' || c == '-');
+        self.next_while_chars_match(|&c| c.is_ascii_alphanumeric() || matches!(c, '?' | '-' | '_'));
 
         Ok(Token::Identifier)
     }
@@ -180,13 +180,11 @@ where
     fn lex_string(&mut self) -> Result<Token, LexError> {
         self.next_char();
 
-        loop {
-            if self.next_if_char_is('"') {
-                break;
-            } else {
-                self.lex_character()?;
-            }
+        while !self.next_if_char_is('"') {
+            self.lex_character()?;
         }
+
+        self.expect_character('"')?;
 
         Ok(Token::String)
     }
@@ -242,10 +240,18 @@ where
     }
 
     fn next_char(&mut self) -> Option<(u32, char)> {
-        let (position, char) = self.chars.next()?;
-        self.position = position;
-        self.char = Some(char);
-        Some((position, char))
+        match self.chars.next() {
+            Some((position, char)) => {
+                self.position = position;
+                self.char = Some(char);
+                Some((position, char))
+            }
+            None => {
+                self.position += 1;
+                self.char = None;
+                None
+            }
+        }
     }
 
     fn next_if_char_matches(&mut self, predicate: impl FnOnce(&char) -> bool) -> Option<char> {
@@ -295,8 +301,19 @@ pub fn tokenize(source: &str) -> impl Iterator<Item=LexTokenResult> + '_ {
 mod tests {
     use super::*;
 
-    // String,
-    // Identifier,
+    #[test]
+    fn test_tokenize_identifiers() {
+        let mut tokens = tokenize("foo Bar BAZ read-file read_file1 empty? x2");
+
+        assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(0, 3)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(4, 3)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(8, 3)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(12, 9)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(22, 10)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(33, 6)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(40, 2)))), tokens.next());
+        assert_eq!(None, tokens.next())
+    }
 
     #[test]
     fn test_tokenize_numbers() {
@@ -307,6 +324,15 @@ mod tests {
         assert_eq!(Some(Ok(Spanned::new(Token::Integer, Span::new(5, 4)))), tokens.next());
         assert_eq!(Some(Ok(Spanned::new(Token::Float, Span::new(10, 5)))), tokens.next());
         assert_eq!(Some(Ok(Spanned::new(Token::Float, Span::new(16, 2)))), tokens.next());
+        assert_eq!(None, tokens.next())
+    }
+
+    #[test]
+    fn test_tokenize_strings() {
+        let mut tokens = tokenize(r#""foo" "a b c""#);
+
+        assert_eq!(Some(Ok(Spanned::new(Token::String, Span::new(0, 5)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::String, Span::new(6, 7)))), tokens.next());
         assert_eq!(None, tokens.next())
     }
 
