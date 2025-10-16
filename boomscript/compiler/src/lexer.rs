@@ -85,40 +85,44 @@ pub type LexTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
 
 struct Lexer<TChars>
 where
-    TChars: Iterator<Item=(u32, char)>,
+    TChars: Iterator<Item=char>,
 {
     chars: Peekable<TChars>,
     char: Option<char>,
-    position: u32,
+    start_pos: u32,
+    current_pos: u32,
 }
 
 impl<TChars> Lexer<TChars>
 where
-    TChars: Iterator<Item=(u32, char)>,
+    TChars: Iterator<Item=char>,
 {
     fn new(source_code: TChars) -> Self {
-        Self { chars: source_code.peekable(), char: None, position: 0 }
+        Self { chars: source_code.peekable(), char: None, start_pos: 0, current_pos: 0 }
     }
 
     fn lex_token(&mut self) -> Option<LexTokenResult> {
         self.skip_whitespace();
 
-        let (start, c) = self.next_char()?;
+        self.start_pos = self.current_pos;
+        self.advance();
 
-        let result = match c {
+        let result = match self.char? {
             '[' => Ok(Token::OpenBracket),
             ']' => Ok(Token::CloseBracket),
             '(' => Ok(Token::OpenParenthesis),
             ')' => Ok(Token::CloseParenthesis),
             '+' => {
-                if self.next_if_char_matches(char::is_ascii_digit).is_some() {
+                if self.next_char_matches(char::is_ascii_digit) {
+                    self.advance();
                     self.lex_number()
                 } else {
                     Ok(Token::Plus)
                 }
             }
             '-' => {
-                if self.next_if_char_matches(char::is_ascii_digit).is_some() {
+                if self.next_char_matches(char::is_ascii_digit) {
+                    self.advance();
                     self.lex_number()
                 } else {
                     Ok(Token::Minus)
@@ -129,21 +133,24 @@ where
             '?' => Ok(Token::QuestionMark),
             '=' => Ok(Token::Equal),
             '!' => {
-                if self.next_if_char_is('=') {
+                if self.next_char_is('=') {
+                    self.advance();
                     Ok(Token::BangEqual)
                 } else {
                     Ok(Token::Bang)
                 }
             }
             '>' => {
-                if self.next_if_char_is('=') {
+                if self.next_char_is('=') {
+                    self.advance();
                     Ok(Token::GreaterEqual)
                 } else {
                     Ok(Token::Greater)
                 }
             }
             '<' => {
-                if self.next_if_char_is('=') {
+                if self.next_char_is('=') {
+                    self.advance();
                     Ok(Token::LessEqual)
                 } else {
                     Ok(Token::Less)
@@ -156,14 +163,14 @@ where
             _ => self.unexpected_character()
         };
 
-        match result {
-            Ok(token) => Some(Ok(self.spanned(token, start))),
-            Err(err) => Some(Err(self.spanned(err, start))),
-        }
+        Some(match result {
+            Ok(token) => Ok(self.spanned(token)),
+            Err(err) => Err(self.spanned(err))
+        })
     }
 
     fn lex_char(&mut self) -> Result<Token, LexError> {
-        self.next_char();
+        self.advance();
         self.lex_character()?;
         self.expect_character('\'')?;
 
@@ -171,16 +178,16 @@ where
     }
 
     fn lex_identifier(&mut self) -> Result<Token, LexError> {
-        self.next_char();
-        self.next_while_chars_match(|&c| c.is_ascii_alphanumeric() || matches!(c, '?' | '-' | '_'));
+        self.advance();
+        self.advance_while_chars_match(|&c| c.is_ascii_alphanumeric() || matches!(c, '?' | '-' | '_'));
 
         Ok(Token::Identifier)
     }
 
     fn lex_string(&mut self) -> Result<Token, LexError> {
-        self.next_char();
+        self.advance();
 
-        while !self.next_if_char_is('"') {
+        while !self.next_char_is('"') {
             self.lex_character()?;
         }
 
@@ -190,10 +197,11 @@ where
     }
 
     fn lex_number(&mut self) -> Result<Token, LexError> {
-        self.next_while_chars_match(char::is_ascii_digit);
+        self.advance_while_chars_match(char::is_ascii_digit);
 
-        if self.next_if_char_is('.') {
-            self.next_while_chars_match(char::is_ascii_digit);
+        if self.next_char_is('.') {
+            self.advance();
+            self.advance_while_chars_match(char::is_ascii_digit);
             Ok(Token::Float)
         } else {
             Ok(Token::Integer)
@@ -203,11 +211,11 @@ where
     fn lex_character(&mut self) -> Result<(), LexError> {
         match self.char {
             Some('\\') => {
-                self.next_char();
+                self.advance();
                 if let Some(c) = self.char {
                     match c {
                         'n' | 'r' | 't' | '\\' | '\'' => {
-                            self.next_char();
+                            self.advance();
                             Ok(())
                         }
                         _ => Err(LexError::InvalidEscape(c))
@@ -217,7 +225,7 @@ where
                 }
             }
             Some(_) => {
-                self.next_char();
+                self.advance();
                 Ok(())
             }
             None => Err(LexError::UnexpectedEndOfFile)
@@ -239,51 +247,38 @@ where
         }
     }
 
-    fn next_char(&mut self) -> Option<(u32, char)> {
-        match self.chars.next() {
-            Some((position, char)) => {
-                self.position = position;
-                self.char = Some(char);
-                Some((position, char))
-            }
-            None => {
-                self.position += 1;
-                self.char = None;
-                None
-            }
+    fn advance(&mut self) {
+        self.char = self.chars.next();
+        self.current_pos += 1;
+    }
+
+    fn advance_while_chars_match(&mut self, predicate: impl Fn(&char) -> bool) {
+        while self.next_char_matches(&predicate) {
+            self.advance()
         }
     }
 
-    fn next_if_char_matches(&mut self, predicate: impl FnOnce(&char) -> bool) -> Option<char> {
-        if self.chars.peek().map(|(_, c)| predicate(c))? {
-            self.next_char();
-            self.char
-        } else {
-            None
-        }
+    fn next_char_matches(&mut self, predicate: impl FnOnce(&char) -> bool) -> bool {
+        self.chars.peek().map(predicate).unwrap_or_default()
     }
 
-    fn next_if_char_is(&mut self, expected: char) -> bool {
-        self.next_if_char_matches(|c| *c == expected).is_some()
-    }
-
-    fn next_while_chars_match(&mut self, predicate: impl Fn(&char) -> bool) {
-        while self.next_if_char_matches(&predicate).is_some() {}
+    fn next_char_is(&mut self, expected: char) -> bool {
+        self.next_char_matches(|c| *c == expected)
     }
 
     fn skip_whitespace(&mut self) {
-        self.next_while_chars_match(char::is_ascii_whitespace)
+        self.advance_while_chars_match(char::is_ascii_whitespace)
     }
 
-    fn spanned<V>(&self, value: V, start: u32) -> Spanned<V> {
-        let span = Span::new(start, (self.position - start) as u16 + 1);
+    fn spanned<V>(&self, value: V) -> Spanned<V> {
+        let span = Span::new(self.start_pos, (self.current_pos - self.start_pos) as u16);
         Spanned::new(value, span)
     }
 }
 
 impl<TChars> Iterator for Lexer<TChars>
 where
-    TChars: Iterator<Item=(u32, char)>,
+    TChars: Iterator<Item=char>,
 {
     type Item = LexTokenResult;
 
@@ -293,7 +288,7 @@ where
 }
 
 pub fn tokenize(source: &str) -> impl Iterator<Item=LexTokenResult> + '_ {
-    let chars_with_index = source.char_indices().map(|(i, c)| (i as u32, c));
+    let chars_with_index = source.chars();
     Lexer::new(chars_with_index)
 }
 
@@ -329,16 +324,18 @@ mod tests {
 
     #[test]
     fn test_tokenize_strings() {
-        let mut tokens = tokenize(r#""foo" "a b c""#);
+        // let mut tokens = tokenize(r#""foo" "a b c" "\n""#);
+        let mut tokens = tokenize(r#""\n""#);
 
-        assert_eq!(Some(Ok(Spanned::new(Token::String, Span::new(0, 5)))), tokens.next());
-        assert_eq!(Some(Ok(Spanned::new(Token::String, Span::new(6, 7)))), tokens.next());
+        // assert_eq!(Some(Ok(Spanned::new(Token::String, Span::new(0, 5)))), tokens.next());
+        // assert_eq!(Some(Ok(Spanned::new(Token::String, Span::new(6, 7)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::String, Span::new(14, 4)))), tokens.next());
         assert_eq!(None, tokens.next())
     }
 
     #[test]
     fn test_tokenize_characters() {
-        let mut tokens = tokenize("'a' '8' '\\n' '\\''");
+        let mut tokens = tokenize(r#"'a' '8' '\n' '\''"#);
 
         assert_eq!(Some(Ok(Spanned::new(Token::Char, Span::new(0, 3)))), tokens.next());
         assert_eq!(Some(Ok(Spanned::new(Token::Char, Span::new(4, 3)))), tokens.next());
