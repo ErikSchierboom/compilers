@@ -454,19 +454,19 @@ mod tests {
         assert_eq!(None, words.next())
     }
 
-    // #[test]
-    // fn test_parse_identifiers() {
-    //     let mut words = parse("foo Bar BAZ read-file read_file1 empty? x2");
-    //
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(0, 3)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(4, 3)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(8, 3)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(12, 9)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(22, 10)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(33, 6)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(40, 2)))), words.next());
-    //     assert_eq!(None, words.next())
-    // }
+    #[test]
+    fn test_parse_identifiers() {
+        let mut words = parse("foo Bar BAZ read-file read_file1 empty? x2");
+
+        assert_eq!(Some(Ok(Spanned::new(Word::Identifier("foo".to_string()), Span::new(0, 3)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Identifier("Bar".to_string()), Span::new(4, 3)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Identifier("BAZ".to_string()), Span::new(8, 3)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Identifier("read-file".to_string()), Span::new(12, 9)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Identifier("read_file1".to_string()), Span::new(22, 10)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Identifier("empty?".to_string()), Span::new(33, 6)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Identifier("x2".to_string()), Span::new(40, 2)))), words.next());
+        assert_eq!(None, words.next())
+    }
 
     //
     // #[test]
