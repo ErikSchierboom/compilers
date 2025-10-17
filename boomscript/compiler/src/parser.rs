@@ -6,7 +6,7 @@ use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 use std::str::FromStr;
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ParseError {
     Lex(LexError),
     UnexpectedToken(Token),
@@ -27,7 +27,7 @@ impl Display for ParseError {
 
 impl Error for ParseError {}
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Word {
     Char(char),
     Integer(i64),
@@ -41,7 +41,7 @@ pub enum Word {
     Lambda(Vec<Spanned<Word>>),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum NiladicOperation {
     Stack
 }
@@ -54,7 +54,7 @@ impl Display for NiladicOperation {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum MonadicOperation {
     Not
 }
@@ -67,7 +67,7 @@ impl Display for MonadicOperation {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum DyadicOperation {
     Add,
     Sub,
@@ -135,7 +135,8 @@ where
     }
 
     fn parse_word(&mut self) -> Option<ParseResult> {
-        self.parse_number()
+        self.parse_integer()
+            .or_else(|| self.parse_float())
             .or_else(|| self.parse_string())
             .or_else(|| self.parse_char())
             .or_else(|| self.parse_operator())
@@ -145,29 +146,49 @@ where
             .or_else(|| self.parse_error())
     }
 
-    fn parse_number(&mut self) -> Option<ParseResult> {
+    fn parse_integer(&mut self) -> Option<ParseResult> {
         self.expect_token(&Token::Integer)?;
         let src = self.lexeme(&self.span);
 
-        let word = if src.contains('.') {
-            let float = f64::from_str(src).unwrap();
-            Word::Float(float)
-        } else {
-            let int = i64::from_str(src).unwrap();
-            Word::Integer(int)
-        };
+        let int = i64::from_str(src).unwrap();
+        let word = self.spanned(Word::Integer(int));
 
-        let word = self.spanned(word);
+        self.advance();
+        Some(Ok(word))
+    }
+
+    fn parse_float(&mut self) -> Option<ParseResult> {
+        self.expect_token(&Token::Float)?;
+        let src = self.lexeme(&self.span);
+
+        let float = f64::from_str(src).unwrap();
+        let word = self.spanned(Word::Float(float));
+
         self.advance();
         Some(Ok(word))
     }
 
     fn parse_string(&mut self) -> Option<ParseResult> {
         self.expect_token(&Token::String)?;
-        // TODO: consider escapes
-        let mut str = String::from(self.lexeme(&self.span));
-        str.pop();
-        str.remove(0);
+
+        let mut str = String::with_capacity(self.span.length as usize);
+        let mut chars = self.lexeme(&self.span)[1..(self.span.length - 1) as usize].chars();
+
+        while let Some(c) = chars.next() {
+            if c == '\\' {
+                match chars.next() {
+                    Some('n') => str.push('\n'),
+                    Some('r') => str.push('\r'),
+                    Some('t') => str.push('\t'),
+                    Some('\\') => str.push('\\'),
+                    Some('\'') => str.push('\''),
+                    _ => panic!("invalid escape sequence")
+                }
+            } else {
+                str.push(c);
+            }
+        }
+
         let word = self.spanned(Word::String(str));
         self.advance();
         Some(Ok(word))
@@ -180,6 +201,7 @@ where
             r"'\r'" => '\r',
             r"'\t'" => '\t',
             r"'\\'" => '\\',
+            r"'\''" => '\'',
             raw_char => raw_char.chars().nth(1).unwrap()
         };
         let word = self.spanned(Word::Char(c));
@@ -235,7 +257,8 @@ where
     }
 
     fn parse_array_element(&mut self) -> Option<ParseResult> {
-        self.parse_number()
+        self.parse_integer()
+            .or_else(|| self.parse_float())
             .or_else(|| self.parse_char())
             .or_else(|| self.parse_string())
             .or_else(|| self.parse_array())
@@ -262,7 +285,8 @@ where
     }
 
     fn parse_lambda_word(&mut self) -> Option<ParseResult> {
-        self.parse_number()
+        self.parse_integer()
+            .or_else(|| self.parse_float())
             .or_else(|| self.parse_char())
             .or_else(|| self.parse_string())
             .or_else(|| self.parse_operator())
@@ -344,4 +368,108 @@ where
 pub fn parse(source: &str) -> impl Iterator<Item=ParseResult<Spanned<Word>>> + '_ {
     let tokens = tokenize(source);
     Parser::new(source, tokens)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // #[test]
+    // fn test_parse_identifiers() {
+    //     let mut words = parse("foo Bar BAZ read-file read_file1 empty? x2");
+    //
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(0, 3)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(4, 3)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(8, 3)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(12, 9)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(22, 10)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(33, 6)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(40, 2)))), words.next());
+    //     assert_eq!(None, words.next())
+    // }
+
+    #[test]
+    fn test_parse_integers() {
+        let mut words = parse("1 23 -456");
+
+        assert_eq!(Some(Ok(Spanned::new(Word::Integer(1), Span::new(0, 1)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Integer(23), Span::new(2, 2)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Integer(-456), Span::new(5, 4)))), words.next());
+        assert_eq!(None, words.next())
+    }
+
+    #[test]
+    fn test_parse_floats() {
+        let mut words = parse("5.134 -6.1 7.");
+
+        assert_eq!(Some(Ok(Spanned::new(Word::Float(5.134), Span::new(0, 5)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Float(-6.1), Span::new(6, 4)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Float(7.0), Span::new(11, 2)))), words.next());
+        assert_eq!(None, words.next())
+    }
+
+    #[test]
+    fn test_parse_strings() {
+        let mut words = parse(r#""foo" "a b c" "\n""#);
+
+        assert_eq!(Some(Ok(Spanned::new(Word::String("foo".to_string()), Span::new(0, 5)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::String("a b c".to_string()), Span::new(6, 7)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::String("\n".to_string()), Span::new(14, 4)))), words.next());
+        assert_eq!(None, words.next())
+    }
+
+    #[test]
+    fn test_parse_characters() {
+        let mut words = parse(r#"'a' '8' '\n' '\''"#);
+
+        assert_eq!(Some(Ok(Spanned::new(Word::Char('a'), Span::new(0, 3)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Char('8'), Span::new(4, 3)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Char('\n'), Span::new(8, 4)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Char('\''), Span::new(13, 4)))), words.next());
+        assert_eq!(None, words.next())
+    }
+    //
+    // #[test]
+    // fn test_parse_delimiters() {
+    //     let mut words = parse("[()]");
+    //
+    //     assert_eq!(Some(Ok(Spanned::new(Token::OpenBracket, Span::new(0, 1)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::OpenParenthesis, Span::new(1, 1)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::CloseParenthesis, Span::new(2, 1)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::CloseBracket, Span::new(3, 1)))), words.next());
+    //     assert_eq!(None, words.next())
+    // }
+    //
+    // #[test]
+    // fn test_parse_symbols() {
+    //     let mut words = parse("+-*/=!!=>>=<<=?");
+    //
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Plus, Span::new(0, 1)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Minus, Span::new(1, 1)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Star, Span::new(2, 1)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Slash, Span::new(3, 1)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Equal, Span::new(4, 1)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Bang, Span::new(5, 1)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::BangEqual, Span::new(6, 2)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Greater, Span::new(8, 1)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::GreaterEqual, Span::new(9, 2)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Less, Span::new(11, 1)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::LessEqual, Span::new(12, 2)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::QuestionMark, Span::new(14, 1)))), words.next());
+    //     assert_eq!(None, words.next())
+    // }
+
+    #[test]
+    fn test_parse_ignores_whitespace() {
+        let mut words = parse(" \r\n\t \n");
+
+        assert_eq!(None, words.next())
+    }
+
+    #[test]
+    fn test_parse_ignores_comments() {
+        let mut words = parse("# first comment \r\n\t # 2nd comment\n#comment 3");
+
+        assert_eq!(None, words.next())
+    }
 }
