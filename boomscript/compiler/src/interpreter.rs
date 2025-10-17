@@ -258,12 +258,21 @@ impl Executable for DyadicOperation {
                         env.push(Value::Array(ArrayValueKind::Integer, right));
                         Ok(())
                     }
+                    // TODO: allow adding floats
+                    // TODO: allow adding chars with ints
                     _ => Err(RuntimeError::UnsupportedArgumentTypes)
                 }
             }
             DyadicOperation::Sub => todo!(),
             DyadicOperation::Mul => todo!(),
-            DyadicOperation::Div => todo!()
+            DyadicOperation::Div => todo!(),
+            DyadicOperation::Equal => todo!(),
+            DyadicOperation::NotEqual => todo!(),
+            DyadicOperation::Greater => todo!(),
+            DyadicOperation::GreaterEqual => todo!(),
+            DyadicOperation::Less => todo!(),
+            DyadicOperation::LessEqual => todo!(),
+            DyadicOperation::Stack => todo!(),
         }
     }
 }

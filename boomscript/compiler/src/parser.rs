@@ -73,6 +73,13 @@ pub enum DyadicOperation {
     Sub,
     Mul,
     Div,
+    Equal,
+    NotEqual,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
+    Stack,
 }
 
 impl Display for DyadicOperation {
@@ -82,6 +89,13 @@ impl Display for DyadicOperation {
             DyadicOperation::Sub => write!(f, "-"),
             DyadicOperation::Mul => write!(f, "*"),
             DyadicOperation::Div => write!(f, "/"),
+            DyadicOperation::Equal => write!(f, "="),
+            DyadicOperation::NotEqual => write!(f, "!="),
+            DyadicOperation::Greater => write!(f, ">"),
+            DyadicOperation::GreaterEqual => write!(f, ">="),
+            DyadicOperation::Less => write!(f, "<"),
+            DyadicOperation::LessEqual => write!(f, "<="),
+            DyadicOperation::Stack => write!(f, "?"),
         }
     }
 }
@@ -215,7 +229,13 @@ where
                 Token::Minus => Word::Dyadic(DyadicOperation::Sub),
                 Token::Star => Word::Dyadic(DyadicOperation::Mul),
                 Token::Slash => Word::Dyadic(DyadicOperation::Div),
+                Token::Equal => Word::Dyadic(DyadicOperation::Equal),
+                Token::BangEqual => Word::Dyadic(DyadicOperation::NotEqual),
                 Token::Bang => Word::Monadic(MonadicOperation::Not),
+                Token::Greater => Word::Dyadic(DyadicOperation::Greater),
+                Token::GreaterEqual => Word::Dyadic(DyadicOperation::GreaterEqual),
+                Token::Less => Word::Dyadic(DyadicOperation::Less),
+                Token::LessEqual => Word::Dyadic(DyadicOperation::LessEqual),
                 Token::QuestionMark => Word::Niladic(NiladicOperation::Stack),
                 _ => return None
             };
@@ -423,15 +443,15 @@ mod tests {
         assert_eq!(Some(Ok(Spanned::new(Word::Dyadic(DyadicOperation::Sub), Span::new(1, 1)))), words.next());
         assert_eq!(Some(Ok(Spanned::new(Word::Dyadic(DyadicOperation::Mul), Span::new(2, 1)))), words.next());
         assert_eq!(Some(Ok(Spanned::new(Word::Dyadic(DyadicOperation::Div), Span::new(3, 1)))), words.next());
-        // assert_eq!(Some(Ok(Spanned::new(Token::Equal, Span::new(4, 1)))), words.next());
-        // assert_eq!(Some(Ok(Spanned::new(Token::Bang, Span::new(5, 1)))), words.next());
-        // assert_eq!(Some(Ok(Spanned::new(Token::BangEqual, Span::new(6, 2)))), words.next());
-        // assert_eq!(Some(Ok(Spanned::new(Token::Greater, Span::new(8, 1)))), words.next());
-        // assert_eq!(Some(Ok(Spanned::new(Token::GreaterEqual, Span::new(9, 2)))), words.next());
-        // assert_eq!(Some(Ok(Spanned::new(Token::Less, Span::new(11, 1)))), words.next());
-        // assert_eq!(Some(Ok(Spanned::new(Token::LessEqual, Span::new(12, 2)))), words.next());
-        // assert_eq!(Some(Ok(Spanned::new(Word::Niladic(NiladicOperation::Stack), Span::new(14, 1)))), words.next());
-        // assert_eq!(None, words.next())
+        assert_eq!(Some(Ok(Spanned::new(Word::Dyadic(DyadicOperation::Equal), Span::new(4, 1)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Monadic(MonadicOperation::Not), Span::new(5, 1)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Dyadic(DyadicOperation::NotEqual), Span::new(6, 2)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Dyadic(DyadicOperation::Greater), Span::new(8, 1)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Dyadic(DyadicOperation::GreaterEqual), Span::new(9, 2)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Dyadic(DyadicOperation::Less), Span::new(11, 1)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Dyadic(DyadicOperation::LessEqual), Span::new(12, 2)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Niladic(NiladicOperation::Stack), Span::new(14, 1)))), words.next());
+        assert_eq!(None, words.next())
     }
 
     // #[test]
