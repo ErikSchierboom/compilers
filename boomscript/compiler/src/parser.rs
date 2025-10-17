@@ -468,17 +468,17 @@ mod tests {
         assert_eq!(None, words.next())
     }
 
-    //
-    // #[test]
-    // fn test_parse_delimiters() {
-    //     let mut words = parse("[()]");
-    //
-    //     assert_eq!(Some(Ok(Spanned::new(Token::OpenBracket, Span::new(0, 1)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::OpenParenthesis, Span::new(1, 1)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::CloseParenthesis, Span::new(2, 1)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::CloseBracket, Span::new(3, 1)))), words.next());
-    //     assert_eq!(None, words.next())
-    // }
+
+    #[test]
+    fn test_parse_arrays() {
+        let mut words = parse("[] [1] [23 55] [[1 2] [3 4]]");
+
+        assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![]), Span::new(0, 2)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![]), Span::new(3, 3)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![]), Span::new(7, 7)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![]), Span::new(15, 13)))), words.next());
+        assert_eq!(None, words.next())
+    }
 
     #[test]
     fn test_parse_ignores_whitespace() {
