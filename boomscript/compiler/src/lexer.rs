@@ -158,6 +158,10 @@ where
             }
             '\'' => self.lex_char(),
             '"' => self.lex_string(),
+            '#' => {
+                self.skip_comment();
+                return self.lex_token()
+            }
             c if c.is_ascii_digit() => self.lex_number(),
             c if c.is_ascii_alphabetic() => self.lex_identifier(),
             _ => self.unexpected_character()
@@ -270,6 +274,11 @@ where
         self.advance_while_chars_match(char::is_ascii_whitespace)
     }
 
+    fn skip_comment(&mut self) {
+        self.advance();
+        self.advance_while_chars_match(|&c| c != '\n')
+    }
+
     fn spanned<V>(&self, value: V) -> Spanned<V> {
         let span = Span::new(self.start_pos, (self.current_pos - self.start_pos) as u16);
         Spanned::new(value, span)
@@ -376,6 +385,13 @@ mod tests {
     #[test]
     fn test_tokenize_ignores_whitespace() {
         let mut tokens = tokenize(" \r\n\t \n");
+
+        assert_eq!(None, tokens.next())
+    }
+
+    #[test]
+    fn test_tokenize_ignores_comments() {
+        let mut tokens = tokenize("# first comment \r\n\t # 2nd comment\n#comment 3");
 
         assert_eq!(None, tokens.next())
     }
