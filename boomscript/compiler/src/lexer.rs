@@ -395,4 +395,6 @@ mod tests {
 
         assert_eq!(None, tokens.next())
     }
+    
+    // TODO: add tests for error conditions 
 }

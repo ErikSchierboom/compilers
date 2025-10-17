@@ -374,20 +374,6 @@ pub fn parse(source: &str) -> impl Iterator<Item=ParseResult<Spanned<Word>>> + '
 mod tests {
     use super::*;
 
-    // #[test]
-    // fn test_parse_identifiers() {
-    //     let mut words = parse("foo Bar BAZ read-file read_file1 empty? x2");
-    //
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(0, 3)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(4, 3)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(8, 3)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(12, 9)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(22, 10)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(33, 6)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(40, 2)))), words.next());
-    //     assert_eq!(None, words.next())
-    // }
-
     #[test]
     fn test_parse_integers() {
         let mut words = parse("1 23 -456");
@@ -428,6 +414,40 @@ mod tests {
         assert_eq!(Some(Ok(Spanned::new(Word::Char('\''), Span::new(13, 4)))), words.next());
         assert_eq!(None, words.next())
     }
+
+    #[test]
+    fn test_parse_operators() {
+        let mut words = parse("+-*/=!!=>>=<<=?");
+
+        assert_eq!(Some(Ok(Spanned::new(Word::Dyadic(DyadicOperation::Add), Span::new(0, 1)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Dyadic(DyadicOperation::Sub), Span::new(1, 1)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Dyadic(DyadicOperation::Mul), Span::new(2, 1)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Dyadic(DyadicOperation::Div), Span::new(3, 1)))), words.next());
+        // assert_eq!(Some(Ok(Spanned::new(Token::Equal, Span::new(4, 1)))), words.next());
+        // assert_eq!(Some(Ok(Spanned::new(Token::Bang, Span::new(5, 1)))), words.next());
+        // assert_eq!(Some(Ok(Spanned::new(Token::BangEqual, Span::new(6, 2)))), words.next());
+        // assert_eq!(Some(Ok(Spanned::new(Token::Greater, Span::new(8, 1)))), words.next());
+        // assert_eq!(Some(Ok(Spanned::new(Token::GreaterEqual, Span::new(9, 2)))), words.next());
+        // assert_eq!(Some(Ok(Spanned::new(Token::Less, Span::new(11, 1)))), words.next());
+        // assert_eq!(Some(Ok(Spanned::new(Token::LessEqual, Span::new(12, 2)))), words.next());
+        // assert_eq!(Some(Ok(Spanned::new(Word::Niladic(NiladicOperation::Stack), Span::new(14, 1)))), words.next());
+        // assert_eq!(None, words.next())
+    }
+
+    // #[test]
+    // fn test_parse_identifiers() {
+    //     let mut words = parse("foo Bar BAZ read-file read_file1 empty? x2");
+    //
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(0, 3)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(4, 3)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(8, 3)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(12, 9)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(22, 10)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(33, 6)))), words.next());
+    //     assert_eq!(Some(Ok(Spanned::new(Token::Identifier, Span::new(40, 2)))), words.next());
+    //     assert_eq!(None, words.next())
+    // }
+
     //
     // #[test]
     // fn test_parse_delimiters() {
@@ -437,25 +457,6 @@ mod tests {
     //     assert_eq!(Some(Ok(Spanned::new(Token::OpenParenthesis, Span::new(1, 1)))), words.next());
     //     assert_eq!(Some(Ok(Spanned::new(Token::CloseParenthesis, Span::new(2, 1)))), words.next());
     //     assert_eq!(Some(Ok(Spanned::new(Token::CloseBracket, Span::new(3, 1)))), words.next());
-    //     assert_eq!(None, words.next())
-    // }
-    //
-    // #[test]
-    // fn test_parse_symbols() {
-    //     let mut words = parse("+-*/=!!=>>=<<=?");
-    //
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Plus, Span::new(0, 1)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Minus, Span::new(1, 1)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Star, Span::new(2, 1)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Slash, Span::new(3, 1)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Equal, Span::new(4, 1)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Bang, Span::new(5, 1)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::BangEqual, Span::new(6, 2)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Greater, Span::new(8, 1)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::GreaterEqual, Span::new(9, 2)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::Less, Span::new(11, 1)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::LessEqual, Span::new(12, 2)))), words.next());
-    //     assert_eq!(Some(Ok(Spanned::new(Token::QuestionMark, Span::new(14, 1)))), words.next());
     //     assert_eq!(None, words.next())
     // }
 
@@ -472,4 +473,6 @@ mod tests {
 
         assert_eq!(None, words.next())
     }
+
+    // TODO: add tests for error conditions
 }
