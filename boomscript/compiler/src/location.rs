@@ -101,30 +101,32 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_merge_spans_with_gap() {
-        let lhs = Span::new(4, 3);
-        let rhs = Span::new(9, 1);
-        let result = lhs.merge(&rhs);
-        assert_eq!(result.position, 4);
-        assert_eq!(result.length, 6);
-    }
-
-    #[test]
-    fn test_valid_merge_of_small_spans() {
+    fn test_merge_adjacent_spans() {
         let lhs = Span::new(0, 1);
         let rhs = Span::new(1, 1);
         let result = lhs.merge(&rhs);
         assert_eq!(result.position, 0);
-        assert_eq!(result.length, 2);
+        assert_eq!(result.length, 2)
     }
 
     #[test]
-    fn test_can_merge_spans_in_flipped_order() {
+    fn test_merge_non_adjacent_spans() {
+        let lhs = Span::new(4, 3);
+        let rhs = Span::new(9, 1);
+        let result = lhs.merge(&rhs);
+        assert_eq!(result.position, 4);
+        assert_eq!(result.length, 6)
+    }
+
+    #[test]
+    fn test_merge_is_order_independent() {
         let lhs = Span::new(2, 3);
         let rhs = Span::new(0, 2);
+
         let result = lhs.merge(&rhs);
-        assert_eq!(result.position, 0);
-        assert_eq!(result.length, 5);
+        let flipped_result = rhs.merge(&lhs);
+
+        assert_eq!(result, flipped_result)
     }
 
     #[test]
@@ -142,6 +144,6 @@ mod tests {
         );
 
         let last_character = Span::new(10, 1);
-        assert_eq!(line_endings.location(&last_character), Location::new(2, 5));
+        assert_eq!(line_endings.location(&last_character), Location::new(2, 5))
     }
 }
