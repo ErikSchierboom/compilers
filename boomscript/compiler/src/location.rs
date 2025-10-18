@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use std::ops::Add;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Span {
@@ -17,10 +18,11 @@ impl Span {
     }
 
     pub fn merge(&self, rhs: &Self) -> Self {
-        assert!(rhs.position >= self.position);
+        let (lhs, rhs) = if self.position <= rhs.position { (self, rhs) } else { (rhs, self) };
+
         Self::new(
-            self.position,
-            (rhs.position - self.position) as u16 + rhs.length,
+            lhs.position,
+            (rhs.position - lhs.position) as u16 + rhs.length,
         )
     }
 }
@@ -99,7 +101,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_valid_merge_of_spans() {
+    fn test_merge_spans_with_gap() {
         let lhs = Span::new(4, 3);
         let rhs = Span::new(9, 1);
         let result = lhs.merge(&rhs);
@@ -108,11 +110,21 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn test_bad_merge_of_spans() {
+    fn test_valid_merge_of_small_spans() {
+        let lhs = Span::new(0, 1);
+        let rhs = Span::new(1, 1);
+        let result = lhs.merge(&rhs);
+        assert_eq!(result.position, 0);
+        assert_eq!(result.length, 2);
+    }
+
+    #[test]
+    fn test_can_merge_spans_in_flipped_order() {
         let lhs = Span::new(2, 3);
         let rhs = Span::new(0, 2);
-        lhs.merge(&rhs);
+        let result = lhs.merge(&rhs);
+        assert_eq!(result.position, 0);
+        assert_eq!(result.length, 5);
     }
 
     #[test]
