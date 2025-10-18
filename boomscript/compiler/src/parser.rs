@@ -258,10 +258,14 @@ where
 
     fn parse_array(&mut self) -> Option<ParseResult> {
         self.expect_token(&Token::OpenBracket)?;
+
+        let start = self.span.clone();
         self.advance();
 
         match self.parse_series(Self::parse_array_element) {
             Ok(elements) => {
+                self.span = self.span.merge(&start);
+
                 let result = match self.expect_token(&Token::CloseBracket) {
                     None => Err(self.spanned(ParseError::ExpectedToken(Token::CloseBracket))),
                     Some(_) => {
@@ -286,10 +290,14 @@ where
 
     fn parse_lambda(&mut self) -> Option<ParseResult> {
         self.expect_token(&Token::OpenParenthesis)?;
+
+        let start = self.span.clone();
         self.advance();
 
         match self.parse_series(Self::parse_lambda_word) {
             Ok(words) => {
+                self.span = self.span.merge(&start);
+
                 let result = match self.expect_token(&Token::CloseParenthesis) {
                     None => Err(self.spanned(ParseError::ExpectedToken(Token::CloseParenthesis))),
                     Some(_) => {
@@ -468,15 +476,14 @@ mod tests {
         assert_eq!(None, words.next())
     }
 
-
     #[test]
     fn test_parse_arrays() {
         let mut words = parse("[] [1] [23 55] [[1 2] [3 4]]");
 
         assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![]), Span::new(0, 2)))), words.next());
-        assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![]), Span::new(3, 3)))), words.next());
-        assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![]), Span::new(7, 7)))), words.next());
-        assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![]), Span::new(15, 13)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![Spanned::new(Word::Integer(1), Span::new(4, 1))]), Span::new(3, 3)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![Spanned::new(Word::Integer(23), Span::new(8, 2)), Spanned::new(Word::Integer(55), Span::new(11, 2))]), Span::new(7, 7)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![Spanned::new(Word::Array(vec![Spanned::new(Word::Integer(1), Span::new(17, 1)), Spanned::new(Word::Integer(2), Span::new(19, 1))]), Span::new(16, 5)), Spanned::new(Word::Array(vec![Spanned::new(Word::Integer(3), Span::new(23, 1)), Spanned::new(Word::Integer(4), Span::new(25, 1))]), Span::new(22, 5))]), Span::new(15, 13)))), words.next());
         assert_eq!(None, words.next())
     }
 

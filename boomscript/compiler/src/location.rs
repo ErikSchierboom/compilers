@@ -1,5 +1,4 @@
 use std::fmt::{Display, Formatter};
-use std::ops::Add;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Span {
