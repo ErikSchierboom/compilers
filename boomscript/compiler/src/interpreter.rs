@@ -311,8 +311,8 @@ impl Executable for DyadicOperation {
                     (Value::Integer(scalar), Value::Array(ArrayValueKind::Char, mut array)) |
                     (Value::Array(ArrayValueKind::Char, mut array), Value::Integer(scalar)) => {
                         for right_element in array.elements.iter_mut() {
-                            let right_int = right_element.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
-                            *right_element = Value::Char((scalar as u8 + *right_int as u8) as char)
+                            let right_char = right_element.as_char().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            *right_element = Value::Char((scalar as u8 + *right_char as u8) as char)
                         }
 
                         env.push(Value::Array(ArrayValueKind::Char, array));
@@ -422,6 +422,21 @@ mod tests {
 
         let tokens = interpret("[7 4 1] [6 2 5] +");
         assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(13), Value::Integer(6), Value::Integer(6)]))]), tokens);
+    }
+
+    #[test]
+    fn test_interpret_addition_on_characters() {
+        let tokens = interpret("'a' 2 +");
+        assert_eq!(Ok(vec![Value::Char('c')]), tokens);
+
+        let tokens = interpret("3 'b' +");
+        assert_eq!(Ok(vec![Value::Char('e')]), tokens);
+
+        let tokens = interpret("4 ['f' 'e' 'r'] +");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Char, Array::new(Shape::new(vec![3]), vec![Value::Char('j'), Value::Char('i'), Value::Char('v')]))]), tokens);
+
+        let tokens = interpret("['c' 'e' 'h'] 2 +");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Char, Array::new(Shape::new(vec![3]), vec![Value::Char('e'), Value::Char('g'), Value::Char('j')]))]), tokens);
     }
 }
 
