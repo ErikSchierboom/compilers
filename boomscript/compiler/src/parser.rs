@@ -493,7 +493,7 @@ mod tests {
 
         assert_eq!(Some(Ok(Spanned::new(Word::Lambda(vec![]), Span::new(0, 2)))), words.next());
         assert_eq!(Some(Ok(Spanned::new(Word::Lambda(vec![Spanned::new(Word::Integer(1), Span::new(4, 1))]), Span::new(3, 3)))), words.next());
-        assert_eq!(Some(Ok(Spanned::new(Word::Lambda(vec![Spanned::new(Word::Integer(2), Span::new(8, 1)), Spanned::new(Word::Identifier("swap".to_string()), Span::new(10, 4)), Spanned::new(Word::Identifier("dup".to_string()), Span::new(15, 3))]), Span::new(7, 12)))), words.next());;
+        assert_eq!(Some(Ok(Spanned::new(Word::Lambda(vec![Spanned::new(Word::Integer(2), Span::new(8, 1)), Spanned::new(Word::Identifier("swap".to_string()), Span::new(10, 4)), Spanned::new(Word::Identifier("dup".to_string()), Span::new(15, 3))]), Span::new(7, 12)))), words.next());
         assert_eq!(None, words.next())
     }
 

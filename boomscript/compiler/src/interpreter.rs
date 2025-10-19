@@ -4,7 +4,7 @@ use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum RuntimeError {
     Parse(ParseError),
     EmptyStack,
@@ -36,7 +36,7 @@ pub enum ArrayValueKind {
     String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Char(char),
     Float(f64),
@@ -250,7 +250,7 @@ impl Executable for DyadicOperation {
                         Ok(())
                     }
                     (Value::Integer(scalar), Value::Array(ArrayValueKind::Integer, mut array)) |
-                    (Value::Array(ArrayValueKind::Integer, mut array), Value::Integer(scalar))=> {
+                    (Value::Array(ArrayValueKind::Integer, mut array), Value::Integer(scalar)) => {
                         for right_element in array.elements.iter_mut() {
                             let right_int = right_element.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
                             *right_element = Value::Integer(scalar + right_int)
@@ -259,26 +259,26 @@ impl Executable for DyadicOperation {
                         env.push(Value::Array(ArrayValueKind::Integer, array));
                         Ok(())
                     }
-                    (Value::Array(ArrayValueKind::Integer, mut left), Value::Array(ArrayValueKind::Integer, right))=> {
+                    (Value::Array(ArrayValueKind::Integer, mut left), Value::Array(ArrayValueKind::Integer, right)) => {
                         if left.shape != right.shape {
                             return Err(RuntimeError::IncompatibleArrayShapes);
                         }
-                        
+
                         for (l, r) in left.elements.iter_mut().zip(right.elements.iter()) {
                             let left_int = l.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
                             let right_int = r.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
                             *l = Value::Integer(left_int + right_int);
                         }
-                        
+
                         env.push(Value::Array(ArrayValueKind::Integer, left));
                         Ok(())
-                    }                    
+                    }
                     (Value::Float(left), Value::Float(right)) => {
                         env.push(Value::Float(left + right));
                         Ok(())
-                    },
+                    }
                     (Value::Float(scalar), Value::Array(ArrayValueKind::Float, mut array)) |
-                    (Value::Array(ArrayValueKind::Float, mut array), Value::Float(scalar))=> {
+                    (Value::Array(ArrayValueKind::Float, mut array), Value::Float(scalar)) => {
                         for right_element in array.elements.iter_mut() {
                             let right_int = right_element.as_float().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
                             *right_element = Value::Float(scalar + right_int)
@@ -287,7 +287,7 @@ impl Executable for DyadicOperation {
                         env.push(Value::Array(ArrayValueKind::Float, array));
                         Ok(())
                     }
-                    (Value::Array(ArrayValueKind::Float, mut left), Value::Array(ArrayValueKind::Float, right))=> {
+                    (Value::Array(ArrayValueKind::Float, mut left), Value::Array(ArrayValueKind::Float, right)) => {
                         if left.shape != right.shape {
                             return Err(RuntimeError::IncompatibleArrayShapes);
                         }
@@ -302,14 +302,14 @@ impl Executable for DyadicOperation {
                         Ok(())
                     }
                     (Value::Integer(i), Value::Char(c)) |
-                    (Value::Char(c), Value::Integer(i))=> {
+                    (Value::Char(c), Value::Integer(i)) => {
                         assert!(c.is_ascii());
                         assert!(i <= u8::MAX as i64);
                         env.push(Value::Char((c as u8 + i as u8) as char));
                         Ok(())
                     }
                     (Value::Integer(scalar), Value::Array(ArrayValueKind::Char, mut array)) |
-                    (Value::Array(ArrayValueKind::Char, mut array), Value::Integer(scalar))=> {
+                    (Value::Array(ArrayValueKind::Char, mut array), Value::Integer(scalar)) => {
                         for right_element in array.elements.iter_mut() {
                             let right_int = right_element.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
                             *right_element = Value::Char((scalar as u8 + *right_int as u8) as char)
@@ -319,7 +319,7 @@ impl Executable for DyadicOperation {
                         Ok(())
                     }
                     (Value::Array(ArrayValueKind::Integer, integers), Value::Array(ArrayValueKind::Char, mut chars)) |
-                    (Value::Array(ArrayValueKind::Char, mut chars), Value::Array(ArrayValueKind::Integer, integers))=> {
+                    (Value::Array(ArrayValueKind::Char, mut chars), Value::Array(ArrayValueKind::Integer, integers)) => {
                         if chars.shape != integers.shape {
                             return Err(RuntimeError::IncompatibleArrayShapes);
                         }
@@ -389,3 +389,39 @@ pub fn interpret<'a>(source: &str) -> InterpretResult<Vec<Value>> {
     let mut interpreter = Interpreter::new(words);
     interpreter.interpret()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_interpret_scalar_values_are_pushed_on_stack() {
+        let tokens = interpret("19");
+        assert_eq!(Ok(vec![Value::Integer(19)]), tokens);
+
+        let tokens = interpret("5.32");
+        assert_eq!(Ok(vec![Value::Float(5.32)]), tokens);
+
+        let tokens = interpret("'a'");
+        assert_eq!(Ok(vec![Value::Char('a')]), tokens);
+
+        let tokens = interpret(r#""hi there""#);
+        assert_eq!(Ok(vec![Value::String("hi there".to_string())]), tokens)
+    }
+
+    #[test]
+    fn test_interpret_addition_on_integers() {
+        let tokens = interpret("1 2 +");
+        assert_eq!(Ok(vec![Value::Integer(3)]), tokens);
+
+        let tokens = interpret("1 [2 3 4] +");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(3), Value::Integer(4), Value::Integer(5)]))]), tokens);
+
+        let tokens = interpret("[5 7 9] 4 +");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(9), Value::Integer(11), Value::Integer(13)]))]), tokens);
+
+        let tokens = interpret("[7 4 1] [6 2 5] +");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(13), Value::Integer(6), Value::Integer(6)]))]), tokens);
+    }
+}
+

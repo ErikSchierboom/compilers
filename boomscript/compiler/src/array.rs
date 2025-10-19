@@ -43,7 +43,7 @@ impl Shape {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Array<T> {
     pub shape: Shape,
     pub elements: Vec<T>,
