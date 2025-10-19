@@ -395,7 +395,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_interpret_scalar_values_are_pushed_on_stack() {
+    fn test_interpret_scalars() {
         let tokens = interpret("19");
         assert_eq!(Ok(vec![Value::Integer(19)]), tokens);
 
@@ -406,7 +406,15 @@ mod tests {
         assert_eq!(Ok(vec![Value::Char('a')]), tokens);
 
         let tokens = interpret(r#""hi there""#);
-        assert_eq!(Ok(vec![Value::String("hi there".to_string())]), tokens)
+        assert_eq!(Ok(vec![Value::String("hi there".to_string())]), tokens);
+    }
+    #[test]
+    fn test_interpret_arrays() {
+        let tokens = interpret("[]");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Empty, Array::new(Shape::new(vec![0]), vec![]))]), tokens);
+
+        let tokens = interpret("[1 2 3]");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)]))]), tokens);
     }
 
     #[test]
