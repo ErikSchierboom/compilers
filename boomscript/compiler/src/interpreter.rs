@@ -249,17 +249,90 @@ impl Executable for DyadicOperation {
                         env.push(Value::Integer(left + right));
                         Ok(())
                     }
-                    (Value::Integer(left), Value::Array(ArrayValueKind::Integer, mut right)) => {
-                        for right_element in right.elements.iter_mut() {
+                    (Value::Integer(scalar), Value::Array(ArrayValueKind::Integer, mut array)) |
+                    (Value::Array(ArrayValueKind::Integer, mut array), Value::Integer(scalar))=> {
+                        for right_element in array.elements.iter_mut() {
                             let right_int = right_element.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
-                            *right_element = Value::Integer(left + right_int)
+                            *right_element = Value::Integer(scalar + right_int)
                         }
 
-                        env.push(Value::Array(ArrayValueKind::Integer, right));
+                        env.push(Value::Array(ArrayValueKind::Integer, array));
                         Ok(())
                     }
-                    // TODO: allow adding floats
-                    // TODO: allow adding chars with ints
+                    (Value::Array(ArrayValueKind::Integer, mut left), Value::Array(ArrayValueKind::Integer, right))=> {
+                        if left.shape != right.shape {
+                            return Err(RuntimeError::IncompatibleArrayShapes);
+                        }
+                        
+                        for (l, r) in left.elements.iter_mut().zip(right.elements.iter()) {
+                            let left_int = l.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            let right_int = r.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            *l = Value::Integer(left_int + right_int);
+                        }
+                        
+                        env.push(Value::Array(ArrayValueKind::Integer, left));
+                        Ok(())
+                    }                    
+                    (Value::Float(left), Value::Float(right)) => {
+                        env.push(Value::Float(left + right));
+                        Ok(())
+                    },
+                    (Value::Float(scalar), Value::Array(ArrayValueKind::Float, mut array)) |
+                    (Value::Array(ArrayValueKind::Float, mut array), Value::Float(scalar))=> {
+                        for right_element in array.elements.iter_mut() {
+                            let right_int = right_element.as_float().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            *right_element = Value::Float(scalar + right_int)
+                        }
+
+                        env.push(Value::Array(ArrayValueKind::Float, array));
+                        Ok(())
+                    }
+                    (Value::Array(ArrayValueKind::Float, mut left), Value::Array(ArrayValueKind::Float, right))=> {
+                        if left.shape != right.shape {
+                            return Err(RuntimeError::IncompatibleArrayShapes);
+                        }
+
+                        for (l, r) in left.elements.iter_mut().zip(right.elements.iter()) {
+                            let left_int = l.as_float().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            let right_int = r.as_float().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            *l = Value::Float(left_int + right_int);
+                        }
+
+                        env.push(Value::Array(ArrayValueKind::Float, left));
+                        Ok(())
+                    }
+                    (Value::Integer(i), Value::Char(c)) |
+                    (Value::Char(c), Value::Integer(i))=> {
+                        assert!(c.is_ascii());
+                        assert!(i <= u8::MAX as i64);
+                        env.push(Value::Char((c as u8 + i as u8) as char));
+                        Ok(())
+                    }
+                    (Value::Integer(scalar), Value::Array(ArrayValueKind::Char, mut array)) |
+                    (Value::Array(ArrayValueKind::Char, mut array), Value::Integer(scalar))=> {
+                        for right_element in array.elements.iter_mut() {
+                            let right_int = right_element.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            *right_element = Value::Char((scalar as u8 + *right_int as u8) as char)
+                        }
+
+                        env.push(Value::Array(ArrayValueKind::Char, array));
+                        Ok(())
+                    }
+                    (Value::Array(ArrayValueKind::Integer, integers), Value::Array(ArrayValueKind::Char, mut chars)) |
+                    (Value::Array(ArrayValueKind::Char, mut chars), Value::Array(ArrayValueKind::Integer, integers))=> {
+                        if chars.shape != integers.shape {
+                            return Err(RuntimeError::IncompatibleArrayShapes);
+                        }
+
+                        for (l, r) in chars.elements.iter_mut().zip(integers.elements.iter()) {
+                            let char = l.as_char().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            let int = r.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            *l = Value::Char((*char as u8 + *int as u8) as char)
+                        }
+
+                        env.push(Value::Array(ArrayValueKind::Char, chars));
+                        Ok(())
+                    }
                     _ => Err(RuntimeError::UnsupportedArgumentTypes)
                 }
             }
