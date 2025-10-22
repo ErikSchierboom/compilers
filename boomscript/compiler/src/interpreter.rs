@@ -237,18 +237,6 @@ impl Executable for MonadicOperation {
     }
 }
 
-macro_rules! dyadic_scalar_array_op {
-    ($env:expr, $op:tt, $scalar:ident, $array:ident, $cast:ident, $kind:ident) => {{
-        for elem in &mut $array.elements {
-            let val = elem.$cast().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-            *elem = Value::$kind($scalar $op val);
-        };
-        $env.push(Value::Array(ArrayValueKind::$kind, $array));
-        Ok(())
-    }};
-}
-
-
 macro_rules! dyadic_op {
     ($env:expr, $op:tt) => {{
         let right_val = $env.pop()?;
@@ -265,16 +253,37 @@ macro_rules! dyadic_op {
                 Ok(())
             }
 
-            (Value::Integer(scalar), Value::Array(ArrayValueKind::Integer, mut array)) |
-            (Value::Array(ArrayValueKind::Integer, mut array), Value::Integer(scalar)) => {
-                dyadic_scalar_array_op!($env, $op, scalar, array, as_integer, Integer)
+            (Value::Integer(scalar), Value::Array(ArrayValueKind::Integer, mut array)) => {
+                for elem in &mut array.elements {
+                    let val = elem.as_integer().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    *elem = Value::Integer(scalar $op val);
+                }
+                $env.push(Value::Array(ArrayValueKind::Integer, array));
+                Ok(())
             }
 
-            (Value::Float(scalar), Value::Array(ArrayValueKind::Float, mut array))
-            | (Value::Array(ArrayValueKind::Float, mut array), Value::Float(scalar)) => {
+            (Value::Array(ArrayValueKind::Integer, mut array), Value::Integer(scalar)) => {
+                for elem in &mut array.elements {
+                    let val = elem.as_integer().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    *elem = Value::Integer(val $op scalar);
+                }
+                $env.push(Value::Array(ArrayValueKind::Integer, array));
+                Ok(())
+            }
+
+            (Value::Float(scalar), Value::Array(ArrayValueKind::Float, mut array)) => {
                 for elem in &mut array.elements {
                     let val = elem.as_float().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
                     *elem = Value::Float(scalar $op val);
+                }
+                $env.push(Value::Array(ArrayValueKind::Float, array));
+                Ok(())
+            }
+
+            (Value::Array(ArrayValueKind::Float, mut array), Value::Float(scalar)) => {
+                for elem in &mut array.elements {
+                    let val = elem.as_float().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    *elem = Value::Float(val $op scalar);
                 }
                 $env.push(Value::Array(ArrayValueKind::Float, array));
                 Ok(())
@@ -321,8 +330,7 @@ macro_rules! dyadic_op {
                 Ok(())
             }
 
-            (Value::Array(ArrayValueKind::Char, mut chars), Value::Array(ArrayValueKind::Integer, ints))
-            | (Value::Array(ArrayValueKind::Integer, ints), Value::Array(ArrayValueKind::Char, mut chars)) => {
+            (Value::Array(ArrayValueKind::Char, mut chars), Value::Array(ArrayValueKind::Integer, ints)) => {
                 if chars.shape != ints.shape {
                     return Err(RuntimeError::IncompatibleArrayShapes);
                 }
@@ -449,12 +457,6 @@ mod tests {
         let tokens = interpret("'a' 2 +");
         assert_eq!(Ok(vec![Value::Char('c')]), tokens);
 
-        let tokens = interpret("3 'b' +");
-        assert_eq!(Ok(vec![Value::Char('e')]), tokens);
-
-        let tokens = interpret("4 ['f' 'e' 'r'] +");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Char, Array::new(Shape::new(vec![3]), vec![Value::Char('j'), Value::Char('i'), Value::Char('v')]))]), tokens);
-
         let tokens = interpret("['c' 'e' 'h'] 2 +");
         assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Char, Array::new(Shape::new(vec![3]), vec![Value::Char('e'), Value::Char('g'), Value::Char('j')]))]), tokens);
     }
@@ -478,12 +480,6 @@ mod tests {
     fn test_interpret_subtraction_on_characters() {
         let tokens = interpret("'d' 2 -");
         assert_eq!(Ok(vec![Value::Char('b')]), tokens);
-
-        let tokens = interpret("3 'f' -");
-        assert_eq!(Ok(vec![Value::Char('c')]), tokens);
-
-        let tokens = interpret("1 ['f' 'e' 'r'] -");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Char, Array::new(Shape::new(vec![3]), vec![Value::Char('e'), Value::Char('d'), Value::Char('q')]))]), tokens);
 
         let tokens = interpret("['c' 'e' 'h'] 2 -");
         assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Char, Array::new(Shape::new(vec![3]), vec![Value::Char('a'), Value::Char('c'), Value::Char('f')]))]), tokens);
