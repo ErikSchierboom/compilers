@@ -79,7 +79,6 @@ pub enum DyadicOperation {
     GreaterEqual,
     Less,
     LessEqual,
-    Stack,
 }
 
 impl Display for DyadicOperation {
@@ -95,7 +94,6 @@ impl Display for DyadicOperation {
             DyadicOperation::GreaterEqual => write!(f, ">="),
             DyadicOperation::Less => write!(f, "<"),
             DyadicOperation::LessEqual => write!(f, "<="),
-            DyadicOperation::Stack => write!(f, "?"),
         }
     }
 }

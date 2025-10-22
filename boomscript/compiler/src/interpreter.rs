@@ -348,7 +348,6 @@ impl Executable for DyadicOperation {
             DyadicOperation::GreaterEqual => todo!(),
             DyadicOperation::Less => todo!(),
             DyadicOperation::LessEqual => todo!(),
-            DyadicOperation::Stack => todo!(),
         }
     }
 }
