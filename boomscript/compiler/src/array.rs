@@ -79,12 +79,10 @@ impl<T> Array<T> {
         Array::new(top.shape.clone(), new_values)
     }
 
-    pub fn monadic_op_mut(mut array: Self, op: impl Fn(&T) -> T) -> Self {
-        for a in array.elements.iter_mut() {
+    pub fn monadic_op_mut(&mut self, op: impl Fn(&T) -> T) {
+        for a in self.elements.iter_mut() {
             *a = op(&a)
         }
-
-        array
     }
 
     pub fn dyadic_op_mut(mut top: Self, mut bottom: Self, op: impl Fn(&T, &T) -> T) -> Result<Self, ()> {

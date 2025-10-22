@@ -310,12 +310,38 @@ pub enum Builtin {
     Swap,
 }
 
+macro_rules! monadic_number_op {
+    ($env:expr, $op:expr) => {{
+        let value = $env.pop()?;
+
+        match value {
+            Value::Number(number) => {
+                $env.push(Value::Number($op(number)));
+                Ok(())
+            }
+
+            Value::Array(ArrayValueKind::Number, mut array) => {
+                for element in &mut array.elements {
+                    let &element_value = element.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    *element = Value::Number($op(element_value));
+                }
+                $env.push(Value::Array(ArrayValueKind::Number, array));
+                Ok(())
+            }
+
+            // TODO: support empty arrays
+
+            _ => Err(RuntimeError::UnsupportedArgumentTypes),
+        }
+    }};
+}
+
 impl Executable for Builtin {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
             Builtin::Max => dyadic_number_op!(env, max),
             Builtin::Min => dyadic_number_op!(env, min),
-            Builtin::Abs => todo!(),
+            Builtin::Abs => monadic_number_op!(env, f64::abs),
             Builtin::Dup => {
                 let value = env.pop()?;
                 env.push(value.clone());
