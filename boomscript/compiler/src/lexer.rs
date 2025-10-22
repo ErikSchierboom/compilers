@@ -26,8 +26,7 @@ impl Error for LexError {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
-    Integer,
-    Float,
+    Number,
     Char,
     String,
     Identifier,
@@ -56,8 +55,7 @@ pub enum Token {
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Token::Integer => write!(f, "integer"),
-            Token::Float => write!(f, "float"),
+            Token::Number => write!(f, "integer"),
             Token::String => write!(f, "string"),
             Token::Identifier => write!(f, "identifier"),
             Token::Char => write!(f, "char"),
@@ -160,7 +158,7 @@ where
             '"' => self.lex_string(),
             '#' => {
                 self.skip_comment();
-                return self.lex_token()
+                return self.lex_token();
             }
             c if c.is_ascii_digit() => self.lex_number(),
             c if c.is_ascii_alphabetic() => self.lex_identifier(),
@@ -206,10 +204,9 @@ where
         if self.next_char_is('.') {
             self.advance();
             self.advance_while_chars_match(char::is_ascii_digit);
-            Ok(Token::Float)
-        } else {
-            Ok(Token::Integer)
         }
+
+        Ok(Token::Number)
     }
 
     fn lex_character(&mut self) -> Result<(), LexError> {
@@ -323,11 +320,11 @@ mod tests {
     fn test_tokenize_numbers() {
         let mut tokens = tokenize("1 23 -456 5.134 6.");
 
-        assert_eq!(Some(Ok(Spanned::new(Token::Integer, Span::new(0, 1)))), tokens.next());
-        assert_eq!(Some(Ok(Spanned::new(Token::Integer, Span::new(2, 2)))), tokens.next());
-        assert_eq!(Some(Ok(Spanned::new(Token::Integer, Span::new(5, 4)))), tokens.next());
-        assert_eq!(Some(Ok(Spanned::new(Token::Float, Span::new(10, 5)))), tokens.next());
-        assert_eq!(Some(Ok(Spanned::new(Token::Float, Span::new(16, 2)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Number, Span::new(0, 1)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Number, Span::new(2, 2)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Number, Span::new(5, 4)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Number, Span::new(10, 5)))), tokens.next());
+        assert_eq!(Some(Ok(Spanned::new(Token::Number, Span::new(16, 2)))), tokens.next());
         assert_eq!(None, tokens.next())
     }
 
@@ -395,6 +392,6 @@ mod tests {
 
         assert_eq!(None, tokens.next())
     }
-    
+
     // TODO: add tests for error conditions 
 }

@@ -30,8 +30,7 @@ impl Error for ParseError {}
 #[derive(Clone, Debug, PartialEq)]
 pub enum Word {
     Char(char),
-    Integer(i64),
-    Float(f64),
+    Number(f64),
     String(String),
     Identifier(String),
     Niladic(NiladicOperation),
@@ -101,8 +100,7 @@ impl Display for DyadicOperation {
 impl Display for Word {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Word::Integer(i) => write!(f, "{i}"),
-            Word::Float(float) => write!(f, "{float}"),
+            Word::Number(number) => write!(f, "{number}"),
             Word::Char(c) => write!(f, "'{c}'"),
             Word::String(str) => write!(f, "\"{str}\""),
             Word::Identifier(identifier) => write!(f, "{identifier}()"),
@@ -147,8 +145,7 @@ where
     }
 
     fn parse_word(&mut self) -> Option<ParseResult> {
-        self.parse_integer()
-            .or_else(|| self.parse_float())
+        self.parse_number()
             .or_else(|| self.parse_string())
             .or_else(|| self.parse_char())
             .or_else(|| self.parse_operator())
@@ -158,23 +155,12 @@ where
             .or_else(|| self.parse_error())
     }
 
-    fn parse_integer(&mut self) -> Option<ParseResult> {
-        self.expect_token(&Token::Integer)?;
+    fn parse_number(&mut self) -> Option<ParseResult> {
+        self.expect_token(&Token::Number)?;
         let src = self.lexeme(&self.span);
 
-        let int = i64::from_str(src).unwrap();
-        let word = self.spanned(Word::Integer(int));
-
-        self.advance();
-        Some(Ok(word))
-    }
-
-    fn parse_float(&mut self) -> Option<ParseResult> {
-        self.expect_token(&Token::Float)?;
-        let src = self.lexeme(&self.span);
-
-        let float = f64::from_str(src).unwrap();
-        let word = self.spanned(Word::Float(float));
+        let number = f64::from_str(src).unwrap();
+        let word = self.spanned(Word::Number(number));
 
         self.advance();
         Some(Ok(word))
@@ -279,8 +265,7 @@ where
     }
 
     fn parse_array_element(&mut self) -> Option<ParseResult> {
-        self.parse_integer()
-            .or_else(|| self.parse_float())
+        self.parse_number()
             .or_else(|| self.parse_char())
             .or_else(|| self.parse_string())
             .or_else(|| self.parse_array())
@@ -311,8 +296,7 @@ where
     }
 
     fn parse_lambda_word(&mut self) -> Option<ParseResult> {
-        self.parse_integer()
-            .or_else(|| self.parse_float())
+        self.parse_number()
             .or_else(|| self.parse_char())
             .or_else(|| self.parse_string())
             .or_else(|| self.parse_operator())
@@ -401,24 +385,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_integers() {
-        let mut words = parse("1 23 -456");
+    fn test_parse_numbers() {
+        let mut words = parse("1 23 -456 5.134 -6.1 7.");
 
-        assert_eq!(Some(Ok(Spanned::new(Word::Integer(1), Span::new(0, 1)))), words.next());
-        assert_eq!(Some(Ok(Spanned::new(Word::Integer(23), Span::new(2, 2)))), words.next());
-        assert_eq!(Some(Ok(Spanned::new(Word::Integer(-456), Span::new(5, 4)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Number(1.0), Span::new(0, 1)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Number(23.0), Span::new(2, 2)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Number(-456.0), Span::new(5, 4)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Number(5.134), Span::new(10, 5)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Number(-6.1), Span::new(16, 4)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Number(7.0), Span::new(21, 2)))), words.next());
         assert_eq!(None, words.next())
     }
 
     #[test]
-    fn test_parse_floats() {
-        let mut words = parse("5.134 -6.1 7.");
-
-        assert_eq!(Some(Ok(Spanned::new(Word::Float(5.134), Span::new(0, 5)))), words.next());
-        assert_eq!(Some(Ok(Spanned::new(Word::Float(-6.1), Span::new(6, 4)))), words.next());
-        assert_eq!(Some(Ok(Spanned::new(Word::Float(7.0), Span::new(11, 2)))), words.next());
-        assert_eq!(None, words.next())
-    }
+    fn test_parse_floats() {}
 
     #[test]
     fn test_parse_strings() {
@@ -479,9 +459,9 @@ mod tests {
         let mut words = parse("[] [1] [23 55] [[1 2] [3 4]]");
 
         assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![]), Span::new(0, 2)))), words.next());
-        assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![Spanned::new(Word::Integer(1), Span::new(4, 1))]), Span::new(3, 3)))), words.next());
-        assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![Spanned::new(Word::Integer(23), Span::new(8, 2)), Spanned::new(Word::Integer(55), Span::new(11, 2))]), Span::new(7, 7)))), words.next());
-        assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![Spanned::new(Word::Array(vec![Spanned::new(Word::Integer(1), Span::new(17, 1)), Spanned::new(Word::Integer(2), Span::new(19, 1))]), Span::new(16, 5)), Spanned::new(Word::Array(vec![Spanned::new(Word::Integer(3), Span::new(23, 1)), Spanned::new(Word::Integer(4), Span::new(25, 1))]), Span::new(22, 5))]), Span::new(15, 13)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![Spanned::new(Word::Number(1.), Span::new(4, 1))]), Span::new(3, 3)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![Spanned::new(Word::Number(23.), Span::new(8, 2)), Spanned::new(Word::Number(55.), Span::new(11, 2))]), Span::new(7, 7)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Array(vec![Spanned::new(Word::Array(vec![Spanned::new(Word::Number(1.), Span::new(17, 1)), Spanned::new(Word::Number(2.), Span::new(19, 1))]), Span::new(16, 5)), Spanned::new(Word::Array(vec![Spanned::new(Word::Number(3.), Span::new(23, 1)), Spanned::new(Word::Number(4.), Span::new(25, 1))]), Span::new(22, 5))]), Span::new(15, 13)))), words.next());
         assert_eq!(None, words.next())
     }
 
@@ -490,8 +470,8 @@ mod tests {
         let mut words = parse("() (1) (2 swap dup)");
 
         assert_eq!(Some(Ok(Spanned::new(Word::Lambda(vec![]), Span::new(0, 2)))), words.next());
-        assert_eq!(Some(Ok(Spanned::new(Word::Lambda(vec![Spanned::new(Word::Integer(1), Span::new(4, 1))]), Span::new(3, 3)))), words.next());
-        assert_eq!(Some(Ok(Spanned::new(Word::Lambda(vec![Spanned::new(Word::Integer(2), Span::new(8, 1)), Spanned::new(Word::Identifier("swap".to_string()), Span::new(10, 4)), Spanned::new(Word::Identifier("dup".to_string()), Span::new(15, 3))]), Span::new(7, 12)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Lambda(vec![Spanned::new(Word::Number(1.), Span::new(4, 1))]), Span::new(3, 3)))), words.next());
+        assert_eq!(Some(Ok(Spanned::new(Word::Lambda(vec![Spanned::new(Word::Number(2.), Span::new(8, 1)), Spanned::new(Word::Identifier("swap".to_string()), Span::new(10, 4)), Spanned::new(Word::Identifier("dup".to_string()), Span::new(15, 3))]), Span::new(7, 12)))), words.next());
         assert_eq!(None, words.next())
     }
 

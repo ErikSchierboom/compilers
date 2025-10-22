@@ -31,16 +31,14 @@ impl Error for RuntimeError {}
 pub enum ArrayValueKind {
     Empty,
     Char,
-    Float,
-    Integer,
+    Number,
     String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Char(char),
-    Float(f64),
-    Integer(i64),
+    Number(f64),
     String(String),
     Lambda(Vec<Word>),
     Array(ArrayValueKind, Array<Value>),
@@ -54,16 +52,9 @@ impl Value {
         }
     }
 
-    pub fn as_float(&self) -> Option<&f64> {
+    pub fn as_number(&self) -> Option<&f64> {
         match self {
-            Value::Float(float) => Some(float),
-            _ => None
-        }
-    }
-
-    pub fn as_integer(&self) -> Option<&i64> {
-        match self {
-            Value::Integer(int) => Some(int),
+            Value::Number(number) => Some(number),
             _ => None
         }
     }
@@ -92,8 +83,7 @@ impl Value {
                 }
             }
             Value::Char(_) => ArrayValueKind::Char,
-            Value::Float(_) => ArrayValueKind::Float,
-            Value::Integer(_) => ArrayValueKind::Integer,
+            Value::Number(_) => ArrayValueKind::Number,
             Value::String(_) => ArrayValueKind::String,
             Value::Lambda(_) => panic!("Arrays should not contain lambdas")
         }
@@ -104,8 +94,7 @@ impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::Char(c) => write!(f, "{c}"),
-            Value::Float(float) => write!(f, "{float}"),
-            Value::Integer(int) => write!(f, "{int}"),
+            Value::Number(int) => write!(f, "{int}"),
             Value::String(string) => write!(f, "{string}"),
             Value::Lambda(words) => write!(f, "({})", words.iter().map(|w| format!("{w}")).collect::<Vec<_>>().join(" ")),
             Value::Array(_, array) => write!(f, "{array}"),
@@ -165,8 +154,7 @@ pub trait Executable {
 impl Executable for Word {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
-            Word::Integer(int) => env.push(Value::Integer(int.clone())),
-            Word::Float(float) => env.push(Value::Float(float.clone())),
+            Word::Number(number) => env.push(Value::Number(number.clone())),
             Word::String(string) => env.push(Value::String(string.clone())),
             Word::Char(c) => env.push(Value::Char(c.clone())),
             Word::Array(elements) => {
@@ -234,31 +222,17 @@ impl Executable for MonadicOperation {
                 let val = env.pop()?;
 
                 match val {
-                    Value::Integer(i) => {
-                        env.push(Value::Integer(1 - i));
+                    Value::Number(number) => {
+                        env.push(Value::Number(1. - number));
                         Ok(())
                     }
 
-                    Value::Float(f) => {
-                        env.push(Value::Float(1f64 - f));
-                        Ok(())
-                    }
-
-                    Value::Array(ArrayValueKind::Integer, mut array) => {
+                    Value::Array(ArrayValueKind::Number, mut array) => {
                         for elem in &mut array.elements {
-                            let val = elem.as_integer().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                            *elem = Value::Integer(1 - *val);
+                            let val = elem.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                            *elem = Value::Number(1. - *val);
                         }
-                        env.push(Value::Array(ArrayValueKind::Integer, array));
-                        Ok(())
-                    }
-
-                    Value::Array(ArrayValueKind::Float, mut array) => {
-                        for elem in &mut array.elements {
-                            let val = elem.as_float().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                            *elem = Value::Float(1f64 - *val);
-                        }
-                        env.push(Value::Array(ArrayValueKind::Float, array));
+                        env.push(Value::Array(ArrayValueKind::Number, array));
                         Ok(())
                     }
 
@@ -275,85 +249,49 @@ macro_rules! dyadic_op {
         let left_val = $env.pop()?;
 
         match (left_val, right_val) {
-            (Value::Integer(l), Value::Integer(r)) => {
-                $env.push(Value::Integer(l $op r));
+            (Value::Number(l), Value::Number(r)) => {
+                $env.push(Value::Number(l $op r));
                 Ok(())
             }
 
-            (Value::Float(l), Value::Float(r)) => {
-                $env.push(Value::Float(l $op r));
-                Ok(())
-            }
-
-            (Value::Integer(scalar), Value::Array(ArrayValueKind::Integer, mut array)) => {
+            (Value::Number(scalar), Value::Array(ArrayValueKind::Number, mut array)) => {
                 for elem in &mut array.elements {
-                    let val = elem.as_integer().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *elem = Value::Integer(scalar $op val);
+                    let val = elem.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    *elem = Value::Number(scalar $op val);
                 }
-                $env.push(Value::Array(ArrayValueKind::Integer, array));
+                $env.push(Value::Array(ArrayValueKind::Number, array));
                 Ok(())
             }
 
-            (Value::Array(ArrayValueKind::Integer, mut array), Value::Integer(scalar)) => {
+            (Value::Array(ArrayValueKind::Number, mut array), Value::Number(scalar)) => {
                 for elem in &mut array.elements {
-                    let val = elem.as_integer().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *elem = Value::Integer(val $op scalar);
+                    let val = elem.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    *elem = Value::Number(val $op scalar);
                 }
-                $env.push(Value::Array(ArrayValueKind::Integer, array));
+                $env.push(Value::Array(ArrayValueKind::Number, array));
                 Ok(())
             }
 
-            (Value::Float(scalar), Value::Array(ArrayValueKind::Float, mut array)) => {
-                for elem in &mut array.elements {
-                    let val = elem.as_float().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *elem = Value::Float(scalar $op val);
-                }
-                $env.push(Value::Array(ArrayValueKind::Float, array));
-                Ok(())
-            }
-
-            (Value::Array(ArrayValueKind::Float, mut array), Value::Float(scalar)) => {
-                for elem in &mut array.elements {
-                    let val = elem.as_float().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *elem = Value::Float(val $op scalar);
-                }
-                $env.push(Value::Array(ArrayValueKind::Float, array));
-                Ok(())
-            }
-
-            (Value::Array(ArrayValueKind::Integer, mut left), Value::Array(ArrayValueKind::Integer, right)) => {
+            (Value::Array(ArrayValueKind::Number, mut left), Value::Array(ArrayValueKind::Number, right)) => {
                 if left.shape != right.shape {
                     return Err(RuntimeError::IncompatibleArrayShapes);
                 }
                 for (l, r) in left.elements.iter_mut().zip(&right.elements) {
-                    let li = l.as_integer().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    let ri = r.as_integer().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *l = Value::Integer(li $op ri);
+                    let li = l.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    let ri = r.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    *l = Value::Number(li $op ri);
                 }
-                $env.push(Value::Array(ArrayValueKind::Integer, left));
+                $env.push(Value::Array(ArrayValueKind::Number, left));
                 Ok(())
             }
 
-            (Value::Array(ArrayValueKind::Float, mut left), Value::Array(ArrayValueKind::Float, right)) => {
-                if left.shape != right.shape {
-                    return Err(RuntimeError::IncompatibleArrayShapes);
-                }
-                for (l, r) in left.elements.iter_mut().zip(&right.elements) {
-                    let lf = l.as_float().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    let rf = r.as_float().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *l = Value::Float(lf $op rf);
-                }
-                $env.push(Value::Array(ArrayValueKind::Float, left));
-                Ok(())
-            }
-
-            (Value::Integer(i), Value::Char(c)) | (Value::Char(c), Value::Integer(i)) => {
+            (Value::Number(i), Value::Char(c)) | (Value::Char(c), Value::Number(i)) => {
                 $env.push(Value::Char(((c as u8) $op (i as u8)) as char));
                 Ok(())
             }
 
-            (Value::Integer(scalar), Value::Array(ArrayValueKind::Char, mut array))
-            | (Value::Array(ArrayValueKind::Char, mut array), Value::Integer(scalar)) => {
+            (Value::Number(scalar), Value::Array(ArrayValueKind::Char, mut array))
+            | (Value::Array(ArrayValueKind::Char, mut array), Value::Number(scalar)) => {
                 for elem in &mut array.elements {
                     let c = elem.as_char().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
                     *elem = Value::Char(((*c as u8) $op (scalar as u8)) as char);
@@ -362,14 +300,14 @@ macro_rules! dyadic_op {
                 Ok(())
             }
 
-            (Value::Array(ArrayValueKind::Char, mut chars), Value::Array(ArrayValueKind::Integer, ints)) => {
+            (Value::Array(ArrayValueKind::Char, mut chars), Value::Array(ArrayValueKind::Number, ints)) => {
                 if chars.shape != ints.shape {
                     return Err(RuntimeError::IncompatibleArrayShapes);
                 }
 
                 for (c, i) in chars.elements.iter_mut().zip(&ints.elements) {
                     let ch = c.as_char().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    let int = i.as_integer().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    let int = i.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
                     *c = Value::Char(((*ch as u8) $op (*int as u8)) as char);
                 }
 
@@ -448,10 +386,10 @@ mod tests {
     #[test]
     fn test_interpret_scalars() {
         let tokens = interpret("19");
-        assert_eq!(Ok(vec![Value::Integer(19)]), tokens);
+        assert_eq!(Ok(vec![Value::Number(19.)]), tokens);
 
         let tokens = interpret("5.32");
-        assert_eq!(Ok(vec![Value::Float(5.32)]), tokens);
+        assert_eq!(Ok(vec![Value::Number(5.32)]), tokens);
 
         let tokens = interpret("'a'");
         assert_eq!(Ok(vec![Value::Char('a')]), tokens);
@@ -466,37 +404,40 @@ mod tests {
         assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Empty, Array::new(Shape::new(vec![0]), vec![]))]), tokens);
 
         let tokens = interpret("[1 2 3]");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(1.), Value::Number(2.), Value::Number(3.)]))]), tokens);
     }
 
     #[test]
     fn test_interpret_not() {
         let tokens = interpret("1 !");
-        assert_eq!(Ok(vec![Value::Integer(0)]), tokens);
+        assert_eq!(Ok(vec![Value::Number(0.)]), tokens);
 
         let tokens = interpret("[0 1 2 3] !");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![4]), vec![Value::Integer(1), Value::Integer(0), Value::Integer(-1), Value::Integer(-2)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![4]), vec![Value::Number(1.), Value::Number(0.), Value::Number(-1.), Value::Number(-2.)]))]), tokens);
 
-        let tokens = interpret("1.0 !");
-        assert_eq!(Ok(vec![Value::Float(0.0)]), tokens);
+        let tokens = interpret("1.77 !");
+        assert_eq!(Ok(vec![Value::Number(-0.77)]), tokens);
 
         let tokens = interpret("[0.5 1.0 2.0 3.3] !");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Float, Array::new(Shape::new(vec![4]), vec![Value::Float(0.5), Value::Float(0.0), Value::Float(-1.0), Value::Float(-2.3)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![4]), vec![Value::Number(0.5), Value::Number(0.0), Value::Number(-1.0), Value::Number(-2.3)]))]), tokens);
     }
 
     #[test]
-    fn test_interpret_addition() {
+    fn test_interpret_addition_on_numbers() {
         let tokens = interpret("1 2 +");
-        assert_eq!(Ok(vec![Value::Integer(3)]), tokens);
+        assert_eq!(Ok(vec![Value::Number(3.)]), tokens);
+
+        let tokens = interpret("13.33 243.09 +");
+        assert_eq!(Ok(vec![Value::Number(256.42)]), tokens);
 
         let tokens = interpret("1 [2 3 4] +");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(3), Value::Integer(4), Value::Integer(5)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(3.), Value::Number(4.), Value::Number(5.)]))]), tokens);
 
         let tokens = interpret("[5 7 9] 4 +");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(9), Value::Integer(11), Value::Integer(13)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(9.), Value::Number(11.), Value::Number(13.)]))]), tokens);
 
         let tokens = interpret("[7 4 1] [6 2 5] +");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(13), Value::Integer(6), Value::Integer(6)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(13.), Value::Number(6.), Value::Number(6.)]))]), tokens);
     }
 
     #[test]
@@ -509,18 +450,21 @@ mod tests {
     }
 
     #[test]
-    fn test_interpret_subtraction_on_integers() {
+    fn test_interpret_subtraction_on_numbers() {
         let tokens = interpret("4 2 -");
-        assert_eq!(Ok(vec![Value::Integer(2)]), tokens);
+        assert_eq!(Ok(vec![Value::Number(2.)]), tokens);
+
+        let tokens = interpret("0.3 9.0 -");
+        assert_eq!(Ok(vec![Value::Number(-8.7)]), tokens);
 
         let tokens = interpret("1 [2 3 4] -");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(-1), Value::Integer(-2), Value::Integer(-3)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(-1.), Value::Number(-2.), Value::Number(-3.)]))]), tokens);
 
         let tokens = interpret("[5 7 9] 4 -");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(1), Value::Integer(3), Value::Integer(5)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(1.), Value::Number(3.), Value::Number(5.)]))]), tokens);
 
         let tokens = interpret("[7 4 1] [6 2 5] -");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(1), Value::Integer(2), Value::Integer(-4)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(1.), Value::Number(2.), Value::Number(-4.)]))]), tokens);
     }
 
     #[test]
