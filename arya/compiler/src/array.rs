@@ -119,7 +119,7 @@ impl<T: ArrayValue> Array<T> {
         array
     }
 
-    pub fn dyadic_op_mut(mut top: Self, mut bottom: Self, op: impl Fn(&T, &T) -> T) -> Result<Self, ArrayError> {
+    pub fn -dyadic_op_mut(mut top: Self, mut bottom: Self, op: impl Fn(&T, &T) -> T) -> Result<Self, ArrayError> {
         if top.shape == bottom.shape {
             for (b, a) in bottom.values.iter_mut().zip(top.values) {
                 *b = op(&a, b)
