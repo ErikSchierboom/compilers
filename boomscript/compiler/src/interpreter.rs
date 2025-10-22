@@ -253,7 +253,7 @@ impl Executable for DyadicOperation {
                     (Value::Array(ArrayValueKind::Integer, mut array), Value::Integer(scalar)) => {
                         for right_element in array.elements.iter_mut() {
                             let right_int = right_element.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
-                            *right_element = Value::Integer(scalar + right_int)
+                            *right_element = Value::Integer(right_int + scalar)
                         }
 
                         env.push(Value::Array(ArrayValueKind::Integer, array));
@@ -281,7 +281,7 @@ impl Executable for DyadicOperation {
                     (Value::Array(ArrayValueKind::Float, mut array), Value::Float(scalar)) => {
                         for right_element in array.elements.iter_mut() {
                             let right_int = right_element.as_float().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
-                            *right_element = Value::Float(scalar + right_int)
+                            *right_element = Value::Float(right_int + scalar)
                         }
 
                         env.push(Value::Array(ArrayValueKind::Float, array));
@@ -303,8 +303,6 @@ impl Executable for DyadicOperation {
                     }
                     (Value::Integer(i), Value::Char(c)) |
                     (Value::Char(c), Value::Integer(i)) => {
-                        assert!(c.is_ascii());
-                        assert!(i <= u8::MAX as i64);
                         env.push(Value::Char((c as u8 + i as u8) as char));
                         Ok(())
                     }
@@ -336,7 +334,100 @@ impl Executable for DyadicOperation {
                     _ => Err(RuntimeError::UnsupportedArgumentTypes)
                 }
             }
-            DyadicOperation::Sub => todo!(),
+            DyadicOperation::Sub => {
+                let right_val = env.pop()?;
+                let left_val = env.pop()?;
+
+                match (left_val, right_val) {
+                    (Value::Integer(left), Value::Integer(right)) => {
+                        env.push(Value::Integer(left - right));
+                        Ok(())
+                    }
+                    (Value::Integer(scalar), Value::Array(ArrayValueKind::Integer, mut array)) |
+                    (Value::Array(ArrayValueKind::Integer, mut array), Value::Integer(scalar)) => {
+                        for right_element in array.elements.iter_mut() {
+                            let right_int = right_element.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            *right_element = Value::Integer(right_int - scalar)
+                        }
+
+                        env.push(Value::Array(ArrayValueKind::Integer, array));
+                        Ok(())
+                    }
+                    (Value::Array(ArrayValueKind::Integer, mut left), Value::Array(ArrayValueKind::Integer, right)) => {
+                        if left.shape != right.shape {
+                            return Err(RuntimeError::IncompatibleArrayShapes);
+                        }
+
+                        for (l, r) in left.elements.iter_mut().zip(right.elements.iter()) {
+                            let left_int = l.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            let right_int = r.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            *l = Value::Integer(left_int - right_int);
+                        }
+
+                        env.push(Value::Array(ArrayValueKind::Integer, left));
+                        Ok(())
+                    }
+                    (Value::Float(left), Value::Float(right)) => {
+                        env.push(Value::Float(left - right));
+                        Ok(())
+                    }
+                    (Value::Float(scalar), Value::Array(ArrayValueKind::Float, mut array)) |
+                    (Value::Array(ArrayValueKind::Float, mut array), Value::Float(scalar)) => {
+                        for right_element in array.elements.iter_mut() {
+                            let right_int = right_element.as_float().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            *right_element = Value::Float(right_int - scalar)
+                        }
+
+                        env.push(Value::Array(ArrayValueKind::Float, array));
+                        Ok(())
+                    }
+                    (Value::Array(ArrayValueKind::Float, mut left), Value::Array(ArrayValueKind::Float, right)) => {
+                        if left.shape != right.shape {
+                            return Err(RuntimeError::IncompatibleArrayShapes);
+                        }
+
+                        for (l, r) in left.elements.iter_mut().zip(right.elements.iter()) {
+                            let left_int = l.as_float().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            let right_int = r.as_float().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            *l = Value::Float(left_int - right_int);
+                        }
+
+                        env.push(Value::Array(ArrayValueKind::Float, left));
+                        Ok(())
+                    }
+                    (Value::Integer(i), Value::Char(c)) |
+                    (Value::Char(c), Value::Integer(i)) => {
+                        env.push(Value::Char((c as u8 - i as u8) as char));
+                        Ok(())
+                    }
+                    (Value::Integer(scalar), Value::Array(ArrayValueKind::Char, mut array)) |
+                    (Value::Array(ArrayValueKind::Char, mut array), Value::Integer(scalar)) => {
+                        for right_element in array.elements.iter_mut() {
+                            let right_char = right_element.as_char().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            *right_element = Value::Char((scalar as u8 - *right_char as u8) as char)
+                        }
+
+                        env.push(Value::Array(ArrayValueKind::Char, array));
+                        Ok(())
+                    }
+                    (Value::Array(ArrayValueKind::Integer, integers), Value::Array(ArrayValueKind::Char, mut chars)) |
+                    (Value::Array(ArrayValueKind::Char, mut chars), Value::Array(ArrayValueKind::Integer, integers)) => {
+                        if chars.shape != integers.shape {
+                            return Err(RuntimeError::IncompatibleArrayShapes);
+                        }
+
+                        for (l, r) in chars.elements.iter_mut().zip(integers.elements.iter()) {
+                            let char = l.as_char().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            let int = r.as_integer().ok_or_else(|| RuntimeError::UnsupportedArgumentTypes)?;
+                            *l = Value::Char((*char as u8 - *int as u8) as char)
+                        }
+
+                        env.push(Value::Array(ArrayValueKind::Char, chars));
+                        Ok(())
+                    }
+                    _ => Err(RuntimeError::UnsupportedArgumentTypes)
+                }
+            }
             DyadicOperation::Mul => todo!(),
             DyadicOperation::Div => todo!(),
             DyadicOperation::Equal => todo!(),
@@ -408,6 +499,7 @@ mod tests {
         let tokens = interpret(r#""hi there""#);
         assert_eq!(Ok(vec![Value::String("hi there".to_string())]), tokens);
     }
+
     #[test]
     fn test_interpret_arrays() {
         let tokens = interpret("[]");
@@ -445,6 +537,36 @@ mod tests {
 
         let tokens = interpret("['c' 'e' 'h'] 2 +");
         assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Char, Array::new(Shape::new(vec![3]), vec![Value::Char('e'), Value::Char('g'), Value::Char('j')]))]), tokens);
+    }
+
+    #[test]
+    fn test_interpret_subtraction_on_integers() {
+        let tokens = interpret("4 2 -");
+        assert_eq!(Ok(vec![Value::Integer(2)]), tokens);
+
+        let tokens = interpret("1 [2 3 4] -");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)]))]), tokens);
+
+        let tokens = interpret("[5 7 9] 4 -");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(1), Value::Integer(3), Value::Integer(5)]))]), tokens);
+
+        let tokens = interpret("[7 4 1] [6 2 5] -");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(1), Value::Integer(2), Value::Integer(-4)]))]), tokens);
+    }
+
+    #[test]
+    fn test_interpret_subtraction_on_characters() {
+        let tokens = interpret("'d' 2 -");
+        assert_eq!(Ok(vec![Value::Char('b')]), tokens);
+
+        let tokens = interpret("3 'f' -");
+        assert_eq!(Ok(vec![Value::Char('c')]), tokens);
+
+        let tokens = interpret("1 ['f' 'e' 'r'] -");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Char, Array::new(Shape::new(vec![3]), vec![Value::Char('e'), Value::Char('f'), Value::Char('q')]))]), tokens);
+
+        let tokens = interpret("['c' 'e' 'h'] 2 -");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Char, Array::new(Shape::new(vec![3]), vec![Value::Char('a'), Value::Char('c'), Value::Char('f')]))]), tokens);
     }
 }
 
