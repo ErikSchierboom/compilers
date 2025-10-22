@@ -231,7 +231,39 @@ impl Executable for MonadicOperation {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
             MonadicOperation::Not => {
-                todo!("implement not")
+                let val = env.pop()?;
+
+                match val {
+                    Value::Integer(i) => {
+                        env.push(Value::Integer(1 - i));
+                        Ok(())
+                    }
+
+                    Value::Float(f) => {
+                        env.push(Value::Float(1f64 - f));
+                        Ok(())
+                    }
+
+                    Value::Array(ArrayValueKind::Integer, mut array) => {
+                        for elem in &mut array.elements {
+                            let val = elem.as_integer().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                            *elem = Value::Integer(1 - *val);
+                        }
+                        env.push(Value::Array(ArrayValueKind::Integer, array));
+                        Ok(())
+                    }
+
+                    Value::Array(ArrayValueKind::Float, mut array) => {
+                        for elem in &mut array.elements {
+                            let val = elem.as_float().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                            *elem = Value::Float(1f64 - *val);
+                        }
+                        env.push(Value::Array(ArrayValueKind::Float, array));
+                        Ok(())
+                    }
+
+                    _ => Err(RuntimeError::UnsupportedArgumentTypes),
+                }
             }
         }
     }
@@ -438,7 +470,22 @@ mod tests {
     }
 
     #[test]
-    fn test_interpret_addition_on_integers() {
+    fn test_interpret_not() {
+        let tokens = interpret("1 !");
+        assert_eq!(Ok(vec![Value::Integer(0)]), tokens);
+
+        let tokens = interpret("[0 1 2 3] !");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![4]), vec![Value::Integer(1), Value::Integer(0), Value::Integer(-1), Value::Integer(-2)]))]), tokens);
+
+        let tokens = interpret("1.0 !");
+        assert_eq!(Ok(vec![Value::Float(0.0)]), tokens);
+
+        let tokens = interpret("[0.5 1.0 2.0 3.3] !");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Float, Array::new(Shape::new(vec![4]), vec![Value::Float(0.5), Value::Float(0.0), Value::Float(-1.0), Value::Float(-2.3)]))]), tokens);
+    }
+
+    #[test]
+    fn test_interpret_addition() {
         let tokens = interpret("1 2 +");
         assert_eq!(Ok(vec![Value::Integer(3)]), tokens);
 
