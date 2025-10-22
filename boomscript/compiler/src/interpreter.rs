@@ -237,6 +237,18 @@ impl Executable for MonadicOperation {
     }
 }
 
+macro_rules! dyadic_scalar_array_op {
+    ($env:expr, $op:tt, $scalar:ident, $array:ident, $cast:ident, $kind:ident) => {{
+        for elem in &mut $array.elements {
+            let val = elem.$cast().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+            *elem = Value::$kind($scalar $op val);
+        };
+        $env.push(Value::Array(ArrayValueKind::$kind, $array));
+        Ok(())
+    }};
+}
+
+
 macro_rules! dyadic_op {
     ($env:expr, $op:tt) => {{
         let right_val = $env.pop()?;
@@ -253,14 +265,9 @@ macro_rules! dyadic_op {
                 Ok(())
             }
 
-            (Value::Integer(scalar), Value::Array(ArrayValueKind::Integer, mut array))
-            | (Value::Array(ArrayValueKind::Integer, mut array), Value::Integer(scalar)) => {
-                for elem in &mut array.elements {
-                    let val = elem.as_integer().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *elem = Value::Integer(scalar $op val);
-                }
-                $env.push(Value::Array(ArrayValueKind::Integer, array));
-                Ok(())
+            (Value::Integer(scalar), Value::Array(ArrayValueKind::Integer, mut array)) |
+            (Value::Array(ArrayValueKind::Integer, mut array), Value::Integer(scalar)) => {
+                dyadic_scalar_array_op!($env, $op, scalar, array, as_integer, Integer)
             }
 
             (Value::Float(scalar), Value::Array(ArrayValueKind::Float, mut array))
@@ -329,6 +336,8 @@ macro_rules! dyadic_op {
                 $env.push(Value::Array(ArrayValueKind::Char, chars));
                 Ok(())
             }
+
+            // TODO: support empty arrays
 
             _ => Err(RuntimeError::UnsupportedArgumentTypes),
         }
@@ -456,7 +465,7 @@ mod tests {
         assert_eq!(Ok(vec![Value::Integer(2)]), tokens);
 
         let tokens = interpret("1 [2 3 4] -");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(-1), Value::Integer(-2), Value::Integer(-3)]))]), tokens);
 
         let tokens = interpret("[5 7 9] 4 -");
         assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Integer, Array::new(Shape::new(vec![3]), vec![Value::Integer(1), Value::Integer(3), Value::Integer(5)]))]), tokens);
