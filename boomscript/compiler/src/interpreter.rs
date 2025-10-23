@@ -331,6 +331,7 @@ pub enum Builtin {
     Abs,
     Dup,
     Swap,
+    Split,
 }
 
 impl Executable for Builtin {
@@ -351,6 +352,26 @@ impl Executable for Builtin {
                 env.push(right);
                 env.push(left);
                 Ok(())
+            }
+            Builtin::Split => {
+                let delimiters = env.pop()?;
+                let string = env.pop()?;
+
+                match (string, delimiters) {
+                    (Value::String(str), Value::Char(c)) => {
+                        todo!()
+                    }
+                    (Value::String(str), Value::String(c)) => {
+                        todo!()
+                    }
+                    (Value::String(str), Value::Array(ArrayValueKind::Char, chars)) => {
+                        todo!()
+                    }
+                    (Value::String(str), Value::Array(ArrayValueKind::String, strings)) => {
+                        todo!()
+                    }
+                    _ => Err(RuntimeError::UnsupportedArgumentTypes),
+                }
             }
         }
     }
@@ -665,6 +686,15 @@ mod tests {
 
         let tokens = interpret("2 3 4 swap");
         assert_eq!(Ok(vec![Value::Number(2.), Value::Number(4.), Value::Number(3.)]), tokens);
+    }
+
+    #[test]
+    fn test_interpret_split() {
+        let tokens = interpret(r#""one\ntwo\nthree" '\n'"#);
+        assert_eq!(Ok(vec![Value::String("one ".to_string()), Value::String("two".to_string()), Value::String("three".to_string())]), tokens);
+
+        let tokens = interpret(r#""hi the-re"" "the" split"#);
+        assert_eq!(Ok(vec![Value::String("hi ".to_string()), Value::String("-re".to_string())]), tokens);
     }
 }
 
