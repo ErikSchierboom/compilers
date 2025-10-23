@@ -31,21 +31,43 @@ impl Display for RuntimeError {
 
 impl Error for RuntimeError {}
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum ArrayValueKind {
-    Empty,
-    Char,
-    Number,
-    String,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Char(char),
     Number(f64),
     String(String),
     Lambda(Vec<Word>),
-    Array(ArrayValueKind, DimensionalArray<Value>),
+    Array(Array),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Array {
+    Empty,
+    Char(DimensionalArray<char>),
+    Number(DimensionalArray<f64>),
+    String(DimensionalArray<String>),
+}
+
+impl Array {
+    pub fn shape(&self) -> Option<&Shape> {
+        match self {
+            Array::Empty => None,
+            Array::Char(array) => Some(&array.shape),
+            Array::Number(array) => Some(&array.shape),
+            Array::String(array) => Some(&array.shape)
+        }
+    }
+}
+
+impl Display for Array {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Array::Empty => write!(f, "[]"),
+            Array::Char(array) => write!(f, "{}", array),
+            Array::Number(array) => write!(f, "{}", array),
+            Array::String(array) => write!(f, "{}", array),
+        }
+    }
 }
 
 impl Value {
@@ -101,7 +123,7 @@ impl Display for Value {
             Value::Number(int) => write!(f, "{int}"),
             Value::String(string) => write!(f, "{string}"),
             Value::Lambda(words) => write!(f, "({})", words.iter().map(|w| format!("{w}")).collect::<Vec<_>>().join(" ")),
-            Value::Array(_, array) => write!(f, "{array}"),
+            Value::Array(array) => write!(f, "{array}"),
         }
     }
 }
@@ -381,7 +403,6 @@ pub trait Executable {
     fn execute(&self, env: &mut Environment) -> InterpretResult;
 }
 
-
 impl Executable for Word {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
@@ -453,20 +474,20 @@ impl Executable for MonadicOperation {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
             MonadicOperation::Not => {
-                let val = env.pop()?;
+                let mut val = env.pop()?;
 
                 match val {
-                    Value::Number(number) => {
-                        env.push(Value::Number(1. - number));
+                    Value::Number(mut number) => {
+                        number = 1. - number;
+                        env.push(val);
                         Ok(())
                     }
 
-                    Value::Array(ArrayValueKind::Number, mut array) => {
+                    Value::Array(Array::Number(ref mut array)) => {
                         for elem in &mut array.elements {
-                            let &val = elem.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                            *elem = Value::Number(1. - val);
+                            *elem = 1. - *elem;
                         }
-                        env.push(Value::Array(ArrayValueKind::Number, array));
+                        env.push(val);
                         Ok(())
                     }
 
