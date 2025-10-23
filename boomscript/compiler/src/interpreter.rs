@@ -329,7 +329,10 @@ macro_rules! monadic_number_op {
                 Ok(())
             }
 
-            // TODO: support empty arrays
+            Value::Array(ArrayValueKind::Empty, array) => {
+                $env.push(Value::Array(ArrayValueKind::Empty, array));
+                Ok(())
+            }
 
             _ => Err(RuntimeError::UnsupportedArgumentTypes),
         }
