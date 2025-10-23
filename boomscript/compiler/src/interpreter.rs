@@ -319,8 +319,6 @@ macro_rules! dyadic_number_char_op {
                 Ok(())
             }
 
-            // TODO: support empty arrays
-
             _ => Err(RuntimeError::UnsupportedArgumentTypes),
         }
     }};
