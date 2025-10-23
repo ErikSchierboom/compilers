@@ -557,6 +557,45 @@ mod tests {
     }
 
     #[test]
+    fn test_interpret_abs() {
+        let tokens = interpret("1 abs");
+        assert_eq!(Ok(vec![Value::Number(1.)]), tokens);
+
+        let tokens = interpret("-3.2 abs");
+        assert_eq!(Ok(vec![Value::Number(3.2)]), tokens);
+    }
+
+    #[test]
+    fn test_interpret_max() {
+        let tokens = interpret("1 2 max");
+        assert_eq!(Ok(vec![Value::Number(2.)]), tokens);
+
+        let tokens = interpret("3 2 max");
+        assert_eq!(Ok(vec![Value::Number(3.)]), tokens);
+
+        let tokens = interpret("[0 1 4] 2 max");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(2.), Value::Number(2.), Value::Number(4.)]))]), tokens);
+
+        let tokens = interpret("2 [0 1 4] max");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(2.), Value::Number(2.), Value::Number(4.)]))]), tokens);
+    }
+
+    #[test]
+    fn test_interpret_min() {
+        let tokens = interpret("1 2 min");
+        assert_eq!(Ok(vec![Value::Number(1.)]), tokens);
+
+        let tokens = interpret("3 2 min");
+        assert_eq!(Ok(vec![Value::Number(2.)]), tokens);
+
+        let tokens = interpret("[0 1 4] 2 min");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(0.), Value::Number(1.), Value::Number(2.)]))]), tokens);
+
+        let tokens = interpret("2 [0 1 4] min");
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(0.), Value::Number(1.), Value::Number(2.)]))]), tokens);
+    }
+
+    #[test]
     fn test_interpret_addition_on_numbers() {
         let tokens = interpret("1 2 +");
         assert_eq!(Ok(vec![Value::Number(3.)]), tokens);
@@ -608,6 +647,24 @@ mod tests {
 
         let tokens = interpret("['c' 'e' 'h'] 2 -");
         assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Char, Array::new(Shape::new(vec![3]), vec![Value::Char('a'), Value::Char('c'), Value::Char('f')]))]), tokens);
+    }
+
+    #[test]
+    fn test_interpret_dup() {
+        let tokens = interpret("3 dup");
+        assert_eq!(Ok(vec![Value::Number(3.), Value::Number(3.)]), tokens);
+
+        let tokens = interpret("2 3 dup");
+        assert_eq!(Ok(vec![Value::Number(2.), Value::Number(3.), Value::Number(3.)]), tokens);
+    }
+
+    #[test]
+    fn test_interpret_swap() {
+        let tokens = interpret("2 3 swap");
+        assert_eq!(Ok(vec![Value::Number(3.), Value::Number(2.)]), tokens);
+
+        let tokens = interpret("2 3 4 swap");
+        assert_eq!(Ok(vec![Value::Number(2.), Value::Number(4.), Value::Number(3.)]), tokens);
     }
 }
 
