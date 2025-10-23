@@ -170,146 +170,6 @@ impl Environment {
     }
 }
 
-// TODO: convert op to method
-// TODO: use methods on array
-// TODO: create overload without characters
-macro_rules! dyadic_number_char_op {
-    ($env:expr, $op:ident) => {{
-        let right_val = $env.pop()?;
-        let left_val = $env.pop()?;
-
-        match (left_val, right_val) {
-            (Value::Number(l), Value::Number(r)) => {
-                $env.push(Value::Number(l.$op(r)));
-                Ok(())
-            }
-
-            (Value::Number(scalar), Value::Array(ArrayValueKind::Number, mut array)) => {
-                for elem in &mut array.elements {
-                    let &val = elem.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *elem = Value::Number(scalar.$op(val));
-                }
-                $env.push(Value::Array(ArrayValueKind::Number, array));
-                Ok(())
-            }
-
-            (Value::Array(ArrayValueKind::Number, mut array), Value::Number(scalar)) => {
-                for elem in &mut array.elements {
-                    let &val = elem.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *elem = Value::Number(val.$op(scalar));
-                }
-                $env.push(Value::Array(ArrayValueKind::Number, array));
-                Ok(())
-            }
-
-            (Value::Array(ArrayValueKind::Number, mut left), Value::Array(ArrayValueKind::Number, right)) => {
-                if left.shape != right.shape {
-                    return Err(RuntimeError::IncompatibleArrayShapes);
-                }
-                for (l, r) in left.elements.iter_mut().zip(&right.elements) {
-                    let &li = l.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    let &ri = r.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *l = Value::Number(li.$op(ri));
-                }
-                $env.push(Value::Array(ArrayValueKind::Number, left));
-                Ok(())
-            }
-
-            (Value::Number(i), Value::Char(c)) | (Value::Char(c), Value::Number(i)) => {
-                $env.push(Value::Char(((c as u8).$op(i as u8)) as char));
-                Ok(())
-            }
-
-            (Value::Number(scalar), Value::Array(ArrayValueKind::Char, mut array))
-            | (Value::Array(ArrayValueKind::Char, mut array), Value::Number(scalar)) => {
-                for elem in &mut array.elements {
-                    let &c = elem.as_char().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *elem = Value::Char(((c as u8).$op(scalar as u8)) as char);
-                }
-                $env.push(Value::Array(ArrayValueKind::Char, array));
-                Ok(())
-            }
-
-            (Value::Array(ArrayValueKind::Char, mut chars), Value::Array(ArrayValueKind::Number, ints)) => {
-                if chars.shape != ints.shape {
-                    return Err(RuntimeError::IncompatibleArrayShapes);
-                }
-
-                for (c, i) in chars.elements.iter_mut().zip(&ints.elements) {
-                    let &ch = c.as_char().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    let &int = i.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *c = Value::Char(((ch as u8).$op(int as u8)) as char);
-                }
-
-                $env.push(Value::Array(ArrayValueKind::Char, chars));
-                Ok(())
-            }
-
-            // TODO: support empty arrays
-
-            _ => Err(RuntimeError::UnsupportedArgumentTypes),
-        }
-    }};
-}
-
-macro_rules! dyadic_number_op {
-    ($env:expr, $op:ident) => {{
-        let right_val = $env.pop()?;
-        let left_val = $env.pop()?;
-
-        match (left_val, right_val) {
-            (Value::Number(l), Value::Number(r)) => {
-                $env.push(Value::Number(l.$op(r)));
-                Ok(())
-            }
-
-            (Value::Number(scalar), Value::Array(ArrayValueKind::Number, mut array)) => {
-                for elem in &mut array.elements {
-                    let &val = elem.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *elem = Value::Number(scalar.$op(val));
-                }
-                $env.push(Value::Array(ArrayValueKind::Number, array));
-                Ok(())
-            }
-
-            (Value::Array(ArrayValueKind::Number, mut array), Value::Number(scalar)) => {
-                for elem in &mut array.elements {
-                    let &val = elem.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *elem = Value::Number(val.$op(scalar));
-                }
-                $env.push(Value::Array(ArrayValueKind::Number, array));
-                Ok(())
-            }
-
-            (Value::Array(ArrayValueKind::Number, mut left), Value::Array(ArrayValueKind::Number, right)) => {
-                if left.shape != right.shape {
-                    return Err(RuntimeError::IncompatibleArrayShapes);
-                }
-                for (l, r) in left.elements.iter_mut().zip(&right.elements) {
-                    let &li = l.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    let &ri = r.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *l = Value::Number(li.$op(ri));
-                }
-                $env.push(Value::Array(ArrayValueKind::Number, left));
-                Ok(())
-            }
-
-            // TODO: support empty arrays
-
-            _ => Err(RuntimeError::UnsupportedArgumentTypes),
-        }
-    }};
-}
-
-#[derive(Clone)]
-pub enum Builtin {
-    Max,
-    Min,
-    Abs,
-    Dup,
-    Swap,
-}
-
 macro_rules! monadic_number_op {
     ($env:expr, $op:expr) => {{
         let value = $env.pop()?;
@@ -329,8 +189,8 @@ macro_rules! monadic_number_op {
                 Ok(())
             }
 
-            Value::Array(ArrayValueKind::Empty, array) => {
-                $env.push(Value::Array(ArrayValueKind::Empty, array));
+            Value::Array(ArrayValueKind::Empty, _) => {
+                $env.push(value);
                 Ok(())
             }
 
@@ -339,11 +199,147 @@ macro_rules! monadic_number_op {
     }};
 }
 
+macro_rules! dyadic_number_op {
+    ($env:expr, $op:expr) => {{
+        let right_val = $env.pop()?;
+        let left_val = $env.pop()?;
+
+        match (left_val, right_val) {
+            (Value::Number(l), Value::Number(r)) => {
+                $env.push(Value::Number($op(l, r)));
+                Ok(())
+            }
+
+            (Value::Number(scalar), Value::Array(ArrayValueKind::Number, mut array)) => {
+                for elem in &mut array.elements {
+                    let &val = elem.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    *elem = Value::Number($op(scalar,val));
+                }
+                $env.push(Value::Array(ArrayValueKind::Number, array));
+                Ok(())
+            }
+
+            (Value::Array(ArrayValueKind::Number, mut array), Value::Number(scalar)) => {
+                for elem in &mut array.elements {
+                    let &val = elem.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    *elem = Value::Number($op(val, scalar));
+                }
+                $env.push(Value::Array(ArrayValueKind::Number, array));
+                Ok(())
+            }
+
+            (Value::Array(ArrayValueKind::Number, mut left), Value::Array(ArrayValueKind::Number, right)) => {
+                if left.shape != right.shape {
+                    return Err(RuntimeError::IncompatibleArrayShapes);
+                }
+                for (l, r) in left.elements.iter_mut().zip(&right.elements) {
+                    let &li = l.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    let &ri = r.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    *l = Value::Number($op(li, ri));
+                }
+                $env.push(Value::Array(ArrayValueKind::Number, left));
+                Ok(())
+            }
+
+            _ => Err(RuntimeError::UnsupportedArgumentTypes),
+        }
+    }};
+}
+
+// TODO: use methods on array
+macro_rules! dyadic_number_char_op {
+    ($env:expr, $number_op:expr, $char_op:expr) => {{
+        let right_val = $env.pop()?;
+        let left_val = $env.pop()?;
+
+        match (left_val, right_val) {
+            (Value::Number(l), Value::Number(r)) => {
+                $env.push(Value::Number($number_op(l, r)));
+                Ok(())
+            }
+
+            (Value::Number(scalar), Value::Array(ArrayValueKind::Number, mut array)) => {
+                for elem in &mut array.elements {
+                    let &val = elem.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    *elem = Value::Number($number_op(scalar, val));
+                }
+                $env.push(Value::Array(ArrayValueKind::Number, array));
+                Ok(())
+            }
+
+            (Value::Array(ArrayValueKind::Number, mut array), Value::Number(scalar)) => {
+                for elem in &mut array.elements {
+                    let &val = elem.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    *elem = Value::Number($number_op(val, scalar));
+                }
+                $env.push(Value::Array(ArrayValueKind::Number, array));
+                Ok(())
+            }
+
+            (Value::Array(ArrayValueKind::Number, mut left), Value::Array(ArrayValueKind::Number, right)) => {
+                if left.shape != right.shape {
+                    return Err(RuntimeError::IncompatibleArrayShapes);
+                }
+                for (l, r) in left.elements.iter_mut().zip(&right.elements) {
+                    let &li = l.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    let &ri = r.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    *l = Value::Number($number_op(li, ri));
+                }
+                $env.push(Value::Array(ArrayValueKind::Number, left));
+                Ok(())
+            }
+
+            (Value::Number(i), Value::Char(c)) | (Value::Char(c), Value::Number(i)) => {
+                $env.push(Value::Char(($char_op(c as u8, i as u8)) as char));
+                Ok(())
+            }
+
+            (Value::Number(scalar), Value::Array(ArrayValueKind::Char, mut array))
+            | (Value::Array(ArrayValueKind::Char, mut array), Value::Number(scalar)) => {
+                for elem in &mut array.elements {
+                    let &c = elem.as_char().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    *elem = Value::Char(($char_op(c as u8, scalar as u8)) as char);
+                }
+                $env.push(Value::Array(ArrayValueKind::Char, array));
+                Ok(())
+            }
+
+            (Value::Array(ArrayValueKind::Char, mut chars), Value::Array(ArrayValueKind::Number, ints)) => {
+                if chars.shape != ints.shape {
+                    return Err(RuntimeError::IncompatibleArrayShapes);
+                }
+
+                for (c, i) in chars.elements.iter_mut().zip(&ints.elements) {
+                    let &ch = c.as_char().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    let &int = i.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
+                    *c = Value::Char(($char_op(ch as u8, int as u8)) as char);
+                }
+
+                $env.push(Value::Array(ArrayValueKind::Char, chars));
+                Ok(())
+            }
+
+            // TODO: support empty arrays
+
+            _ => Err(RuntimeError::UnsupportedArgumentTypes),
+        }
+    }};
+}
+
+#[derive(Clone)]
+pub enum Builtin {
+    Max,
+    Min,
+    Abs,
+    Dup,
+    Swap,
+}
+
 impl Executable for Builtin {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
-            Builtin::Max => dyadic_number_op!(env, max),
-            Builtin::Min => dyadic_number_op!(env, min),
+            Builtin::Max => dyadic_number_op!(env, f64::max),
+            Builtin::Min => dyadic_number_op!(env, f64::min),
             Builtin::Abs => monadic_number_op!(env, f64::abs),
             Builtin::Dup => {
                 let value = env.pop()?;
@@ -465,10 +461,10 @@ impl Executable for MonadicOperation {
 impl Executable for DyadicOperation {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
-            DyadicOperation::Add => dyadic_number_char_op!(env, add),
-            DyadicOperation::Sub => dyadic_number_char_op!(env, sub),
-            DyadicOperation::Mul => dyadic_number_char_op!(env, mul),
-            DyadicOperation::Div => dyadic_number_char_op!(env, div),
+            DyadicOperation::Add => dyadic_number_char_op!(env, f64::add, u8::add),
+            DyadicOperation::Sub => dyadic_number_char_op!(env, f64::sub, u8::sub),
+            DyadicOperation::Mul => dyadic_number_char_op!(env, f64::mul, u8::mul),
+            DyadicOperation::Div => dyadic_number_char_op!(env, f64::div, u8::div),
             DyadicOperation::Equal => todo!(),
             DyadicOperation::NotEqual => todo!(),
             DyadicOperation::Greater => todo!(),
