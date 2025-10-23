@@ -54,20 +54,8 @@ impl<T> Array<T> {
         Self { shape, elements: values }
     }
 
-    pub fn scalar(element: T) -> Self {
-        Self::new(Shape::scalar(), vec![element])
-    }
-
     pub fn empty() -> Self {
         Self::new(Shape::new(vec![0]), Vec::new())
-    }
-
-    pub fn linear(elements: Vec<T>) -> Self {
-        Self::new(Shape::new(vec![elements.len()]), elements)
-    }
-
-    pub fn matrix(elements: Vec<Vec<T>>) -> Self {
-        Self::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect())
     }
 
     pub fn row_slices(&self) -> impl ExactSizeIterator<Item=&[T]> {
@@ -174,58 +162,63 @@ mod tests {
 
     #[test]
     fn test_display_scalar() {
-        let scalar = Array::scalar(5);
+        let scalar = Array::<i32>::new(Shape::scalar(), vec![5]);
         assert_eq!(scalar.to_string(), "5");
     }
 
     #[test]
     fn test_display_linear() {
-        let empty: Array<i64> = Array::linear(vec![]);
+        let elements = vec![];
+        let empty: Array<i64> = Array::<i64>::new(Shape::new(vec![elements.len()]), elements);
         assert_eq!(empty.to_string(), "[]");
 
-        let single = Array::linear(vec![13]);
+        let elements = vec![13];
+        let single = Array::<i32>::new(Shape::new(vec![elements.len()]), elements);
         assert_eq!(single.to_string(), "[13]");
 
-        let multiples = Array::linear(vec![27, 9, 1]);
+        let elements = vec![27, 9, 1];
+        let multiples = Array::<i32>::new(Shape::new(vec![elements.len()]), elements);
         assert_eq!(multiples.to_string(), "[27 9 1]");
     }
 
     #[test]
     fn test_display_matrix() {
-        let empty: Array<i64> = Array::matrix(vec![]);
+        let empty: Array<i64> = Array::empty();
         assert_eq!(empty.to_string(), "[]");
 
-        let single_row_no_columns: Array<i64> = Array::matrix(vec![vec![]]);
+        let elements = vec![vec![]];
+        let single_row_no_columns: Array<i64> = Array::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect());
         assert_eq!(single_row_no_columns.to_string(), "[]");
 
-        let single_row_one_column = Array::matrix(vec![vec![2]]);
+        let elements = vec![vec![2]];
+        let single_row_one_column = Array::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect());
         assert_eq!(single_row_one_column.to_string(), "[2]");
 
-        let multiple_rows_one_column = Array::matrix(
-            vec![
-                vec![2],
-                vec![3],
-                vec![4]]);
+        let elements = vec![
+            vec![2],
+            vec![3],
+            vec![4]];
+        let multiple_rows_one_column = Array::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect());
         assert_eq!(multiple_rows_one_column.to_string(),
                    concat!("[2\n",
                    " 3\n",
                    " 4]"));
 
-        let multiples_rows_multiple_columns = Array::matrix(
-            vec![
-                vec![1, 2, 3],
-                vec![4, 5, 6],
-                vec![7, 8, 9]]);
+        let elements = vec![
+            vec![1, 2, 3],
+            vec![4, 5, 6],
+            vec![7, 8, 9]];
+        let multiples_rows_multiple_columns = Array::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect());
         assert_eq!(multiples_rows_multiple_columns.to_string(),
                    concat!("[1 2 3\n",
                    " 4 5 6\n",
                    " 7 8 9]"));
 
-        let column_values_are_padded = Array::matrix(
-            vec![
-                vec![1, 222, 3],
-                vec![44, 55, 6],
-                vec![7, 8, 90]]);
+        let elements = vec![
+            vec![1, 222, 3],
+            vec![44, 55, 6],
+            vec![7, 8, 90]];
+        let column_values_are_padded = Array::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect());
         assert_eq!(column_values_are_padded.to_string(),
                    concat!("[ 1 222  3\n",
                    " 44  55  6\n",
