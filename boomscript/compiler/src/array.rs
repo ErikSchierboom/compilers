@@ -44,12 +44,12 @@ impl Shape {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Array<T> {
+pub struct DimensionalArray<T> {
     pub shape: Shape,
     pub elements: Vec<T>,
 }
 
-impl<T> Array<T> {
+impl<T> DimensionalArray<T> {
     pub fn new(shape: Shape, values: Vec<T>) -> Self {
         Self { shape, elements: values }
     }
@@ -62,9 +62,9 @@ impl<T> Array<T> {
         self.elements.chunks_exact(self.shape.row_len())
     }
 
-    pub fn monadic_op<V>(top: Self, bottom: Self, op: impl Fn(&T) -> V) -> Array<V> {
+    pub fn monadic_op<V>(top: Self, bottom: Self, op: impl Fn(&T) -> V) -> DimensionalArray<V> {
         let new_values: Vec<V> = bottom.elements.into_iter().map(|a| op(&a)).collect();
-        Array::new(top.shape.clone(), new_values)
+        DimensionalArray::new(top.shape.clone(), new_values)
     }
 
     pub fn monadic_op_mut(&mut self, op: impl Fn(&T) -> T) {
@@ -73,6 +73,7 @@ impl<T> Array<T> {
         }
     }
 
+    // TODO: is_scalar cannot be used anymore
     pub fn dyadic_op_mut(mut top: Self, mut bottom: Self, op: impl Fn(&T, &T) -> T) -> Result<Self, ()> {
         if top.shape == bottom.shape {
             for (b, a) in bottom.elements.iter_mut().zip(top.elements) {
@@ -101,7 +102,7 @@ impl<T> Array<T> {
     }
 }
 
-impl<T> Display for Array<T>
+impl<T> Display for DimensionalArray<T>
 where
     T: Display,
 {
@@ -162,43 +163,43 @@ mod tests {
 
     #[test]
     fn test_display_scalar() {
-        let scalar = Array::<i32>::new(Shape::scalar(), vec![5]);
+        let scalar = DimensionalArray::<i32>::new(Shape::scalar(), vec![5]);
         assert_eq!(scalar.to_string(), "5");
     }
 
     #[test]
     fn test_display_linear() {
         let elements = vec![];
-        let empty: Array<i64> = Array::<i64>::new(Shape::new(vec![elements.len()]), elements);
+        let empty: DimensionalArray<i64> = DimensionalArray::<i64>::new(Shape::new(vec![elements.len()]), elements);
         assert_eq!(empty.to_string(), "[]");
 
         let elements = vec![13];
-        let single = Array::<i32>::new(Shape::new(vec![elements.len()]), elements);
+        let single = DimensionalArray::<i32>::new(Shape::new(vec![elements.len()]), elements);
         assert_eq!(single.to_string(), "[13]");
 
         let elements = vec![27, 9, 1];
-        let multiples = Array::<i32>::new(Shape::new(vec![elements.len()]), elements);
+        let multiples = DimensionalArray::<i32>::new(Shape::new(vec![elements.len()]), elements);
         assert_eq!(multiples.to_string(), "[27 9 1]");
     }
 
     #[test]
     fn test_display_matrix() {
-        let empty: Array<i64> = Array::empty();
+        let empty: DimensionalArray<i64> = DimensionalArray::empty();
         assert_eq!(empty.to_string(), "[]");
 
         let elements = vec![vec![]];
-        let single_row_no_columns: Array<i64> = Array::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect());
+        let single_row_no_columns: DimensionalArray<i64> = DimensionalArray::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect());
         assert_eq!(single_row_no_columns.to_string(), "[]");
 
         let elements = vec![vec![2]];
-        let single_row_one_column = Array::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect());
+        let single_row_one_column = DimensionalArray::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect());
         assert_eq!(single_row_one_column.to_string(), "[2]");
 
         let elements = vec![
             vec![2],
             vec![3],
             vec![4]];
-        let multiple_rows_one_column = Array::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect());
+        let multiple_rows_one_column = DimensionalArray::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect());
         assert_eq!(multiple_rows_one_column.to_string(),
                    concat!("[2\n",
                    " 3\n",
@@ -208,7 +209,7 @@ mod tests {
             vec![1, 2, 3],
             vec![4, 5, 6],
             vec![7, 8, 9]];
-        let multiples_rows_multiple_columns = Array::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect());
+        let multiples_rows_multiple_columns = DimensionalArray::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect());
         assert_eq!(multiples_rows_multiple_columns.to_string(),
                    concat!("[1 2 3\n",
                    " 4 5 6\n",
@@ -218,7 +219,7 @@ mod tests {
             vec![1, 222, 3],
             vec![44, 55, 6],
             vec![7, 8, 90]];
-        let column_values_are_padded = Array::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect());
+        let column_values_are_padded = DimensionalArray::new(Shape::new(vec![elements.len(), elements.first().map(|row| row.len()).unwrap_or(0)]), elements.into_iter().flatten().collect());
         assert_eq!(column_values_are_padded.to_string(),
                    concat!("[ 1 222  3\n",
                    " 44  55  6\n",

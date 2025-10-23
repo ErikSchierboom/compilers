@@ -1,4 +1,4 @@
-use crate::array::{Array, Shape};
+use crate::array::{DimensionalArray, Shape};
 use crate::parser::{parse, DyadicOperation, MonadicOperation, NiladicOperation, ParseError, ParseResult, Word};
 use std::collections::HashMap;
 use std::error::Error;
@@ -45,7 +45,7 @@ pub enum Value {
     Number(f64),
     String(String),
     Lambda(Vec<Word>),
-    Array(ArrayValueKind, Array<Value>),
+    Array(ArrayValueKind, DimensionalArray<Value>),
 }
 
 impl Value {
@@ -390,7 +390,7 @@ impl Executable for Word {
             Word::Char(c) => env.push(Value::Char(c.clone())),
             Word::Array(elements) => {
                 let (array_value_kind, array) = if elements.is_empty() {
-                    (ArrayValueKind::Empty, Array::empty())
+                    (ArrayValueKind::Empty, DimensionalArray::empty())
                 } else {
                     for element in elements {
                         element.value.execute(env)?;
@@ -415,7 +415,7 @@ impl Executable for Word {
                         let kind = value.array_value_kind();
                         if kind == ArrayValueKind::Empty { None } else { Some(kind) }
                     });
-                    (array_value_kind.unwrap_or(ArrayValueKind::Empty), Array::new(shape, values))
+                    (array_value_kind.unwrap_or(ArrayValueKind::Empty), DimensionalArray::new(shape, values))
                 };
 
                 env.push(Value::Array(array_value_kind, array))
@@ -556,10 +556,10 @@ mod tests {
     #[test]
     fn test_interpret_arrays() {
         let tokens = interpret("[]");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Empty, Array::new(Shape::new(vec![0]), vec![]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Empty, DimensionalArray::new(Shape::new(vec![0]), vec![]))]), tokens);
 
         let tokens = interpret("[1 2 3]");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(1.), Value::Number(2.), Value::Number(3.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(1.), Value::Number(2.), Value::Number(3.)]))]), tokens);
     }
 
     #[test]
@@ -568,13 +568,13 @@ mod tests {
         assert_eq!(Ok(vec![Value::Number(0.)]), tokens);
 
         let tokens = interpret("[0 1 2 3] !");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![4]), vec![Value::Number(1.), Value::Number(0.), Value::Number(-1.), Value::Number(-2.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![4]), vec![Value::Number(1.), Value::Number(0.), Value::Number(-1.), Value::Number(-2.)]))]), tokens);
 
         let tokens = interpret("1.77 !");
         assert_eq!(Ok(vec![Value::Number(-0.77)]), tokens);
 
         let tokens = interpret("[0.5 1.0 2.0 3.3] !");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![4]), vec![Value::Number(0.5), Value::Number(0.0), Value::Number(-1.0), Value::Number(-2.3)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![4]), vec![Value::Number(0.5), Value::Number(0.0), Value::Number(-1.0), Value::Number(-2.3)]))]), tokens);
     }
 
     #[test]
@@ -595,10 +595,10 @@ mod tests {
         assert_eq!(Ok(vec![Value::Number(3.)]), tokens);
 
         let tokens = interpret("[0 1 4] 2 max");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(2.), Value::Number(2.), Value::Number(4.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(2.), Value::Number(2.), Value::Number(4.)]))]), tokens);
 
         let tokens = interpret("2 [0 1 4] max");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(2.), Value::Number(2.), Value::Number(4.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(2.), Value::Number(2.), Value::Number(4.)]))]), tokens);
     }
 
     #[test]
@@ -610,10 +610,10 @@ mod tests {
         assert_eq!(Ok(vec![Value::Number(2.)]), tokens);
 
         let tokens = interpret("[0 1 4] 2 min");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(0.), Value::Number(1.), Value::Number(2.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(0.), Value::Number(1.), Value::Number(2.)]))]), tokens);
 
         let tokens = interpret("2 [0 1 4] min");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(0.), Value::Number(1.), Value::Number(2.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(0.), Value::Number(1.), Value::Number(2.)]))]), tokens);
     }
 
     #[test]
@@ -625,13 +625,13 @@ mod tests {
         assert_eq!(Ok(vec![Value::Number(256.42)]), tokens);
 
         let tokens = interpret("1 [2 3 4] +");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(3.), Value::Number(4.), Value::Number(5.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(3.), Value::Number(4.), Value::Number(5.)]))]), tokens);
 
         let tokens = interpret("[5 7 9] 4 +");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(9.), Value::Number(11.), Value::Number(13.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(9.), Value::Number(11.), Value::Number(13.)]))]), tokens);
 
         let tokens = interpret("[7 4 1] [6 2 5] +");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(13.), Value::Number(6.), Value::Number(6.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(13.), Value::Number(6.), Value::Number(6.)]))]), tokens);
     }
 
     #[test]
@@ -640,7 +640,7 @@ mod tests {
         assert_eq!(Ok(vec![Value::Char('c')]), tokens);
 
         let tokens = interpret("['c' 'e' 'h'] 2 +");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Char, Array::new(Shape::new(vec![3]), vec![Value::Char('e'), Value::Char('g'), Value::Char('j')]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Char, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Char('e'), Value::Char('g'), Value::Char('j')]))]), tokens);
     }
 
     #[test]
@@ -652,13 +652,13 @@ mod tests {
         assert_eq!(Ok(vec![Value::Number(-8.7)]), tokens);
 
         let tokens = interpret("1 [2 3 4] -");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(-1.), Value::Number(-2.), Value::Number(-3.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(-1.), Value::Number(-2.), Value::Number(-3.)]))]), tokens);
 
         let tokens = interpret("[5 7 9] 4 -");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(1.), Value::Number(3.), Value::Number(5.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(1.), Value::Number(3.), Value::Number(5.)]))]), tokens);
 
         let tokens = interpret("[7 4 1] [6 2 5] -");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, Array::new(Shape::new(vec![3]), vec![Value::Number(1.), Value::Number(2.), Value::Number(-4.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(1.), Value::Number(2.), Value::Number(-4.)]))]), tokens);
     }
 
     #[test]
@@ -667,7 +667,7 @@ mod tests {
         assert_eq!(Ok(vec![Value::Char('b')]), tokens);
 
         let tokens = interpret("['c' 'e' 'h'] 2 -");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Char, Array::new(Shape::new(vec![3]), vec![Value::Char('a'), Value::Char('c'), Value::Char('f')]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Char, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Char('a'), Value::Char('c'), Value::Char('f')]))]), tokens);
     }
 
     #[test]
