@@ -576,6 +576,19 @@ pub fn interpret<'a>(source: &str) -> InterpretResult<Vec<Value>> {
     interpreter.interpret()
 }
 
+// TODO: move this
+impl From<Vec<f64>> for Array {
+    fn from(values: Vec<f64>) -> Self {
+        Array::Number(DimensionalArray::new(Shape::new(vec![values.len()]), values))
+    }
+}
+
+impl From<Vec<i64>> for Array {
+    fn from(values: Vec<i64>) -> Self {
+        Array::Number(DimensionalArray::new(Shape::new(vec![values.len()]), values.into_iter().map(|value| value as f64)))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parser::Word::Array;
@@ -599,10 +612,10 @@ mod tests {
     #[test]
     fn test_interpret_arrays() {
         let tokens = interpret("[]");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Empty, DimensionalArray::new(Shape::new(vec![0]), vec![]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(Vec::<f64>::new().into())]), tokens);
 
         let tokens = interpret("[1 2 3]");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(1.), Value::Number(2.), Value::Number(3.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(vec![1, 2, 3].into())]), tokens);
     }
 
     #[test]
@@ -638,7 +651,7 @@ mod tests {
         assert_eq!(Ok(vec![Value::Number(3.)]), tokens);
 
         let tokens = interpret("[0 1 4] 2 max");
-        assert_eq!(Ok(vec![Value::Array(Array::Number(DimensionalArray::new(Shape::new(vec![3]), vec![2., Value::Number(2.), Value::Number(4.)])))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(vec![2, 2, 4].into())]), tokens);
 
         let tokens = interpret("2 [0 1 4] max");
         assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number(DimensionalArray::new(Shape::new(vec![3]), vec![2., Value::Number(2.), Value::Number(4.)])))]), tokens);
