@@ -49,12 +49,12 @@ pub enum Array {
 }
 
 impl Array {
-    pub fn shape(&self) -> Option<&Shape> {
+    pub fn shape(&self) -> Shape {
         match self {
-            Array::Empty => None,
-            Array::Char(array) => Some(&array.shape),
-            Array::Number(array) => Some(&array.shape),
-            Array::String(array) => Some(&array.shape)
+            Array::Empty => Shape::empty(),
+            Array::Char(array) => array.shape.clone(),
+            Array::Number(array) => array.shape.clone(),
+            Array::String(array) => array.shape.clone()
         }
     }
 }
@@ -71,41 +71,49 @@ impl Display for Array {
 }
 
 impl Value {
-    pub fn as_char(&self) -> Option<&char> {
+    pub fn take_char(&mut self) -> Option<char> {
         match self {
-            Value::Char(c) => Some(c),
+            Value::Char(c) => Some(*c),
             _ => None
         }
     }
 
-    pub fn as_number(&self) -> Option<&f64> {
+    pub fn take_number(&mut self) -> Option<f64> {
         match self {
-            Value::Number(number) => Some(number),
+            Value::Number(number) => Some(*number),
             _ => None
         }
     }
 
-    pub fn as_string(&self) -> Option<&String> {
+    pub fn take_string(&mut self) -> Option<String> {
         match self {
-            Value::String(string) => Some(string),
+            Value::String(string) => Some(*string),
+            _ => None
+        }
+    }
+
+    pub fn take_lambda(&mut self) -> Option<Vec<Word>> {
+        match self {
+            Value::Lambda(words) => Some(*words),
             _ => None
         }
     }
 
     fn shape(&self) -> Shape {
         match self {
-            Value::Array(_, array) => array.shape.clone(),
+            Value::Array(array) => array.shape(),
             _ => Shape::empty()
         }
     }
 
     fn array_value_kind(&self) -> ArrayValueKind {
         match self {
-            Value::Array(array_value_kind, array) => {
-                if array.elements.is_empty() {
-                    ArrayValueKind::Empty
-                } else {
-                    array_value_kind.clone()
+            Value::Array(array) => {
+                match array {
+                    Array::Empty => ArrayValueKind::Empty,
+                    Array::Char(_) => ArrayValueKind::Char,
+                    Array::Number(_) => ArrayValueKind::Number,
+                    Array::String(_) => ArrayValueKind::String
                 }
             }
             Value::Char(_) => ArrayValueKind::Char,
@@ -126,6 +134,15 @@ impl Display for Value {
             Value::Array(array) => write!(f, "{array}"),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ArrayValueKind {
+    Empty,
+    Char,
+    Number,
+    String,
+    Lambda,
 }
 
 #[derive(Clone)]
@@ -410,8 +427,8 @@ impl Executable for Word {
             Word::String(string) => env.push(Value::String(string.clone())),
             Word::Char(c) => env.push(Value::Char(c.clone())),
             Word::Array(elements) => {
-                let (array_value_kind, array) = if elements.is_empty() {
-                    (ArrayValueKind::Empty, DimensionalArray::empty())
+                let array = if elements.is_empty() {
+                    Array::Empty
                 } else {
                     for element in elements {
                         element.value.execute(env)?;
@@ -429,17 +446,21 @@ impl Executable for Word {
                         }
                     }
 
-                    let mut shape = values.first().unwrap().shape();
+                    let first = values.first().unwrap();
+
+                    let mut shape = first.shape();
                     shape.prepend_dimension(values.len());
 
-                    let array_value_kind = values.iter().find_map(|value| {
-                        let kind = value.array_value_kind();
-                        if kind == ArrayValueKind::Empty { None } else { Some(kind) }
-                    });
-                    (array_value_kind.unwrap_or(ArrayValueKind::Empty), DimensionalArray::new(shape, values))
+                    match first.array_value_kind() {
+                        ArrayValueKind::Empty => Array::Empty,
+                        ArrayValueKind::Char => Array::Char(DimensionalArray::new(shape, values.into_iter().map(|mut value| value.take_char().unwrap().clone()).collect())),
+                        ArrayValueKind::Number => Array::Char(DimensionalArray::new(shape, values.into_iter().map(|value| value.take_number().unwrap().clone()).collect())),
+                        ArrayValueKind::String => Array::Char(DimensionalArray::new(shape, values.into_iter().map(|value| value.take_string().unwrap().clone()).collect())),
+                        ArrayValueKind::Lambda => panic!("Arrays cannot contain lambdas")
+                    }
                 };
 
-                env.push(Value::Array(array_value_kind, array))
+                env.push(Value::Array(array))
             }
             Word::Lambda(words) => env.push(Value::Lambda(words.iter().map(|word| word.value.clone()).collect())),
             Word::Identifier(identifier) => {
@@ -477,8 +498,8 @@ impl Executable for MonadicOperation {
                 let mut val = env.pop()?;
 
                 match val {
-                    Value::Number(mut number) => {
-                        number = 1. - number;
+                    Value::Number(ref mut number) => {
+                        *number = 1. - *number;
                         env.push(val);
                         Ok(())
                     }
@@ -557,6 +578,7 @@ pub fn interpret<'a>(source: &str) -> InterpretResult<Vec<Value>> {
 
 #[cfg(test)]
 mod tests {
+    use crate::parser::Word::Array;
     use super::*;
 
     #[test]
@@ -616,10 +638,10 @@ mod tests {
         assert_eq!(Ok(vec![Value::Number(3.)]), tokens);
 
         let tokens = interpret("[0 1 4] 2 max");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(2.), Value::Number(2.), Value::Number(4.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(Array::Number(DimensionalArray::new(Shape::new(vec![3]), vec![2., Value::Number(2.), Value::Number(4.)])))]), tokens);
 
         let tokens = interpret("2 [0 1 4] max");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(2.), Value::Number(2.), Value::Number(4.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number(DimensionalArray::new(Shape::new(vec![3]), vec![2., Value::Number(2.), Value::Number(4.)])))]), tokens);
     }
 
     #[test]
@@ -631,10 +653,10 @@ mod tests {
         assert_eq!(Ok(vec![Value::Number(2.)]), tokens);
 
         let tokens = interpret("[0 1 4] 2 min");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(0.), Value::Number(1.), Value::Number(2.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(Array::Number(DimensionalArray::new(Shape::new(vec![3]), vec![0., 1., 2.])))]), tokens);
 
         let tokens = interpret("2 [0 1 4] min");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(0.), Value::Number(1.), Value::Number(2.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(Array::Number(DimensionalArray::new(Shape::new(vec![3]), vec![0., 1., 2.])))]), tokens);
     }
 
     #[test]
@@ -661,7 +683,7 @@ mod tests {
         assert_eq!(Ok(vec![Value::Char('c')]), tokens);
 
         let tokens = interpret("['c' 'e' 'h'] 2 +");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Char, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Char('e'), Value::Char('g'), Value::Char('j')]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(Array::Char(DimensionalArray::new(Shape::new(vec![3]), vec!['e', 'g', 'j'])))]), tokens);
     }
 
     #[test]
@@ -673,13 +695,13 @@ mod tests {
         assert_eq!(Ok(vec![Value::Number(-8.7)]), tokens);
 
         let tokens = interpret("1 [2 3 4] -");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(-1.), Value::Number(-2.), Value::Number(-3.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(Array::Number(DimensionalArray::new(Shape::new(vec![3]), vec![-1., -2., -3.])))]), tokens);
 
         let tokens = interpret("[5 7 9] 4 -");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(1.), Value::Number(3.), Value::Number(5.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(Array::Number(DimensionalArray::new(Shape::new(vec![3]), vec![1., 3., 5.])))]), tokens);
 
         let tokens = interpret("[7 4 1] [6 2 5] -");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(1.), Value::Number(2.), Value::Number(-4.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(Array::Number(DimensionalArray::new(Shape::new(vec![3]), vec![1., 2., -4.])))]), tokens);
     }
 
     #[test]
@@ -688,7 +710,7 @@ mod tests {
         assert_eq!(Ok(vec![Value::Char('b')]), tokens);
 
         let tokens = interpret("['c' 'e' 'h'] 2 -");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Char, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Char('a'), Value::Char('c'), Value::Char('f')]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(Array::Char(DimensionalArray::new(Shape::new(vec![3]), vec!['a', 'c', 'f'])))]), tokens);
     }
 
     #[test]
