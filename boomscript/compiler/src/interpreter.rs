@@ -87,14 +87,14 @@ impl Value {
 
     pub fn take_string(&mut self) -> Option<String> {
         match self {
-            Value::String(string) => Some(*string),
+            Value::String(string) => Some(string.clone()),
             _ => None
         }
     }
 
     pub fn take_lambda(&mut self) -> Option<Vec<Word>> {
         match self {
-            Value::Lambda(words) => Some(*words),
+            Value::Lambda(words) => Some(words.clone()),
             _ => None
         }
     }
@@ -185,13 +185,35 @@ impl Environment {
         }
     }
 
-    pub fn execute_monadic(
+    pub fn execute_monadic<F>(
         &mut self,
-        f: fn(Value, &Self) -> InterpretResult<Value>,
-    ) -> InterpretResult {
+        fun: F,
+    ) -> InterpretResult where
+        F: Fn(Value, &Self) -> InterpretResult<Value>,
+    {
         let a = self.pop()?;
-        self.push(f(a, self)?);
+        self.push(fun(a, self)?);
         Ok(())
+    }
+
+    pub fn execute_monadic_number_op<F>(
+        &mut self,
+        fun: F,
+    ) -> InterpretResult
+    where
+        F: Fn(f64) -> f64,
+    {
+        self.execute_monadic(|value, _| match value {
+            Value::Number(number) => Ok(Value::Number(fun(number))),
+            Value::Array(Array::Number(mut array)) => {
+                for element in &mut array.elements {
+                    *element = fun(*element);
+                }
+                Ok(Value::Array(Array::Number(array)))
+            }
+            Value::Array(Array::Empty) => Ok(value),
+            _ => Err(RuntimeError::UnsupportedArgumentTypes)
+        })
     }
 
     pub fn execute_dyadic(
@@ -219,16 +241,16 @@ macro_rules! monadic_number_op {
                 Ok(())
             }
 
-            Value::Array(ArrayValueKind::Number, mut array) => {
+            Value::Array(Array::Number(mut array)) => {
                 for element in &mut array.elements {
                     let &element_value = element.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
                     *element = Value::Number($op(element_value));
                 }
-                $env.push(Value::Array(ArrayValueKind::Number, array));
+                $env.push(Value::Array(Array::Number(array)));
                 Ok(())
             }
 
-            Value::Array(ArrayValueKind::Empty, _) => {
+            Value::Array(Array::Empty) => {
                 $env.push(value);
                 Ok(())
             }
@@ -245,38 +267,34 @@ macro_rules! dyadic_number_op {
 
         match (left_val, right_val) {
             (Value::Number(l), Value::Number(r)) => {
-                $env.push(Value::Number($op(l, r)));
+                $env.push(Value::Number($op(*l, *r)));
                 Ok(())
             }
 
-            (Value::Number(scalar), Value::Array(ArrayValueKind::Number, mut array)) => {
+            (Value::Number(scalar), Value::Array(Array::Number(mut array))) => {
                 for elem in &mut array.elements {
-                    let &val = elem.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *elem = Value::Number($op(scalar,val));
+                    *elem = Value::Number($op(scalar, *elem));
                 }
-                $env.push(Value::Array(ArrayValueKind::Number, array));
+                $env.push(Value::Array(Array::Number(array)));
                 Ok(())
             }
 
-            (Value::Array(ArrayValueKind::Number, mut array), Value::Number(scalar)) => {
+            (Value::Array(Array::Number(mut array)), Value::Number(scalar)) => {
                 for elem in &mut array.elements {
-                    let &val = elem.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *elem = Value::Number($op(val, scalar));
+                    *elem = Value::Number($op(elem, scalar));
                 }
-                $env.push(Value::Array(ArrayValueKind::Number, array));
+                $env.push(Value::Array(Array::Number(array)));
                 Ok(())
             }
 
-            (Value::Array(ArrayValueKind::Number, mut left), Value::Array(ArrayValueKind::Number, right)) => {
+            (Value::Array(Array::Number(mut left)), Value::Array(Array::Number(right))) => {
                 if left.shape != right.shape {
                     return Err(RuntimeError::IncompatibleArrayShapes);
                 }
                 for (l, r) in left.elements.iter_mut().zip(&right.elements) {
-                    let &li = l.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    let &ri = r.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *l = Value::Number($op(li, ri));
+                    *l = Value::Number($op(l, r));
                 }
-                $env.push(Value::Array(ArrayValueKind::Number, left));
+                $env.push(Value::Array(Array::Number(left)));
                 Ok(())
             }
 
@@ -292,7 +310,7 @@ macro_rules! dyadic_number_char_op {
         let left_val = $env.pop()?;
 
         match (left_val, right_val) {
-            (Value::Number(l), Value::Number(r)) => {
+            (l, r) => {
                 $env.push(Value::Number($number_op(l, r)));
                 Ok(())
             }
@@ -328,7 +346,7 @@ macro_rules! dyadic_number_char_op {
                 Ok(())
             }
 
-            (Value::Number(i), Value::Char(c)) | (Value::Char(c), Value::Number(i)) => {
+            (Value::Char(c), Value::Number(i)) => {
                 $env.push(Value::Char(($char_op(c as u8, i as u8)) as char));
                 Ok(())
             }
@@ -378,7 +396,7 @@ impl Executable for Builtin {
         match self {
             Builtin::Max => dyadic_number_op!(env, f64::max),
             Builtin::Min => dyadic_number_op!(env, f64::min),
-            Builtin::Abs => monadic_number_op!(env, f64::abs),
+            Builtin::Abs => env.execute_monadic_number_op(f64::abs),
             Builtin::Dup => {
                 let value = env.pop()?;
                 env.push(value.clone());
@@ -403,10 +421,10 @@ impl Executable for Builtin {
                     (Value::String(str), Value::String(c)) => {
                         todo!()
                     }
-                    (Value::String(str), Value::Array(ArrayValueKind::Char, chars)) => {
+                    (Value::String(str), Value::Array(Array::Char(chars))) => {
                         todo!()
                     }
-                    (Value::String(str), Value::Array(ArrayValueKind::String, strings)) => {
+                    (Value::String(str), Value::Array(Array::String(strings))) => {
                         todo!()
                     }
                     _ => Err(RuntimeError::UnsupportedArgumentTypes),
@@ -576,37 +594,79 @@ pub fn interpret<'a>(source: &str) -> InterpretResult<Vec<Value>> {
     interpreter.interpret()
 }
 
-// TODO: move this
-impl From<Vec<f64>> for Array {
-    fn from(values: Vec<f64>) -> Self {
-        Array::Number(DimensionalArray::new(Shape::new(vec![values.len()]), values))
+impl From<f64> for Value {
+    fn from(value: f64) -> Self {
+        Value::Number(value)
     }
 }
 
-impl From<Vec<i64>> for Array {
+impl From<i64> for Value {
+    fn from(value: i64) -> Self {
+        Value::Number(value as f64)
+    }
+}
+
+impl From<char> for Value {
+    fn from(value: char) -> Self {
+        Value::Char(value)
+    }
+}
+
+impl<'a> From<&'a str> for Value {
+    fn from(value: &'a str) -> Self {
+        Value::String(value.to_string())
+    }
+}
+
+impl From<String> for Value {
+    fn from(value: String) -> Self {
+        Value::String(value)
+    }
+}
+
+// TODO: move this
+impl From<Vec<f64>> for Value {
+    fn from(values: Vec<f64>) -> Self {
+        Value::Array(Array::Number(DimensionalArray::new(Shape::new(vec![values.len()]), values)))
+    }
+}
+
+impl From<Vec<i64>> for Value {
     fn from(values: Vec<i64>) -> Self {
-        Array::Number(DimensionalArray::new(Shape::new(vec![values.len()]), values.into_iter().map(|value| value as f64)))
+        Value::Array(Array::Number(DimensionalArray::new(Shape::new(vec![values.len()]), values)))
+    }
+}
+
+impl From<Vec<char>> for Value {
+    fn from(values: Vec<char>) -> Self {
+        Value::Array(Array::Char(DimensionalArray::new(Shape::new(vec![values.len()]), values.into())))
+    }
+}
+
+
+impl<'a> From<Vec<&'a str>> for Value {
+    fn from(values: Vec<&'a str>) -> Self {
+        Value::Array(Array::String(DimensionalArray::new(Shape::new(vec![values.len()]), values.into())))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::Word::Array;
     use super::*;
 
     #[test]
     fn test_interpret_scalars() {
         let tokens = interpret("19");
-        assert_eq!(Ok(vec![Value::Number(19.)]), tokens);
+        assert_eq!(Ok(vec![19.into()]), tokens);
 
         let tokens = interpret("5.32");
-        assert_eq!(Ok(vec![Value::Number(5.32)]), tokens);
+        assert_eq!(Ok(vec![5.32.into()]), tokens);
 
         let tokens = interpret("'a'");
-        assert_eq!(Ok(vec![Value::Char('a')]), tokens);
+        assert_eq!(Ok(vec!['a'.into()]), tokens);
 
         let tokens = interpret(r#""hi there""#);
-        assert_eq!(Ok(vec![Value::String("hi there".to_string())]), tokens);
+        assert_eq!(Ok(vec!["hi there".into()]), tokens);
     }
 
     #[test]
@@ -621,127 +681,127 @@ mod tests {
     #[test]
     fn test_interpret_not() {
         let tokens = interpret("1 !");
-        assert_eq!(Ok(vec![Value::Number(0.)]), tokens);
+        assert_eq!(Ok(vec![0.into()]), tokens);
 
         let tokens = interpret("[0 1 2 3] !");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![4]), vec![Value::Number(1.), Value::Number(0.), Value::Number(-1.), Value::Number(-2.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(vec![1, 0, -1, -2].into())]), tokens);
 
         let tokens = interpret("1.77 !");
-        assert_eq!(Ok(vec![Value::Number(-0.77)]), tokens);
+        assert_eq!(Ok(vec![-0.77.into()]), tokens);
 
         let tokens = interpret("[0.5 1.0 2.0 3.3] !");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![4]), vec![Value::Number(0.5), Value::Number(0.0), Value::Number(-1.0), Value::Number(-2.3)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(vec![0.5, 0.0, -1.0, -2.3].into())]), tokens);
     }
 
     #[test]
     fn test_interpret_abs() {
         let tokens = interpret("1 abs");
-        assert_eq!(Ok(vec![Value::Number(1.)]), tokens);
+        assert_eq!(Ok(vec![1.into()]), tokens);
 
         let tokens = interpret("-3.2 abs");
-        assert_eq!(Ok(vec![Value::Number(3.2)]), tokens);
+        assert_eq!(Ok(vec![3.2.into()]), tokens);
     }
 
     #[test]
     fn test_interpret_max() {
         let tokens = interpret("1 2 max");
-        assert_eq!(Ok(vec![Value::Number(2.)]), tokens);
+        assert_eq!(Ok(vec![2.into()]), tokens);
 
         let tokens = interpret("3 2 max");
-        assert_eq!(Ok(vec![Value::Number(3.)]), tokens);
+        assert_eq!(Ok(vec![3.into()]), tokens);
 
         let tokens = interpret("[0 1 4] 2 max");
         assert_eq!(Ok(vec![Value::Array(vec![2, 2, 4].into())]), tokens);
 
         let tokens = interpret("2 [0 1 4] max");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number(DimensionalArray::new(Shape::new(vec![3]), vec![2., Value::Number(2.), Value::Number(4.)])))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(vec![2, 2, 4].into())]), tokens);
     }
 
     #[test]
     fn test_interpret_min() {
         let tokens = interpret("1 2 min");
-        assert_eq!(Ok(vec![Value::Number(1.)]), tokens);
+        assert_eq!(Ok(vec![1.into()]), tokens);
 
         let tokens = interpret("3 2 min");
-        assert_eq!(Ok(vec![Value::Number(2.)]), tokens);
+        assert_eq!(Ok(vec![2.into()]), tokens);
 
         let tokens = interpret("[0 1 4] 2 min");
-        assert_eq!(Ok(vec![Value::Array(Array::Number(DimensionalArray::new(Shape::new(vec![3]), vec![0., 1., 2.])))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(vec![0, 1, 2].into())]), tokens);
 
         let tokens = interpret("2 [0 1 4] min");
-        assert_eq!(Ok(vec![Value::Array(Array::Number(DimensionalArray::new(Shape::new(vec![3]), vec![0., 1., 2.])))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(vec![0, 1, 2].into())]), tokens);
     }
 
     #[test]
     fn test_interpret_addition_on_numbers() {
         let tokens = interpret("1 2 +");
-        assert_eq!(Ok(vec![Value::Number(3.)]), tokens);
+        assert_eq!(Ok(vec![3.into()]), tokens);
 
         let tokens = interpret("13.33 243.09 +");
-        assert_eq!(Ok(vec![Value::Number(256.42)]), tokens);
+        assert_eq!(Ok(vec![256.42.into()]), tokens);
 
         let tokens = interpret("1 [2 3 4] +");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(3.), Value::Number(4.), Value::Number(5.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(vec![3, 4, 5].into())]), tokens);
 
         let tokens = interpret("[5 7 9] 4 +");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(9.), Value::Number(11.), Value::Number(13.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(vec![9, 11, 13].into())]), tokens);
 
         let tokens = interpret("[7 4 1] [6 2 5] +");
-        assert_eq!(Ok(vec![Value::Array(ArrayValueKind::Number, DimensionalArray::new(Shape::new(vec![3]), vec![Value::Number(13.), Value::Number(6.), Value::Number(6.)]))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(vec![13, 6, 6].into())]), tokens);
     }
 
     #[test]
     fn test_interpret_addition_on_characters() {
         let tokens = interpret("'a' 2 +");
-        assert_eq!(Ok(vec![Value::Char('c')]), tokens);
+        assert_eq!(Ok(vec!['c'.into()]), tokens);
 
         let tokens = interpret("['c' 'e' 'h'] 2 +");
-        assert_eq!(Ok(vec![Value::Array(Array::Char(DimensionalArray::new(Shape::new(vec![3]), vec!['e', 'g', 'j'])))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(vec!['e', 'g', 'j'].into())]), tokens);
     }
 
     #[test]
     fn test_interpret_subtraction_on_numbers() {
         let tokens = interpret("4 2 -");
-        assert_eq!(Ok(vec![Value::Number(2.)]), tokens);
+        assert_eq!(Ok(vec![2.into()]), tokens);
 
         let tokens = interpret("0.3 9.0 -");
-        assert_eq!(Ok(vec![Value::Number(-8.7)]), tokens);
+        assert_eq!(Ok(vec![(-8.7).into()]), tokens);
 
         let tokens = interpret("1 [2 3 4] -");
-        assert_eq!(Ok(vec![Value::Array(Array::Number(DimensionalArray::new(Shape::new(vec![3]), vec![-1., -2., -3.])))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(vec![-1, -2, -3].into())]), tokens);
 
         let tokens = interpret("[5 7 9] 4 -");
-        assert_eq!(Ok(vec![Value::Array(Array::Number(DimensionalArray::new(Shape::new(vec![3]), vec![1., 3., 5.])))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(vec![1, 3, 5].into())]), tokens);
 
         let tokens = interpret("[7 4 1] [6 2 5] -");
-        assert_eq!(Ok(vec![Value::Array(Array::Number(DimensionalArray::new(Shape::new(vec![3]), vec![1., 2., -4.])))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(vec![1, 2, -4].into())]), tokens);
     }
 
     #[test]
     fn test_interpret_subtraction_on_characters() {
         let tokens = interpret("'d' 2 -");
-        assert_eq!(Ok(vec![Value::Char('b')]), tokens);
+        assert_eq!(Ok(vec!['b'.into()]), tokens);
 
         let tokens = interpret("['c' 'e' 'h'] 2 -");
-        assert_eq!(Ok(vec![Value::Array(Array::Char(DimensionalArray::new(Shape::new(vec![3]), vec!['a', 'c', 'f'])))]), tokens);
+        assert_eq!(Ok(vec![Value::Array(vec!['a', 'c', 'f'].into())]), tokens);
     }
 
     #[test]
     fn test_interpret_dup() {
         let tokens = interpret("3 dup");
-        assert_eq!(Ok(vec![Value::Number(3.), Value::Number(3.)]), tokens);
+        assert_eq!(Ok(vec![3.into(), 3.into()]), tokens);
 
         let tokens = interpret("2 3 dup");
-        assert_eq!(Ok(vec![Value::Number(2.), Value::Number(3.), Value::Number(3.)]), tokens);
+        assert_eq!(Ok(vec![2.into(), 3.into(), 3.into()].into()), tokens);
     }
 
     #[test]
     fn test_interpret_swap() {
         let tokens = interpret("2 3 swap");
-        assert_eq!(Ok(vec![Value::Number(3.), Value::Number(2.)]), tokens);
+        assert_eq!(Ok(vec![3.into(), 2.into()]), tokens);
 
         let tokens = interpret("2 3 4 swap");
-        assert_eq!(Ok(vec![Value::Number(2.), Value::Number(4.), Value::Number(3.)]), tokens);
+        assert_eq!(Ok(vec![2.into(), 4.into(), 3.into()]), tokens);
     }
 
     #[test]
