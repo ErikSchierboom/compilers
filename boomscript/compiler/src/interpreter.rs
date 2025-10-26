@@ -31,6 +31,7 @@ impl Display for RuntimeError {
 
 impl Error for RuntimeError {}
 
+// TODO: add box type to allow for not special-casing regular values
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Char(char),
