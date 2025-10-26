@@ -1,6 +1,6 @@
 use crate::array::{DimensionalArray, Shape};
+use crate::environment::Environment;
 use crate::parser::{parse, DyadicOperation, MonadicOperation, NiladicOperation, ParseError, ParseResult, Word};
-use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
@@ -150,237 +150,6 @@ pub enum Binding {
     Builtin(Builtin)
 }
 
-pub struct Environment {
-    stack: Vec<Value>,
-    bindings: HashMap<String, Binding>,
-}
-
-impl Environment {
-    fn new() -> Self {
-        Self {
-            stack: Vec::new(),
-            bindings: HashMap::from([
-                ("max".to_string(), Binding::Builtin(Builtin::Max)),
-                ("min".to_string(), Binding::Builtin(Builtin::Min)),
-                ("abs".to_string(), Binding::Builtin(Builtin::Abs)),
-                ("dup".to_string(), Binding::Builtin(Builtin::Dup)),
-                ("swap".to_string(), Binding::Builtin(Builtin::Swap)),
-            ]),
-        }
-    }
-
-    fn push(&mut self, value: Value) {
-        self.stack.push(value)
-    }
-
-    fn pop(&mut self) -> InterpretResult<Value> {
-        self.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)
-    }
-
-    fn pop_n(&mut self, n: usize) -> InterpretResult<Vec<Value>> {
-        if n <= self.stack.len() {
-            Ok(self.stack.drain((self.stack.len() - n)..).collect())
-        } else {
-            Err(RuntimeError::EmptyStack)
-        }
-    }
-
-    pub fn execute_monadic<F>(
-        &mut self,
-        fun: F,
-    ) -> InterpretResult where
-        F: Fn(Value, &Self) -> InterpretResult<Value>,
-    {
-        let a = self.pop()?;
-        self.push(fun(a, self)?);
-        Ok(())
-    }
-
-    pub fn execute_monadic_number_op<F>(
-        &mut self,
-        fun: F,
-    ) -> InterpretResult
-    where
-        F: Fn(f64) -> f64,
-    {
-        self.execute_monadic(|value, _| match value {
-            Value::Number(number) => Ok(Value::Number(fun(number))),
-            Value::Array(Array::Number(mut array)) => {
-                for element in &mut array.elements {
-                    *element = fun(*element);
-                }
-                Ok(Value::Array(Array::Number(array)))
-            }
-            Value::Array(Array::Empty) => Ok(value),
-            _ => Err(RuntimeError::UnsupportedArgumentTypes)
-        })
-    }
-
-    pub fn execute_dyadic(
-        &mut self,
-        f: fn(Value, Value, &Self) -> InterpretResult<Value>,
-    ) -> InterpretResult {
-        let a = self.pop()?;
-        let b = self.pop()?;
-        self.push(f(a, b, self)?);
-        Ok(())
-    }
-
-    pub fn get(&self, identifier: &String) -> InterpretResult<&Binding> {
-        self.bindings.get(identifier).ok_or_else(|| RuntimeError::UnknownIdentifier(identifier.clone()))
-    }
-}
-
-macro_rules! monadic_number_op {
-    ($env:expr, $op:expr) => {{
-        let value = $env.pop()?;
-
-        match value {
-            Value::Number(number) => {
-                $env.push(Value::Number($op(number)));
-                Ok(())
-            }
-
-            Value::Array(Array::Number(mut array)) => {
-                for element in &mut array.elements {
-                    let &element_value = element.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *element = Value::Number($op(element_value));
-                }
-                $env.push(Value::Array(Array::Number(array)));
-                Ok(())
-            }
-
-            Value::Array(Array::Empty) => {
-                $env.push(value);
-                Ok(())
-            }
-
-            _ => Err(RuntimeError::UnsupportedArgumentTypes),
-        }
-    }};
-}
-
-macro_rules! dyadic_number_op {
-    ($env:expr, $op:expr) => {{
-        let right_val = $env.pop()?;
-        let left_val = $env.pop()?;
-
-        match (left_val, right_val) {
-            (Value::Number(l), Value::Number(r)) => {
-                $env.push(Value::Number($op(*l, *r)));
-                Ok(())
-            }
-
-            (Value::Number(scalar), Value::Array(Array::Number(mut array))) => {
-                for elem in &mut array.elements {
-                    *elem = Value::Number($op(scalar, *elem));
-                }
-                $env.push(Value::Array(Array::Number(array)));
-                Ok(())
-            }
-
-            (Value::Array(Array::Number(mut array)), Value::Number(scalar)) => {
-                for elem in &mut array.elements {
-                    *elem = Value::Number($op(elem, scalar));
-                }
-                $env.push(Value::Array(Array::Number(array)));
-                Ok(())
-            }
-
-            (Value::Array(Array::Number(mut left)), Value::Array(Array::Number(right))) => {
-                if left.shape != right.shape {
-                    return Err(RuntimeError::IncompatibleArrayShapes);
-                }
-                for (l, r) in left.elements.iter_mut().zip(&right.elements) {
-                    *l = Value::Number($op(l, r));
-                }
-                $env.push(Value::Array(Array::Number(left)));
-                Ok(())
-            }
-
-            _ => Err(RuntimeError::UnsupportedArgumentTypes),
-        }
-    }};
-}
-
-// TODO: use methods on array
-macro_rules! dyadic_number_char_op {
-    ($env:expr, $number_op:expr, $char_op:expr) => {{
-        let right_val = $env.pop()?;
-        let left_val = $env.pop()?;
-
-        match (left_val, right_val) {
-            (l, r) => {
-                $env.push(Value::Number($number_op(l, r)));
-                Ok(())
-            }
-
-            (Value::Number(scalar), Value::Array(ArrayValueKind::Number, mut array)) => {
-                for elem in &mut array.elements {
-                    let &val = elem.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *elem = Value::Number($number_op(scalar, val));
-                }
-                $env.push(Value::Array(ArrayValueKind::Number, array));
-                Ok(())
-            }
-
-            (Value::Array(ArrayValueKind::Number, mut array), Value::Number(scalar)) => {
-                for elem in &mut array.elements {
-                    let &val = elem.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *elem = Value::Number($number_op(val, scalar));
-                }
-                $env.push(Value::Array(ArrayValueKind::Number, array));
-                Ok(())
-            }
-
-            (Value::Array(ArrayValueKind::Number, mut left), Value::Array(ArrayValueKind::Number, right)) => {
-                if left.shape != right.shape {
-                    return Err(RuntimeError::IncompatibleArrayShapes);
-                }
-                for (l, r) in left.elements.iter_mut().zip(&right.elements) {
-                    let &li = l.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    let &ri = r.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *l = Value::Number($number_op(li, ri));
-                }
-                $env.push(Value::Array(ArrayValueKind::Number, left));
-                Ok(())
-            }
-
-            (Value::Char(c), Value::Number(i)) => {
-                $env.push(Value::Char(($char_op(c as u8, i as u8)) as char));
-                Ok(())
-            }
-
-            (Value::Number(scalar), Value::Array(ArrayValueKind::Char, mut array))
-            | (Value::Array(ArrayValueKind::Char, mut array), Value::Number(scalar)) => {
-                for elem in &mut array.elements {
-                    let &c = elem.as_char().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *elem = Value::Char(($char_op(c as u8, scalar as u8)) as char);
-                }
-                $env.push(Value::Array(ArrayValueKind::Char, array));
-                Ok(())
-            }
-
-            (Value::Array(ArrayValueKind::Char, mut chars), Value::Array(ArrayValueKind::Number, ints)) => {
-                if chars.shape != ints.shape {
-                    return Err(RuntimeError::IncompatibleArrayShapes);
-                }
-
-                for (c, i) in chars.elements.iter_mut().zip(&ints.elements) {
-                    let &ch = c.as_char().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    let &int = i.as_number().ok_or(RuntimeError::UnsupportedArgumentTypes)?;
-                    *c = Value::Char(($char_op(ch as u8, int as u8)) as char);
-                }
-
-                $env.push(Value::Array(ArrayValueKind::Char, chars));
-                Ok(())
-            }
-
-            _ => Err(RuntimeError::UnsupportedArgumentTypes),
-        }
-    }};
-}
-
 #[derive(Clone)]
 pub enum Builtin {
     Max,
@@ -394,9 +163,9 @@ pub enum Builtin {
 impl Executable for Builtin {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
-            Builtin::Max => dyadic_number_op!(env, f64::max),
-            Builtin::Min => dyadic_number_op!(env, f64::min),
-            Builtin::Abs => env.execute_monadic_number_op(f64::abs),
+            Builtin::Max => env.execute_dyadic_op(f64::max, Some(u8::max)),
+            Builtin::Min => env.execute_dyadic_op(f64::min, Some(u8::min)),
+            Builtin::Abs => env.execute_monadic_num_op(f64::abs),
             Builtin::Dup => {
                 let value = env.pop()?;
                 env.push(value.clone());
@@ -471,9 +240,9 @@ impl Executable for Word {
 
                     match first.array_value_kind() {
                         ArrayValueKind::Empty => Array::Empty,
-                        ArrayValueKind::Char => Array::Char(DimensionalArray::new(shape, values.into_iter().map(|mut value| value.take_char().unwrap().clone()).collect())),
-                        ArrayValueKind::Number => Array::Char(DimensionalArray::new(shape, values.into_iter().map(|value| value.take_number().unwrap().clone()).collect())),
-                        ArrayValueKind::String => Array::Char(DimensionalArray::new(shape, values.into_iter().map(|value| value.take_string().unwrap().clone()).collect())),
+                        ArrayValueKind::Char => Array::Char(DimensionalArray::new(shape, values.into_iter().map(|mut value| value.take_char().unwrap()).collect())),
+                        ArrayValueKind::Number => Array::Number(DimensionalArray::new(shape, values.into_iter().map(|mut value| value.take_number().unwrap()).collect())),
+                        ArrayValueKind::String => Array::String(DimensionalArray::new(shape, values.into_iter().map(|mut value| value.take_string().unwrap()).collect())),
                         ArrayValueKind::Lambda => panic!("Arrays cannot contain lambdas")
                     }
                 };
@@ -540,10 +309,10 @@ impl Executable for MonadicOperation {
 impl Executable for DyadicOperation {
     fn execute(&self, env: &mut Environment) -> InterpretResult {
         match self {
-            DyadicOperation::Add => dyadic_number_char_op!(env, f64::add, u8::add),
-            DyadicOperation::Sub => dyadic_number_char_op!(env, f64::sub, u8::sub),
-            DyadicOperation::Mul => dyadic_number_char_op!(env, f64::mul, u8::mul),
-            DyadicOperation::Div => dyadic_number_char_op!(env, f64::div, u8::div),
+            DyadicOperation::Add => env.execute_dyadic_op(f64::add, Some(u8::add)),
+            DyadicOperation::Sub => env.execute_dyadic_op(f64::sub, Some(u8::sub)),
+            DyadicOperation::Mul => env.execute_dyadic_op(f64::mul, Some(u8::mul)),
+            DyadicOperation::Div => env.execute_dyadic_op(f64::div, Some(u8::div)),
             DyadicOperation::Equal => todo!(),
             DyadicOperation::NotEqual => todo!(),
             DyadicOperation::Greater => todo!(),
@@ -633,7 +402,8 @@ impl From<Vec<f64>> for Value {
 
 impl From<Vec<i64>> for Value {
     fn from(values: Vec<i64>) -> Self {
-        Value::Array(Array::Number(DimensionalArray::new(Shape::new(vec![values.len()]), values)))
+        let numbers: Vec<f64> = values.into_iter().map(|value| value as f64).collect();
+        Value::Array(Array::Number(DimensionalArray::new(Shape::new(vec![numbers.len()]), numbers)))
     }
 }
 
@@ -643,10 +413,10 @@ impl From<Vec<char>> for Value {
     }
 }
 
-
 impl<'a> From<Vec<&'a str>> for Value {
     fn from(values: Vec<&'a str>) -> Self {
-        Value::Array(Array::String(DimensionalArray::new(Shape::new(vec![values.len()]), values.into())))
+        let strings: Vec<String> = values.into_iter().map(|str| str.to_string()).collect();
+        Value::Array(Array::String(DimensionalArray::new(Shape::new(vec![strings.len()]), strings)))
     }
 }
 
@@ -672,10 +442,10 @@ mod tests {
     #[test]
     fn test_interpret_arrays() {
         let tokens = interpret("[]");
-        assert_eq!(Ok(vec![Value::Array(Vec::<f64>::new().into())]), tokens);
+        assert_eq!(Ok(vec![Vec::<f64>::new().into()]), tokens);
 
         let tokens = interpret("[1 2 3]");
-        assert_eq!(Ok(vec![Value::Array(vec![1, 2, 3].into())]), tokens);
+        assert_eq!(Ok(vec![vec![1, 2, 3].into()]), tokens);
     }
 
     #[test]
@@ -684,13 +454,13 @@ mod tests {
         assert_eq!(Ok(vec![0.into()]), tokens);
 
         let tokens = interpret("[0 1 2 3] !");
-        assert_eq!(Ok(vec![Value::Array(vec![1, 0, -1, -2].into())]), tokens);
+        assert_eq!(Ok(vec![vec![1, 0, -1, -2].into()]), tokens);
 
         let tokens = interpret("1.77 !");
-        assert_eq!(Ok(vec![-0.77.into()]), tokens);
+        assert_eq!(Ok(vec![(-0.77).into()]), tokens);
 
         let tokens = interpret("[0.5 1.0 2.0 3.3] !");
-        assert_eq!(Ok(vec![Value::Array(vec![0.5, 0.0, -1.0, -2.3].into())]), tokens);
+        assert_eq!(Ok(vec![vec![0.5, 0.0, -1.0, -2.3].into()]), tokens);
     }
 
     #[test]
@@ -711,10 +481,10 @@ mod tests {
         assert_eq!(Ok(vec![3.into()]), tokens);
 
         let tokens = interpret("[0 1 4] 2 max");
-        assert_eq!(Ok(vec![Value::Array(vec![2, 2, 4].into())]), tokens);
+        assert_eq!(Ok(vec![vec![2, 2, 4].into()]), tokens);
 
         let tokens = interpret("2 [0 1 4] max");
-        assert_eq!(Ok(vec![Value::Array(vec![2, 2, 4].into())]), tokens);
+        assert_eq!(Ok(vec![vec![2, 2, 4].into()]), tokens);
     }
 
     #[test]
@@ -726,10 +496,10 @@ mod tests {
         assert_eq!(Ok(vec![2.into()]), tokens);
 
         let tokens = interpret("[0 1 4] 2 min");
-        assert_eq!(Ok(vec![Value::Array(vec![0, 1, 2].into())]), tokens);
+        assert_eq!(Ok(vec![vec![0, 1, 2].into()]), tokens);
 
         let tokens = interpret("2 [0 1 4] min");
-        assert_eq!(Ok(vec![Value::Array(vec![0, 1, 2].into())]), tokens);
+        assert_eq!(Ok(vec![vec![0, 1, 2].into()]), tokens);
     }
 
     #[test]
@@ -741,13 +511,13 @@ mod tests {
         assert_eq!(Ok(vec![256.42.into()]), tokens);
 
         let tokens = interpret("1 [2 3 4] +");
-        assert_eq!(Ok(vec![Value::Array(vec![3, 4, 5].into())]), tokens);
+        assert_eq!(Ok(vec![vec![3, 4, 5].into()]), tokens);
 
         let tokens = interpret("[5 7 9] 4 +");
-        assert_eq!(Ok(vec![Value::Array(vec![9, 11, 13].into())]), tokens);
+        assert_eq!(Ok(vec![vec![9, 11, 13].into()]), tokens);
 
         let tokens = interpret("[7 4 1] [6 2 5] +");
-        assert_eq!(Ok(vec![Value::Array(vec![13, 6, 6].into())]), tokens);
+        assert_eq!(Ok(vec![vec![13, 6, 6].into()]), tokens);
     }
 
     #[test]
@@ -756,7 +526,7 @@ mod tests {
         assert_eq!(Ok(vec!['c'.into()]), tokens);
 
         let tokens = interpret("['c' 'e' 'h'] 2 +");
-        assert_eq!(Ok(vec![Value::Array(vec!['e', 'g', 'j'].into())]), tokens);
+        assert_eq!(Ok(vec![vec!['e', 'g', 'j'].into()]), tokens);
     }
 
     #[test]
@@ -768,13 +538,13 @@ mod tests {
         assert_eq!(Ok(vec![(-8.7).into()]), tokens);
 
         let tokens = interpret("1 [2 3 4] -");
-        assert_eq!(Ok(vec![Value::Array(vec![-1, -2, -3].into())]), tokens);
+        assert_eq!(Ok(vec![vec![-1, -2, -3].into()]), tokens);
 
         let tokens = interpret("[5 7 9] 4 -");
-        assert_eq!(Ok(vec![Value::Array(vec![1, 3, 5].into())]), tokens);
+        assert_eq!(Ok(vec![vec![1, 3, 5].into()]), tokens);
 
         let tokens = interpret("[7 4 1] [6 2 5] -");
-        assert_eq!(Ok(vec![Value::Array(vec![1, 2, -4].into())]), tokens);
+        assert_eq!(Ok(vec![vec![1, 2, -4].into()]), tokens);
     }
 
     #[test]
@@ -783,7 +553,7 @@ mod tests {
         assert_eq!(Ok(vec!['b'.into()]), tokens);
 
         let tokens = interpret("['c' 'e' 'h'] 2 -");
-        assert_eq!(Ok(vec![Value::Array(vec!['a', 'c', 'f'].into())]), tokens);
+        assert_eq!(Ok(vec![vec!['a', 'c', 'f'].into()]), tokens);
     }
 
     #[test]
@@ -807,10 +577,10 @@ mod tests {
     #[test]
     fn test_interpret_split() {
         let tokens = interpret(r#""one\ntwo\nthree" '\n'"#);
-        assert_eq!(Ok(vec![Value::String("one ".to_string()), Value::String("two".to_string()), Value::String("three".to_string())]), tokens);
+        assert_eq!(Ok(vec!["one ".into(), "two".into(), "three".into()]), tokens);
 
         let tokens = interpret(r#""hi the-re"" "the" split"#);
-        assert_eq!(Ok(vec![Value::String("hi ".to_string()), Value::String("-re".to_string())]), tokens);
+        assert_eq!(Ok(vec!["hi ".into(), "-re".into()]), tokens);
     }
 }
 

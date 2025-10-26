@@ -3,3 +3,4 @@ pub mod lexer;
 pub mod parser;
 pub mod interpreter;
 pub mod array;
+pub mod environment;
