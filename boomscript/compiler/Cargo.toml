@@ -1,0 +1,5 @@
+[package]
+name = "compiler"
+version = "0.1.0"
+edition = "2024"
+authors = ["Erik Schierboom <erik_schierboom@hotmail.com>"]
