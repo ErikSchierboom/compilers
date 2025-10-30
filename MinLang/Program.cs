@@ -15,19 +15,19 @@ public enum TokenKind
 
 public record Token(TokenKind Kind, string Text);
 
-public class Lexer
+public record Lexer(string Source)
 {
-    public List<Token> Lex(string source)
+    public List<Token> Lex()
     {
         var tokens = new List<Token>();
         var start = 0;
         var current = 0;
 
-        while (current < source.Length)
+        while (current < Source.Length)
         {
             start = current;
 
-            switch (source[current])
+            switch (Source[current])
             {
                 case '+':
                     current++;
@@ -41,13 +41,13 @@ public class Lexer
                     current++;
                     break;
                 case >= '0' and <= '9':
-                    while (char.IsDigit(source[current]))
+                    while (char.IsDigit(Source[current]))
                         current++;
 
-                    tokens.Add(new Token(TokenKind.Number, source[start..current]));
+                    tokens.Add(new Token(TokenKind.Number, Source[start..current]));
                     break;
                 default:
-                    tokens.Add(new Token(TokenKind.Invalid, source[start..current]));
+                    tokens.Add(new Token(TokenKind.Invalid, Source[start..current]));
                     break;
             }
         }
@@ -58,11 +58,30 @@ public class Lexer
 }
 
 public abstract record Node;
+public record NumberLiteral(int Value) : Node;
 public record AddExpression(Node Left, Node Right) : Node;
 public record MultiplyExpression(Node Left, Node Right) : Node;
 
-class Parser
+public record Parser(List<Token> Tokens)
 {
+    public Node Parse()
+    {
+        throw new NotImplementedException();
+    }
+
+    private Node Term()
+    {
+        throw new NotImplementedException();
+    }
+    
+    private Node Literal(Token token)
+    {
+        return token.Kind switch
+        {
+            TokenKind.Number => new NumberLiteral(int.Parse(token.Text)),
+            _ => throw new InvalidOperationException("Unexpected token")
+        };
+    }
 }
 
 class Compiler
