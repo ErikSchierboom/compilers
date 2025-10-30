@@ -1,15 +1,8 @@
-﻿const string code = "1 2 + 34 *";
+﻿const string code = "1 212 + 34 *";
 
-var lexer = new Lexer(code);
-
-while (true)
-{
-    var token = lexer.Lex();
-    if (token.Kind == TokenKind.EndOfFile)
-        break;
-    
+var lexer = new Lexer();
+foreach (var token in lexer.Lex(code))
     Console.WriteLine(token);
-}
 
 public enum TokenKind
 {
@@ -22,66 +15,45 @@ public enum TokenKind
 
 public record Token(TokenKind Kind, string Text);
 
-public class Lexer(string source)
+public class Lexer
 {
-    private int _position;
-    
-    public Token Lex()
+    public List<Token> Lex(string source)
     {
-        SkipWhitespace();
-        
-        var start = _position;
+        var tokens = new List<Token>();
+        var start = 0;
+        var current = 0;
 
-        TokenKind kind;
-        switch (Current)
+        while (current < source.Length)
         {
-            case '\0':
-                kind = TokenKind.EndOfFile;
-                break;
-            case '+':
-                kind = TokenKind.Plus;
-                _position++;
-                break;
-            case '*':
-                kind = TokenKind.Star;
-                _position++;
-                break;
-            case >= '0' and <= '9':
-                kind = LexNumber();
-                break;
-            default:
-                kind = TokenKind.Invalid;
-                _position++;
-                break;
+            start = current;
+
+            switch (source[current])
+            {
+                case '+':
+                    current++;
+                    tokens.Add(new Token(TokenKind.Plus, "+"));
+                    break;
+                case '*':
+                    current++;
+                    tokens.Add(new Token(TokenKind.Star, "*"));
+                    break;
+                case ' ' or '\t' or '\r' or '\n':
+                    current++;
+                    break;
+                case >= '0' and <= '9':
+                    while (char.IsDigit(source[current]))
+                        current++;
+
+                    tokens.Add(new Token(TokenKind.Number, source[start..current]));
+                    break;
+                default:
+                    tokens.Add(new Token(TokenKind.Invalid, source[start..current]));
+                    break;
+            }
         }
-
-        var text = _position > source.Length ? "" : source[start.._position];
-        return new Token(kind, text);
-    }
-
-    private char Current
-    {
-        get
-        {
-            if (_position < source.Length)
-                return source[_position];
-            
-            return '\0';
-        }
-    }
-
-    private TokenKind LexNumber()
-    {
-        while (char.IsDigit(Current))
-            _position++;
         
-        return TokenKind.Number;
-    }
-    
-    private void SkipWhitespace()
-    {
-        while (char.IsWhiteSpace(Current))
-            _position++;
+        tokens.Add(new Token(TokenKind.EndOfFile, ""));
+        return tokens;
     }
 }
 
