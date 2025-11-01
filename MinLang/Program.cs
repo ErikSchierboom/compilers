@@ -24,12 +24,11 @@ public record Lexer(string Source)
     public List<Token> Lex()
     {
         var tokens = new List<Token>();
-        var start = 0;
         var current = 0;
 
         while (current < Source.Length)
         {
-            start = current;
+            var start = current;
 
             switch (Source[current])
             {
@@ -46,8 +45,10 @@ public record Lexer(string Source)
                     break;
                 case >= '0' and <= '9':
                     current++;
+                    
                     while (current < Source.Length && char.IsDigit(Source[current]))
                         current++;
+                    
                     tokens.Add(new Token(TokenKind.Number, Source[start..current]));
                     break;
                 default:
