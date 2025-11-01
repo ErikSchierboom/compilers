@@ -1,8 +1,12 @@
-﻿const string code = "1 212 + 34 *";
+﻿const string code = "1 + 212 * 34";
 
-var lexer = new Lexer();
-foreach (var token in lexer.Lex(code))
+var lexer = new Lexer(code);
+foreach (var token in lexer.Lex())
     Console.WriteLine(token);
+
+var parser = new Parser(lexer.Lex());
+foreach (var node in parser.Parse())
+    Console.WriteLine(node);
 
 public enum TokenKind
 {
@@ -41,12 +45,13 @@ public record Lexer(string Source)
                     current++;
                     break;
                 case >= '0' and <= '9':
-                    while (char.IsDigit(Source[current]))
+                    current++;
+                    while (current < Source.Length && char.IsDigit(Source[current]))
                         current++;
-
                     tokens.Add(new Token(TokenKind.Number, Source[start..current]));
                     break;
                 default:
+                    current++;
                     tokens.Add(new Token(TokenKind.Invalid, Source[start..current]));
                     break;
             }
@@ -64,24 +69,58 @@ public record MultiplyExpression(Node Left, Node Right) : Node;
 
 public record Parser(List<Token> Tokens)
 {
-    public Node Parse()
+    private int index = 0;
+    
+    public List<Node> Parse()
     {
-        throw new NotImplementedException();
+        var nodes = new List<Node>();
+        
+        while (!IsEndOfFile)
+            nodes.Add(Factor());
+        
+        return nodes;
+    }
+    
+    private Node Factor()
+    {
+        Node expr = Term();
+
+        return Match(TokenKind.Star) 
+            ? new MultiplyExpression(expr, Term()) 
+            : expr;
     }
 
     private Node Term()
     {
-        throw new NotImplementedException();
+        var expr = Primary();   
+        
+        return Match(TokenKind.Plus) 
+            ? new AddExpression(expr, Primary()) 
+            : expr;
     }
     
-    private Node Literal(Token token)
+    private Node Primary()
     {
-        return token.Kind switch
-        {
-            TokenKind.Number => new NumberLiteral(int.Parse(token.Text)),
-            _ => throw new InvalidOperationException("Unexpected token")
-        };
+        return Match(TokenKind.Number)
+            ? new NumberLiteral(int.Parse(PreviousToken.Text))
+            : throw new InvalidOperationException("Unexpected token");
     }
+
+    private bool Match(TokenKind kind)
+    {
+        if (Token.Kind == kind)
+        {
+            index++;
+            return true;
+        }
+
+        return false;
+    }
+    
+    private bool IsEndOfFile => Token.Kind == TokenKind.EndOfFile;
+
+    private Token Token => Tokens[index];
+    private Token PreviousToken => Tokens[index - 1];
 }
 
 class Compiler
