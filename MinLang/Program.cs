@@ -1,12 +1,14 @@
 ﻿const string code = "1 + 212 * 34";
 
-var lexer = new Lexer(code);
-foreach (var token in lexer.Lex())
-    Console.WriteLine(token);
+var lexer = new Lexer();
+var parser = new Parser();
+var compiler = new Compiler();
+var runtime = new Runtime();
 
-var parser = new Parser(lexer.Lex());
-foreach (var node in parser.Parse())
-    Console.WriteLine(node);
+var tokens = lexer.Lex(code);
+var nodes = parser.Parse(tokens);
+var instructions = compiler.Compile(nodes);
+Console.WriteLine(runtime.Run(instructions));
 
 public enum TokenKind
 {
@@ -19,18 +21,18 @@ public enum TokenKind
 
 public record Token(TokenKind Kind, string Text);
 
-public record Lexer(string Source)
+public record Lexer
 {
-    public List<Token> Lex()
+    public List<Token> Lex(string source)
     {
         var tokens = new List<Token>();
         var current = 0;
 
-        while (current < Source.Length)
+        while (current < source.Length)
         {
             var start = current;
 
-            switch (Source[current])
+            switch (source[current])
             {
                 case '+':
                     current++;
@@ -44,14 +46,14 @@ public record Lexer(string Source)
                     current++;
                     break;
                 case >= '0' and <= '9':
-                    while (current < Source.Length && char.IsDigit(Source[current]))
+                    while (current < source.Length && char.IsDigit(source[current]))
                         current++;
                     
-                    tokens.Add(new Token(TokenKind.Number, Source[start..current]));
+                    tokens.Add(new Token(TokenKind.Number, source[start..current]));
                     break;
                 default:
                     current++;
-                    tokens.Add(new Token(TokenKind.Invalid, Source[start..current]));
+                    tokens.Add(new Token(TokenKind.Invalid, source[start..current]));
                     break;
             }
         }
@@ -62,16 +64,18 @@ public record Lexer(string Source)
 }
 
 public abstract record Node;
-public record NumberLiteral(int Value) : Node;
-public record AddExpression(Node Left, Node Right) : Node;
-public record MultiplyExpression(Node Left, Node Right) : Node;
+public record LiteralExpression(Token Value) : Node;
+public record BinaryExpression(Node Left, Token Operator, Node Right) : Node;
 
-public record Parser(List<Token> Tokens)
+public record Parser
 {
-    private int index = 0;
+    private List<Token> _tokens = [];
+    private int _index;
     
-    public List<Node> Parse()
+    public List<Node> Parse(List<Token> tokens)
     {
+        _tokens = tokens;
+        
         var nodes = new List<Node>();
         
         while (!IsEndOfFile)
@@ -82,10 +86,10 @@ public record Parser(List<Token> Tokens)
     
     private Node Factor()
     {
-        Node expr = Term();
+        var expr = Term();
 
         return Match(TokenKind.Star) 
-            ? new MultiplyExpression(expr, Term()) 
+            ? new BinaryExpression(expr, PreviousToken, Term()) 
             : expr;
     }
 
@@ -94,22 +98,20 @@ public record Parser(List<Token> Tokens)
         var expr = Primary();   
         
         return Match(TokenKind.Plus) 
-            ? new AddExpression(expr, Primary()) 
+            ? new BinaryExpression(expr,  PreviousToken, Primary()) 
             : expr;
     }
     
-    private Node Primary()
-    {
-        return Match(TokenKind.Number)
-            ? new NumberLiteral(int.Parse(PreviousToken.Text))
+    private Node Primary() =>
+        Match(TokenKind.Number)
+            ? new LiteralExpression(PreviousToken)
             : throw new InvalidOperationException("Unexpected token");
-    }
 
     private bool Match(TokenKind kind)
     {
         if (Token.Kind == kind)
         {
-            index++;
+            _index++;
             return true;
         }
 
@@ -118,14 +120,101 @@ public record Parser(List<Token> Tokens)
     
     private bool IsEndOfFile => Token.Kind == TokenKind.EndOfFile;
 
-    private Token Token => Tokens[index];
-    private Token PreviousToken => Tokens[index - 1];
+    private Token Token => _tokens[_index];
+    private Token PreviousToken => _tokens[_index - 1];
 }
 
 class Compiler
 {
+    private List<Instruction> _instructions = [];
+
+    public List<Instruction> Compile(List<Node> nodes)
+    {
+        _instructions = [];
+        
+        foreach (var node in nodes)
+            Compile(node);
+
+        return _instructions;
+    }
+
+    private void Compile(Node node)
+    {
+        switch (node)
+        {
+            case BinaryExpression binaryExpression:
+                Compile(binaryExpression.Left);
+                Compile(binaryExpression.Right);
+                
+                switch (binaryExpression.Operator.Kind)
+                {
+                    case TokenKind.Plus:
+                        _instructions.Add(new AddInstruction());
+                        break;
+                    case TokenKind.Star:
+                        _instructions.Add(new MulInstruction());
+                        break;
+                    default:
+                        throw new InvalidOperationException("Unexpected operator token");
+                }
+                break;
+            case LiteralExpression numericLiteralExpression:
+                switch (numericLiteralExpression.Value.Kind)
+                {
+                    case TokenKind.Number:
+                        _instructions.Add(new LoadNumberInstruction(int.Parse(numericLiteralExpression.Value.Text)));
+                        break;
+                    default:
+                        throw new InvalidOperationException("Unecxpected literal token");
+                }
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(node));
+        }
+    }
 }
 
-class Interpreter
+abstract record Instruction
 {
+    public abstract void Execute(Stack<int> stack);
+}
+record LoadNumberInstruction(int Value) : Instruction
+{
+    public override void Execute(Stack<int> stack)
+    {
+        stack.Push(Value);
+    }
+}
+
+record AddInstruction : Instruction
+{
+    public override void Execute(Stack<int> stack)
+    {
+        var right = stack.Pop();
+        var left = stack.Pop();
+        stack.Push(left + right);
+    }
+}
+
+record MulInstruction : Instruction
+{
+    public override void Execute(Stack<int> stack)
+    {
+        var right = stack.Pop();
+        var left = stack.Pop();
+        stack.Push(left * right);
+    }
+}
+
+class Runtime
+{
+    private readonly Stack<int> _stack = new();
+
+    public int Run(List<Instruction> instructions)
+    {
+        foreach (var instruction in instructions)
+            instruction.Execute(_stack);
+
+        return _stack.Pop();
+    }
 }
