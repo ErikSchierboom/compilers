@@ -44,8 +44,6 @@ public record Lexer(string Source)
                     current++;
                     break;
                 case >= '0' and <= '9':
-                    current++;
-                    
                     while (current < Source.Length && char.IsDigit(Source[current]))
                         current++;
                     
