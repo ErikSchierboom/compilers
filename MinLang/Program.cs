@@ -4,24 +4,31 @@ var lexer = new Lexer();
 var parser = new Parser();
 var compiler = new Compiler();
 var runtime = new Runtime();
+var interpreter = new Interpreter();
 
 var tokens = lexer.Lex(code);
 var expression = parser.Parse(tokens);
 var instructions = compiler.Compile(expression);
+
+Console.WriteLine("Interpreted:");
+Console.WriteLine(interpreter.Evaluate(expression));
+
+Console.WriteLine("Compiled:");
 Console.WriteLine(runtime.Run(instructions));
 
 public enum TokenKind
 {
-    Invalid,
     Number,
     Plus,
     Star,
+
+    Error,
     EndOfFile
 }
 
 public record Token(TokenKind Kind, string Text);
 
-public record Lexer
+public class Lexer
 {
     public List<Token> Lex(string source)
     {
@@ -31,7 +38,7 @@ public record Lexer
         while (current < source.Length)
         {
             var start = current;
-
+            
             switch (source[current])
             {
                 case '+':
@@ -53,7 +60,7 @@ public record Lexer
                     break;
                 default:
                     current++;
-                    tokens.Add(new Token(TokenKind.Invalid, source[start..current]));
+                    tokens.Add(new Token(TokenKind.Error, source[start..current]));
                     break;
             }
         }
@@ -67,15 +74,14 @@ public abstract record Expression;
 public record LiteralExpression(Token Value) : Expression;
 public record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
 
-public record Parser
+public class Parser
 {
     private List<Token> _tokens = [];
-    private int _index;
+    private int _position;
     
     public Expression Parse(List<Token> tokens)
     {
         _tokens = tokens;
-        
         return Factor();
     }
     
@@ -83,7 +89,7 @@ public record Parser
     {
         var expr = Term();
 
-        return Match(TokenKind.Star) 
+        return AdvanceIf(TokenKind.Star) 
             ? new BinaryExpression(expr, PreviousToken, Term()) 
             : expr;
     }
@@ -92,31 +98,43 @@ public record Parser
     {
         var expr = Primary();   
         
-        return Match(TokenKind.Plus) 
+        return AdvanceIf(TokenKind.Plus) 
             ? new BinaryExpression(expr,  PreviousToken, Primary()) 
             : expr;
     }
     
-    private Expression Primary() =>
-        Match(TokenKind.Number)
+    private LiteralExpression Primary() =>
+        AdvanceIf(TokenKind.Number)
             ? new LiteralExpression(PreviousToken)
             : throw new InvalidOperationException("Unexpected token");
 
-    private bool Match(TokenKind kind)
+    private bool AdvanceIf(TokenKind kind)
     {
         if (Token.Kind == kind)
         {
-            _index++;
+            _position++;
             return true;
         }
 
         return false;
     }
-    
-    private bool IsEndOfFile => Token.Kind == TokenKind.EndOfFile;
 
-    private Token Token => _tokens[_index];
-    private Token PreviousToken => _tokens[_index - 1];
+    private Token Token => _tokens[_position];
+    private Token PreviousToken => _tokens[_position - 1];
+}
+
+class Interpreter
+{
+    public int Evaluate(Expression expression) =>
+        expression switch
+        {
+            BinaryExpression { Operator.Kind: TokenKind.Plus } binExpr => Evaluate(binExpr.Left) +
+                                                                          Evaluate(binExpr.Right),
+            BinaryExpression { Operator.Kind: TokenKind.Star } binExpr => Evaluate(binExpr.Left) *
+                                                                          Evaluate(binExpr.Right),
+            LiteralExpression { Value.Kind: TokenKind.Number } litEpr => int.Parse(litEpr.Value.Text),
+            _ => throw new InvalidOperationException("Unexpected expression")
+        };
 }
 
 class Compiler
@@ -165,6 +183,7 @@ abstract record Instruction
 {
     public abstract void Execute(Stack<int> stack);
 }
+
 record LoadNumberInstruction(int Value) : Instruction
 {
     public override void Execute(Stack<int> stack)
@@ -195,13 +214,13 @@ record MulInstruction : Instruction
 
 class Runtime
 {
-    private readonly Stack<int> _stack = new();
-
     public int Run(List<Instruction> instructions)
     {
+        var stack = new Stack<int>();
+        
         foreach (var instruction in instructions)
-            instruction.Execute(_stack);
+            instruction.Execute(stack);
 
-        return _stack.Pop();
+        return stack.Pop();
     }
 }
