@@ -2,6 +2,7 @@
                     var x = 1;
                     var y = 212;
                     var z = x + y * 34;
+                    z + 1;
                     """;
 
 var lexer = new Lexer();
@@ -12,10 +13,10 @@ var statements = parser.Parse();
 // var compiler = new Compiler();
 // var instructions = compiler.Compile(expression);
 // var runtime = new Runtime();
-// var interpreter = new Interpreter();
-// Console.WriteLine("Interpreted:");
-// Console.WriteLine(interpreter.Evaluate(expression));
-//
+var interpreter = new Interpreter(statements);
+Console.WriteLine("Interpreted:");
+Console.WriteLine(interpreter.Evaluate());
+
 // Console.WriteLine("Compiled:");
 // Console.WriteLine(runtime.Run(instructions));
 
@@ -202,8 +203,44 @@ public class Parser(List<Token> tokens)
     private Token PreviousToken => tokens[_position - 1];
 }
 
-class Interpreter
+class Environment
 {
+    private readonly Dictionary<string, int> _variables = new();
+    
+    public int Get(string name) => _variables[name];
+    public void Set(string name, int value) => _variables[name] = value;
+}
+
+class Interpreter(List<Statement> statements)
+{
+    private Environment _environment = new();
+
+    public int Evaluate()
+    {
+        int result = -1;
+        
+        foreach (var statement in statements)
+            result = Evaluate(statement);
+        
+        return result;
+    }
+
+
+    public int Evaluate(Statement statement)
+    {
+        switch (statement)
+        {
+            case AssignmentStatement assignmentStatement:
+                var value = Evaluate(assignmentStatement.Initializer);
+                _environment.Set(assignmentStatement.Name.Text, value);
+                return value;
+            case ExpressionStatement expressionStatement:
+                return Evaluate(expressionStatement.Expression);
+            default:
+                throw new ArgumentOutOfRangeException(nameof(statement));
+        }
+    }
+
     public int Evaluate(Expression expression) =>
         expression switch
         {
@@ -212,6 +249,7 @@ class Interpreter
             BinaryExpression { Operator.Kind: TokenKind.Star } binExpr => Evaluate(binExpr.Left) *
                                                                           Evaluate(binExpr.Right),
             LiteralExpression { Value.Kind: TokenKind.Number } litEpr => int.Parse(litEpr.Value.Text),
+            VariableExpression variableExpression => _environment.Get(variableExpression.Name.Text),
             _ => throw new InvalidOperationException("Unexpected expression")
         };
 }
