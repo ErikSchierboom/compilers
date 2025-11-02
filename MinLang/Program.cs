@@ -6,8 +6,8 @@ var compiler = new Compiler();
 var runtime = new Runtime();
 
 var tokens = lexer.Lex(code);
-var nodes = parser.Parse(tokens);
-var instructions = compiler.Compile(nodes);
+var expression = parser.Parse(tokens);
+var instructions = compiler.Compile(expression);
 Console.WriteLine(runtime.Run(instructions));
 
 public enum TokenKind
@@ -63,28 +63,23 @@ public record Lexer
     }
 }
 
-public abstract record Node;
-public record LiteralExpression(Token Value) : Node;
-public record BinaryExpression(Node Left, Token Operator, Node Right) : Node;
+public abstract record Expression;
+public record LiteralExpression(Token Value) : Expression;
+public record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
 
 public record Parser
 {
     private List<Token> _tokens = [];
     private int _index;
     
-    public List<Node> Parse(List<Token> tokens)
+    public Expression Parse(List<Token> tokens)
     {
         _tokens = tokens;
         
-        var nodes = new List<Node>();
-        
-        while (!IsEndOfFile)
-            nodes.Add(Factor());
-        
-        return nodes;
+        return Factor();
     }
     
-    private Node Factor()
+    private Expression Factor()
     {
         var expr = Term();
 
@@ -93,7 +88,7 @@ public record Parser
             : expr;
     }
 
-    private Node Term()
+    private Expression Term()
     {
         var expr = Primary();   
         
@@ -102,7 +97,7 @@ public record Parser
             : expr;
     }
     
-    private Node Primary() =>
+    private Expression Primary() =>
         Match(TokenKind.Number)
             ? new LiteralExpression(PreviousToken)
             : throw new InvalidOperationException("Unexpected token");
@@ -126,33 +121,23 @@ public record Parser
 
 class Compiler
 {
-    private List<Instruction> _instructions = [];
-
-    public List<Instruction> Compile(List<Node> nodes)
+    public List<Instruction> Compile(Expression expression)
     {
-        _instructions = [];
-        
-        foreach (var node in nodes)
-            Compile(node);
-
-        return _instructions;
-    }
-
-    private void Compile(Node node)
-    {
-        switch (node)
+        var instructions = new List<Instruction>();
+       
+        switch (expression)
         {
             case BinaryExpression binaryExpression:
-                Compile(binaryExpression.Left);
-                Compile(binaryExpression.Right);
+                instructions.AddRange(Compile(binaryExpression.Left));
+                instructions.AddRange(Compile(binaryExpression.Right));
                 
                 switch (binaryExpression.Operator.Kind)
                 {
                     case TokenKind.Plus:
-                        _instructions.Add(new AddInstruction());
+                        instructions.Add(new AddInstruction());
                         break;
                     case TokenKind.Star:
-                        _instructions.Add(new MulInstruction());
+                        instructions.Add(new MulInstruction());
                         break;
                     default:
                         throw new InvalidOperationException("Unexpected operator token");
@@ -162,15 +147,17 @@ class Compiler
                 switch (numericLiteralExpression.Value.Kind)
                 {
                     case TokenKind.Number:
-                        _instructions.Add(new LoadNumberInstruction(int.Parse(numericLiteralExpression.Value.Text)));
+                        instructions.Add(new LoadNumberInstruction(int.Parse(numericLiteralExpression.Value.Text)));
                         break;
                     default:
                         throw new InvalidOperationException("Unecxpected literal token");
                 }
                 break;
             default:
-                throw new ArgumentOutOfRangeException(nameof(node));
+                throw new ArgumentOutOfRangeException(nameof(expression));
         }
+
+        return instructions;
     }
 }
 
