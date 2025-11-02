@@ -10,12 +10,15 @@ var tokens = lexer.Lex(code);
 
 var parser = new Parser(tokens);
 var statements = parser.Parse();
-// var compiler = new Compiler();
-// var instructions = compiler.Compile(expression);
+
 // var runtime = new Runtime();
 var interpreter = new Interpreter(statements);
 Console.WriteLine("Interpreted:");
 Console.WriteLine(interpreter.Evaluate());
+
+
+var compiler = new Compiler(statements);
+var instructions = compiler.Compile();
 
 // Console.WriteLine("Compiled:");
 // Console.WriteLine(runtime.Run(instructions));
@@ -203,7 +206,7 @@ public class Parser(List<Token> tokens)
     private Token PreviousToken => tokens[_position - 1];
 }
 
-class Environment
+internal class Environment
 {
     private readonly Dictionary<string, int> _variables = new();
     
@@ -211,9 +214,9 @@ class Environment
     public void Set(string name, int value) => _variables[name] = value;
 }
 
-class Interpreter(List<Statement> statements)
+internal class Interpreter(List<Statement> statements)
 {
-    private Environment _environment = new();
+    private readonly Environment _environment = new();
 
     public int Evaluate()
     {
@@ -224,9 +227,8 @@ class Interpreter(List<Statement> statements)
         
         return result;
     }
-
-
-    public int Evaluate(Statement statement)
+    
+    private int Evaluate(Statement statement)
     {
         switch (statement)
         {
@@ -241,7 +243,7 @@ class Interpreter(List<Statement> statements)
         }
     }
 
-    public int Evaluate(Expression expression) =>
+    private int Evaluate(Expression expression) =>
         expression switch
         {
             BinaryExpression { Operator.Kind: TokenKind.Plus } binExpr => Evaluate(binExpr.Left) +
@@ -254,25 +256,46 @@ class Interpreter(List<Statement> statements)
         };
 }
 
-class Compiler
+internal class Compiler(List<Statement> statements)
 {
-    public List<Instruction> Compile(Expression expression)
+    private List<Instruction> _instructions = new();
+
+    public List<Instruction> Compile()
     {
-        var instructions = new List<Instruction>();
-       
+        foreach (var statement in statements)
+            Compile(statement);
+        
+        return _instructions;
+    }
+
+    private void Compile(Statement statement)
+    {
+        switch (statement)
+        {
+            case AssignmentStatement assignmentStatement:
+                break;
+            case ExpressionStatement expressionStatement:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(statement));
+        }
+    }
+
+    private void Compile(Expression expression)
+    {
         switch (expression)
         {
             case BinaryExpression binaryExpression:
-                instructions.AddRange(Compile(binaryExpression.Left));
-                instructions.AddRange(Compile(binaryExpression.Right));
+                Compile(binaryExpression.Left);
+                Compile(binaryExpression.Right);
                 
                 switch (binaryExpression.Operator.Kind)
                 {
                     case TokenKind.Plus:
-                        instructions.Add(new AddInstruction());
+                        _instructions.Add(new AddInstruction());
                         break;
                     case TokenKind.Star:
-                        instructions.Add(new MulInstruction());
+                        _instructions.Add(new MulInstruction());
                         break;
                     default:
                         throw new InvalidOperationException("Unexpected operator token");
@@ -282,7 +305,7 @@ class Compiler
                 switch (numericLiteralExpression.Value.Kind)
                 {
                     case TokenKind.Number:
-                        instructions.Add(new LoadNumberInstruction(int.Parse(numericLiteralExpression.Value.Text)));
+                        _instructions.Add(new LoadNumberInstruction(int.Parse(numericLiteralExpression.Value.Text)));
                         break;
                     default:
                         throw new InvalidOperationException("Unecxpected literal token");
@@ -292,16 +315,16 @@ class Compiler
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }
 
-        return instructions;
+        return _instructions;
     }
 }
 
-abstract record Instruction
+internal abstract record Instruction
 {
     public abstract void Execute(Stack<int> stack);
 }
 
-record LoadNumberInstruction(int Value) : Instruction
+internal record LoadNumberInstruction(int Value) : Instruction
 {
     public override void Execute(Stack<int> stack)
     {
@@ -309,7 +332,7 @@ record LoadNumberInstruction(int Value) : Instruction
     }
 }
 
-record AddInstruction : Instruction
+internal record AddInstruction : Instruction
 {
     public override void Execute(Stack<int> stack)
     {
@@ -319,7 +342,7 @@ record AddInstruction : Instruction
     }
 }
 
-record MulInstruction : Instruction
+internal record MulInstruction : Instruction
 {
     public override void Execute(Stack<int> stack)
     {
@@ -329,7 +352,7 @@ record MulInstruction : Instruction
     }
 }
 
-class Runtime
+internal class Runtime
 {
     public int Run(List<Instruction> instructions)
     {
