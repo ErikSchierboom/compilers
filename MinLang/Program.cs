@@ -1,26 +1,35 @@
-﻿const string code = "1 + 212 * 34";
+﻿const string code = """
+                    var x = 1;
+                    var y = 212;
+                    var z = x + y * 34;
+                    """;
 
 var lexer = new Lexer();
-var parser = new Parser();
-var compiler = new Compiler();
-var runtime = new Runtime();
-var interpreter = new Interpreter();
-
 var tokens = lexer.Lex(code);
-var expression = parser.Parse(tokens);
-var instructions = compiler.Compile(expression);
 
-Console.WriteLine("Interpreted:");
-Console.WriteLine(interpreter.Evaluate(expression));
-
-Console.WriteLine("Compiled:");
-Console.WriteLine(runtime.Run(instructions));
+var parser = new Parser(tokens);
+var statements = parser.Parse();
+// var compiler = new Compiler();
+// var instructions = compiler.Compile(expression);
+// var runtime = new Runtime();
+// var interpreter = new Interpreter();
+// Console.WriteLine("Interpreted:");
+// Console.WriteLine(interpreter.Evaluate(expression));
+//
+// Console.WriteLine("Compiled:");
+// Console.WriteLine(runtime.Run(instructions));
 
 public enum TokenKind
 {
     Number,
+    Identifier,
+    
+    Semicolon,
     Plus,
     Star,
+    Equal,
+    
+    Var,
 
     Error,
     EndOfFile
@@ -49,6 +58,14 @@ public class Lexer
                     current++;
                     tokens.Add(new Token(TokenKind.Star, "*"));
                     break;
+                case ';':
+                    current++;
+                    tokens.Add(new Token(TokenKind.Semicolon, ";"));
+                    break;
+                case '=':
+                    current++;
+                    tokens.Add(new Token(TokenKind.Equal, "="));
+                    break;
                 case ' ' or '\t' or '\r' or '\n':
                     current++;
                     break;
@@ -57,6 +74,16 @@ public class Lexer
                         current++;
                     
                     tokens.Add(new Token(TokenKind.Number, source[start..current]));
+                    break;
+                case >= 'a' and <= 'z' or >= 'A' and <= 'Z':
+                    while (current < source.Length && char.IsAsciiLetterOrDigit(source[current]))
+                        current++;
+                    
+                    var identifier = source[start..current];
+                    if (identifier == "var")
+                        tokens.Add(new Token(TokenKind.Var, identifier));
+                    else
+                        tokens.Add(new Token(TokenKind.Identifier, identifier));
                     break;
                 default:
                     current++;
@@ -70,26 +97,64 @@ public class Lexer
     }
 }
 
-public abstract record Expression;
+public abstract record Node;
+
+public abstract record Statement : Node;
+public record AssignmentStatement(Token Name, Expression Initializer) : Statement;
+public record ExpressionStatement(Expression Expression) : Statement;
+
+public abstract record Expression : Node;
+public record VariableExpression(Token Name) : Expression;
 public record LiteralExpression(Token Value) : Expression;
 public record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
 
-public class Parser
+public class Parser(List<Token> tokens)
 {
-    private List<Token> _tokens = [];
     private int _position;
-    
-    public Expression Parse(List<Token> tokens)
+
+    public List<Statement> Parse()
     {
-        _tokens = tokens;
-        return Factor();
+        var statements = new List<Statement>();
+
+        while (!IsEndOfFile)
+            statements.Add(Statement());
+        
+        return statements;
     }
-    
-    private Expression Factor()
+
+    private bool IsEndOfFile => Token.Kind == TokenKind.EndOfFile;
+
+    private Statement Statement()
+    {
+        if (Match(TokenKind.Var))
+            return VariableDeclarationStatement();
+
+        return ExpressionStatement();
+    }
+
+    private Statement VariableDeclarationStatement()
+    {
+        Consume(TokenKind.Identifier);
+        var name = PreviousToken;
+        Consume(TokenKind.Equal);
+        var initializer = Expression();
+        Consume(TokenKind.Semicolon);
+        
+        return new AssignmentStatement(name, initializer);
+    }
+
+    private Statement ExpressionStatement()
+    {
+        var expression = Expression();
+        Consume(TokenKind.Semicolon);
+        return new ExpressionStatement(expression);
+    }
+
+    private Expression Expression()
     {
         var expr = Term();
 
-        return AdvanceIf(TokenKind.Star) 
+        return Match(TokenKind.Star) 
             ? new BinaryExpression(expr, PreviousToken, Term()) 
             : expr;
     }
@@ -98,17 +163,23 @@ public class Parser
     {
         var expr = Primary();   
         
-        return AdvanceIf(TokenKind.Plus) 
+        return Match(TokenKind.Plus) 
             ? new BinaryExpression(expr,  PreviousToken, Primary()) 
             : expr;
     }
     
-    private LiteralExpression Primary() =>
-        AdvanceIf(TokenKind.Number)
-            ? new LiteralExpression(PreviousToken)
-            : throw new InvalidOperationException("Unexpected token");
+    private Expression Primary()
+    {
+        if (Match(TokenKind.Number))
+            return new LiteralExpression(PreviousToken);
+        
+        if (Match(TokenKind.Identifier))
+            return new VariableExpression(PreviousToken);
+        
+        throw new InvalidOperationException("Unexpected token");
+    }
 
-    private bool AdvanceIf(TokenKind kind)
+    private bool Match(TokenKind kind)
     {
         if (Token.Kind == kind)
         {
@@ -118,9 +189,17 @@ public class Parser
 
         return false;
     }
+    
+    private void Consume(TokenKind kind)
+    {
+        if (Token.Kind != kind)
+            throw new InvalidOperationException($"Expected '{kind}' token");
+        
+        _position++;
+    }
 
-    private Token Token => _tokens[_position];
-    private Token PreviousToken => _tokens[_position - 1];
+    private Token Token => tokens[_position];
+    private Token PreviousToken => tokens[_position - 1];
 }
 
 class Interpreter
