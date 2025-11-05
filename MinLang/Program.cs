@@ -129,12 +129,12 @@ public class Parser(List<Token> tokens)
     private Statement Statement()
     {
         if (Match(TokenKind.Var))
-            return VariableDeclarationStatement();
+            return AssignmentStatement();
 
         return ExpressionStatement();
     }
 
-    private Statement VariableDeclarationStatement()
+    private AssignmentStatement AssignmentStatement()
     {
         Consume(TokenKind.Identifier);
         var name = PreviousToken;
@@ -145,10 +145,11 @@ public class Parser(List<Token> tokens)
         return new AssignmentStatement(name, initializer);
     }
 
-    private Statement ExpressionStatement()
+    private ExpressionStatement ExpressionStatement()
     {
         var expression = Expression();
         Consume(TokenKind.Semicolon);
+
         return new ExpressionStatement(expression);
     }
 
@@ -183,13 +184,12 @@ public class Parser(List<Token> tokens)
 
     private bool Match(TokenKind kind)
     {
-        if (Token.Kind == kind)
-        {
-            _position++;
-            return true;
-        }
+        if (Token.Kind != kind)
+            return false;
 
-        return false;
+        _position++;
+        return true;
+
     }
     
     private void Consume(TokenKind kind)
