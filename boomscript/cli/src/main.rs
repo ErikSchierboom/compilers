@@ -16,8 +16,11 @@ fn main() {
     // "#;
 
     const SOURCE: &str = r#"
-       # this is a comment
-        lines("input.txt")
+        lines = read-lines("input.txt");
+        ints = map(lines, line -> parse-int(line));
+        windowed = windows(ints, 2);
+        filtered = filter(windows, kv -> key(kv) < value(kv));
+        part_1 = count(filtered);
     "#;
 
     for lex_result in tokenize(SOURCE) {

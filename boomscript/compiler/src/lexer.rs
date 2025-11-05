@@ -35,13 +35,14 @@ pub enum Token {
     // Delimiters
     OpenParenthesis,
     CloseParenthesis,
-    OpenBracket,
-    CloseBracket,
 
     // Symbols
+    Equal,
     Comma,
-    Ampersand,
-    Percent,
+    Semicolon,
+    LessThan,
+    Minus,
+    MinusGreaterThan,
 }
 
 impl Display for Token {
@@ -50,15 +51,16 @@ impl Display for Token {
             Token::Int => write!(f, "int"),
             Token::Float => write!(f, "float"),
             Token::String => write!(f, "string"),
-            Token::Identifier => write!(f, "identifier"),
             Token::Char => write!(f, "char"),
+            Token::Identifier => write!(f, "identifier"),
             Token::OpenParenthesis => write!(f, "("),
             Token::CloseParenthesis => write!(f, ")"),
-            Token::OpenBracket => write!(f, "["),
-            Token::CloseBracket => write!(f, "]"),
             Token::Comma => write!(f, ","),
-            Token::Ampersand => write!(f, "&"),
-            Token::Percent => write!(f, "%"),
+            Token::Equal => write!(f, "="),
+            Token::Semicolon => write!(f, ";"),
+            Token::LessThan => write!(f, "<"),
+            Token::Minus => write!(f, "-"),
+            Token::MinusGreaterThan => write!(f, "->"),
         }
     }
 }
@@ -92,11 +94,18 @@ where
         let result = match self.char? {
             '(' => Ok(Token::OpenParenthesis),
             ')' => Ok(Token::CloseParenthesis),
-            '[' => Ok(Token::OpenBracket),
-            ']' => Ok(Token::CloseBracket),
+            '=' => Ok(Token::Equal),
             ',' => Ok(Token::Comma),
-            '&' => Ok(Token::Ampersand),
-            '%' => Ok(Token::Percent),
+            ';' => Ok(Token::Semicolon),
+            '-' => {
+                if self.next_char_is('>') {
+                    self.advance();
+                    Ok(Token::MinusGreaterThan)
+                } else {
+                    Ok(Token::Minus)
+                }
+            }
+            '<' => Ok(Token::LessThan),
             '\'' => self.lex_char(),
             '"' => self.lex_string(),
             '#' => {
@@ -149,7 +158,7 @@ where
             self.advance_while_chars_match(char::is_ascii_digit);
             Ok(Token::Float)
         } else {
-            Ok(Token::Int)    
+            Ok(Token::Int)
         }
     }
 
