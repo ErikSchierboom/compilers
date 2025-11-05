@@ -11,12 +11,12 @@ var tokens = lexer.Lex(code);
 var parser = new Parser(tokens);
 var statements = parser.Parse();
 
-var interpreter = new Interpreter(statements);
+var interpreter = new Interpreter();
 Console.WriteLine("Interpreted:");
-Console.WriteLine(interpreter.Evaluate());
+Console.WriteLine(interpreter.Evaluate(statements));
 
-var compiler = new Compiler(statements);
-var instructions = compiler.Compile();
+var compiler = new Compiler();
+var instructions = compiler.Compile(statements);
 var runtime = new Runtime();
 Console.WriteLine("Compiled:");
 Console.WriteLine(runtime.Run(instructions));
@@ -119,41 +119,41 @@ public class Parser(List<Token> tokens)
         var statements = new List<Statement>();
 
         while (!IsEndOfFile)
-            statements.Add(Statement());
+            statements.Add(ParseStatement());
         
         return statements;
     }
 
     private bool IsEndOfFile => Token.Kind == TokenKind.EndOfFile;
 
-    private Statement Statement()
+    private Statement ParseStatement()
     {
         if (Match(TokenKind.Var))
-            return AssignmentStatement();
+            return ParseAssignmentStatement();
 
-        return ExpressionStatement();
+        return ParseExpressionStatement();
     }
 
-    private AssignmentStatement AssignmentStatement()
+    private AssignmentStatement ParseAssignmentStatement()
     {
         Consume(TokenKind.Identifier);
         var name = PreviousToken;
         Consume(TokenKind.Equal);
-        var initializer = Expression();
+        var initializer = ParseExpression();
         Consume(TokenKind.Semicolon);
         
         return new AssignmentStatement(name, initializer);
     }
 
-    private ExpressionStatement ExpressionStatement()
+    private ExpressionStatement ParseExpressionStatement()
     {
-        var expression = Expression();
+        var expression = ParseExpression();
         Consume(TokenKind.Semicolon);
 
         return new ExpressionStatement(expression);
     }
 
-    private Expression Expression()
+    private Expression ParseExpression()
     {
         var expr = Term();
 
@@ -204,19 +204,11 @@ public class Parser(List<Token> tokens)
     private Token PreviousToken => tokens[_position - 1];
 }
 
-internal class Environment
+internal class Interpreter
 {
     private readonly Dictionary<string, int> _variables = new();
-    
-    public int GetVariable(string name) => _variables[name];
-    public void SetVariable(string name, int value) => _variables[name] = value;
-}
 
-internal class Interpreter(List<Statement> statements)
-{
-    private readonly Environment _environment = new();
-
-    public int Evaluate()
+    public int Evaluate(List<Statement> statements)
     {
         var result = -1;
         
@@ -232,7 +224,7 @@ internal class Interpreter(List<Statement> statements)
         {
             case AssignmentStatement assignmentStatement:
                 var value = Evaluate(assignmentStatement.Initializer);
-                _environment.SetVariable(assignmentStatement.Name.Text, value);
+                _variables[assignmentStatement.Name.Text] = value;
                 return value;
             case ExpressionStatement expressionStatement:
                 return Evaluate(expressionStatement.Expression);
@@ -249,17 +241,17 @@ internal class Interpreter(List<Statement> statements)
             BinaryExpression { Operator.Kind: TokenKind.Star } binExpr => Evaluate(binExpr.Left) *
                                                                           Evaluate(binExpr.Right),
             LiteralExpression { Value.Kind: TokenKind.Number } litEpr => int.Parse(litEpr.Value.Text),
-            VariableExpression variableExpression => _environment.GetVariable(variableExpression.Name.Text),
+            VariableExpression variableExpression => _variables[variableExpression.Name.Text],
             _ => throw new InvalidOperationException("Unexpected expression")
         };
 }
 
-internal class Compiler(List<Statement> statements)
+internal class Compiler
 {
-    private readonly Dictionary<string, int> _variableIndexes = new();
+    private readonly Dictionary<string, int> _variableToLocalIndex = new();
     private readonly List<Instruction> _instructions = new();
 
-    public List<Instruction> Compile()
+    public List<Instruction> Compile(List<Statement> statements)
     {
         foreach (var statement in statements)
             Compile(statement);
@@ -272,9 +264,9 @@ internal class Compiler(List<Statement> statements)
         switch (statement)
         {
             case AssignmentStatement assignmentStatement:
-                _variableIndexes[assignmentStatement.Name.Text] = _variableIndexes.Count;
+                _variableToLocalIndex[assignmentStatement.Name.Text] = _variableToLocalIndex.Count;
                 Compile(assignmentStatement.Initializer);
-                _instructions.Add(new StoreLocalInstruction(_variableIndexes[assignmentStatement.Name.Text]));
+                _instructions.Add(new StoreLocalInstruction(_variableToLocalIndex[assignmentStatement.Name.Text]));
                 break;
             case ExpressionStatement expressionStatement:
                 Compile(expressionStatement.Expression);
@@ -308,7 +300,7 @@ internal class Compiler(List<Statement> statements)
                 _instructions.Add(new LoadIntInstruction(int.Parse(numericLiteralExpression.Value.Text)));
                 break;
             case VariableExpression variableExpression:
-                _instructions.Add(new LoadLocalInstruction(_variableIndexes[variableExpression.Name.Text]));
+                _instructions.Add(new LoadLocalInstruction(_variableToLocalIndex[variableExpression.Name.Text]));
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
