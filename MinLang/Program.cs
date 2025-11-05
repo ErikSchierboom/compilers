@@ -1,7 +1,7 @@
 ﻿const string code = """
                     var x = 1;
-                    var y = 212;
-                    var z = x + y * 34;
+                    var y = 2;
+                    var z = x + y * 4;
                     z + 1;
                     """;
 
@@ -11,17 +11,15 @@ var tokens = lexer.Lex(code);
 var parser = new Parser(tokens);
 var statements = parser.Parse();
 
-// var runtime = new Runtime();
 var interpreter = new Interpreter(statements);
 Console.WriteLine("Interpreted:");
 Console.WriteLine(interpreter.Evaluate());
 
-
 var compiler = new Compiler(statements);
 var instructions = compiler.Compile();
-
-// Console.WriteLine("Compiled:");
-// Console.WriteLine(runtime.Run(instructions));
+var runtime = new Runtime();
+Console.WriteLine("Compiled:");
+Console.WriteLine(runtime.Run(instructions));
 
 public enum TokenKind
 {
@@ -210,8 +208,8 @@ internal class Environment
 {
     private readonly Dictionary<string, int> _variables = new();
     
-    public int Get(string name) => _variables[name];
-    public void Set(string name, int value) => _variables[name] = value;
+    public int GetVariable(string name) => _variables[name];
+    public void SetVariable(string name, int value) => _variables[name] = value;
 }
 
 internal class Interpreter(List<Statement> statements)
@@ -220,7 +218,7 @@ internal class Interpreter(List<Statement> statements)
 
     public int Evaluate()
     {
-        int result = -1;
+        var result = -1;
         
         foreach (var statement in statements)
             result = Evaluate(statement);
@@ -234,7 +232,7 @@ internal class Interpreter(List<Statement> statements)
         {
             case AssignmentStatement assignmentStatement:
                 var value = Evaluate(assignmentStatement.Initializer);
-                _environment.Set(assignmentStatement.Name.Text, value);
+                _environment.SetVariable(assignmentStatement.Name.Text, value);
                 return value;
             case ExpressionStatement expressionStatement:
                 return Evaluate(expressionStatement.Expression);
@@ -251,14 +249,15 @@ internal class Interpreter(List<Statement> statements)
             BinaryExpression { Operator.Kind: TokenKind.Star } binExpr => Evaluate(binExpr.Left) *
                                                                           Evaluate(binExpr.Right),
             LiteralExpression { Value.Kind: TokenKind.Number } litEpr => int.Parse(litEpr.Value.Text),
-            VariableExpression variableExpression => _environment.Get(variableExpression.Name.Text),
+            VariableExpression variableExpression => _environment.GetVariable(variableExpression.Name.Text),
             _ => throw new InvalidOperationException("Unexpected expression")
         };
 }
 
 internal class Compiler(List<Statement> statements)
 {
-    private List<Instruction> _instructions = new();
+    private readonly Dictionary<string, int> _variableIndexes = new();
+    private readonly List<Instruction> _instructions = new();
 
     public List<Instruction> Compile()
     {
@@ -273,8 +272,12 @@ internal class Compiler(List<Statement> statements)
         switch (statement)
         {
             case AssignmentStatement assignmentStatement:
+                _variableIndexes[assignmentStatement.Name.Text] = _variableIndexes.Count;
+                Compile(assignmentStatement.Initializer);
+                _instructions.Add(new StoreLocalInstruction(_variableIndexes[assignmentStatement.Name.Text]));
                 break;
             case ExpressionStatement expressionStatement:
+                Compile(expressionStatement.Expression);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(statement));
@@ -302,65 +305,84 @@ internal class Compiler(List<Statement> statements)
                 }
                 break;
             case LiteralExpression numericLiteralExpression:
-                switch (numericLiteralExpression.Value.Kind)
-                {
-                    case TokenKind.Number:
-                        _instructions.Add(new LoadNumberInstruction(int.Parse(numericLiteralExpression.Value.Text)));
-                        break;
-                    default:
-                        throw new InvalidOperationException("Unecxpected literal token");
-                }
+                _instructions.Add(new LoadIntInstruction(int.Parse(numericLiteralExpression.Value.Text)));
+                break;
+            case VariableExpression variableExpression:
+                _instructions.Add(new LoadLocalInstruction(_variableIndexes[variableExpression.Name.Text]));
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }
-
-        return _instructions;
     }
 }
 
 internal abstract record Instruction
 {
-    public abstract void Execute(Stack<int> stack);
+    public abstract void Execute(Runtime runtime);
 }
 
-internal record LoadNumberInstruction(int Value) : Instruction
+internal record LoadIntInstruction(int Value) : Instruction
 {
-    public override void Execute(Stack<int> stack)
+    public override void Execute(Runtime runtime)
     {
-        stack.Push(Value);
+        runtime.Push(Value);
+    }
+}
+
+internal record LoadLocalInstruction(int Index) : Instruction
+{
+    public override void Execute(Runtime runtime)
+    {
+        var value = runtime.GetLocal(Index);
+        runtime.Push(value);
+    }
+}
+
+internal record StoreLocalInstruction(int Index) : Instruction
+{
+    public override void Execute(Runtime runtime)
+    {
+        var value = runtime.Pop();
+        runtime.SetLocal(Index, value);
     }
 }
 
 internal record AddInstruction : Instruction
 {
-    public override void Execute(Stack<int> stack)
+    public override void Execute(Runtime runtime)
     {
-        var right = stack.Pop();
-        var left = stack.Pop();
-        stack.Push(left + right);
+        var right = runtime.Pop();
+        var left = runtime.Pop();
+        runtime.Push(left + right);
     }
 }
 
 internal record MulInstruction : Instruction
 {
-    public override void Execute(Stack<int> stack)
+    public override void Execute(Runtime runtime)
     {
-        var right = stack.Pop();
-        var left = stack.Pop();
-        stack.Push(left * right);
+        var right = runtime.Pop();
+        var left = runtime.Pop();
+        runtime.Push(left * right);
     }
 }
 
 internal class Runtime
 {
+    private readonly Stack<int> _stack = new();
+    private readonly int[] _locals = new int[256];
+    
     public int Run(List<Instruction> instructions)
-    {
-        var stack = new Stack<int>();
-        
+    {   
         foreach (var instruction in instructions)
-            instruction.Execute(stack);
+            instruction.Execute(this);
 
-        return stack.Pop();
+        return _stack.Pop();
     }
+    
+    public void Push(int value) => _stack.Push(value);
+    public int Pop() => _stack.Pop();
+    
+    public int GetLocal(int index) => _locals[index];
+    public void SetLocal(int index, int value) => _locals[index] = value;
 }
