@@ -33,7 +33,6 @@ public enum TokenKind
     
     Var,
 
-    Error,
     EndOfFile
 }
 
@@ -88,9 +87,7 @@ public class Lexer
                         tokens.Add(new Token(TokenKind.Identifier, identifier));
                     break;
                 default:
-                    current++;
-                    tokens.Add(new Token(TokenKind.Error, source[start..current]));
-                    break;
+                    throw new InvalidOperationException("Unexpected character");
             }
         }
         
