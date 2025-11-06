@@ -1,4 +1,3 @@
-use crate::location::{Span, Spanned};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
@@ -26,11 +25,9 @@ impl Error for LexError {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
-    Int,
-    Float,
-    Char,
-    String,
-    Identifier,
+    Number(i64),
+    String(String),
+    Identifier(String),
 
     // Delimiters
     OpenParenthesis,
@@ -48,11 +45,9 @@ pub enum Token {
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Token::Int => write!(f, "int"),
-            Token::Float => write!(f, "float"),
-            Token::String => write!(f, "string"),
-            Token::Char => write!(f, "char"),
-            Token::Identifier => write!(f, "identifier"),
+            Token::Number(num) => write!(f, "{num}"),
+            Token::String(str) => write!(f, "{}", str),
+            Token::Identifier(name) => write!(f, "{}", name),
             Token::OpenParenthesis => write!(f, "("),
             Token::CloseParenthesis => write!(f, ")"),
             Token::Comma => write!(f, ","),
@@ -65,7 +60,6 @@ impl Display for Token {
     }
 }
 
-pub type LexTokenResult = Result<Spanned<Token>, Spanned<LexError>>;
 
 struct Lexer<TChars>
 where
@@ -228,25 +222,9 @@ where
         self.advance();
         self.advance_while_chars_match(|&c| c != '\n')
     }
-
-    fn spanned<V>(&self, value: V) -> Spanned<V> {
-        let span = Span::new(self.start_pos, (self.current_pos - self.start_pos) as u16);
-        Spanned::new(value, span)
-    }
 }
 
-impl<TChars> Iterator for Lexer<TChars>
-where
-    TChars: Iterator<Item=char>,
-{
-    type Item = LexTokenResult;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.lex_token()
-    }
-}
-
-pub fn tokenize(source: &str) -> impl Iterator<Item=LexTokenResult> + '_ {
-    let chars_with_index = source.chars();
-    Lexer::new(chars_with_index)
+pub fn tokenize(source: &str) -> Result<Vec<Token>, LexError> {
+    let mut lexer = Lexer::new(source.chars());
+    lexer.lex()
 }

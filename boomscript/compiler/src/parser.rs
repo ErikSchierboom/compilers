@@ -1,101 +1,64 @@
-// use crate::lexer::{tokenize, LexError, LexTokenResult, Token};
-// use crate::location::{Span, Spanned};
-// use crate::parser::ParseError::Lex;
-// use std::error::Error;
-// use std::fmt::{Display, Formatter};
-// use std::iter::Peekable;
-// use std::str::FromStr;
-// 
-// #[derive(Clone, Debug, PartialEq)]
-// pub enum ParseError {
-//     Lex(LexError),
-//     UnexpectedToken(Token),
-//     ExpectedToken(Token),
-//     UnknownIdentifier(String),
-// }
-// 
-// impl Display for ParseError {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         match self {
-//             Lex(lex_error) => write!(f, "{lex_error}"),
-//             ParseError::UnexpectedToken(token) => write!(f, "Unexpected token: {token}"),
-//             ParseError::ExpectedToken(token) => write!(f, "Expected token: {token}"),
-//             ParseError::UnknownIdentifier(identifier) => write!(f, "Unknown identifier: {identifier}"),
-//         }
-//     }
-// }
-// 
-// impl Error for ParseError {}
-// 
-// #[derive(Clone, Debug, PartialEq)]
-// pub enum Word {
-//     Char(char),
-//     Number(f64),
-//     String(String),
-//     Identifier(String),
-//     Niladic(NiladicOperation),
-//     Monadic(MonadicOperation),
-//     Dyadic(DyadicOperation),
-//     Array(Vec<Spanned<Word>>),
-//     Lambda(Vec<Spanned<Word>>),
-// }
-// 
-// #[derive(Clone, Debug, PartialEq)]
-// pub enum NiladicOperation {
-//     Stack
-// }
-// 
-// impl Display for NiladicOperation {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         match self {
-//             NiladicOperation::Stack => write!(f, "?")
-//         }
-//     }
-// }
-// 
-// #[derive(Clone, Debug, PartialEq)]
-// pub enum MonadicOperation {
-//     Not
-// }
-// 
-// impl Display for MonadicOperation {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         match self {
-//             MonadicOperation::Not => write!(f, "!")
-//         }
-//     }
-// }
-// 
-// #[derive(Clone, Debug, PartialEq)]
-// pub enum DyadicOperation {
-//     Add,
-//     Sub,
-//     Mul,
-//     Div,
-//     Equal,
-//     NotEqual,
-//     Greater,
-//     GreaterEqual,
-//     Less,
-//     LessEqual,
-// }
-// 
-// impl Display for DyadicOperation {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         match self {
-//             DyadicOperation::Add => write!(f, "+"),
-//             DyadicOperation::Sub => write!(f, "-"),
-//             DyadicOperation::Mul => write!(f, "*"),
-//             DyadicOperation::Div => write!(f, "/"),
-//             DyadicOperation::Equal => write!(f, "="),
-//             DyadicOperation::NotEqual => write!(f, "!="),
-//             DyadicOperation::Greater => write!(f, ">"),
-//             DyadicOperation::GreaterEqual => write!(f, ">="),
-//             DyadicOperation::Less => write!(f, "<"),
-//             DyadicOperation::LessEqual => write!(f, "<="),
-//         }
-//     }
-// }
+use crate::lexer::{LexError, Token};
+use crate::location::Spanned;
+use crate::parser::ParseError::Lex;
+use std::error::Error;
+use std::fmt::{Display, Formatter};
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ParseError {
+    Lex(LexError),
+    UnexpectedToken(Token),
+    ExpectedToken(Token),
+}
+
+impl Display for ParseError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Lex(lex_error) => write!(f, "{lex_error}"),
+            ParseError::UnexpectedToken(token) => write!(f, "Unexpected token: {token}"),
+            ParseError::ExpectedToken(token) => write!(f, "Expected token: {token}"),
+        }
+    }
+}
+
+impl Error for ParseError {}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum LiteralExpression {
+    Char(char),
+    Number(f64),
+    String(String),
+    Identifier(String),
+}
+
+pub enum UnaryExpression {
+    Minus
+}
+
+pub enum BinaryExpression {
+    Plus,
+    Minus
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Expression {
+    Literal(Spanned<LiteralExpression>),
+    Unary(Spanned<Token>, Spanned<Expression>),
+    Binary(Spanned<Expression>, Spanned<Token>, Spanned<Expression>),
+    Array(Vec<Spanned<Expression>>),
+    Lambda(Vec<Spanned<Expression>>),
+}
+
+pub struct AssignmentStatement {
+    pub name: Spanned<Token>,
+    pub initializer: Spanned<Expression>
+}
+
+pub enum Statement {
+    AssignmentStatement(Spanned<AssignmentStatement>),
+    ExpressionStatement(Spanned<Expression>)
+}
+
 // 
 // impl Display for Word {
 //     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
