@@ -23,14 +23,12 @@ fn main() {
         part_1 = count(filtered);
     "#;
 
-    for lex_result in tokenize(SOURCE) {
-        match lex_result {
-            Ok(token) => {
-                print!("{token} ")
-            }
-            Err(error) => {
-                eprintln!("Error: {error}")
-            }
+    match tokenize(SOURCE) {
+        Ok(tokens) => {
+            print!("{:?} ", tokens)
+        }
+        Err(error) => {
+            eprintln!("Error: {:?}", error)
         }
     }
 }
