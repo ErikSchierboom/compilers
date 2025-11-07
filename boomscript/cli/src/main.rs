@@ -1,4 +1,4 @@
-use compiler::lexer::tokenize;
+use compiler::parser::parse;
 
 fn main() {
     // const SOURCE: &str = r#"
@@ -23,9 +23,9 @@ fn main() {
         part_1 = count(filtered);
     "#;
 
-    match tokenize(SOURCE) {
-        Ok(tokens) => {
-            print!("{:?} ", tokens)
+    match parse(SOURCE) {
+        Ok(statements) => {
+            print!("{:?} ", statements)
         }
         Err(error) => {
             eprintln!("Error: {:?}", error)
