@@ -56,7 +56,7 @@ pub fn tokenize(source_code: &str) -> Result<Vec<Token>, LexError> {
                 Token::Char(c)
             }
             '"' => {
-                let mut string = char.to_string();
+                let mut string = String::new();
                 while let Some(c) = chars.next_if(|&c| c != '"') {
                     string.push(c);
                 }
