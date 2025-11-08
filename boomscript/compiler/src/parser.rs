@@ -20,8 +20,13 @@ pub enum Expression {
 }
 
 pub fn parse(source_code: &str) -> Result<Vec<Statement>, ParseError> {
-    let mut tokens = tokenize(source_code).map_err(ParseError::Lex)?;
+    let tokens = tokenize(source_code).map_err(ParseError::Lex)?;
+    let mut tokens = tokens.iter().peekable();
     let mut statements: Vec<Statement> = Vec::new();
-    
+
+    // while let Some(token) = tokens.next() {
+    //     statements.push(parse_statement()?);
+    // }
+
     Ok(statements)
 }
