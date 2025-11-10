@@ -1,3 +1,5 @@
+use std::iter::Peekable;
+
 #[derive(Debug)]
 pub enum LexError {
     UnexpectedEndOfFile,
@@ -27,61 +29,82 @@ pub enum Token {
     MinusGreaterThan,
 }
 
-pub fn tokenize(source_code: &str) -> Result<Vec<Token>, LexError> {
-    let mut tokens: Vec<Token> = Vec::new();
-    let mut chars = source_code.chars().peekable();
+struct Lexer<T>
+where
+    T: Iterator<Item=char>,
+{
+    chars: Peekable<T>,
+}
 
-    while let Some(char) = chars.next() {
-        if char.is_whitespace() {
-            continue;
-        }
-
-        let token = match char {
-            '(' => Token::OpenParenthesis,
-            ')' => Token::CloseParenthesis,
-            '=' => Token::Equal,
-            ',' => Token::Comma,
-            ';' => Token::Semicolon,
-            '-' => {
-                if chars.next_if_eq(&'>').is_some() {
-                    Token::MinusGreaterThan
-                } else {
-                    Token::Minus
-                }
-            }
-            '<' => Token::LessThan,
-            '\'' => {
-                let c = chars.next().ok_or(LexError::UnexpectedEndOfFile)?;
-                chars.next_if_eq(&'\'').ok_or(LexError::ExpectedCharacter('\''))?;
-                Token::Char(c)
-            }
-            '"' => {
-                let mut string = String::new();
-                while let Some(c) = chars.next_if(|&c| c != '"') {
-                    string.push(c);
-                }
-                chars.next_if_eq(&'"').ok_or(LexError::ExpectedCharacter('"'))?;
-                Token::String(string)
-            }
-            c if c.is_ascii_digit() => {
-                let mut number = c.to_digit(10).unwrap();
-                while let Some(digit) = chars.next_if(char::is_ascii_digit) {
-                    number = number * 10 + digit.to_digit(10).unwrap();
-                }
-                Token::Number(number as i64)
-            }
-            c if c.is_ascii_alphabetic() => {
-                let mut identifier = char.to_string();
-                while let Some(c) = chars.next_if(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '?')) {
-                    identifier.push(c);
-                }
-                Token::Identifier(identifier)
-            }
-            _ => return Err(LexError::UnexpectedCharacter(char))
-        };
-
-        tokens.push(token)
+impl<T> Lexer<T>
+where
+    T: Iterator<Item=char>,
+{
+    fn new(chars: T) -> Self {
+        Self { chars: chars.peekable() }
     }
 
-    Ok(tokens)
+    pub fn lex(&mut self) -> Result<Vec<Token>, LexError> {
+        let mut tokens: Vec<Token> = Vec::new();
+
+        while let Some(char) = self.chars.next() {
+            if char.is_whitespace() {
+                continue;
+            }
+
+            let token = match char {
+                '(' => Token::OpenParenthesis,
+                ')' => Token::CloseParenthesis,
+                '=' => Token::Equal,
+                ',' => Token::Comma,
+                ';' => Token::Semicolon,
+                '-' => {
+                    if self.chars.next_if_eq(&'>').is_some() {
+                        Token::MinusGreaterThan
+                    } else {
+                        Token::Minus
+                    }
+                }
+                '<' => Token::LessThan,
+                '\'' => {
+                    let c = self.chars.next().ok_or(LexError::UnexpectedEndOfFile)?;
+                    self.chars.next_if_eq(&'\'').ok_or(LexError::ExpectedCharacter('\''))?;
+                    Token::Char(c)
+                }
+                '"' => {
+                    let mut string = String::new();
+                    while let Some(c) = self.chars.next_if(|&c| c != '"') {
+                        string.push(c);
+                    }
+                    self.chars.next_if_eq(&'"').ok_or(LexError::ExpectedCharacter('"'))?;
+                    Token::String(string)
+                }
+                c if c.is_ascii_digit() => {
+                    let mut number = c.to_digit(10).unwrap();
+                    while let Some(digit) = self.chars.next_if(char::is_ascii_digit) {
+                        number = number * 10 + digit.to_digit(10).unwrap();
+                    }
+                    Token::Number(number as i64)
+                }
+                c if c.is_ascii_alphabetic() => {
+                    let mut identifier = char.to_string();
+                    while let Some(c) = self.chars.next_if(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '?')) {
+                        identifier.push(c);
+                    }
+                    Token::Identifier(identifier)
+                }
+                _ => return Err(LexError::UnexpectedCharacter(char))
+            };
+
+            tokens.push(token)
+        }
+
+        Ok(tokens)
+    }
+}
+
+
+pub fn tokenize(source_code: &str) -> Result<Vec<Token>, LexError> {
+    let mut lexer = Lexer::new(source_code.chars());
+    lexer.lex()
 }
