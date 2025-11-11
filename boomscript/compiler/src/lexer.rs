@@ -19,6 +19,9 @@ pub enum Token {
     // Delimiters
     OpenParenthesis,
     CloseParenthesis,
+    
+    // Keywords
+    Let,
 
     // Symbols
     Equal,
@@ -91,7 +94,12 @@ where
                     while let Some(c) = self.chars.next_if(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '?')) {
                         identifier.push(c);
                     }
-                    Token::Identifier(identifier)
+                    
+                    if identifier == "let" {
+                        Token::Let
+                    } else {
+                        Token::Identifier(identifier)
+                    }
                 }
                 _ => return Err(LexError::UnexpectedCharacter(char))
             };

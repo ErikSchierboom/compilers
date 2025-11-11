@@ -16,11 +16,11 @@ fn main() {
     // "#;
 
     const SOURCE: &str = r#"
-        lines = read-lines("input.txt");
-        ints = map(lines, line -> parse-int(line));
-        windowed = windows(ints, 2);
-        filtered = filter(windows, kv -> key(kv) < value(kv));
-        part_1 = count(filtered);
+        let lines = read-lines("input.txt");
+        let ints = map(lines, line -> parse-int(line));
+        let windowed = windows(ints, 2);
+        let filtered = filter(windows, kv -> key(kv) < value(kv));
+        let part_1 = count(filtered);
     "#;
 
     match parse(SOURCE) {
