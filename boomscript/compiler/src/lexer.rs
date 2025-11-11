@@ -8,7 +8,7 @@ pub enum LexError {
     InvalidEscape(char),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Token {
     // Literals
     Number(i64),
@@ -19,7 +19,7 @@ pub enum Token {
     // Delimiters
     OpenParenthesis,
     CloseParenthesis,
-    
+
     // Keywords
     Let,
 
@@ -30,6 +30,9 @@ pub enum Token {
     LessThan,
     Minus,
     MinusGreaterThan,
+    Plus,
+    Star,
+    Slash,
 }
 
 struct Lexer<T>
@@ -61,6 +64,9 @@ where
                 '=' => Token::Equal,
                 ',' => Token::Comma,
                 ';' => Token::Semicolon,
+                '+' => Token::Plus,
+                '*' => Token::Star,
+                '/' => Token::Slash,
                 '-' => {
                     if self.chars.next_if_eq(&'>').is_some() {
                         Token::MinusGreaterThan
@@ -94,7 +100,7 @@ where
                     while let Some(c) = self.chars.next_if(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '?')) {
                         identifier.push(c);
                     }
-                    
+
                     if identifier == "let" {
                         Token::Let
                     } else {
