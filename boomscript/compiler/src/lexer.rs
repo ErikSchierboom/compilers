@@ -1,4 +1,5 @@
 use std::iter::Peekable;
+use std::string::ToString;
 
 #[derive(Debug)]
 pub enum LexError {
@@ -8,7 +9,7 @@ pub enum LexError {
     InvalidEscape(char),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     // Literals
     Number(i64),
@@ -16,23 +17,8 @@ pub enum Token {
     String(String),
     Identifier(String),
 
-    // Delimiters
-    OpenParenthesis,
-    CloseParenthesis,
-
-    // Keywords
-    Let,
-
     // Symbols
-    Equal,
-    Comma,
-    Semicolon,
-    LessThan,
-    Minus,
-    MinusGreaterThan,
-    Plus,
-    Star,
-    Slash,
+    Pipe,
 }
 
 struct Lexer<T>
@@ -59,22 +45,7 @@ where
             }
 
             let token = match char {
-                '(' => Token::OpenParenthesis,
-                ')' => Token::CloseParenthesis,
-                '=' => Token::Equal,
-                ',' => Token::Comma,
-                ';' => Token::Semicolon,
-                '+' => Token::Plus,
-                '*' => Token::Star,
-                '/' => Token::Slash,
-                '-' => {
-                    if self.chars.next_if_eq(&'>').is_some() {
-                        Token::MinusGreaterThan
-                    } else {
-                        Token::Minus
-                    }
-                }
-                '<' => Token::LessThan,
+                '|' => Token::Pipe,
                 '\'' => {
                     let c = self.chars.next().ok_or(LexError::UnexpectedEndOfFile)?;
                     self.chars.next_if_eq(&'\'').ok_or(LexError::ExpectedCharacter('\''))?;
@@ -101,11 +72,7 @@ where
                         identifier.push(c);
                     }
 
-                    if identifier == "let" {
-                        Token::Let
-                    } else {
-                        Token::Identifier(identifier)
-                    }
+                    Token::Identifier(identifier)
                 }
                 _ => return Err(LexError::UnexpectedCharacter(char))
             };
@@ -116,7 +83,6 @@ where
         Ok(tokens)
     }
 }
-
 
 pub fn tokenize(source_code: &str) -> Result<Vec<Token>, LexError> {
     let mut lexer = Lexer::new(source_code.chars());

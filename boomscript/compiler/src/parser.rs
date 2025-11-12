@@ -1,4 +1,5 @@
 use crate::lexer::{tokenize, LexError, Token};
+use crate::parser::Expression::Pipeline;
 use std::iter::Peekable;
 
 #[derive(Debug)]
@@ -11,28 +12,20 @@ pub enum ParseError {
 }
 
 #[derive(Debug)]
-pub enum Statement {
-    Assignment {
-        name: String,
-        value: Expression,
+pub enum Expression {
+    Literal(Literal),
+    Call {
+        function: String,
+        arguments: Vec<Expression>,
     },
-
-    Expression(Expression),
+    Pipeline(Vec<Expression>),
 }
 
 #[derive(Debug)]
-pub enum Expression {
-    Literal(Token),
-    Variable(Token),
-    Call {
-        callee: Box<Expression>,
-        args: Vec<Expression>,
-    },
-    Binary {
-        left: Box<Expression>,
-        operator: Token,
-        right: Box<Expression>,
-    },
+pub enum Literal {
+    Number(i64),
+    Char(char),
+    String(String),
 }
 
 struct Parser<T>
@@ -50,131 +43,71 @@ where
         Self { tokens: tokens.peekable() }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Statement>, ParseError> {
-        let mut statements: Vec<Statement> = Vec::new();
+    pub fn parse(&mut self) -> Result<Expression, ParseError> {
+        let mut expressions: Vec<Expression> = Vec::new();
 
-        while self.tokens.peek().is_some() {
-            statements.push(self.parse_statement()?);
+        expressions.push(self.parse_call()?);
+
+        while self.matches(&Token::Pipe) {
+            expressions.push(self.parse_call()?);
         }
 
-        Ok(statements)
+        Ok(Pipeline(expressions))
     }
 
-    fn parse_statement(&mut self) -> Result<Statement, ParseError> {
-        // TODO: extract helper method
-        if self.tokens.next_if_eq(&Token::Let).is_some() {
-            self.parse_assignment_statement()
+    pub fn parse_call(&mut self) -> Result<Expression, ParseError> {
+        if let Token::Identifier(function) = self.advance()? {
+            let mut arguments: Vec<Expression> = Vec::new();
+
+            loop {
+                if self.tokens.peek() == Some(&Token::Pipe) {
+                    break;
+                }
+
+                arguments.push(self.parse_literal()?)
+            }
+
+            Ok(Expression::Call { function, arguments })
         } else {
-            self.parse_expression_statement()
+            self.parse_literal()
         }
     }
 
-    fn parse_assignment_statement(&mut self) -> Result<Statement, ParseError> {
-        match self.tokens.next() {
-            Some(Token::Identifier(name)) => {
-                // TODO: extract helper method
-                if self.tokens.next_if_eq(&Token::Equal).is_some() {
-                    let value = self.parse_expression()?;
-                    self.tokens.next_if_eq(&Token::Semicolon).ok_or_else(|| ParseError::ExpectedToken(Token::Semicolon))?;
-                    Ok(Statement::Assignment { name, value })
-                } else {
-                    Err(ParseError::ExpectedToken(Token::Equal))
-                }
-            }
-            _ => Err(ParseError::ExpectedIdentifier),
-        }
-    }
-
-    fn parse_expression_statement(&mut self) -> Result<Statement, ParseError> {
-        let expression = self.parse_expression()?;
-        self.tokens.next_if_eq(&Token::Semicolon).ok_or_else(|| ParseError::ExpectedToken(Token::Semicolon))?;
-        Ok(Statement::Expression(expression))
-    }
-
-    fn parse_expression(&mut self) -> Result<Expression, ParseError> {
-        self.parse_term_expression()
-    }
-
-    fn parse_term_expression(&mut self) -> Result<Expression, ParseError> {
-        let mut expr = self.parse_factor_expression()?;
-
-        loop {
-            let operator_opt = self.tokens.next();
-            match operator_opt {
-                Some(Token::Minus) |
-                Some(Token::Plus) => {
-                    let right = self.parse_factor_expression()?;
-                    expr = Expression::Binary { left: Box::new(expr), operator: operator_opt.unwrap(), right: Box::new(right) }
-                }
-                _ => break
-            }
-        }
-
-        Ok(expr)
-    }
-
-    fn parse_factor_expression(&mut self) -> Result<Expression, ParseError> {
-        let mut expr = self.parse_call_expression()?;
-
-        loop {
-            let operator_opt = self.tokens.next();
-            match operator_opt {
-                Some(Token::Star) |
-                Some(Token::Slash) => {
-                    let right = self.parse_call_expression()?;
-                    expr = Expression::Binary { left: Box::new(expr), operator: operator_opt.unwrap(), right: Box::new(right) }
-                }
-                _ => break
-            }
-        }
-
-        Ok(expr)
-    }
-
-    fn parse_call_expression(&mut self) -> Result<Expression, ParseError> {
-        let expr = self.parse_primary_expression()?;
-
-        loop {
-            if self.tokens.next_if_eq(&Token::OpenParenthesis).is_some() {
-                let mut args: Vec<Expression> = Vec::new();
-
-                loop {
-                    if let Some(&Token::OpenParenthesis) = self.tokens.peek() {
-                        break;
-                    } else {
-                        let arg = self.parse_expression()?;
-                        args.push(arg);
-                        if self.tokens.next_if_eq(&Token::Comma).is_some() {
-                            break;
-                        }
-                    }
-                }
-
-                self.tokens.next_if_eq(&Token::CloseParenthesis).ok_or_else(|| ParseError::ExpectedToken(Token::CloseParenthesis))?;
-
-                return Ok(Expression::Call { callee: Box::new(expr), args });
-            } else {
-                break;
-            }
-        }
-
-        Ok(expr)
-    }
-
-    fn parse_primary_expression(&mut self) -> Result<Expression, ParseError> {
-        let token = self.tokens.next().ok_or_else(|| ParseError::UnexpectedEndOfFile)?;
+    fn parse_literal(&mut self) -> Result<Expression, ParseError> {
+        let token = self.advance()?;
 
         match token {
-            Token::Number(_) |
-            Token::Char(_) |
-            Token::String(_) => Ok(Expression::Literal(token)),
-            Token::Identifier(_) => Ok(Expression::Variable(token)),
+            Token::Number(number) => Ok(Expression::Literal(Literal::Number(number))),
+            Token::Char(char) => Ok(Expression::Literal(Literal::Char(char))),
+            Token::String(string) => Ok(Expression::Literal(Literal::String(string))),
             _ => Err(ParseError::UnexpectedToken(token))
+        }
+    }
+
+    fn matches(&mut self, expected: &Token) -> bool {
+        self.tokens.next_if_eq(&expected).is_some()
+    }
+
+    fn matches_any(&mut self, expected: &[Token]) -> Option<Token> {
+        expected.into_iter().find_map(|expected_token| self.tokens.next_if_eq(&expected_token))
+    }
+
+    fn advance(&mut self) -> Result<Token, ParseError> {
+        match self.tokens.next() {
+            None => Err(ParseError::UnexpectedEndOfFile),
+            Some(token) => Ok(token)
+        }
+    }
+
+    fn expect(&mut self, token: &Token) -> Result<(), ParseError> {
+        match self.tokens.next_if_eq(token) {
+            None => Err(ParseError::ExpectedToken(token.clone())),
+            Some(_) => Ok(())
         }
     }
 }
 
-pub fn parse(source_code: &str) -> Result<Vec<Statement>, ParseError> {
+pub fn parse(source_code: &str) -> Result<Expression, ParseError> {
     let tokens = tokenize(source_code).map_err(ParseError::Lex)?;
     let mut parser = Parser::new(tokens.into_iter());
     parser.parse()
