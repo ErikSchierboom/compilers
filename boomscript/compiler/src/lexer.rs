@@ -11,14 +11,16 @@ pub enum LexError {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
-    // Literals
     Number(i64),
     Char(char),
     String(String),
     Identifier(String),
 
-    // Symbols
-    Pipe,
+    Colon,
+    LessThan,
+
+    Newline,
+    EndOfFile,
 }
 
 struct Lexer<T>
@@ -40,12 +42,11 @@ where
         let mut tokens: Vec<Token> = Vec::new();
 
         while let Some(char) = self.chars.next() {
-            if char.is_whitespace() {
-                continue;
-            }
-
             let token = match char {
-                '|' => Token::Pipe,
+                ':' => Token::Colon,
+                '\n' => Token::Newline,
+                '\t' | '\r' | ' ' => continue,
+                '<' => Token::LessThan,
                 '\'' => {
                     let c = self.chars.next().ok_or(LexError::UnexpectedEndOfFile)?;
                     self.chars.next_if_eq(&'\'').ok_or(LexError::ExpectedCharacter('\''))?;

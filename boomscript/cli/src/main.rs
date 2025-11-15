@@ -1,16 +1,16 @@
-use compiler::parser::parse;
+use compiler::lexer::tokenize;
+// use compiler::parser::parse;
 
 fn main() {
     const SOURCE: &str = r#"
-        "input.txt"
-            | read-lines
-            | map parse-int
-            | windows 2
-            | filter lt
-            | count
+        lines: "input.txt" read-lines
+        ints: lines parse-int map  
+        wins: ints 2 windows 
+        filt: wins < filter
+        filt count
     "#;
 
-    match parse(SOURCE) {
+    match tokenize(SOURCE) {
         Ok(statements) => {
             print!("{:?} ", statements)
         }
