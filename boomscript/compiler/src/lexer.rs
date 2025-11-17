@@ -11,15 +11,23 @@ pub enum LexError {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
+    // Literals
     Number(i64),
     Char(char),
     String(String),
     Identifier(String),
 
-    Colon,
+    // Symbols
+    Equal,
     LessThan,
 
+    // Keywords
+    Let,
+
+    // Trivia
     Newline,
+
+    // Synthetic
     EndOfFile,
 }
 
@@ -43,9 +51,9 @@ where
 
         while let Some(char) = self.chars.next() {
             let token = match char {
-                ':' => Token::Colon,
+                ' ' | '\r' | '\t' => continue,
                 '\n' => Token::Newline,
-                '\t' | '\r' | ' ' => continue,
+                '=' => Token::Equal,
                 '<' => Token::LessThan,
                 '\'' => {
                     let c = self.chars.next().ok_or(LexError::UnexpectedEndOfFile)?;
@@ -73,7 +81,11 @@ where
                         identifier.push(c);
                     }
 
-                    Token::Identifier(identifier)
+                    if identifier == "let" {
+                        Token::Let
+                    } else {
+                        Token::Identifier(identifier)
+                    }
                 }
                 _ => return Err(LexError::UnexpectedCharacter(char))
             };

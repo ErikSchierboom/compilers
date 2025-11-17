@@ -3,10 +3,10 @@ use compiler::lexer::tokenize;
 
 fn main() {
     const SOURCE: &str = r#"
-        lines: "input.txt" read-lines
-        ints: lines parse-int map  
-        wins: ints 2 windows 
-        filt: wins < filter
+        let lines = "input.txt" read-lines
+        let ints = lines parse-int map  
+        let wins = ints 2 windows 
+        let filt = wins < filter
         filt count
     "#;
 
