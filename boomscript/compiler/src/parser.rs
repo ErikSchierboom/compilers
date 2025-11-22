@@ -10,7 +10,7 @@ pub enum ParseError {
     UnexpectedEndOfFile,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Word {
     Number(i64),
     Char(char),
@@ -40,9 +40,9 @@ where
 
         loop {
             if self.matches(&Token::EndOfFile) {
-                return Ok(words)
+                return Ok(words);
             } else {
-            words.push(self.parse_word()?)
+                words.push(self.parse_word()?)
             }
         }
     }
@@ -58,17 +58,17 @@ where
                     Token::Identifier(name) => Word::Quote(name),
                     _ => return Err(ParseError::ExpectedIdentifier)
                 }
-            },
+            }
             Token::Less => Word::Identifier("lt".to_string()),
             Token::LessEqual => Word::Identifier("le".to_string()),
             Token::Greater => Word::Identifier("gt".to_string()),
             Token::GreaterEqual => Word::Identifier("ge".to_string()),
             Token::OpenBracket => {
                 let mut words: Vec<Word> = Vec::new();
-                
+
                 loop {
                     if self.matches(&Token::CloseBracket) {
-                        return Ok(Word::Block(words))
+                        return Ok(Word::Block(words));
                     } else {
                         let block_word = self.parse_word()?;
                         words.push(block_word)

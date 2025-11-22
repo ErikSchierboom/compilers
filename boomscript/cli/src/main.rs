@@ -1,9 +1,9 @@
-use compiler::parser::parse;
+use compiler::interpreter::interpret;
 
 fn main() {
     const SOURCE: &str = r#"
         "input.txt" read-file lines 'int map 'numbers set [ 2 > ] filter @a
     "#;
 
-    print!("{:?}", parse(SOURCE))
+    print!("{:?}", interpret(SOURCE))
 }
