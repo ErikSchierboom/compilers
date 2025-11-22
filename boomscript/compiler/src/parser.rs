@@ -38,11 +38,13 @@ where
     pub fn parse(&mut self) -> Result<Vec<Word>, ParseError> {
         let mut words: Vec<Word> = Vec::new();
 
-        while self.tokens.peek() != Some(&Token::EndOfFile) {
+        loop {
+            if self.matches(&Token::EndOfFile) {
+                return Ok(words)
+            } else {
             words.push(self.parse_word()?)
+            }
         }
-
-        Ok(words)
     }
 
     pub fn parse_word(&mut self) -> Result<Word, ParseError> {
@@ -84,22 +86,8 @@ where
         self.tokens.next_if_eq(&expected).is_some()
     }
 
-    fn matches_any(&mut self, expected: &[Token]) -> Option<Token> {
-        expected.into_iter().find_map(|expected_token| self.tokens.next_if_eq(&expected_token))
-    }
-
     fn advance(&mut self) -> Result<Token, ParseError> {
-        match self.tokens.next() {
-            None => Err(ParseError::UnexpectedEndOfFile),
-            Some(token) => Ok(token)
-        }
-    }
-
-    fn expect(&mut self, token: &Token) -> Result<(), ParseError> {
-        match self.tokens.next_if_eq(token) {
-            None => Err(ParseError::ExpectedToken(token.clone())),
-            Some(_) => Ok(())
-        }
+        self.tokens.next().ok_or_else(|| ParseError::UnexpectedEndOfFile)
     }
 }
 
