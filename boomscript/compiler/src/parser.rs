@@ -38,7 +38,7 @@ where
     pub fn parse(&mut self) -> Result<Vec<Word>, ParseError> {
         let mut words: Vec<Word> = Vec::new();
 
-        while self.tokens.peek().is_some() {
+        while self.tokens.peek() != Some(&Token::EndOfFile) {
             words.push(self.parse_word()?)
         }
 
@@ -74,6 +74,7 @@ where
                 }
             }
             Token::CloseBracket => return Err(ParseError::UnexpectedToken(Token::CloseBracket)),
+            Token::EndOfFile => panic!("We should never get here")
         };
 
         Ok(word)

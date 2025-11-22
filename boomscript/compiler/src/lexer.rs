@@ -27,6 +27,9 @@ pub enum Token {
     LessEqual,
     Greater,
     GreaterEqual,
+    
+    // Synthetic
+    EndOfFile,
 }
 
 struct Lexer<T>
@@ -99,6 +102,8 @@ where
 
             tokens.push(token)
         }
+
+        tokens.push(Token::EndOfFile);
 
         Ok(tokens)
     }
