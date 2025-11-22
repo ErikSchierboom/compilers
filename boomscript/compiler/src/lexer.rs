@@ -17,18 +17,16 @@ pub enum Token {
     String(String),
     Identifier(String),
 
+    // Delimiters
+    OpenBracket,
+    CloseBracket,
+
     // Symbols
-    Equal,
-    LessThan,
-
-    // Keywords
-    Let,
-
-    // Trivia
-    Newline,
-
-    // Synthetic
-    EndOfFile,
+    Quote,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
 }
 
 struct Lexer<T>
@@ -51,13 +49,26 @@ where
 
         while let Some(char) = self.chars.next() {
             let token = match char {
-                ' ' | '\r' | '\t' => continue,
-                '\n' => Token::Newline,
-                '=' => Token::Equal,
-                '<' => Token::LessThan,
-                '\'' => {
+                ' ' | '\n' | '\r' | '\t' => continue,
+                '\'' => Token::Quote,
+                '[' => Token::OpenBracket,
+                ']' => Token::CloseBracket,
+                '<' => {
+                    if self.chars.next_if_eq(&'=').is_some() {
+                        Token::LessEqual
+                    } else {
+                        Token::Less
+                    }
+                }
+                '>' => {
+                    if self.chars.next_if_eq(&'=').is_some() {
+                        Token::GreaterEqual
+                    } else {
+                        Token::Greater
+                    }
+                }
+                '@' => {
                     let c = self.chars.next().ok_or(LexError::UnexpectedEndOfFile)?;
-                    self.chars.next_if_eq(&'\'').ok_or(LexError::ExpectedCharacter('\''))?;
                     Token::Char(c)
                 }
                 '"' => {
@@ -81,11 +92,7 @@ where
                         identifier.push(c);
                     }
 
-                    if identifier == "let" {
-                        Token::Let
-                    } else {
-                        Token::Identifier(identifier)
-                    }
+                    Token::Identifier(identifier)
                 }
                 _ => return Err(LexError::UnexpectedCharacter(char))
             };

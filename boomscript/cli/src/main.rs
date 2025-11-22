@@ -1,16 +1,11 @@
-use compiler::lexer::tokenize;
-// use compiler::parser::parse;
+use compiler::parser::parse;
 
 fn main() {
     const SOURCE: &str = r#"
-        let lines = "input.txt" read-lines
-        let ints = lines parse-int map  
-        let wins = ints 2 windows 
-        let filt = wins < filter
-        filt count
+        "input.txt" read-file lines 'int map 'numbers set [ 2 > ] filter
     "#;
 
-    match tokenize(SOURCE) {
+    match parse(SOURCE) {
         Ok(statements) => {
             print!("{:?} ", statements)
         }

@@ -1,5 +1,4 @@
 use crate::lexer::{tokenize, LexError, Token};
-// use crate::parser::Expression::Pipeline;
 use std::iter::Peekable;
 
 #[derive(Debug)]
@@ -12,20 +11,13 @@ pub enum ParseError {
 }
 
 #[derive(Debug)]
-pub enum Statement {
-    Assignment {
-        name: String,
-        value: Vec<Word>,
-    },
-    Expression(Vec<Word>),
-}
-
-#[derive(Debug)]
 pub enum Word {
     Number(i64),
     Char(char),
     String(String),
     Identifier(String),
+    Quote(String),
+    Block(Vec<Word>),
 }
 
 struct Parser<T>
@@ -43,37 +35,14 @@ where
         Self { tokens: tokens.peekable() }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Statement>, ParseError> {
-        let mut statements: Vec<Statement> = Vec::new();
+    pub fn parse(&mut self) -> Result<Vec<Word>, ParseError> {
+        let mut words: Vec<Word> = Vec::new();
 
         while self.tokens.peek().is_some() {
-            statements.push(self.parse_statement()?)
+            words.push(self.parse_word()?)
         }
 
-        Ok(statements)
-    }
-
-    pub fn parse_statement(&mut self) -> Result<Statement, ParseError> {
-        while self.matches(&Token::Newline) {}
-
-        if self.matches(&Token::Let) {
-            self.parse_assignment_statement()
-        } else {
-            self.parse_expression_statement()
-        }
-    }
-
-    fn parse_assignment_statement(&mut self) -> Result<Statement, ParseError> {
-        match self.parse_word()? {
-            Word::Identifier(name) => {
-                todo!()
-            }
-            _ => return Err(ParseError::ExpectedIdentifier)
-        }
-    }
-
-    fn parse_expression_statement(&mut self) -> Result<Statement, ParseError> {
-        todo!()
+        Ok(words)
     }
 
     pub fn parse_word(&mut self) -> Result<Word, ParseError> {
@@ -82,7 +51,29 @@ where
             Token::Char(c) => Word::Char(c),
             Token::String(string) => Word::String(string),
             Token::Identifier(name) => Word::Identifier(name),
-            token => return Err(ParseError::UnexpectedToken(token))
+            Token::Quote => {
+                match self.advance()? {
+                    Token::Identifier(name) => Word::Quote(name),
+                    _ => return Err(ParseError::ExpectedIdentifier)
+                }
+            },
+            Token::Less => Word::Identifier("lt".to_string()),
+            Token::LessEqual => Word::Identifier("le".to_string()),
+            Token::Greater => Word::Identifier("gt".to_string()),
+            Token::GreaterEqual => Word::Identifier("ge".to_string()),
+            Token::OpenBracket => {
+                let mut words: Vec<Word> = Vec::new();
+                
+                loop {
+                    if self.matches(&Token::CloseBracket) {
+                        return Ok(Word::Block(words))
+                    } else {
+                        let block_word = self.parse_word()?;
+                        words.push(block_word)
+                    }
+                }
+            }
+            Token::CloseBracket => return Err(ParseError::UnexpectedToken(Token::CloseBracket)),
         };
 
         Ok(word)
@@ -111,7 +102,7 @@ where
     }
 }
 
-pub fn parse(source_code: &str) -> Result<Vec<Statement>, ParseError> {
+pub fn parse(source_code: &str) -> Result<Vec<Word>, ParseError> {
     let tokens = tokenize(source_code).map_err(ParseError::Lex)?;
     let mut parser = Parser::new(tokens.into_iter());
     parser.parse()
