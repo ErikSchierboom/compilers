@@ -185,7 +185,36 @@ impl False {
                 if bool != 0 {
                     self.ip = start;
 
-                    while self.ip < end {
+                    while self.ip <= end {
+                        self.eval_step()?;
+                    }
+
+                    self.ip = before;
+                }
+            },
+            '#' => {
+                let before = self.ip;
+
+                let (lambda_start, lambda_end): (usize, usize) = self.pop()?.try_into()?;
+                let (condition_start, condition_end): (usize, usize) = self.pop()?.try_into()?;
+
+                loop {
+                    self.ip = condition_start;
+
+                    while self.ip <= condition_end {
+                        self.eval_step()?;
+                    }
+
+                    self.ip = before;
+
+                    let bool: i32 = self.pop()?.try_into()?;
+                    if bool == 0 {
+                        break
+                    }
+
+                    self.ip = lambda_start;
+
+                    while self.ip <= lambda_end {
                         self.eval_step()?;
                     }
 
@@ -263,7 +292,7 @@ impl False {
 }
 
 fn main() {
-    let mut false_evaluator = False::new("1 1[\"hello\"]?");
+    let mut false_evaluator = False::new(	"1[$100<][1+]#");
     match false_evaluator.eval() {
         Ok(_) => {
             println!("Stack: {:?}", false_evaluator.stack);
