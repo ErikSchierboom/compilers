@@ -70,7 +70,6 @@ impl False {
 
         while self.ip < self.chars.len() {
             self.eval_step()?;
-            self.ip += 1;
         }
 
         Ok(())
@@ -171,7 +170,7 @@ impl False {
 
                 self.ip = start;
 
-                while self.ip < end {
+                while self.ip <= end {
                     self.eval_step()?;
                 }
 
@@ -240,6 +239,8 @@ impl False {
 
             _ => {}
         }
+
+        self.ip += 1;
         Ok(())
     }
     // TODO: extract stack to separate struct
@@ -262,7 +263,7 @@ impl False {
 }
 
 fn main() {
-    let mut false_evaluator = False::new("1 1=[\"hello!\"]?");
+    let mut false_evaluator = False::new("1 1[\"hello\"]?");
     match false_evaluator.eval() {
         Ok(_) => {
             println!("Stack: {:?}", false_evaluator.stack);
