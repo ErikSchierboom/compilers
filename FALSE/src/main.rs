@@ -1,116 +1,124 @@
 use std::ops::{Add, BitAnd, BitOr, Div, Mul, Neg, Not, Sub};
 
+#[derive(Debug)]
+enum FalseError {
+    EmptyStack
+}
+
 struct False {
     variables: [i32; 26],
     stack: Vec<i32>
 }
 
 impl False {
-
-
     fn new() -> Self {
         Self { variables: [0; 26], stack: Vec::new() }
     }
 
-    fn eval(&mut self, source: &str) -> Option<i32> {
+    fn eval(&mut self, source: &str) -> Result<(), FalseError> {
         macro_rules! unary {
             ($f: expr) => {{
-                let a = self.stack.pop()?;
-                self.stack.push($f(a))
+                let a = self.pop()?;
+                self.push($f(a));
             }}
         }
 
         macro_rules! binary {
             ($f: expr) => {{
-                let b = self.stack.pop()?;
-                let a = self.stack.pop()?;
-                self.stack.push($f(a, b))
+                let b = self.pop()?;
+                let a = self.pop()?;
+                self.push($f(a, b));
             }}
         }
 
         let mut ip: usize = 0;
-        let bytes = source.as_bytes();
+        let chars: Vec<char> = source.chars().collect();
 
-        while ip < bytes.len() {
-            match bytes[ip] {
-                b' ' | b'\t' | b'\n' | b'\r' => {},
-                b'{' => {
-                    while ip < bytes.len() && bytes[ip] != b'}' {
+        while ip < chars.len() {
+            match chars[ip] as char {
+                ' ' | '\t' | '\n' | '\r' => {},
+                '{' => {
+                    while ip < chars.len() && chars[ip] != '}' {
                         ip += 1
                     }
                 }
 
-                b'0'..=b'9' => {
+                '0'..='9' => {
                     let mut  n: i32 = 0;
 
-                    while ip < bytes.len() && matches!(bytes[ip],  b'0'..=b'9')  {
-                        n = n * 10 + (bytes[ip] - b'0') as i32;
+                    while ip < chars.len() && matches!(chars[ip],  '0'..='9')  {
+                        n = n * 10 + (chars[ip] as u8 - b'0') as i32;
                         ip += 1;
                     }
 
                     ip -= 1;
-                    self.stack.push(n)
+                    self.push(n)
                 },
-                b'\'' => {
+                '\'' => {
                     ip += 1;
-                    self.stack.push(bytes[ip] as i32)
+                    self.push(chars[ip] as i32)
                 },
 
-                b'_' => unary!(i32::neg),
-                b'~' => unary!(i32::not),
+                '_' => unary!(i32::neg),
+                '~' => unary!(i32::not),
 
-                b'&' => binary!(i32::bitand),
-                b'|' => binary!(i32::bitor),
-                b'=' => binary!(|a, b| if a == b { -1 } else { 0 }),
-                b'<' => binary!(|a, b| if a < b { -1 } else { 0 }),
-                b'>' => binary!(|a, b| if a > b { -1 } else { 0 }),
-                b'+' => binary!(i32::add),
-                b'-' => binary!(i32::sub),
-                b'*' => binary!(i32::mul),
-                b'/' => binary!(i32::div),
+                '&' => binary!(i32::bitand),
+                '|' => binary!(i32::bitor),
+                '=' => binary!(|a, b| if a == b { -1 } else { 0 }),
+                '<' => binary!(|a, b| if a < b { -1 } else { 0 }),
+                '>' => binary!(|a, b| if a > b { -1 } else { 0 }),
+                '+' => binary!(i32::add),
+                '-' => binary!(i32::sub),
+                '*' => binary!(i32::mul),
+                '/' => binary!(i32::div),
 
-                b'a'..=b'z' => self.stack.push((bytes[ip] - b'a') as i32),
-                b'A'..=b'Z' => self.stack.push(self.variables[(bytes[ip] - b'A') as usize]),
+                'a'..='z' => self.push((chars[ip] as u8 - b'a') as i32),
+                'A'..='Z' => self.push(self.variables[(chars[ip] as u8 - b'A') as usize]),
 
-                b':' => {
-                    let var_addr = self.stack.pop()?;
-                    let value = self.stack.pop()?;
+                ':' => {
+                    let var_addr = self.pop()?;
+                    let value = self.pop()?;
                     self.variables[var_addr as usize] = value
                 },
-                b';' => {
-                    let var_addr = self.stack.pop()?;
-                    self.stack.push(self.variables[var_addr as usize])
+                ';' => {
+                    let var_addr = self.pop()?;
+                    self.push(self.variables[var_addr as usize]);
                 }
 
-                b'%' => {
-                    self.stack.pop()?;
+                '%' => {
+                    self.pop()?;
                 },
-                b'$' => {
-                    let a = self.stack.pop()?;
-                    self.stack.push(a.clone());
-                    self.stack.push(a);
+                '$' => {
+                    let a = self.pop()?;
+                    self.push(a.clone());
+                    self.push(a);
                 },
-                b'\\' => {
-                    let b = self.stack.pop()?;
-                    let a = self.stack.pop()?;
-                    self.stack.push(b);
-                    self.stack.push(a);
+                '\\' => {
+                    let b = self.pop()?;
+                    let a = self.pop()?;
+                    self.push(b);
+                    self.push(a);
                 },
-                b'@' => {
-                    let c = self.stack.pop()?;
-                    let b = self.stack.pop()?;
-                    let a = self.stack.pop()?;
-                    self.stack.push(c);
-                    self.stack.push(a);
-                    self.stack.push(b);
+                '@' => {
+                    let c = self.pop()?;
+                    let b = self.pop()?;
+                    let a = self.pop()?;
+                    self.push(b);
+                    self.push(c);
+                    self.push(a);
                 },
+                'ø' => {
+                    let n = self.pop()?;
+                    let nth_val = self.pick(n as usize)?.clone();
+                    self.push(nth_val)
+                }
 
-                b'.' => print!("{}", self.stack.last().unwrap()),
-                b',' => print!("{}", *self.stack.last().unwrap() as u8 as char),
-                b'"' => {
+                '.' => print!("{}", self.peek().unwrap()),
+                ',' => print!("{}", *self.peek().unwrap() as u8 as char),
+                '"' => {
                     ip += 1;
-                    while ip < bytes.len() && bytes[ip] != b'"' {
-                        print!("{}", bytes[ip] as u8 as char);
+                    while ip < chars.len() && chars[ip] != '"' {
+                        print!("{}", chars[ip] as u8 as char);
                         ip += 1;
                     }
                 }
@@ -120,11 +128,30 @@ impl False {
             ip += 1;
         }
 
-        self.stack.pop()
+        Ok(())
+    }
+
+    fn push(&mut self, value: i32) {
+        self.stack.push(value)
+    }
+
+    fn pop(&mut self) -> Result<i32, FalseError> {
+        self.stack.pop().ok_or(FalseError::EmptyStack)
+    }
+
+    fn peek(&mut self) -> Result<&i32, FalseError> {
+        self.stack.last().ok_or(FalseError::EmptyStack)
+    }
+
+    fn pick(&mut self, n: usize) -> Result<&i32, FalseError> {
+        self.stack.iter().nth_back(n).ok_or(FalseError::EmptyStack)
     }
 }
 
 fn main() {
     let mut false_evaluator = False::new();
-    false_evaluator.eval("12 . \" \" 34 . 'e ,");
+    match false_evaluator.eval("7 8 9 2 ø") {
+        Ok(_) => println!("{:?}", false_evaluator.stack),
+        Err(error) => eprintln!("{:?}", error)
+    }
 }
