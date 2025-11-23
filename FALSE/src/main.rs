@@ -1,3 +1,5 @@
+// See: https://strlen.com/files/lang/false/false.txt
+
 use std::ops::{Add, BitAnd, BitOr, Div, Mul, Neg, Not, Sub};
 
 #[derive(Debug)]
@@ -10,8 +12,11 @@ enum FalseError {
 #[derive(Clone, Copy, Debug)]
 enum Value {
     Integer(i32),
-    Lambda(usize, usize)
+    Lambda(Lambda)
 }
+
+#[derive(Clone, Copy, Debug)]
+struct Lambda(usize, usize);
 
 impl TryFrom<Value> for i32 {
     type Error = FalseError;
@@ -24,12 +29,12 @@ impl TryFrom<Value> for i32 {
     }
 }
 
-impl TryFrom<Value> for (usize, usize) {
+impl TryFrom<Value> for Lambda {
     type Error = FalseError;
 
     fn try_from(value: Value) -> Result<Self, Self::Error> {
         match value {
-            Value::Lambda(start, end) => Ok((start, end)),
+            Value::Lambda(lambda) => Ok(lambda),
             _ => Err(FalseError::ExpectedLambda)
         }
     }
@@ -41,9 +46,9 @@ impl Into<Value> for i32 {
     }
 }
 
-impl Into<Value> for (usize, usize) {
+impl Into<Value> for Lambda {
     fn into(self) -> Value {
-        Value::Lambda(self.0, self.1)
+        Value::Lambda(self)
     }
 }
 
@@ -162,63 +167,34 @@ impl False {
                 }
 
                 let end = self.ip - 1;
-                self.push(Value::Lambda(start, end))
+                self.push(Value::Lambda(Lambda(start, end)))
             },
             '!' => {
-                let before = self.ip;
-                let (start, end) = self.pop()?.try_into()?;
+                let lambda: Lambda = self.pop()?.try_into()?;
 
-                self.ip = start;
-
-                while self.ip <= end {
-                    self.eval_step()?;
-                }
-
-                self.ip = before;
+                self.eval_lambda(lambda)?
             },
             '?' => {
-                let before = self.ip;
-
-                let (start, end): (usize, usize) = self.pop()?.try_into()?;
+                let lambda: Lambda = self.pop()?.try_into()?;
                 let bool: i32 = self.pop()?.try_into()?;
 
                 if bool != 0 {
-                    self.ip = start;
-
-                    while self.ip <= end {
-                        self.eval_step()?;
-                    }
-
-                    self.ip = before;
+                    self.eval_lambda(lambda)?
                 }
             },
             '#' => {
-                let before = self.ip;
-
-                let (lambda_start, lambda_end): (usize, usize) = self.pop()?.try_into()?;
-                let (condition_start, condition_end): (usize, usize) = self.pop()?.try_into()?;
+                let lambda: Lambda = self.pop()?.try_into()?;
+                let condition: Lambda = self.pop()?.try_into()?;
 
                 loop {
-                    self.ip = condition_start;
-
-                    while self.ip <= condition_end {
-                        self.eval_step()?;
-                    }
-
-                    self.ip = before;
+                    self.eval_lambda(condition)?;
 
                     let bool: i32 = self.pop()?.try_into()?;
                     if bool == 0 {
                         break
                     }
-
-                    self.ip = lambda_start;
-
-                    while self.ip <= lambda_end {
-                        self.eval_step()?;
-                    }
-
-                    self.ip = before;
+                    
+                    self.eval_lambda(lambda)?
                 }
             }
 
@@ -272,7 +248,20 @@ impl False {
         self.ip += 1;
         Ok(())
     }
-    // TODO: extract stack to separate struct
+
+    fn eval_lambda(&mut self, lambda: Lambda) -> Result<(), FalseError> {
+        let before = self.ip;
+
+        self.ip = lambda.0;
+
+        while self.ip <= lambda.1 {
+            self.eval_step()?;
+        }
+
+        self.ip = before;
+
+        Ok(())
+    }
 
     fn push(&mut self, value: Value) {
         self.stack.push(value)
