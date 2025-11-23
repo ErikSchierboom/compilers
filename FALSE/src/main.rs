@@ -169,12 +169,29 @@ impl False {
                 let before = self.ip;
                 let (start, end) = self.pop()?.try_into()?;
 
-                for ip in start..=end {
-                    self.ip = ip;
+                self.ip = start;
+
+                while self.ip < end {
                     self.eval_step()?;
                 }
 
                 self.ip = before;
+            },
+            '?' => {
+                let before = self.ip;
+
+                let (start, end): (usize, usize) = self.pop()?.try_into()?;
+                let bool: i32 = self.pop()?.try_into()?;
+
+                if bool != 0 {
+                    self.ip = start;
+
+                    while self.ip < end {
+                        self.eval_step()?;
+                    }
+
+                    self.ip = before;
+                }
             }
 
             '%' => {
@@ -245,9 +262,12 @@ impl False {
 }
 
 fn main() {
-    let mut false_evaluator = False::new("7 [$ *]!");
+    let mut false_evaluator = False::new("1 1=[\"hello!\"]?");
     match false_evaluator.eval() {
-        Ok(_) => println!("{:?}", false_evaluator.stack),
+        Ok(_) => {
+            println!("Stack: {:?}", false_evaluator.stack);
+            println!("Variables: {:?}", false_evaluator.variables)
+        },
         Err(error) => eprintln!("{:?}", error)
     }
 }
