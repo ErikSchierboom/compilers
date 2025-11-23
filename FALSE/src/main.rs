@@ -1,7 +1,7 @@
 use std::ops::{Add, BitAnd, BitOr, Div, Mul, Neg, Not, Sub};
 
 struct False {
-    variables: [i32; 128],
+    variables: [i32; 26],
     stack: Vec<i32>
 }
 
@@ -9,7 +9,7 @@ impl False {
 
 
     fn new() -> Self {
-        Self { variables: [0; 128], stack: Vec::new() }
+        Self { variables: [0; 26], stack: Vec::new() }
     }
 
     fn eval(&mut self, source: &str) -> Option<i32> {
@@ -40,10 +40,10 @@ impl False {
                     }
                 }
 
-                b'0' .. b'9' => {
+                b'0'..=b'9' => {
                     let mut  n: i32 = 0;
 
-                    while ip < bytes.len() && matches!(bytes[ip],  b'0' .. b'9')  {
+                    while ip < bytes.len() && matches!(bytes[ip],  b'0'..=b'9')  {
                         n = n * 10 + (bytes[ip] - b'0') as i32;
                         ip += 1;
                     }
@@ -61,13 +61,26 @@ impl False {
 
                 b'&' => binary!(i32::bitand),
                 b'|' => binary!(i32::bitor),
-                b'=' => binary!(|a, b| if a == b { 1 } else { 0 }),
-                b'<' => binary!(|a, b| if a < b { 1 } else { 0 }),
-                b'>' => binary!(|a, b| if a > b { 1 } else { 0 }),
+                b'=' => binary!(|a, b| if a == b { -1 } else { 0 }),
+                b'<' => binary!(|a, b| if a < b { -1 } else { 0 }),
+                b'>' => binary!(|a, b| if a > b { -1 } else { 0 }),
                 b'+' => binary!(i32::add),
                 b'-' => binary!(i32::sub),
                 b'*' => binary!(i32::mul),
                 b'/' => binary!(i32::div),
+
+                b'a'..=b'z' => self.stack.push((bytes[ip] - b'a') as i32),
+                b'A'..=b'Z' => self.stack.push(self.variables[(bytes[ip] - b'A') as usize]),
+
+                b':' => {
+                    let var_addr = self.stack.pop()?;
+                    let value = self.stack.pop()?;
+                    self.variables[var_addr as usize] = value
+                },
+                b';' => {
+                    let var_addr = self.stack.pop()?;
+                    self.stack.push(self.variables[var_addr as usize])
+                }
 
                 b'%' => {
                     self.stack.pop()?;
@@ -92,6 +105,16 @@ impl False {
                     self.stack.push(b);
                 },
 
+                b'.' => print!("{}", self.stack.last().unwrap()),
+                b',' => print!("{}", *self.stack.last().unwrap() as u8 as char),
+                b'"' => {
+                    ip += 1;
+                    while ip < bytes.len() && bytes[ip] != b'"' {
+                        print!("{}", bytes[ip] as u8 as char);
+                        ip += 1;
+                    }
+                }
+
                 _ => {}
             }
             ip += 1;
@@ -103,5 +126,5 @@ impl False {
 
 fn main() {
     let mut false_evaluator = False::new();
-    println!("{:?}", false_evaluator.eval("12 34 *"));
+    false_evaluator.eval("12 . \" \" 34 . 'e ,");
 }
