@@ -22,6 +22,8 @@
   value.
 - `@` (alias for `get`): Pop the top value and push the variable's value using the top value as its name.
 
+- `#`: Start of comment
+
 - `if`: Pop the top two values, check if the second is non-zero, and execute the first if true.
 - `ifelse`: Pop the top three values, check if the third is non-zero, and execute the first if true, and execute the
   second if false.
