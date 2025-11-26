@@ -14,7 +14,7 @@ impl Class {
         match self.methods.get(&selector) {
             None => panic!("todo: error message"),
             Some(method) => method(self, args)
-        }   
+        }
     }
 }
 
