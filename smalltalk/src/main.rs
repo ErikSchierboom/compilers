@@ -2,8 +2,7 @@ use std::iter::Peekable;
 
 #[derive(Debug)]
 enum Token {
-    Int(i64),
-    Float(f64),
+    Number(i64),
     Char(char),
     Str(String),
     Keyword(String),
@@ -75,8 +74,6 @@ where
             ')' => Ok(Token::CloseParen),
             '[' => Ok(Token::OpenBracket),
             ']' => Ok(Token::CloseBracket),
-            '\'' => self.lex_string(),
-            '0'..='9' => self.lex_number(char),
             '+' => {
                 if self.chars.peek().map(char::is_ascii_digit).is_some() {
                     self.lex_number(char)
@@ -119,6 +116,9 @@ where
                     Err(LexError::UnexpectedEndOfFile)
                 }
             },
+            '\'' => self.lex_string(),
+            '0'..='9' => self.lex_number(char),
+            'a'..='z' | 'A'..='Z' => self.lex_identifier_or_keyword(char),
             char => Err(LexError::UnexpectedChar(char))
         };
         
@@ -147,16 +147,30 @@ where
             str.push(c);
         }
 
-        if let Some(dot) = self.chars.next_if_eq(&'.') {
-            str.push(dot);
+        Ok(Token::Number(str.parse().unwrap()))
+    }
 
-            while let Some(c) = self.chars.next_if(char::is_ascii_digit) {
-                str.push(c);
+    fn lex_identifier_or_keyword(&mut self, char: char) -> Result<Token, LexError> {
+        let mut str: String = String::new();
+        str.push(char);
+
+        while let Some(c) = self.chars.next_if(char::is_ascii_alphanumeric) {
+            str.push(c);
+        }
+
+        match str.as_str() {
+            "true" => Ok(Token::True),
+            "false" => Ok(Token::False),
+            "nil" => Ok(Token::Nil),
+            "self" => Ok(Token::Self_),
+            "super" => Ok(Token::Super),
+            _ => {
+                if self.chars.next_if_eq(&':').is_some() {
+                    Ok(Token::Keyword(str.parse().unwrap()))
+                } else {
+                    Ok(Token::Identifier(str.parse().unwrap()))
+                }
             }
-
-            Ok(Token::Float(str.parse().unwrap()))
-        } else {
-            Ok(Token::Int(str.parse().unwrap()))
         }
     }
 }
@@ -178,7 +192,7 @@ fn tokenize(source: &str) -> impl Iterator<Item=Result<Token, LexError>> + '_ {
 }
 
 fn main() {
-    // let result: Result<Vec<Token>, LexError> = tokenize("'hallo' true false nil self super . | ^ ; ()[] ").collect();
-    let result: Result<Vec<Token>, LexError> = tokenize("1 2.0 3.434 +13 -44 1.").collect();
+    let result: Result<Vec<Token>, LexError> = tokenize("'hallo' true false nil self super hi hoi: . | ^ ; ()[] ").collect();
+    // let result: Result<Vec<Token>, LexError> = tokenize("1 2 +13 -44 1").collect();
     println!("{:?}", result);
 }
