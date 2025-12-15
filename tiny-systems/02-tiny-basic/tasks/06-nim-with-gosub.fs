@@ -30,17 +30,31 @@ type Command =
 type State = 
   { Program : list<int * Command> 
     Variables : Map<string, Value> 
-    Random : System.Random 
-    // TODO: Add a stack of line numbers to return to (list<int>)
+    Random : System.Random
+    ReturnLines: int list
     }
 
 // ----------------------------------------------------------------------------
 // Utilities
 // ----------------------------------------------------------------------------
 
-let printValue value = failwith "implemented in steps 1 and 3"
-let getLine state line = failwith "implemented in step 1"
-let addLine state (line, cmd) = failwith "implemented in step 2"
+let printValue value = 
+  match value with
+  | StringValue s -> printfn $"%s{s}"
+  | NumberValue n -> printfn $"%i{n}"
+  | BoolValue b -> printfn $"{b}"
+
+let getLine state line =
+  match state.Program |> List.tryFind (fun (n, _) -> n = line) with
+  | Some (_, cmd) -> cmd
+  | None -> failwith "line not found"
+
+let addLine state (line, cmd) =
+  List.partition (fun (n, _) -> n < line) state.Program
+  |> fun (before, after) ->
+    match after with
+    | (after_line,_)::rest when after_line = line -> { state with Program = (before @ [(line, cmd)] @ rest) }
+    | _ -> { state with Program = (before @ [(line, cmd)] @ after) }
 
 // ----------------------------------------------------------------------------
 // Evaluator
@@ -51,8 +65,53 @@ let binaryRelOp f args =
   | [NumberValue a; NumberValue b] -> BoolValue(f a b)
   | _ -> failwith "expected two numerical arguments"
 
-let rec evalExpression expr = 
-  failwith "implemented in steps 1, 3, 4 and 5"
+let binaryNumOp f args = 
+  match args with 
+  | [NumberValue a; NumberValue b] -> NumberValue(f a b)
+  | _ -> failwith "expected two numerical arguments"
+
+let binaryBoolOp f args = 
+  match args with 
+  | [BoolValue a; BoolValue b] -> BoolValue(f a b)
+  | _ -> failwith "expected two boolean arguments"
+
+let rec evalExpression state expr = 
+  match expr with
+  | Const v -> v
+  | Function("-", [e1; e2]) ->
+    let v1 = evalExpression state e1
+    let v2 = evalExpression state e2
+    binaryNumOp (-) [v1; v2]
+  | Function("=", [e1; e2]) ->
+    let v1 = evalExpression state e1
+    let v2 = evalExpression state e2
+    binaryRelOp (=) [v1; v2]
+  | Function("<", [e1; e2]) ->
+    let v1 = evalExpression state e1
+    let v2 = evalExpression state e2
+    binaryRelOp (<) [v1; v2]
+  | Function(">", [e1; e2]) ->
+    let v1 = evalExpression state e1
+    let v2 = evalExpression state e2
+    binaryRelOp (>) [v1; v2]
+  | Function("||", [e1; e2]) ->
+    let v1 = evalExpression state e1
+    let v2 = evalExpression state e2
+    binaryBoolOp (||) [v1; v2]
+  | Function("RND", [e]) ->
+    let v = evalExpression state e
+    match v with
+    | NumberValue n -> NumberValue(state.Random.Next(n))
+    | _ -> failwith "expected a numerical argument to RND"
+  | Function("MIN", [e1; e2]) ->
+    let v1 = evalExpression state e1
+    let v2 = evalExpression state e2
+    binaryNumOp min [v1; v2]
+  | Variable v ->
+      match Map.tryFind v state.Variables with
+      | Some value -> value
+      | None -> failwith $"undefined variable: %s{v}"
+  | _ -> failwith "invalid expression"
 
 let rec runCommand state (line, cmd) =
   match cmd with 
@@ -60,25 +119,80 @@ let rec runCommand state (line, cmd) =
       let first = List.head state.Program    
       runCommand state first
 
-  | Print(expr) -> failwith "implemented in step 1"
-  | Goto(line) -> failwith "implemented in step 1"
-  | Assign _ | If _ -> failwith "implemented in step 3"
-  | Clear | Poke _ -> failwith "implemented in step 4"
-  | Input _ | Stop _ -> failwith "implemente in step 5"
+  | Print(expressions) ->
+      expressions
+      |> List.map (evalExpression state)
+      |> List.iter printValue
+
+      runNextLine state line
+  | Goto(line) ->
+      let cmd = getLine state line
+      runCommand state (line, cmd)
+      
+  | Assign(v, e) ->
+    let newState = { state with Variables = Map.add v (evalExpression state e) state.Variables }
+    runNextLine newState line
+    
+  | If(e, cmd) ->
+    let cond = evalExpression state e
+    match cond with
+    | BoolValue true -> runCommand state (line, cmd)
+    | BoolValue false -> runNextLine state line
+    | _ -> failwith "invalid condition"
+  
+  | Clear ->
+      System.Console.Clear()
+      runNextLine state line
+  | Poke (x, y, e) ->
+    let v1 = evalExpression state x
+    let v2 = evalExpression state y
+    let v3 = evalExpression state e
+    match v1, v2, v3 with
+    | NumberValue x, NumberValue y, StringValue s ->
+      System.Console.SetCursorPosition(x, y)
+      System.Console.Write(s)
+      runNextLine state line
+    | _ -> failwith "invalid arguments for POKE"
+
+  | Input x ->
+      match System.Int32.TryParse(System.Console.ReadLine()) with
+      | true, n ->
+        let newVariables = state.Variables |> Map.add x (NumberValue n)
+        runNextLine { state with Variables = newVariables } line
+      | false, _ ->
+        runCommand state (line, cmd)
+  | Stop -> state
 
   // TODO: GOSUB needs to store the current line number on the stack for
   // RETURN (before behaving as GOTO); RETURN pops a line number from the
   // stack and runs the line after the one from the stack.
-  | GoSub _ | Return -> failwith "not implemented"
+  | GoSub subLine ->
+    let newState = { state with ReturnLines = line::state.ReturnLines }
+    let cmd = getLine state subLine
+    runCommand newState (subLine, cmd)
+  | Return ->
+    match state.ReturnLines with
+    | returnLine::rest ->
+      let newState = { state with ReturnLines = rest }
+      runNextLine newState returnLine
+    | _ -> failwith "no return line on stack"
 
-and runNextLine state line = failwith "implemented in step 1"
+and runNextLine state line = 
+  match state.Program |> List.tryFind (fun (n, _) -> n > line) with
+  | Some (next_line, next_cmd) -> runCommand state (next_line, next_cmd)
+  | None -> state
 
 // ----------------------------------------------------------------------------
 // Interactive program editing
 // ----------------------------------------------------------------------------
 
-let runInput state (line, cmd) = failwith "implemented in step 2"
-let runInputs state cmds = failwith "implemented in step 2"
+let runInput state (line, cmd) =
+  match line with
+  | Some ln -> addLine state (ln, cmd)
+  | None -> runCommand state (System.Int32.MaxValue, cmd)
+
+let runInputs state cmds =  
+  List.fold runInput state cmds
 
 // ----------------------------------------------------------------------------
 // Test cases
@@ -94,8 +208,7 @@ let (.-) a b = Function("-", [a; b])
 let (.=) a b = Function("=", [a; b])
 let (@) s args = Function(s, args)
 
-// TODO: Add empty stack of return line numbers here
-let empty = { Program = []; Variables = Map.empty; Random = System.Random() }
+let empty = { Program = []; Variables = Map.empty; Random = System.Random(); ReturnLines = [] }
 
 let nim = 
   [ Some 10, Assign("M", num 20)

@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="05-nim-game.fs" />
+    <Compile Include="06-nim-with-gosub.fs" />
   </ItemGroup>
 
 </Project>
