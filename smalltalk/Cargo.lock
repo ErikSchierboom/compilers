@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "boomscript"
+name = "smalltalk"
 version = "0.1.0"
