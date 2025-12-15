@@ -1,0 +1,16 @@
+{
+  "name": "07-tiny-morphic",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "dotnet fable watch --verbose --run npx vite"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "vite": "^7.2.6"
+  }
+}
