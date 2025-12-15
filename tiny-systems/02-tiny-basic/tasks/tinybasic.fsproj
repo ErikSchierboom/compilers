@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="01-hello-world.fs" />
+    <Compile Include="02-program-editing.fs" />
   </ItemGroup>
 
 </Project>

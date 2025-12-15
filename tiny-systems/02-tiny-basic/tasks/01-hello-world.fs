@@ -43,14 +43,14 @@ let rec evalExpression expr =
   | Const value -> value
 
 let rec runCommand state (line, cmd) =
-  match cmd with 
+  match cmd with  
+  | Run ->
+      let first = List.head state.Program    
+      runCommand state first
   | Print(expr) ->
       let value = evalExpression expr
       printValue value
       runNextLine state line
-  | Run ->
-      let first = List.head state.Program    
-      runCommand state first
   | Goto(line) ->
       let cmd = getLine state line
       runCommand state (line, cmd)
