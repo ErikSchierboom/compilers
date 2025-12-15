@@ -70,7 +70,6 @@ let rec evalExpression state expr =
       match Map.tryFind v state.Variables with
       | Some value -> value
       | None -> failwith $"undefined variable: %s{v}"
-  | _ -> failwith "invalid expression"
 
 let rec runCommand state (line, cmd) =
   match cmd with 
