@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="02-program-editing.fs" />
+    <Compile Include="03-conditionals-and-vars.fs" />
   </ItemGroup>
 
 </Project>

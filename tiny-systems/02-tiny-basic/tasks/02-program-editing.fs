@@ -30,7 +30,6 @@ let getLine state line =
   | Some (_, cmd) -> cmd
   | None -> failwith "line not found"
 
-
 let addLine state (line, cmd) =
   List.partition (fun (n, _) -> n < line) state.Program
   |> fun (before, after) ->

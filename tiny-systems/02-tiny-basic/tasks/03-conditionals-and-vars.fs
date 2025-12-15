@@ -5,15 +5,11 @@ module TinyBASIC
 
 type Value =
   | StringValue of string
-  // NOTE: Added numerical and Boolean values
   | NumberValue of int
   | BoolValue of bool
 
 type Expression = 
   | Const of Value
-  // NOTE: Added functions and variables. Functions  are used for both 
-  // functions (later) and binary operators (in this step). We use only
-  // 'Function("-", [e1; e2])' and 'Function("=", [e1; e2])' in the demo.
   | Function of string * Expression list
   | Variable of string
 
@@ -21,14 +17,14 @@ type Command =
   | Print of Expression
   | Run 
   | Goto of int
-  // NOTE: Assign expression to a given variable and conditional that 
-  // runs a given Command only if the expression evaluates to 'BoolValue(true)'
   | Assign of string * Expression
   | If of Expression * Command
 
+type VariableContext = Map<string, Value>
+
 type State = 
-  { Program : list<int * Command> 
-    // TODO: Add variable context to the program state
+  { Program : list<int * Command>;
+    Variables: VariableContext
   }
 
 // ----------------------------------------------------------------------------
@@ -36,25 +32,45 @@ type State =
 // ----------------------------------------------------------------------------
 
 let printValue value = 
-  // TODO: Add support for printing NumberValue and BoolValue
-  failwith "implemented in step 1"
+  match value with
+  | StringValue s -> printfn $"%s{s}"
+  | NumberValue n -> printfn $"%i{n}"
+  | BoolValue b -> printfn $"{b}"
 
-let getLine state line = failwith "implemented in step 1"
-let addLine state (line, cmd) = failwith "implemented in step 2"
+let getLine state line =
+  match state.Program |> List.tryFind (fun (n, _) -> n = line) with
+  | Some (_, cmd) -> cmd
+  | None -> failwith "line not found"
+
+let addLine state (line, cmd) =
+  List.partition (fun (n, _) -> n < line) state.Program
+  |> fun (before, after) ->
+    match after with
+    | (after_line,_)::rest when after_line = line -> { state with Program = (before @ [(line, cmd)] @ rest) }
+    | _ -> { state with Program = (before @ [(line, cmd)] @ after) }
 
 // ----------------------------------------------------------------------------
 // Evaluator
 // ----------------------------------------------------------------------------
 
-let rec evalExpression expr = 
-  // TODO: Add support for 'Function' and 'Variable'. For now, handle just the two
-  // functions we need, i.e. "-" (takes two numbers & returns a number) and "="
-  // (takes two values and returns Boolean). Note that you can test if two
-  // F# values are the same using '='. It works on values of type 'Value' too.
-  //
-  // HINT: You will need to pass the program state to 'evalExpression' 
-  // in order to be able to handle variables!
-  failwith "implemented in step 1"
+let rec evalExpression state expr =
+  match expr with
+  | Const v -> v
+  | Function("-", [e1; e2]) ->
+    let v1 = evalExpression state e1
+    let v2 = evalExpression state e2
+    match v1, v2 with
+    | NumberValue n1, NumberValue n2 -> NumberValue (n1 - n2)
+    | _ -> failwith "invalid arguments for '-' function"
+  | Function("=", [e1; e2]) ->
+    let v1 = evalExpression state e1
+    let v2 = evalExpression state e2
+    BoolValue (v1 = v2)
+  | Variable v ->
+      match Map.tryFind v state.Variables with
+      | Some value -> value
+      | None -> failwith $"undefined variable: %s{v}"
+  | _ -> failwith "invalid expression"
 
 let rec runCommand state (line, cmd) =
   match cmd with 
@@ -62,33 +78,47 @@ let rec runCommand state (line, cmd) =
       let first = List.head state.Program    
       runCommand state first
 
-  | Print(expr) -> failwith "implemented in step 1"
-  | Goto(line) -> failwith "implemented in step 1"
-  
-  // TODO: Implement assignment and conditional. Assignment should run the
-  // next line after setting the variable value. 'If' is a bit trickier:
-  // * 'L1: IF TRUE THEN GOTO <L2>' will continue evaluating on line 'L2'
-  // * 'L1: IF FALSE THEN GOTO <L2>' will continue on line after 'L1'
-  // * 'L1: IF TRUE THEN PRINT "HI"' will print HI and continue on line after 'L1'
-  //
-  // HINT: If <e> evaluates to TRUE, you can call 'runCommand' recursively with
-  // the command in the 'THEN' branch and the current line as the line number.
-  | Assign _ | If _ -> failwith "not implemented"
+  | Print(expr) ->
+      let value = evalExpression state expr
+      printValue value
+      runNextLine state line
+  | Goto(line) ->
+      let cmd = getLine state line
+      runCommand state (line, cmd)
+      
+  | Assign(v, e) ->
+    let newState = { state with Variables = Map.add v (evalExpression state e) state.Variables }
+    runNextLine newState line
+    
+  | If(e, cmd) ->
+    let cond = evalExpression state e
+    match cond with
+    | BoolValue true -> runCommand state (line, cmd)
+    | BoolValue false -> runNextLine state line
+    | _ -> failwith "invalid condition"
 
-and runNextLine state line = failwith "implemented in step 1"
+and runNextLine state line = 
+  match state.Program |> List.tryFind (fun (n, _) -> n > line) with
+  | Some (next_line, next_cmd) -> runCommand state (next_line, next_cmd)
+  | None -> state
 
 // ----------------------------------------------------------------------------
 // Interactive program editing
 // ----------------------------------------------------------------------------
 
-let runInput state (line, cmd) = failwith "implemented in step 2"
-let runInputs state cmds = failwith "implemented in step 2"
+let runInput state (line, cmd) =
+  match line with
+  | Some ln -> addLine state (ln, cmd)
+  | None -> runCommand state (System.Int32.MaxValue, cmd)
+
+let runInputs state cmds =  
+  List.fold runInput state cmds
 
 // ----------------------------------------------------------------------------
 // Test cases
 // ----------------------------------------------------------------------------
 
-let empty = { Program = [] } // TODO: Add empty variables to the initial state!
+let empty = { Program = []; Variables = Map.empty }
 
 let helloOnce = 
   [ Some 10, Print (Const (StringValue "HELLO WORLD\n")) 
