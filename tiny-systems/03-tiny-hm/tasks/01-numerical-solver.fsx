@@ -7,34 +7,24 @@ type Number =
   | Succ of Number
   | Variable of string
 
-
-// NOTE: The four functions below currently return a wrong 
-// result, but one that makes the code run. As you implement
-// them (one by one), the tests should graudally start working.
-
-
 let rec occursCheck (v:string) (n:Number) = 
-  // TODO: Check if variable 'v' appears anywhere inside 'n'
-  false
+  match n with
+  | Zero -> false
+  | Succ n -> occursCheck v n
+  | Variable v' -> v = v'
 
-let rec substite (v:string) (subst:Number) (n:Number) =
-  // TODO: Replace all occurrences of variable 'v' in the
-  // number 'n' with the replacement number 'subst'
-  n
+let rec substitute (v:string) (subst:Number) (n:Number) =
+  match n with
+  | Zero -> Zero
+  | Succ n' -> Succ (substitute v subst n')
+  | Variable v' when v' = v -> subst
+  | Variable _ -> n
 
-let substituteConstraints (v:string) (subst:Number) (constraints:list<Number * Number>) = 
-  // TODO: Substitute 'v' for 'subst' (use 'substitute') in 
-  // all numbers in all the constraints in 'constraints'
-  // HINT: You can use 'List.map' to implement this.
-  constraints
+let substituteConstraints (v:string) (subst:Number) (constraints:list<Number * Number>) =
+  constraints |> List.map (fun (n1, n2) -> (substitute v subst n1, substitute v subst n2))
 
 let substituteAll (subst:list<string * Number>) (n:Number) =
-  // TODO: Perform all substitutions specified  in 'subst' on the number 'n'
-  // HINT: You can use 'List.fold' to implement this. Fold has a type:
-  //   ('State -> 'T -> 'State) -> 'State -> List<'T> -> 'State
-  // In this case, 'State will be the Number on which we want to apply 
-  // the substitutions and List<'T> will be a list of substitutions.
-  n
+  List.fold (fun n (v, n') -> substitute v n' n) n subst
 
 let rec solve constraints = 
   match constraints with 
