@@ -25,7 +25,7 @@ let rec substType (subst:Map<string, Type>) ty =
   | TyNumber -> ty
   | TyList t -> TyList (substType subst t)
 
-let substituteConstraints (subst:Map<string, Type>) (cs:list<Type * Type>) =
+let substConstrs (subst:Map<string, Type>) (cs:list<Type * Type>) =
   cs |> List.map (fun (t1, t2) -> (substType subst t1, substType subst t2))
 
 let rec solve cs =
@@ -37,7 +37,7 @@ let rec solve cs =
   | (n, TyVariable v)::constraints 
   | (TyVariable v, n)::constraints ->
       if occursCheck v n then failwith "Cannot be solved (occurs check)"
-      let constraints = substituteConstraints (Map.ofList [(v, n)]) constraints
+      let constraints = substConstrs (Map.ofList [(v, n)]) constraints
       let subst = solve constraints
       let n = substType (subst |> Map.ofList) n 
       (v, n)::subst
