@@ -2,8 +2,6 @@
 // Adding simple data types
 // ----------------------------------------------------------------------------
 
-open System.Diagnostics
-
 type Expression = 
   | Constant of int
   | Binary of string * Expression * Expression
@@ -82,9 +80,7 @@ let rec solve constraints =
       solve ((ta1, ta2)::(tb1, tb2)::constraints)
     | (TyUnion(ta1, tb1), TyUnion(ta2, tb2)):: constraints ->
       solve ((ta1, ta2)::(tb1, tb2)::constraints)
-    | _ ->
-        Debugger.Break();
-        failwith "Cannot be solved (type mismatch)"
+    | _ -> failwith "Cannot be solved (type mismatch)"
 
 
 // ----------------------------------------------------------------------------
@@ -196,17 +192,13 @@ let rec generate (ctx:TypingContext) e =
       let t1, s1 = generate (Map.add v (TyTuple(tyel, tylist)) ctx) e1
       let t2, s2 = generate (Map.add v TyUnit ctx) e2
 
-      // TODO: Type of 'e' ('tylist') needs to be a list of elements ('tyel').
-      // In 'e1', the type of the variable 'v' is then a tuple 'tyel * tylist'.
-      // In 'e2', the type of the variable 'v' is just 'unit'.
-      // To express this, you will need a new type variable for 'tyel'.
-      tyel, s @ s1 @ s2 @ [ t1, t2; tylist, TyList tyel ]
+      t1, s @ s1 @ s2 @ [ t1, t2; tylist, TyList tyel ]
 
   | ListCase(true, Tuple(ehd, etl)) ->
       let tyel, s1 = generate ctx ehd
       let tylist, s2 = generate ctx etl
       
-      tyel, s1 @ s2 @ [ tylist, TyList tyel ]
+      TyList tyel, s1 @ s2 @ [ tylist, TyList tyel ]
 
   | ListCase(false, Unit) -> 
       TyList (newTyVariable()), []
@@ -225,10 +217,6 @@ let infer e =
   let subst = solve constraints
   let typ = substType (Map.ofList subst) typ
   typ
-
-// NOTE: The following is modified from task 7 to use
-// ListCase and ListMatch instead of normal Case and Match.
-// It should all type check as expected now!
 
 let rec makeListExpr l = 
   match l with
