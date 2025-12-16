@@ -2,6 +2,8 @@
 // Adding simple data types
 // ----------------------------------------------------------------------------
 
+open System.Diagnostics
+
 type Expression = 
   | Constant of int
   | Binary of string * Expression * Expression
@@ -36,16 +38,53 @@ type Type =
 // ----------------------------------------------------------------------------
 
 let rec occursCheck vcheck ty = 
-  failwith "implemented in steps 2 to 7"
+  match ty with
+  | TyVariable v -> v = vcheck
+  | TyBool -> false
+  | TyNumber -> false
+  | TyUnit -> false
+  | TyList t -> occursCheck vcheck t
+  | TyFunction(ta, tb) -> occursCheck vcheck ta || occursCheck vcheck tb
+  | TyTuple(ta, tb) -> occursCheck vcheck ta || occursCheck vcheck tb
+  | TyUnion(ta, tb) -> occursCheck vcheck ta || occursCheck vcheck tb
 
-let rec substType (subst:Map<_, _>) t1 = 
-  failwith "implemented in steps 2 to 7"
+let rec substType (subst:Map<_, _>) ty = 
+  match ty with
+  | TyVariable v -> subst |> Map.tryFind v |> Option.defaultValue ty
+  | TyBool -> ty
+  | TyNumber -> ty
+  | TyUnit -> ty
+  | TyList t -> TyList (substType subst t)
+  | TyFunction(ta, tb) -> TyFunction(substType subst ta, substType subst tb)
+  | TyTuple(ta, tb) -> TyTuple(substType subst ta, substType subst tb)
+  | TyUnion(ta, tb) -> TyUnion(substType subst ta, substType subst tb)
 
-let substConstrs subst cs = 
-  failwith "implemented in step 2"
+let substConstrs (subst:Map<string, Type>) (cs:list<Type * Type>) =
+  cs |> List.map (fun (t1, t2) -> (substType subst t1, substType subst t2))
  
 let rec solve constraints =
-  failwith "implemented in steps 2 to 7"
+  match constraints with 
+  | [] -> []
+  | (TyNumber, TyNumber)::cs -> solve cs
+  | (TyBool, TyBool)::cs -> solve cs
+  | (TyUnit, TyUnit)::cs -> solve cs
+  | (TyList t1, TyList t2)::cs -> solve ((t1, t2)::cs)
+  | (n, TyVariable v)::constraints 
+  | (TyVariable v, n)::constraints ->
+      if occursCheck v n then failwith "Cannot be solved (occurs check)"
+      let constraints = substConstrs (Map.ofList [(v, n)]) constraints
+      let subst = solve constraints
+      let n = substType (subst |> Map.ofList) n 
+      (v, n)::subst
+    | (TyFunction(ta1, tb1), TyFunction(ta2, tb2)):: constraints ->
+      solve ((ta1, ta2)::(tb1, tb2)::constraints)
+    | (TyTuple(ta1, tb1), TyTuple(ta2, tb2)):: constraints ->
+      solve ((ta1, ta2)::(tb1, tb2)::constraints)
+    | (TyUnion(ta1, tb1), TyUnion(ta2, tb2)):: constraints ->
+      solve ((ta1, ta2)::(tb1, tb2)::constraints)
+    | _ ->
+        Debugger.Break();
+        failwith "Cannot be solved (type mismatch)"
 
 
 // ----------------------------------------------------------------------------
@@ -60,41 +99,117 @@ let newTyVariable =
 
 let rec generate (ctx:TypingContext) e = 
   match e with 
-  | Constant _ -> failwith "implemented in step 3"
-  | Binary("+", e1, e2) -> failwith "implemented in step 3"
-  | Binary("=", e1, e2) -> failwith "implemented in step 3"
-  | Binary(op, _, _) -> failwith "implemented in step 3"
-  | Variable v -> failwith "implemented in step 3"
-  | If(econd, etrue, efalse) -> failwith "implemented in step 3"
+  | Constant _ ->
+      TyNumber, []
 
-  | Let(v, e1, e2) -> failwith "implemented in step 4"
-  | Lambda(v, e) -> failwith "implemented in step 4"
-  | Application(e1, e2) -> failwith "implemented in step 4"
+  | Binary("+", e1, e2)
+  | Binary("*", e1, e2) ->
+      let t1, s1 = generate ctx e1
+      let t2, s2 = generate ctx e2
+      TyNumber, s1 @ s2 @ [ t1, TyNumber; t2, TyNumber ]      
 
-  | Tuple(e1, e2) -> failwith "implemented in step 5"
-  | TupleGet(b, e) -> failwith "implemented in step 5"
+  | Binary("=", e1, e2) ->
+      let t1, s1 = generate ctx e1
+      let t2, s2 = generate ctx e2
+      TyBool, s1 @ s2 @ [ t1, TyNumber; t2, TyNumber ]
 
-  | Match(e, v, e1, e2) -> failwith "implemented in step 6"
-  | Case(b, e) -> failwith "implemented in step 6"
+  | Binary(op, _, _) ->
+      failwithf "Binary operator '%s' not supported." op
 
-  | Unit -> failwith "implemented in step 7"
-  | Recursive(v, e1, e2) -> failwith "implemented in step 7"
+  | Variable v ->
+      ctx[v], []
+
+  | If(econd, etrue, efalse) ->
+      let t1, s1 = generate ctx econd
+      let t2, s2 = generate ctx etrue
+      let t3, s3 = generate ctx efalse
+      
+      TyBool, s1 @ s2 @ s3 @ [ t1, TyBool; t2, t3 ]
+
+  | Let(v, e1, e2) ->
+      let t1, s1 = generate ctx e1
+      let t2, s2 = generate (Map.add v t1 ctx) e2
+      t2, s1 @ s2
   
-  | ListMatch(e, v, e1, e2) -> 
+  | Lambda(v, e) ->
+      let targ = newTyVariable()
+      let t1, s1 = generate (Map.add v targ ctx) e
+      TyFunction(targ, t1), s1
+
+  | Application(e1, e2) ->
+      let targ = newTyVariable()
+      let t1, s1 = generate ctx e1
+      let t2, s2 = generate ctx e2
+      targ, s1 @ s2 @ [ t1, TyFunction(t2, targ) ]
+
+  | Tuple(e1, e2) ->
+      let t1, s1 = generate ctx e1
+      let t2, s2 = generate ctx e2
+      TyTuple(t1, t2), s1 @ s2
+
+  | TupleGet(b, e) ->
+      let targ1 = newTyVariable()
+      let targ2 = newTyVariable()
+
+      let t, s = generate ctx e
+      if b then
+        targ1, s @ [ t, TyTuple(targ1, targ2) ]
+      else
+        targ2, s @ [ t, TyTuple(targ1, targ2) ]
+
+  | Match(e, v, e1, e2) ->
+      let targ1 = newTyVariable()
+      let targ2 = newTyVariable()
+      
+      let t, s = generate ctx e
+      let t1, s1 = generate (Map.add v t ctx) e1
+      let t2, s2 = generate (Map.add v t ctx) e2
+
+      t1, s @ s1 @ s2 @ [ t, TyUnion(targ1, targ2); t1, t2 ]
+
+  | Case(b, e) ->
+      let targ = newTyVariable()
+      
+      let t, s = generate ctx e
+      if b then
+        TyUnion(t, targ), s
+      else
+        TyUnion(targ, t), s
+
+  | Unit ->
+      let targ = newTyVariable()
+      TyList targ, []
+
+  | Recursive(v, e1, e2) ->
+      let t = newTyVariable()
+      
+      let t1, s1 = generate (Map.add v t ctx) e1
+      let t2, s2 = generate (Map.add v t ctx) e2
+      
+      t2, s1 @ s2 @ [ t, TyFunction(t1, t2) ]
+  
+  | ListMatch(e, v, e1, e2) ->
+      let tyel = newTyVariable()
+      
+      let tylist, s = generate ctx e
+      
+      let t1, s1 = generate (Map.add v (TyTuple(tyel, tylist)) ctx) e1
+      let t2, s2 = generate (Map.add v TyUnit ctx) e2
+
       // TODO: Type of 'e' ('tylist') needs to be a list of elements ('tyel').
       // In 'e1', the type of the variable 'v' is then a tuple 'tyel * tylist'.
       // In 'e2', the type of the variable 'v' is just 'unit'.
       // To express this, you will need a new type variable for 'tyel'.
-      failwith "not implemented"
+      tyel, s @ s1 @ s2 @ [ t1, t2; tylist, TyList tyel ]
 
-  | ListCase(true, Tuple(ehd, etl)) -> 
-      // TODO: If type of 'ehd' is 'tyel' and type of 'etl' is 'tylist'
-      // then we need a constraint 'tylist = list<tyel>'.
-      failwith "not implemented"
+  | ListCase(true, Tuple(ehd, etl)) ->
+      let tyel, s1 = generate ctx ehd
+      let tylist, s2 = generate ctx etl
+      
+      tyel, s1 @ s2 @ [ tylist, TyList tyel ]
 
   | ListCase(false, Unit) -> 
-      // TODO: The type of '[]' is a list of some type (needs a type variable)
-      failwith "not implemented"
+      TyList (newTyVariable()), []
 
   | ListCase _ ->
       // TODO: For simplicity, we here restrict the syntax of list constructs.

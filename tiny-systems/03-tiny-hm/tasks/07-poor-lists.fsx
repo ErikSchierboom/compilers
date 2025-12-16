@@ -174,9 +174,6 @@ let rec generate (ctx:TypingContext) e =
       TyUnit, []
 
   | Recursive(v, e1, e2) ->
-      // TODO: This is easier than evaluation. We need a new type variable
-      // for the type of the thing we are defining (variable 'v') and add
-      // it to the context when checking both 'e1' and 'e2'.
       let t = newTyVariable()
       
       let t1, s1 = generate (Map.add v t ctx) e1
