@@ -75,11 +75,6 @@ let rec (|Number|_|) term =
   | _ -> None
   
 let rec (|List|_|) term : option<list<Term>> = 
-  // TODO: If the term represents a list, this should return the 
-  // elements of the list collected in an ordinary F# list.
-  // If the term is 'Atom("empty")' return Some([])
-  // If the term is 'Predicate("cons", [h; tl])' where 'tl' is itself
-  // a term representing a list 'l', return Some(h::l).
   match term with
   | Atom "empty" -> Some []
   | Predicate ("cons", [h; tl]) ->
@@ -90,7 +85,6 @@ let rec (|List|_|) term : option<list<Term>> =
 
 let rec formatTerm term = 
   match term with 
-  // Simple cases for number, atom and variable are done already...
   | Number n -> string n
   | List l -> "[" + (l |> List.map formatTerm |> String.concat ", ") + "]"
   | Atom s -> s
@@ -145,7 +139,6 @@ let rec solve program subst goals : seq<list<string * Term>> = seq {
   | [] ->
     yield subst
 }
-
 
 let run program query = 
   let vars = Set.ofSeq (freeVariables query)

@@ -21,20 +21,45 @@ let rule p b = { Head = p; Body = b }
 // Substitutions and unification of terms
 // ----------------------------------------------------------------------------
 
-let rec substitute (subst:Map<string, Term>) term = 
-  failwith "implemented in step 2"
+let rec substitute (subst:Map<string, Term>) term =
+  match term with
+  | Atom t
+  | Variable t ->
+      Map.tryFind t subst |> Option.defaultValue term
+  | Predicate (p, terms) -> 
+      let newTerms = terms |> List.map (substitute subst)
+      Predicate (p, newTerms)
 
 let substituteSubst (newSubst:Map<string, Term>) (subst:list<string * Term>) = 
-  failwith "implemented in step 2"
+  subst
+  |> List.map (fun (v, t) -> (v, substitute newSubst t))
 
-let substituteTerms subst (terms:list<Term>) = 
-  failwith "implemented in step 2"
+let substituteTerms (subst:Map<string, Term>) (terms:list<Term>) = 
+  terms |> List.map (substitute subst)
 
-let rec unifyLists l1 l2 = 
-  failwith "implemented in steps 1 and 2"
+let rec unifyLists l1 l2 =
+  match l1, l2 with 
+  | [], [] -> 
+      Some []
+  | h1::t1, h2::t2 ->
+      match unify h1 h2 with
+      | Some s1 ->
+        match unifyLists (substituteTerms (Map.ofList s1) t1) (substituteTerms (Map.ofList s1) t2) with
+        | Some s2 -> 
+            let s1' = substituteSubst (Map.ofList s2) s1
+            Some (s1' @ s2)
+        | None -> None 
+      | _ ->  None
+  | _ -> 
+    None
 
-and unify t1 t2 = 
-  failwith "implemented in step 1"
+and unify t1 t2 : option<list<string * Term>> = 
+  match t1, t2 with 
+  | Atom a1, Atom a2 when a1 = a2 -> Some []
+  | Predicate (p1, t1), Predicate (p2, t2) when p1 = p2 -> unifyLists t1 t2
+  | Variable v, term
+  | term, Variable v -> Some [(v, term)]
+  | _ -> None
 
 // ----------------------------------------------------------------------------
 // Pretty printing terms
