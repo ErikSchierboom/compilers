@@ -121,15 +121,6 @@ let query (program:list<Clause>) (query:Term) : list<Clause * list<string * Term
 let rec solve program subst goals =
   match goals with 
   | g::goals -> 
-      // TODO: We need to solve the goal (term) 'g'. To do so, find all 
-      // matching clauses in the 'program' using 'query' and iterate over
-      // the returned list using 'for clause, newSubst in matches do'.
-      // For each possible solution, we need to add the 'clause.Body' to 
-      // the list of 'goals' and apply the substitution 'newSubst' to the
-      // new concatentated list of 'goals'. Then we need to apply the 
-      // substitution 'newSubst' to the substitution 'subst' we have so far,
-      // append the two and call 'solve' recursively with this new substitution
-      // to solve the new goals.
       let matches = query program g
       for clause, newSubst in matches do
         let newGoals = goals @ clause.Body
