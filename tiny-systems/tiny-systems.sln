@@ -1,0 +1,39 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "playground", "playground", "{12E5C810-18C6-BE57-4EA6-3F3BE821652E}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Playground", "playground\Playground.fsproj", "{68D230CE-11C2-46B5-ADC0-FE450B95DEB0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{68D230CE-11C2-46B5-ADC0-FE450B95DEB0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{68D230CE-11C2-46B5-ADC0-FE450B95DEB0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{68D230CE-11C2-46B5-ADC0-FE450B95DEB0}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{68D230CE-11C2-46B5-ADC0-FE450B95DEB0}.Debug|x64.Build.0 = Debug|Any CPU
+		{68D230CE-11C2-46B5-ADC0-FE450B95DEB0}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{68D230CE-11C2-46B5-ADC0-FE450B95DEB0}.Debug|x86.Build.0 = Debug|Any CPU
+		{68D230CE-11C2-46B5-ADC0-FE450B95DEB0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{68D230CE-11C2-46B5-ADC0-FE450B95DEB0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{68D230CE-11C2-46B5-ADC0-FE450B95DEB0}.Release|x64.ActiveCfg = Release|Any CPU
+		{68D230CE-11C2-46B5-ADC0-FE450B95DEB0}.Release|x64.Build.0 = Release|Any CPU
+		{68D230CE-11C2-46B5-ADC0-FE450B95DEB0}.Release|x86.ActiveCfg = Release|Any CPU
+		{68D230CE-11C2-46B5-ADC0-FE450B95DEB0}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{68D230CE-11C2-46B5-ADC0-FE450B95DEB0} = {12E5C810-18C6-BE57-4EA6-3F3BE821652E}
+	EndGlobalSection
+EndGlobal
