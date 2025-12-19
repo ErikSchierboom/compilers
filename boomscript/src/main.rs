@@ -9,8 +9,10 @@ fn main() {
     let code = "let x = 1\n\
                      let x1 = x + 2 * 3";
 
-    for expr in parse(code) {
-        let type_ = infer(&expr);
+    let expressions = parse(code);
+
+    let types = infer(&expressions);
+    for (expr, type_) in expressions.iter().zip(types) {
         println!("{:?} = {:?}", expr, type_)
     }
 }

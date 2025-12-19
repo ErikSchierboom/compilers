@@ -87,7 +87,7 @@ fn solve(constraints: &[(Type, Type)]) -> Vec<(String, Type)> {
 
 type TypingContext = HashMap<String, Type>;
 
-fn generate(ctx: &TypingContext, e: &UntypedExpression) -> (Type, Vec<(Type, Type)>) {
+fn generate(ctx: &mut TypingContext, e: &UntypedExpression) -> (Type, Vec<(Type, Type)>) {
     match e {
         UntypedExpression::Int(_) => (Type::TyInt, vec![]),
         UntypedExpression::Float(_) => (Type::TyFloat, vec![]),
@@ -103,19 +103,24 @@ fn generate(ctx: &TypingContext, e: &UntypedExpression) -> (Type, Vec<(Type, Typ
         }
         UntypedExpression::Let(v, e) => {
             let targ = newTyVariable();
-            let mut new_ctx = ctx.clone();
-            new_ctx.insert(v.clone(), targ);
-            let (t1, s1) = generate(&new_ctx, e);
+            ctx.insert(v.clone(), targ);
+            let (t1, s1) = generate(ctx, e);
             (t1, s1)
         }
     }
 }
 
-pub fn infer(e: &UntypedExpression) -> Type {
-    let ctx = HashMap::new();
-    let (typ, constraints) = generate(&ctx, &e);
-    let subst: HashMap<String, Type> = solve(&constraints).into_iter().collect();
-    let typ = substType(&subst, typ);
-    typ
+pub fn infer(expressions: &Vec<UntypedExpression>) -> Vec<Type> {
+    let mut ctx = HashMap::new();
+    let mut types = Vec::new();
+
+    for e in expressions {
+        let (typ, constraints) = generate(&mut ctx, &e);
+        let subst: HashMap<String, Type> = solve(&constraints).into_iter().collect();
+        let typ = substType(&subst, typ);
+        types.push(typ)
+    }
+
+    types
 }
 
