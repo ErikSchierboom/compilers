@@ -1,9 +1,11 @@
+use std::iter::Peekable;
+
 #[derive(Clone, Debug)]
 pub enum Token {
     // Literals
     Int(i64),
     Float(f64),
-    Identifier(String),
+    Variable(String),
 
     // Operators
     Plus,
@@ -17,69 +19,65 @@ pub enum Token {
     Newline,
 }
 
-// TODO: create struct for Lexer
+struct Lexer<T: Iterator<Item=char>> {
+    chars: Peekable<T>,
+}
 
-pub fn tokenize(code: &str) -> Vec<Token> {
-    let mut tokens = Vec::new();
-    let mut current = 0;
-    let chars: Vec<char> = code.chars().collect();
-
-    while current < chars.len() {
-        match chars[current] {
-            ' ' | '\r' | '\t' => current += 1,
-            '\n' => {
-                tokens.push(Token::Newline);
-                current += 1
-            }
-            '+' => {
-                tokens.push(Token::Plus);
-                current += 1
-            }
-            '*' => {
-                tokens.push(Token::Star);
-                current += 1
-            }
-            '=' => {
-                tokens.push(Token::Equal);
-                current += 1
-            }
-            'a'..'z' | 'A'..'Z' => {
-                let mut identifier = String::new();
-
-                while current < chars.len() && chars[current].is_ascii_alphanumeric() {
-                    identifier.push(chars[current]);
-                    current += 1
-                }
-
-                match &identifier[..] {
-                    "let" => tokens.push(Token::Let),
-                    _ => tokens.push(Token::Identifier(identifier))
-                }
-            }
-            '0'..'9' => {
-                let mut number = String::new();
-
-                while current < chars.len() && chars[current].is_ascii_alphanumeric() {
-                    number.push(chars[current]);
-                    current += 1
-                }
-
-                if current < chars.len() && chars[current] == '.' {
-                    current += 1;
-
-                    while current < chars.len() && chars[current].is_ascii_alphanumeric() {
-                        number.push(chars[current]);
-                        current += 1
-                    }
-
-                    tokens.push(Token::Float(number.parse().unwrap()))
-                } else {
-                    tokens.push(Token::Int(number.parse().unwrap()))
-                }
-            }
-            _ => panic!("unknown token")
-        }
+impl<T: Iterator<Item=char>> Lexer<T> {
+    fn new(code: T) -> Self {
+        Self { chars: code.peekable() }
     }
 
-    tokens
+    fn tokenize(&mut self) -> Vec<Token> {
+        let mut tokens = Vec::new();
+
+        while let Some(char) = self.chars.next() {
+            match char {
+                ' ' | '\r' | '\t' => continue,
+                '\n' => tokens.push(Token::Newline),
+                '+' => tokens.push(Token::Plus),
+                '*' => tokens.push(Token::Star),
+                '=' => tokens.push(Token::Equal),
+                'a'..'z' | 'A'..'Z' => {
+                    let mut identifier = String::new();
+                    identifier.push(char);
+
+                    while let Some(char) = self.chars.next_if(char::is_ascii_alphanumeric) {
+                        identifier.push(char);
+                    }
+
+                    match &identifier[..] {
+                        "let" => tokens.push(Token::Let),
+                        _ => tokens.push(Token::Variable(identifier))
+                    }
+                }
+                '0'..'9' => {
+                    let mut number = String::new();
+                    number.push(char);
+
+                    while let Some(char) = self.chars.next_if(char::is_ascii_digit) {
+                        number.push(char);
+                    }
+
+                    if self.chars.next_if_eq(&'.').is_some() {
+                        while let Some(char) = self.chars.next_if(char::is_ascii_digit) {
+                            number.push(char);
+                        }
+
+                        tokens.push(Token::Float(number.parse().unwrap()))
+                    } else {
+                        tokens.push(Token::Int(number.parse().unwrap()))
+                    }
+                }
+                _ => panic!("unknown token")
+            }
+        }
+
+        tokens
+    }
+}
+
+pub fn tokenize(code: &str) -> Vec<Token> {
+    let mut lexer = Lexer::new(code.chars());
+    lexer.tokenize()
 }

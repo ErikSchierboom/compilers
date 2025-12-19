@@ -5,7 +5,7 @@ use crate::parser::UntypedExpression::BinaryOperation;
 pub enum UntypedExpression {
     Int(i64),
     Float(f64),
-    Identifier(String),
+    Variable(String),
     BinaryOperation(Box<UntypedBinaryOperation>),
 }
 
@@ -65,7 +65,7 @@ impl Parser {
         self.advance();
 
         match self.token() {
-            Token::Identifier(name) => {
+            Token::Variable(name) => {
                 self.advance();
                 match self.token() {
                     Token::Equal => {
@@ -132,9 +132,9 @@ impl Parser {
                 self.advance();
                 UntypedExpression::Float(f.clone())
             }
-            Token::Identifier(name) => {
+            Token::Variable(name) => {
                 self.advance();
-                UntypedExpression::Identifier(name.clone())
+                UntypedExpression::Variable(name.clone())
             }
             Token::Newline => {
                 self.advance();
