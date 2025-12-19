@@ -6,32 +6,15 @@ pub enum UntypedExpression {
     Int(i64),
     Float(f64),
     Variable(String),
-    BinaryOperation(Box<UntypedBinaryOperation>),
+    BinaryOperation(Box<UntypedExpression>, BinaryOperator, Box<UntypedExpression>),
+    Let(String, Box<UntypedExpression>),
 }
 
+// TODO: consider if binary operators should just be regular calls
 #[derive(Debug)]
 pub enum BinaryOperator {
     Add,
     Mul,
-}
-
-#[derive(Debug)]
-pub struct UntypedBinaryOperation {
-    left: UntypedExpression,
-    op: BinaryOperator,
-    right: UntypedExpression,
-}
-
-#[derive(Debug)]
-pub struct UntypedAssignment {
-    name: String,
-    value: UntypedExpression,
-}
-
-#[derive(Debug)]
-pub enum UntypedStatement {
-    Expression(UntypedExpression),
-    Assignment(UntypedAssignment),
 }
 
 struct Parser {
@@ -44,7 +27,7 @@ impl Parser {
         Self { tokens: tokenize(code), current: 0 }
     }
 
-    fn parse(&mut self) -> Vec<UntypedStatement> {
+    fn parse(&mut self) -> Vec<UntypedExpression> {
         let mut statements = Vec::new();
 
         while self.current < self.tokens.len() {
@@ -54,14 +37,18 @@ impl Parser {
         statements
     }
 
-    fn parse_statement(&mut self) -> UntypedStatement {
+    fn parse_statement(&mut self) -> UntypedExpression {
+        while self.current < self.tokens.len() && matches!(self.tokens[self.current], Token::Newline) {
+            self.advance();
+        }
+
         match self.token() {
             Token::Let => self.parse_assignment_statement(),
             _ => self.parse_expression_statement()
         }
     }
 
-    fn parse_assignment_statement(&mut self) -> UntypedStatement {
+    fn parse_assignment_statement(&mut self) -> UntypedExpression {
         self.advance();
 
         match self.token() {
@@ -71,7 +58,7 @@ impl Parser {
                     Token::Equal => {
                         self.advance();
                         let value = self.parse_expression();
-                        UntypedStatement::Assignment(UntypedAssignment { name: name.clone(), value })
+                        UntypedExpression::Let(name.clone(), Box::new(value))
                     }
                     _ => panic!("expected equal")
                 }
@@ -80,9 +67,8 @@ impl Parser {
         }
     }
 
-    fn parse_expression_statement(&mut self) -> UntypedStatement {
-        let expression = self.parse_expression();
-        UntypedStatement::Expression(expression)
+    fn parse_expression_statement(&mut self) -> UntypedExpression {
+        self.parse_expression()
     }
 
     fn parse_expression(&mut self) -> UntypedExpression {
@@ -95,11 +81,7 @@ impl Parser {
         while self.current < self.tokens.len() && matches!(self.tokens[self.current], Token::Plus) {
             self.advance();
             let right = self.parse_factor();
-            expr = BinaryOperation(Box::new(UntypedBinaryOperation { left: expr, op: BinaryOperator::Add, right }))
-        }
-
-        while self.current < self.tokens.len() && matches!(self.tokens[self.current], Token::Newline) {
-            self.advance();
+            expr = BinaryOperation(Box::new(expr), BinaryOperator::Add, Box::new(right))
         }
 
         expr
@@ -111,7 +93,7 @@ impl Parser {
         while self.current < self.tokens.len() && matches!(self.tokens[self.current], Token::Star) {
             self.advance();
             let right = self.parse_primary();
-            expr = BinaryOperation(Box::new(UntypedBinaryOperation { left: expr, op: BinaryOperator::Mul, right }))
+            expr = BinaryOperation(Box::new(expr), BinaryOperator::Mul, Box::new(right))
         }
 
         while self.current < self.tokens.len() && matches!(self.tokens[self.current], Token::Newline) {
@@ -153,7 +135,7 @@ impl Parser {
     }
 }
 
-pub fn parse(code: &str) -> Vec<UntypedStatement> {
+pub fn parse(code: &str) -> Vec<UntypedExpression> {
     let mut parser = Parser::new(code);
     parser.parse()
 }
