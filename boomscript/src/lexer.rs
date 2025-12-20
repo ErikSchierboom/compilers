@@ -3,6 +3,7 @@ use std::iter::Peekable;
 #[derive(Clone, Debug)]
 pub enum Token {
     // Literals
+    Bool(bool),
     Int(i64),
     Float(f64),
     Variable(String),
@@ -11,6 +12,8 @@ pub enum Token {
     Plus,
     Equal,
     Star,
+    Greater,
+    Less,
 
     // Keywords
     Let,
@@ -38,6 +41,8 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 '+' => tokens.push(Token::Plus),
                 '*' => tokens.push(Token::Star),
                 '=' => tokens.push(Token::Equal),
+                '>' => tokens.push(Token::Greater),
+                '<' => tokens.push(Token::Less),
                 'a'..'z' | 'A'..'Z' => {
                     let mut identifier = String::new();
                     identifier.push(char);
@@ -48,6 +53,8 @@ impl<T: Iterator<Item=char>> Lexer<T> {
 
                     match &identifier[..] {
                         "let" => tokens.push(Token::Let),
+                        "true" => tokens.push(Token::Bool(true)),
+                        "false" => tokens.push(Token::Bool(false)),
                         _ => tokens.push(Token::Variable(identifier))
                     }
                 }

@@ -3,6 +3,7 @@ use crate::parser::UntypedExpression::BinaryOperation;
 
 #[derive(Debug)]
 pub enum UntypedExpression {
+    Bool(bool),
     Int(i64),
     Float(f64),
     Variable(String),
@@ -15,6 +16,9 @@ pub enum UntypedExpression {
 pub enum BinaryOperator {
     Add,
     Mul,
+
+    Greater,
+    Less,
 }
 
 struct Parser {
@@ -72,7 +76,25 @@ impl Parser {
     }
 
     fn parse_expression(&mut self) -> UntypedExpression {
-        self.parse_term()
+        self.parse_comparison()
+    }
+
+    fn parse_comparison(&mut self) -> UntypedExpression {
+        let mut expr = self.parse_term();
+
+        while self.current < self.tokens.len() {
+            let operator = match self.tokens[self.current] {
+                Token::Greater => BinaryOperator::Greater,
+                Token::Less => BinaryOperator::Less,
+                _ => break
+            };
+
+            self.advance();
+            let right = self.parse_term();
+            expr = BinaryOperation(Box::new(expr), operator, Box::new(right))
+        }
+
+        expr
     }
 
     fn parse_term(&mut self) -> UntypedExpression {
@@ -106,6 +128,10 @@ impl Parser {
     // TODO: come up with correct terminology
     fn parse_primary(&mut self) -> UntypedExpression {
         match self.token() {
+            Token::Bool(b) => {
+                self.advance();
+                UntypedExpression::Bool(b.clone())
+            }
             Token::Int(i) => {
                 self.advance();
                 UntypedExpression::Int(i.clone())

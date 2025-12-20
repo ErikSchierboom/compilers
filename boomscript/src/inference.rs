@@ -1,8 +1,9 @@
-use crate::parser::UntypedExpression;
+use crate::parser::{BinaryOperator, UntypedExpression};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub enum Type {
+    TyBool,
     TyInt,
     TyFloat,
     TyVariable(String),
@@ -26,7 +27,8 @@ fn newTyVariable() -> Type {
 
 fn occursCheck(vcheck: &str, ty: &Type) -> bool {
     match ty {
-        Type::TyInt => false,
+        Type::TyBool |
+        Type::TyInt |
         Type::TyFloat => false,
         Type::TyVariable(v) => v == vcheck,
         Type::TyBinaryOp(left, right) =>
@@ -36,7 +38,8 @@ fn occursCheck(vcheck: &str, ty: &Type) -> bool {
 
 fn substType(subst: &HashMap<String, Type>, ty: Type) -> Type {
     match ty {
-        Type::TyInt => ty,
+        Type::TyBool |
+        Type::TyInt |
         Type::TyFloat => ty,
         Type::TyVariable(ref v) => subst.get(v).unwrap_or(&ty).clone(),
         Type::TyBinaryOp(left, right) =>
@@ -53,7 +56,8 @@ fn solve(constraints: &[(Type, Type)]) -> Vec<(String, Type)> {
         None => vec![],
         Some(((t1, t2), tail)) => {
             match (t1, t2) {
-                (Type::TyInt, Type::TyInt) => solve(tail),
+                (Type::TyBool, Type::TyBool) |
+                (Type::TyInt, Type::TyInt) |
                 (Type::TyFloat, Type::TyFloat) => solve(tail),
                 (Type::TyVariable(v), n) |
                 (n, Type::TyVariable(v)) => {
@@ -89,6 +93,7 @@ type TypingContext = HashMap<String, Type>;
 
 fn generate(ctx: &mut TypingContext, e: &UntypedExpression) -> (Type, Vec<(Type, Type)>) {
     match e {
+        UntypedExpression::Bool(_) => (Type::TyBool, vec![]),
         UntypedExpression::Int(_) => (Type::TyInt, vec![]),
         UntypedExpression::Float(_) => (Type::TyFloat, vec![]),
         UntypedExpression::Variable(v) => (ctx.get(v).unwrap().clone(), vec![]),
@@ -96,10 +101,16 @@ fn generate(ctx: &mut TypingContext, e: &UntypedExpression) -> (Type, Vec<(Type,
             let (t1, mut s1) = generate(ctx, left.as_ref());
             let (t2, mut s2) = generate(ctx, right.as_ref());
             s1.append(&mut s2);
+
             s1.push((t1, Type::TyInt));
             s1.push((t2, Type::TyInt));
 
-            (Type::TyInt, s1)
+            match op {
+                BinaryOperator::Greater |
+                BinaryOperator::Less => (Type::TyBool, s1),
+                BinaryOperator::Add |
+                BinaryOperator::Mul => (Type::TyInt, s1)
+            }
         }
         UntypedExpression::Let(v, e) => {
             let targ = newTyVariable();

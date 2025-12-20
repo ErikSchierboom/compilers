@@ -7,7 +7,7 @@ mod inference;
 
 fn main() {
     let code = "let x = 1\n\
-                     let x1 = x + 2 * 3";
+                let x1 = x < 2 * 3";
 
     let expressions = parse(code);
 
