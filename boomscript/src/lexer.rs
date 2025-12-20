@@ -14,9 +14,11 @@ pub enum Token {
     Star,
     Greater,
     Less,
+    RightArrow,
 
     // Keywords
     Let,
+    Fn,
 
     // Whitespace
     Newline,
@@ -43,7 +45,14 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 '=' => tokens.push(Token::Equal),
                 '>' => tokens.push(Token::Greater),
                 '<' => tokens.push(Token::Less),
-                'a'..'z' | 'A'..'Z' => {
+                '-' => {
+                    if self.chars.next_if_eq(&'>').is_some() {
+                        tokens.push(Token::RightArrow)
+                    } else {
+                        panic!("unknown token")
+                    }
+                }
+                'a'..='z' | 'A'..='Z' => {
                     let mut identifier = String::new();
                     identifier.push(char);
 
@@ -55,10 +64,11 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                         "let" => tokens.push(Token::Let),
                         "true" => tokens.push(Token::Bool(true)),
                         "false" => tokens.push(Token::Bool(false)),
+                        "fn" => tokens.push(Token::Fn),
                         _ => tokens.push(Token::Variable(identifier))
                     }
                 }
-                '0'..'9' => {
+                '0'..='9' => {
                     let mut number = String::new();
                     number.push(char);
 

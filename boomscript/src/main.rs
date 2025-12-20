@@ -6,8 +6,7 @@ mod parser;
 mod inference;
 
 fn main() {
-    let code = "let x = 1\n\
-                let x1 = x < 2 * 3";
+    let code = "let y = fn z -> z + 5";
 
     let expressions = parse(code);
 

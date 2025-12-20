@@ -8,6 +8,7 @@ pub enum Type {
     TyFloat,
     TyVariable(String),
     TyBinaryOp(Box<Type>, Box<Type>),
+    TyFunction(Box<Type>, Box<Type>),
 }
 
 #[derive(Debug)]
@@ -32,7 +33,9 @@ fn occursCheck(vcheck: &str, ty: &Type) -> bool {
         Type::TyFloat => false,
         Type::TyVariable(v) => v == vcheck,
         Type::TyBinaryOp(left, right) =>
-            occursCheck(vcheck, left.as_ref()) || occursCheck(vcheck, right.as_ref())
+            occursCheck(vcheck, left.as_ref()) || occursCheck(vcheck, right.as_ref()),
+        Type::TyFunction(v, expr) =>
+            occursCheck(vcheck, v.as_ref()) || occursCheck(vcheck, expr.as_ref())
     }
 }
 
@@ -43,7 +46,10 @@ fn substType(subst: &HashMap<String, Type>, ty: Type) -> Type {
         Type::TyFloat => ty,
         Type::TyVariable(ref v) => subst.get(v).unwrap_or(&ty).clone(),
         Type::TyBinaryOp(left, right) =>
-            Type::TyBinaryOp(Box::new(substType(subst, left.as_ref().clone())), Box::new(substType(subst, right.as_ref().clone())))
+            Type::TyBinaryOp(Box::new(substType(subst, left.as_ref().clone())), Box::new(substType(subst, right.as_ref().clone()))),
+        Type::TyFunction(parameter, e) => {
+            Type::TyFunction(Box::new(substType(subst, parameter.as_ref().clone())), Box::new(substType(subst, e.as_ref().clone())))
+        }
     }
 }
 
@@ -72,7 +78,8 @@ fn solve(constraints: &[(Type, Type)]) -> Vec<(String, Type)> {
                     subst.push((v.clone(), n));
                     subst
                 }
-                (Type::TyBinaryOp(l1, r1), Type::TyBinaryOp(l2, r2)) => {
+                (Type::TyBinaryOp(l1, r1), Type::TyBinaryOp(l2, r2)) |
+                (Type::TyFunction(l1, r1), Type::TyFunction(l2, r2)) => {
                     let mut new_constraints: Vec<(Type, Type)> = Vec::new();
                     new_constraints.push((l1.as_ref().clone(), l2.as_ref().clone()));
                     new_constraints.push((r1.as_ref().clone(), r2.as_ref().clone()));
@@ -115,6 +122,12 @@ fn generate(ctx: &mut TypingContext, e: &UntypedExpression) -> (Type, Vec<(Type,
         UntypedExpression::Let(v, e) => {
             let targ = newTyVariable();
             ctx.insert(v.clone(), targ);
+            let (t1, s1) = generate(ctx, e);
+            (t1, s1)
+        }
+        UntypedExpression::Fn(parameter, e) => {
+            let targ = newTyVariable();
+            ctx.insert(parameter.clone(), targ);
             let (t1, s1) = generate(ctx, e);
             (t1, s1)
         }

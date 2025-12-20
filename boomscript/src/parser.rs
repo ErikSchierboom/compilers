@@ -9,6 +9,7 @@ pub enum UntypedExpression {
     Variable(String),
     BinaryOperation(Box<UntypedExpression>, BinaryOperator, Box<UntypedExpression>),
     Let(String, Box<UntypedExpression>),
+    Fn(String, Box<UntypedExpression>),
 }
 
 // TODO: consider if binary operators should just be regular calls
@@ -76,7 +77,26 @@ impl Parser {
     }
 
     fn parse_expression(&mut self) -> UntypedExpression {
-        self.parse_comparison()
+        match self.token() {
+            Token::Fn => {
+                self.advance();
+                match self.token() {
+                    Token::Variable(name) => {
+                        self.advance();
+                        match self.token() {
+                            Token::RightArrow => {
+                                self.advance();
+                                let expr = self.parse_expression();
+                                UntypedExpression::Fn(name, Box::new(expr))
+                            }
+                            _ => panic!("expected ->")
+                        }
+                    }
+                    _ => panic!("expected identifier")
+                }
+            }
+            _ => self.parse_comparison()
+        }
     }
 
     fn parse_comparison(&mut self) -> UntypedExpression {
@@ -154,6 +174,10 @@ impl Parser {
 
     fn token(&mut self) -> Token {
         self.tokens[self.current].clone()
+    }
+
+    fn peek(&mut self) -> Option<&Token> {
+        self.tokens.get(self.current + 1)
     }
 
     fn advance(&mut self) {
