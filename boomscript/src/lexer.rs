@@ -3,25 +3,23 @@ use std::iter::Peekable;
 #[derive(Clone, Debug)]
 pub enum Token {
     // Literals
-    Bool(bool),
     Int(i64),
-    Float(f64),
-    Variable(String),
+    Quote(String),
 
-    // Operators
-    Plus,
-    Equal,
-    Star,
-    Greater,
-    Less,
-    RightArrow,
+    // Binary operators
+    Add,
+    Mul,
 
-    // Keywords
-    Let,
-    Fn,
+    // TODO: stack operators
 
-    // Whitespace
-    Newline,
+    // Memory operators
+    Read(Option<String>),
+    Write(Option<String>),
+    Execute(Option<String>),
+
+    // Delimiters
+    OpenBracket,
+    CloseBracket,
 }
 
 struct Lexer<T: Iterator<Item=char>> {
@@ -33,39 +31,24 @@ impl<T: Iterator<Item=char>> Lexer<T> {
         Self { chars: code.peekable() }
     }
 
+    // TODO: use Result<T>
     fn tokenize(&mut self) -> Vec<Token> {
         let mut tokens = Vec::new();
 
         while let Some(char) = self.chars.next() {
             match char {
-                ' ' | '\r' | '\t' => continue,
-                '\n' => tokens.push(Token::Newline),
-                '+' => tokens.push(Token::Plus),
-                '*' => tokens.push(Token::Star),
-                '=' => tokens.push(Token::Equal),
-                '>' => tokens.push(Token::Greater),
-                '<' => tokens.push(Token::Less),
-                '-' => {
-                    if self.chars.next_if_eq(&'>').is_some() {
-                        tokens.push(Token::RightArrow)
-                    } else {
-                        panic!("unknown token")
-                    }
-                }
-                'a'..='z' | 'A'..='Z' => {
-                    let mut identifier = String::new();
-                    identifier.push(char);
-
-                    while let Some(char) = self.chars.next_if(char::is_ascii_alphanumeric) {
-                        identifier.push(char);
-                    }
-
-                    match &identifier[..] {
-                        "let" => tokens.push(Token::Let),
-                        "true" => tokens.push(Token::Bool(true)),
-                        "false" => tokens.push(Token::Bool(false)),
-                        "fn" => tokens.push(Token::Fn),
-                        _ => tokens.push(Token::Variable(identifier))
+                ' ' | '\r' | '\n' | '\t' => continue,
+                '+' => tokens.push(Token::Add),
+                '*' => tokens.push(Token::Mul),
+                '@' => tokens.push(Token::Read(self.lex_word())),
+                '%' => tokens.push(Token::Write(self.lex_word())),
+                '!' => tokens.push(Token::Execute(self.lex_word())),
+                '[' => tokens.push(Token::OpenBracket),
+                ']' => tokens.push(Token::CloseBracket),
+                '\'' => {
+                    match self.lex_word() {
+                        Some(word) => tokens.push(Token::Quote(word)),
+                        None => panic!("expected identifier")
                     }
                 }
                 '0'..='9' => {
@@ -76,21 +59,23 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                         number.push(char);
                     }
 
-                    if self.chars.next_if_eq(&'.').is_some() {
-                        while let Some(char) = self.chars.next_if(char::is_ascii_digit) {
-                            number.push(char);
-                        }
-
-                        tokens.push(Token::Float(number.parse().unwrap()))
-                    } else {
-                        tokens.push(Token::Int(number.parse().unwrap()))
-                    }
+                    tokens.push(Token::Int(number.parse().unwrap()))
                 }
                 _ => panic!("unknown token")
             }
         }
 
         tokens
+    }
+
+    fn lex_word(&mut self) -> Option<String> {
+        let mut word = String::new();
+
+        while let Some(char) = self.chars.next_if(char::is_ascii_alphanumeric) {
+            word.push(char);
+        }
+
+        if word.is_empty() { None } else { Some(word) }
     }
 }
 

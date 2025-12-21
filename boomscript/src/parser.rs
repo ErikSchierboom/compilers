@@ -1,191 +1,83 @@
 use crate::lexer::{tokenize, Token};
-use crate::parser::UntypedExpression::BinaryOperation;
+use std::iter::Peekable;
 
 #[derive(Debug)]
-pub enum UntypedExpression {
-    Bool(bool),
+pub enum Word {
     Int(i64),
-    Float(f64),
-    Variable(String),
-    BinaryOperation(Box<UntypedExpression>, BinaryOperator, Box<UntypedExpression>),
-    Let(String, Box<UntypedExpression>),
-    Fn(String, Box<UntypedExpression>),
-}
+    Quote(String),
+    Block(Vec<Word>),
 
-// TODO: consider if binary operators should just be regular calls
-#[derive(Debug)]
-pub enum BinaryOperator {
     Add,
     Mul,
-
-    Greater,
-    Less,
+    Read(Option<String>),
+    Write(Option<String>),
+    Execute(Option<String>),
 }
 
-struct Parser {
-    tokens: Vec<Token>,
-    current: usize,
+struct Parser<T: Iterator<Item=Token>> {
+    tokens: Peekable<T>,
 }
 
-impl Parser {
-    fn new(code: &str) -> Self {
-        Self { tokens: tokenize(code), current: 0 }
+impl<T: Iterator<Item=Token>> Parser<T> {
+    fn new(tokens: T) -> Self {
+        Self { tokens: tokens.peekable() }
     }
 
-    fn parse(&mut self) -> Vec<UntypedExpression> {
-        let mut statements = Vec::new();
+    fn parse(&mut self) -> Vec<Word> {
+        let mut words = Vec::new();
 
-        while self.current < self.tokens.len() {
-            statements.push(self.parse_statement())
+        while let Some(token) = self.tokens.next() {
+            match token {
+                Token::Int(i) => words.push(Word::Int(i)),
+                Token::Quote(word) => words.push(Word::Quote(word)),
+                Token::Add => words.push(Word::Add),
+                Token::Mul => words.push(Word::Mul),
+                Token::Read(identifier) => words.push(Word::Read(identifier)),
+                Token::Write(identifier) => words.push(Word::Write(identifier)),
+                Token::Execute(identifier) => words.push(Word::Execute(identifier)),
+                Token::OpenBracket => words.push(self.parse_block()),
+                Token::CloseBracket => panic!("unexpected token")
+            }
         }
 
-        statements
+        words
     }
 
-    fn parse_statement(&mut self) -> UntypedExpression {
-        while self.current < self.tokens.len() && matches!(self.tokens[self.current], Token::Newline) {
-            self.advance();
-        }
+    fn parse_block(&mut self) -> Word {
+        let mut words = Vec::new();
 
-        match self.token() {
-            Token::Let => self.parse_assignment_statement(),
-            _ => self.parse_expression_statement()
-        }
-    }
-
-    fn parse_assignment_statement(&mut self) -> UntypedExpression {
-        self.advance();
-
-        match self.token() {
-            Token::Variable(name) => {
-                self.advance();
-                match self.token() {
-                    Token::Equal => {
-                        self.advance();
-                        let value = self.parse_expression();
-                        UntypedExpression::Let(name.clone(), Box::new(value))
-                    }
-                    _ => panic!("expected equal")
+        loop {
+            match self.tokens.peek() {
+                None => panic!("expected ']'"),
+                Some(Token::CloseBracket) => {
+                    self.tokens.next();
+                    break;
                 }
+                Some(_) => words.push(self.parse_word().unwrap_or_else(|| panic!("expected word")))
             }
-            _ => panic!("expected identifier")
-        }
-    }
-
-    fn parse_expression_statement(&mut self) -> UntypedExpression {
-        self.parse_expression()
-    }
-
-    fn parse_expression(&mut self) -> UntypedExpression {
-        match self.token() {
-            Token::Fn => {
-                self.advance();
-                match self.token() {
-                    Token::Variable(name) => {
-                        self.advance();
-                        match self.token() {
-                            Token::RightArrow => {
-                                self.advance();
-                                let expr = self.parse_expression();
-                                UntypedExpression::Fn(name, Box::new(expr))
-                            }
-                            _ => panic!("expected ->")
-                        }
-                    }
-                    _ => panic!("expected identifier")
-                }
-            }
-            _ => self.parse_comparison()
-        }
-    }
-
-    fn parse_comparison(&mut self) -> UntypedExpression {
-        let mut expr = self.parse_term();
-
-        while self.current < self.tokens.len() {
-            let operator = match self.tokens[self.current] {
-                Token::Greater => BinaryOperator::Greater,
-                Token::Less => BinaryOperator::Less,
-                _ => break
-            };
-
-            self.advance();
-            let right = self.parse_term();
-            expr = BinaryOperation(Box::new(expr), operator, Box::new(right))
         }
 
-        expr
+        Word::Block(words)
     }
 
-    fn parse_term(&mut self) -> UntypedExpression {
-        let mut expr = self.parse_factor();
-
-        while self.current < self.tokens.len() && matches!(self.tokens[self.current], Token::Plus) {
-            self.advance();
-            let right = self.parse_factor();
-            expr = BinaryOperation(Box::new(expr), BinaryOperator::Add, Box::new(right))
+    fn parse_word(&mut self) -> Option<Word> {
+        // TODO: remove duplication
+        match self.tokens.next()? {
+            Token::Int(i) => Some(Word::Int(i)),
+            Token::Quote(word) => Some(Word::Quote(word)),
+            Token::Add => Some(Word::Add),
+            Token::Mul => Some(Word::Mul),
+            Token::Read(identifier) => Some(Word::Read(identifier)),
+            Token::Write(identifier) => Some(Word::Write(identifier)),
+            Token::Execute(identifier) => Some(Word::Execute(identifier)),
+            Token::OpenBracket => todo!("parse block"),
+            Token::CloseBracket => panic!("unexpected token")
         }
-
-        expr
-    }
-
-    fn parse_factor(&mut self) -> UntypedExpression {
-        let mut expr = self.parse_primary();
-
-        while self.current < self.tokens.len() && matches!(self.tokens[self.current], Token::Star) {
-            self.advance();
-            let right = self.parse_primary();
-            expr = BinaryOperation(Box::new(expr), BinaryOperator::Mul, Box::new(right))
-        }
-
-        while self.current < self.tokens.len() && matches!(self.tokens[self.current], Token::Newline) {
-            self.advance();
-        }
-
-        expr
-    }
-
-    // TODO: come up with correct terminology
-    fn parse_primary(&mut self) -> UntypedExpression {
-        match self.token() {
-            Token::Bool(b) => {
-                self.advance();
-                UntypedExpression::Bool(b.clone())
-            }
-            Token::Int(i) => {
-                self.advance();
-                UntypedExpression::Int(i.clone())
-            }
-            Token::Float(f) => {
-                self.advance();
-                UntypedExpression::Float(f.clone())
-            }
-            Token::Variable(name) => {
-                self.advance();
-                UntypedExpression::Variable(name.clone())
-            }
-            Token::Newline => {
-                self.advance();
-                self.parse_primary()
-            }
-            _ => panic!("unexpected token")
-        }
-    }
-
-    fn token(&mut self) -> Token {
-        self.tokens[self.current].clone()
-    }
-
-    fn peek(&mut self) -> Option<&Token> {
-        self.tokens.get(self.current + 1)
-    }
-
-    fn advance(&mut self) {
-        self.current += 1;
     }
 }
 
-pub fn parse(code: &str) -> Vec<UntypedExpression> {
-    let mut parser = Parser::new(code);
+pub fn parse(code: &str) -> Vec<Word> {
+    let tokens = tokenize(code);
+    let mut parser = Parser::new(tokens.into_iter());
     parser.parse()
 }
