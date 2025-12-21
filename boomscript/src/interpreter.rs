@@ -36,6 +36,28 @@ impl Executable for Word {
                     _ => panic!("cannot add values on stack")
                 }
             }
+
+            Word::Dup => {
+                let last = interpreter.stack.last().unwrap_or_else(|| panic!("not enough values on stack"));
+                interpreter.stack.push(last.clone())
+            },
+            Word::Drop => {
+                interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
+            }
+            Word::Swap => {
+                let r = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
+                let l = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
+                interpreter.stack.push(l);
+                interpreter.stack.push(r)
+            }
+            Word::Over => {
+                let r = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
+                let l = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
+                interpreter.stack.push(l.clone());
+                interpreter.stack.push(r);
+                interpreter.stack.push(l)
+            }
+
             Word::Read(variable) => {
                 let name = match variable {
                     Some(name) => name.clone(),

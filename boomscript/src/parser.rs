@@ -3,12 +3,24 @@ use std::iter::Peekable;
 
 #[derive(Clone, Debug)]
 pub enum Word {
+    // Literals
     Int(i64),
     Quote(String),
+
+    // Composite
     Block(Vec<Word>),
 
+    // Binary operators
     Add,
     Mul,
+
+    // Stack operators
+    Dup,
+    Drop,
+    Swap,
+    Over,
+
+    // Memory operators
     Read(Option<String>),
     Write(Option<String>),
     Execute(Option<String>),
@@ -32,6 +44,10 @@ impl<T: Iterator<Item=Token>> Parser<T> {
                 Token::Quote(word) => words.push(Word::Quote(word)),
                 Token::Add => words.push(Word::Add),
                 Token::Mul => words.push(Word::Mul),
+                Token::Dup => words.push(Word::Dup),
+                Token::Drop => words.push(Word::Drop),
+                Token::Swap => words.push(Word::Swap),
+                Token::Over => words.push(Word::Over),
                 Token::Read(identifier) => words.push(Word::Read(identifier)),
                 Token::Write(identifier) => words.push(Word::Write(identifier)),
                 Token::Execute(identifier) => words.push(Word::Execute(identifier)),
@@ -67,6 +83,10 @@ impl<T: Iterator<Item=Token>> Parser<T> {
             Token::Quote(word) => Some(Word::Quote(word)),
             Token::Add => Some(Word::Add),
             Token::Mul => Some(Word::Mul),
+            Token::Dup => Some(Word::Dup),
+            Token::Drop => Some(Word::Drop),
+            Token::Swap => Some(Word::Swap),
+            Token::Over => Some(Word::Over),
             Token::Read(identifier) => Some(Word::Read(identifier)),
             Token::Write(identifier) => Some(Word::Write(identifier)),
             Token::Execute(identifier) => Some(Word::Execute(identifier)),

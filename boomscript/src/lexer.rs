@@ -10,7 +10,11 @@ pub enum Token {
     Add,
     Mul,
 
-    // TODO: stack operators
+    // Stack operators
+    Dup,
+    Drop,
+    Swap,
+    Over,
 
     // Memory operators
     Read(Option<String>),
@@ -60,6 +64,18 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                     }
 
                     tokens.push(Token::Int(number.parse().unwrap()))
+                }
+                'a'..='z' | 'A'..='Z' => {
+                    let mut name = self.lex_word().unwrap_or("".to_string());
+                    name.insert(0, char);
+
+                    match &name[..] {
+                        "dup" => tokens.push(Token::Dup),
+                        "drop" => tokens.push(Token::Drop),
+                        "swap" => tokens.push(Token::Swap),
+                        "over" => tokens.push(Token::Over),
+                        _ => panic!("unknown word")
+                    }
                 }
                 _ => panic!("unknown token")
             }
