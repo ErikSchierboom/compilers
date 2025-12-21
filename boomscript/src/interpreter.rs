@@ -1,0 +1,107 @@
+use crate::parser::{parse, Word};
+use std::collections::HashMap;
+
+// TODO: introduce trait for executing word
+
+trait Executable {
+    fn execute(&self, interpreter: &mut Interpreter);
+}
+
+#[derive(Clone, Debug)]
+pub enum Value {
+    ValInt(i64),
+    ValQuote(String),
+    ValBlock(Vec<Word>),
+}
+
+impl Executable for Word {
+    fn execute(&self, interpreter: &mut Interpreter) {
+        match self {
+            Word::Int(i) => interpreter.stack.push(Value::ValInt(i.clone())),
+            Word::Quote(word) => interpreter.stack.push(Value::ValQuote(word.clone())),
+            Word::Block(words) => interpreter.stack.push(Value::ValBlock(words.clone())),
+            Word::Add => {
+                let r = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
+                let l = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
+                match (l, r) {
+                    (Value::ValInt(l_i), Value::ValInt(r_i)) => interpreter.stack.push(Value::ValInt(l_i + r_i)),
+                    _ => panic!("cannot add values on stack")
+                }
+            }
+            Word::Mul => {
+                let r = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
+                let l = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
+                match (l, r) {
+                    (Value::ValInt(l_i), Value::ValInt(r_i)) => interpreter.stack.push(Value::ValInt(l_i * r_i)),
+                    _ => panic!("cannot add values on stack")
+                }
+            }
+            Word::Read(variable) => {
+                let name = match variable {
+                    Some(name) => name.clone(),
+                    None => match interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack")) {
+                        Value::ValQuote(name) => name,
+                        _ => panic!("expected quoted string")
+                    }
+                };
+
+                let variable = interpreter.variables.get(&name).unwrap_or_else(|| panic!("could not find variable"));
+                interpreter.stack.push(variable.clone())
+            }
+            Word::Write(variable) => {
+                let name = match variable {
+                    Some(name) => name.clone(),
+                    None => match interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack")) {
+                        Value::ValQuote(name) => name,
+                        _ => panic!("expected quoted string")
+                    }
+                };
+
+                let value = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
+                interpreter.variables.insert(name, value);
+            }
+            Word::Execute(variable) => {
+                let value = match variable {
+                    Some(name) => interpreter.variables.get(name).unwrap_or_else(|| panic!("could not find variable")).clone(),
+                    None => interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"))
+                };
+
+                match value {
+                    Value::ValBlock(words) => {
+                        for word in words {
+                            word.execute(interpreter)
+                        }
+                    }
+                    _ => panic!("expected quoted string")
+                }
+            }
+        }
+    }
+}
+
+struct Interpreter {
+    words: Vec<Word>,
+    stack: Vec<Value>,
+    variables: HashMap<String, Value>,
+}
+
+impl Interpreter {
+    fn new(words: Vec<Word>) -> Self {
+        Self { words, stack: Vec::new(), variables: HashMap::new() }
+    }
+
+    fn run(&mut self) -> Vec<Value> {
+        let words = self.words.clone();
+        for word in words {
+            word.execute(self)
+        }
+
+        self.stack.iter().map(|value| value.clone()).collect()
+    }
+}
+
+pub fn interpret(code: &str) -> Vec<Value> {
+    let words = parse(code);
+    let mut interpreter = Interpreter::new(words);
+    interpreter.run()
+}

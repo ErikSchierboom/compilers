@@ -1,7 +1,7 @@
 use crate::lexer::{tokenize, Token};
 use std::iter::Peekable;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Word {
     Int(i64),
     Quote(String),

@@ -1,9 +1,10 @@
-use crate::parser::parse;
+use crate::interpreter::interpret;
 
 mod lexer;
 mod parser;
+mod interpreter;
 
 fn main() {
-    let code = "12 %a @a [3 4 *] !";
-    println!("{:?}", parse(code))
+    let code = "1 %a [2 3 @a + +] %b !b";
+    println!("{:?}", interpret(code))
 }
