@@ -4,7 +4,7 @@ use std::iter::Peekable;
 pub enum LexError {
     ExpectedIdentifier,
     UnknownIdentifier(String),
-    UnexpectedToken(char)
+    UnexpectedToken(char),
 }
 
 #[derive(Clone, Debug)]
@@ -52,18 +52,41 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 ' ' | '\r' | '\n' | '\t' => continue,
                 '+' => tokens.push(Token::Add),
                 '*' => tokens.push(Token::Mul),
-                '@' => tokens.push(Token::Read(self.lex_word())),
-                '%' => tokens.push(Token::Write(self.lex_word())),
-                '!' => tokens.push(Token::Execute(self.lex_word())),
+                '@' => {
+                    let mut word = String::new();
+                    while let Some(char) = self.chars.next_if(char::is_ascii_alphanumeric) {
+                        word.push(char);
+                    }
+                    tokens.push(Token::Read(if word.is_empty() { None } else { Some(word) }))
+                }
+                '%' => {
+                    let mut word = String::new();
+                    while let Some(char) = self.chars.next_if(char::is_ascii_alphanumeric) {
+                        word.push(char);
+                    }
+                    tokens.push(Token::Write(if word.is_empty() { None } else { Some(word) }))
+                }
+                '!' => {
+                    let mut word = String::new();
+                    while let Some(char) = self.chars.next_if(char::is_ascii_alphanumeric) {
+                        word.push(char);
+                    }
+                    tokens.push(Token::Execute(if word.is_empty() { None } else { Some(word) }))
+                }
                 '[' => tokens.push(Token::OpenBracket),
                 ']' => tokens.push(Token::CloseBracket),
                 '(' => tokens.push(Token::OpenParen),
                 ')' => tokens.push(Token::CloseParen),
                 '\'' => {
-                    match self.lex_word() {
-                        Some(word) => tokens.push(Token::Quote(word)),
-                        None => return Err(LexError::ExpectedIdentifier)
+                    let mut word = String::new();
+                    while let Some(char) = self.chars.next_if(char::is_ascii_alphanumeric) {
+                        word.push(char);
                     }
+                    if word.is_empty() {
+                        return Err(LexError::ExpectedIdentifier);
+                    }
+
+                    tokens.push(Token::Quote(word))
                 }
                 '0'..='9' => {
                     let mut number = String::new();
@@ -76,8 +99,12 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                     tokens.push(Token::Int(number.parse().unwrap()))
                 }
                 'a'..='z' | 'A'..='Z' => {
-                    let mut name = self.lex_word().unwrap_or("".to_string());
-                    name.insert(0, char);
+                    let mut name = String::new();
+                    name.push(char);
+
+                    while let Some(char) = self.chars.next_if(char::is_ascii_alphanumeric) {
+                        name.push(char);
+                    }
 
                     match &name[..] {
                         "dup" => tokens.push(Token::Dup),
@@ -92,16 +119,6 @@ impl<T: Iterator<Item=char>> Lexer<T> {
         }
 
         Ok(tokens)
-    }
-
-    fn lex_word(&mut self) -> Option<String> {
-        let mut word = String::new();
-
-        while let Some(char) = self.chars.next_if(char::is_ascii_alphanumeric) {
-            word.push(char);
-        }
-
-        if word.is_empty() { None } else { Some(word) }
     }
 }
 
