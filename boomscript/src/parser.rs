@@ -14,6 +14,7 @@ pub enum Word {
     // Literals
     Int(i64),
     Quote(String),
+    Identifier(String),
 
     // Composite
     Block(Vec<Word>),
@@ -51,6 +52,7 @@ impl<T: Iterator<Item=Token>> Parser<T> {
             match token {
                 Token::Int(i) => words.push(Word::Int(i)),
                 Token::Quote(word) => words.push(Word::Quote(word)),
+                Token::Identifier(name) => words.push(Word::Identifier(name)),
                 Token::Add => words.push(Word::Add),
                 Token::Mul => words.push(Word::Mul),
                 Token::Dup => words.push(Word::Dup),
@@ -110,8 +112,8 @@ impl<T: Iterator<Item=Token>> Parser<T> {
             Some(token) => {
                 match token {
                     Token::Int(i) => Ok(Word::Int(i)),
-
                     Token::Quote(word) => Ok(Word::Quote(word)),
+                    Token::Identifier(name) => Ok(Word::Identifier(name)),
                     Token::Add => Ok(Word::Add),
                     Token::Mul => Ok(Word::Mul),
                     Token::Dup => Ok(Word::Dup),

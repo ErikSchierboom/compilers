@@ -1,4 +1,4 @@
-use std::iter::Peekable;
+use std::iter::{Enumerate, Peekable};
 
 #[derive(Debug)]
 pub enum LexError {
@@ -7,10 +7,14 @@ pub enum LexError {
     UnexpectedToken(char),
 }
 
+
+// TODO: add span
+
 #[derive(Clone, Debug)]
 pub enum Token {
     // Literals
     Int(i64),
+    Identifier(String),
     Quote(String),
 
     // Binary operators
@@ -36,89 +40,110 @@ pub enum Token {
 }
 
 struct Lexer<T: Iterator<Item=char>> {
-    chars: Peekable<T>,
+    chars: Peekable<Enumerate<T>>,
+    char: Option<char>,
+    pos: usize,
+    tokens: Vec<Token>,
 }
 
 impl<T: Iterator<Item=char>> Lexer<T> {
     fn new(code: T) -> Self {
-        Self { chars: code.peekable() }
+        Self { chars: code.enumerate().peekable(), char: None, pos: 0, tokens: Vec::new() }
     }
 
-    fn tokenize(&mut self) -> Result<Vec<Token>, LexError> {
-        let mut tokens = Vec::new();
+    fn next_char_if<F: FnOnce(&char) -> bool>(&mut self, f: F) -> Option<char> {
+        match self.chars.next_if(|(_, c)| f(c)) {
+            Some((pos, c)) => {
+                self.pos = pos;
+                self.char = Some(c)
+            }
+            None => {
+                self.pos += 1;
+                self.char = None
+            }
+        }
 
-        while let Some(char) = self.chars.next() {
+        self.char
+    }
+
+    fn next_char(&mut self) -> Option<char> {
+        self.next_char_if(|_| true)
+    }
+
+    fn tokenize(mut self) -> Result<Vec<Token>, LexError> {
+        while let Some(char) = self.next_char() {
             match char {
                 ' ' | '\r' | '\n' | '\t' => continue,
-                '+' => tokens.push(Token::Add),
-                '*' => tokens.push(Token::Mul),
+                '+' => self.tokens.push(Token::Add),
+                '*' => self.tokens.push(Token::Mul),
                 '@' => {
                     let mut word = String::new();
-                    while let Some(char) = self.chars.next_if(char::is_ascii_alphanumeric) {
+                    while let Some(char) = self.next_char_if(char::is_ascii_alphanumeric) {
                         word.push(char);
                     }
-                    tokens.push(Token::Read(if word.is_empty() { None } else { Some(word) }))
+                    self.tokens.push(Token::Read(if word.is_empty() { None } else { Some(word) }))
                 }
                 '%' => {
                     let mut word = String::new();
-                    while let Some(char) = self.chars.next_if(char::is_ascii_alphanumeric) {
+                    while let Some(char) = self.next_char_if(char::is_ascii_alphanumeric) {
                         word.push(char);
                     }
-                    tokens.push(Token::Write(if word.is_empty() { None } else { Some(word) }))
+                    self.tokens.push(Token::Write(if word.is_empty() { None } else { Some(word) }))
                 }
                 '!' => {
                     let mut word = String::new();
-                    while let Some(char) = self.chars.next_if(char::is_ascii_alphanumeric) {
+                    while let Some(char) = self.next_char_if(char::is_ascii_alphanumeric) {
                         word.push(char);
                     }
-                    tokens.push(Token::Execute(if word.is_empty() { None } else { Some(word) }))
+                    self.tokens.push(Token::Execute(if word.is_empty() { None } else { Some(word) }))
                 }
-                '[' => tokens.push(Token::OpenBracket),
-                ']' => tokens.push(Token::CloseBracket),
-                '(' => tokens.push(Token::OpenParen),
-                ')' => tokens.push(Token::CloseParen),
+                '[' => self.tokens.push(Token::OpenBracket),
+                ']' => self.tokens.push(Token::CloseBracket),
+                '(' => self.tokens.push(Token::OpenParen),
+                ')' => self.tokens.push(Token::CloseParen),
                 '\'' => {
                     let mut word = String::new();
-                    while let Some(char) = self.chars.next_if(char::is_ascii_alphanumeric) {
+                    while let Some(char) = self.next_char_if(char::is_ascii_alphanumeric) {
                         word.push(char);
                     }
                     if word.is_empty() {
                         return Err(LexError::ExpectedIdentifier);
                     }
 
-                    tokens.push(Token::Quote(word))
+                    self.tokens.push(Token::Quote(word))
                 }
                 '0'..='9' => {
                     let mut number = String::new();
                     number.push(char);
 
-                    while let Some(char) = self.chars.next_if(char::is_ascii_digit) {
+                    while let Some(char) = self.next_char_if(char::is_ascii_digit) {
                         number.push(char);
                     }
 
-                    tokens.push(Token::Int(number.parse().unwrap()))
+                    self.tokens.push(Token::Int(number.parse().unwrap()))
                 }
                 'a'..='z' | 'A'..='Z' => {
                     let mut name = String::new();
                     name.push(char);
 
-                    while let Some(char) = self.chars.next_if(char::is_ascii_alphanumeric) {
+                    while let Some(char) = self.next_char_if(char::is_ascii_alphanumeric) {
                         name.push(char);
                     }
 
+                    // TODO: add separate function to convert string to keyword
                     match &name[..] {
-                        "dup" => tokens.push(Token::Dup),
-                        "drop" => tokens.push(Token::Drop),
-                        "swap" => tokens.push(Token::Swap),
-                        "over" => tokens.push(Token::Over),
-                        _ => return Err(LexError::UnknownIdentifier(name))
+                        "dup" => self.tokens.push(Token::Dup),
+                        "drop" => self.tokens.push(Token::Drop),
+                        "swap" => self.tokens.push(Token::Swap),
+                        "over" => self.tokens.push(Token::Over),
+                        _ => self.tokens.push(Token::Identifier(name)),
                     }
                 }
                 _ => return Err(LexError::UnexpectedToken(char))
             }
         }
 
-        Ok(tokens)
+        Ok(self.tokens)
     }
 }
 

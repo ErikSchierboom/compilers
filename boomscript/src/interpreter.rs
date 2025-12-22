@@ -18,6 +18,7 @@ impl Executable for Word {
         match self {
             Word::Int(i) => interpreter.stack.push(Value::ValInt(i.clone())),
             Word::Quote(word) => interpreter.stack.push(Value::ValQuote(word.clone())),
+            Word::Identifier(name) => todo!("evaluate word"),
             Word::Block(words) => interpreter.stack.push(Value::ValBlock(words.clone())),
             Word::Array(words) => {
                 let stack_size_before = interpreter.stack.len();
