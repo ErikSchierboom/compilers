@@ -1,5 +1,13 @@
-use crate::lexer::{tokenize, Token};
+use crate::lexer::{tokenize, LexError, Token};
 use std::iter::Peekable;
+
+#[derive(Debug)]
+pub enum ParseError {
+    Lex(LexError),
+    UnexpectedToken(Token),
+    UnexpectedEndOfFile,
+    ExpectedToken(Token),
+}
 
 #[derive(Clone, Debug)]
 pub enum Word {
@@ -36,7 +44,7 @@ impl<T: Iterator<Item=Token>> Parser<T> {
         Self { tokens: tokens.peekable() }
     }
 
-    fn parse(&mut self) -> Vec<Word> {
+    fn parse(&mut self) -> Result<Vec<Word>, ParseError> {
         let mut words = Vec::new();
 
         while let Some(token) = self.tokens.next() {
@@ -52,74 +60,80 @@ impl<T: Iterator<Item=Token>> Parser<T> {
                 Token::Read(identifier) => words.push(Word::Read(identifier)),
                 Token::Write(identifier) => words.push(Word::Write(identifier)),
                 Token::Execute(identifier) => words.push(Word::Execute(identifier)),
-                Token::OpenBracket => words.push(self.parse_array()),
-                Token::CloseBracket => panic!("unexpected token"),
-                Token::OpenParen => words.push(self.parse_block()),
-                Token::CloseParen => panic!("unexpected token")
+                Token::OpenBracket => words.push(self.parse_array()?),
+                Token::CloseBracket => return Err(ParseError::UnexpectedToken(token)),
+                Token::OpenParen => words.push(self.parse_block()?),
+                Token::CloseParen => return Err(ParseError::UnexpectedToken(token)),
             }
         }
 
-        words
+        Ok(words)
     }
 
-    fn parse_block(&mut self) -> Word {
+    fn parse_block(&mut self) -> Result<Word, ParseError> {
         let mut words = Vec::new();
 
         loop {
             match self.tokens.peek() {
-                None => panic!("expected ')'"),
+                None => return Err(ParseError::ExpectedToken(Token::CloseParen)),
                 Some(Token::CloseParen) => {
                     self.tokens.next();
                     break;
                 }
-                Some(_) => words.push(self.parse_word().unwrap_or_else(|| panic!("expected word")))
+                Some(_) => words.push(self.parse_word()?)
             }
         }
 
-        Word::Array(words)
+        Ok(Word::Array(words))
     }
 
-    fn parse_array(&mut self) -> Word {
+    fn parse_array(&mut self) -> Result<Word, ParseError> {
         let mut words = Vec::new();
 
         loop {
             match self.tokens.peek() {
-                None => panic!("expected ']'"),
+                None => return Err(ParseError::ExpectedToken(Token::CloseBracket)),
                 Some(Token::CloseBracket) => {
                     self.tokens.next();
                     break;
                 }
-                Some(_) => words.push(self.parse_word().unwrap_or_else(|| panic!("expected word")))
+                Some(_) => words.push(self.parse_word()?)
             }
         }
 
-        Word::Block(words)
+        Ok(Word::Block(words))
     }
 
-    fn parse_word(&mut self) -> Option<Word> {
+    fn parse_word(&mut self) -> Result<Word, ParseError> {
         // TODO: remove duplication
-        match self.tokens.next()? {
-            Token::Int(i) => Some(Word::Int(i)),
-            Token::Quote(word) => Some(Word::Quote(word)),
-            Token::Add => Some(Word::Add),
-            Token::Mul => Some(Word::Mul),
-            Token::Dup => Some(Word::Dup),
-            Token::Drop => Some(Word::Drop),
-            Token::Swap => Some(Word::Swap),
-            Token::Over => Some(Word::Over),
-            Token::Read(identifier) => Some(Word::Read(identifier)),
-            Token::Write(identifier) => Some(Word::Write(identifier)),
-            Token::Execute(identifier) => Some(Word::Execute(identifier)),
-            Token::OpenBracket => todo!("parse block"),
-            Token::CloseBracket => panic!("unexpected token"),
-            Token::OpenParen => todo!("parse block"),
-            Token::CloseParen => panic!("unexpected token")
+        match self.tokens.next() {
+            Some(token) => {
+                match token {
+                    Token::Int(i) => Ok(Word::Int(i)),
+
+                    Token::Quote(word) => Ok(Word::Quote(word)),
+                    Token::Add => Ok(Word::Add),
+                    Token::Mul => Ok(Word::Mul),
+                    Token::Dup => Ok(Word::Dup),
+                    Token::Drop => Ok(Word::Drop),
+                    Token::Swap => Ok(Word::Swap),
+                    Token::Over => Ok(Word::Over),
+                    Token::Read(identifier) => Ok(Word::Read(identifier)),
+                    Token::Write(identifier) => Ok(Word::Write(identifier)),
+                    Token::Execute(identifier) => Ok(Word::Execute(identifier)),
+                    Token::OpenBracket => todo!("parse block"),
+                    Token::CloseBracket => Err(ParseError::UnexpectedToken(token)),
+                    Token::OpenParen => todo!("parse block"),
+                    Token::CloseParen => Err(ParseError::UnexpectedToken(token)),
+                }
+            }
+            _ => Err(ParseError::UnexpectedEndOfFile)
         }
     }
 }
 
-pub fn parse(code: &str) -> Vec<Word> {
-    let tokens = tokenize(code);
+pub fn parse(code: &str) -> Result<Vec<Word>, ParseError> {
+    let tokens = tokenize(code).map_err(ParseError::Lex)?;
     let mut parser = Parser::new(tokens.into_iter());
     parser.parse()
 }

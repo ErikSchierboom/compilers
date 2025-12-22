@@ -1,5 +1,12 @@
 use std::iter::Peekable;
 
+#[derive(Debug)]
+pub enum LexError {
+    ExpectedIdentifier,
+    UnknownIdentifier(String),
+    UnexpectedToken(char)
+}
+
 #[derive(Clone, Debug)]
 pub enum Token {
     // Literals
@@ -37,8 +44,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
         Self { chars: code.peekable() }
     }
 
-    // TODO: use Result<T>
-    fn tokenize(&mut self) -> Vec<Token> {
+    fn tokenize(&mut self) -> Result<Vec<Token>, LexError> {
         let mut tokens = Vec::new();
 
         while let Some(char) = self.chars.next() {
@@ -56,7 +62,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 '\'' => {
                     match self.lex_word() {
                         Some(word) => tokens.push(Token::Quote(word)),
-                        None => panic!("expected identifier")
+                        None => return Err(LexError::ExpectedIdentifier)
                     }
                 }
                 '0'..='9' => {
@@ -78,14 +84,14 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                         "drop" => tokens.push(Token::Drop),
                         "swap" => tokens.push(Token::Swap),
                         "over" => tokens.push(Token::Over),
-                        _ => panic!("unknown word")
+                        _ => return Err(LexError::UnknownIdentifier(name))
                     }
                 }
-                _ => panic!("unknown token")
+                _ => return Err(LexError::UnexpectedToken(char))
             }
         }
 
-        tokens
+        Ok(tokens)
     }
 
     fn lex_word(&mut self) -> Option<String> {
@@ -99,7 +105,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
     }
 }
 
-pub fn tokenize(code: &str) -> Vec<Token> {
+pub fn tokenize(code: &str) -> Result<Vec<Token>, LexError> {
     let mut lexer = Lexer::new(code.chars());
     lexer.tokenize()
 }

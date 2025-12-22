@@ -1,7 +1,5 @@
-use crate::parser::{parse, Word};
+use crate::parser::{parse, ParseError, Word};
 use std::collections::HashMap;
-use itertools::Itertools;
-// TODO: introduce trait for executing word
 
 trait Executable {
     fn execute(&self, interpreter: &mut Interpreter);
@@ -23,11 +21,11 @@ impl Executable for Word {
             Word::Block(words) => interpreter.stack.push(Value::ValBlock(words.clone())),
             Word::Array(words) => {
                 let stack_size_before = interpreter.stack.len();
-                
+
                 for word in words {
                     word.execute(interpreter)
                 }
-                
+
                 let elements = interpreter.stack.drain(stack_size_before..).collect();
                 interpreter.stack.push(Value::ValArray(elements))
             }
@@ -112,6 +110,11 @@ impl Executable for Word {
     }
 }
 
+#[derive(Debug)]
+pub enum RuntimeError {
+    Parse(ParseError),
+}
+
 struct Interpreter {
     words: Vec<Word>,
     stack: Vec<Value>,
@@ -123,18 +126,18 @@ impl Interpreter {
         Self { words, stack: Vec::new(), variables: HashMap::new() }
     }
 
-    fn run(&mut self) -> Vec<Value> {
+    fn run(&mut self) -> Result<Vec<Value>, RuntimeError> {
         let words = self.words.clone();
         for word in words {
             word.execute(self)
         }
 
-        self.stack.iter().map(|value| value.clone()).collect()
+        Ok(self.stack.iter().map(|value| value.clone()).collect())
     }
 }
 
-pub fn interpret(code: &str) -> Vec<Value> {
-    let words = parse(code);
+pub fn interpret(code: &str) -> Result<Vec<Value>, RuntimeError> {
+    let words = parse(code).map_err(RuntimeError::Parse)?;
     let mut interpreter = Interpreter::new(words);
     interpreter.run()
 }
