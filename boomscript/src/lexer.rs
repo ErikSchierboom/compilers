@@ -51,7 +51,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
         Self { chars: code.enumerate().peekable(), char: None, pos: 0, tokens: Vec::new() }
     }
 
-    fn next_char_if<F: FnOnce(&char) -> bool>(&mut self, f: F) -> Option<char> {
+    fn next_char_if(&mut self, f: impl FnOnce(&char) -> bool) -> Option<char> {
         match self.chars.next_if(|(_, c)| f(c)) {
             Some((pos, c)) => {
                 self.pos = pos;
@@ -70,37 +70,41 @@ impl<T: Iterator<Item=char>> Lexer<T> {
         self.next_char_if(|_| true)
     }
 
+    fn emit_token(&mut self, token: Token) {
+        self.tokens.push(token)
+    }
+
     fn tokenize(mut self) -> Result<Vec<Token>, LexError> {
         while let Some(char) = self.next_char() {
             match char {
                 ' ' | '\r' | '\n' | '\t' => continue,
-                '+' => self.tokens.push(Token::Add),
-                '*' => self.tokens.push(Token::Mul),
+                '+' => self.emit_token(Token::Add),
+                '*' => self.emit_token(Token::Mul),
                 '@' => {
                     let mut word = String::new();
                     while let Some(char) = self.next_char_if(char::is_ascii_alphanumeric) {
                         word.push(char);
                     }
-                    self.tokens.push(Token::Read(if word.is_empty() { None } else { Some(word) }))
+                    self.emit_token(Token::Read(if word.is_empty() { None } else { Some(word) }))
                 }
                 '%' => {
                     let mut word = String::new();
                     while let Some(char) = self.next_char_if(char::is_ascii_alphanumeric) {
                         word.push(char);
                     }
-                    self.tokens.push(Token::Write(if word.is_empty() { None } else { Some(word) }))
+                    self.emit_token(Token::Write(if word.is_empty() { None } else { Some(word) }))
                 }
                 '!' => {
                     let mut word = String::new();
                     while let Some(char) = self.next_char_if(char::is_ascii_alphanumeric) {
                         word.push(char);
                     }
-                    self.tokens.push(Token::Execute(if word.is_empty() { None } else { Some(word) }))
+                    self.emit_token(Token::Execute(if word.is_empty() { None } else { Some(word) }))
                 }
-                '[' => self.tokens.push(Token::OpenBracket),
-                ']' => self.tokens.push(Token::CloseBracket),
-                '(' => self.tokens.push(Token::OpenParen),
-                ')' => self.tokens.push(Token::CloseParen),
+                '[' => self.emit_token(Token::OpenBracket),
+                ']' => self.emit_token(Token::CloseBracket),
+                '(' => self.emit_token(Token::OpenParen),
+                ')' => self.emit_token(Token::CloseParen),
                 '\'' => {
                     let mut word = String::new();
                     while let Some(char) = self.next_char_if(char::is_ascii_alphanumeric) {
@@ -110,7 +114,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                         return Err(LexError::ExpectedIdentifier);
                     }
 
-                    self.tokens.push(Token::Quote(word))
+                    self.emit_token(Token::Quote(word))
                 }
                 '0'..='9' => {
                     let mut number = String::new();
@@ -120,7 +124,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                         number.push(char);
                     }
 
-                    self.tokens.push(Token::Int(number.parse().unwrap()))
+                    self.emit_token(Token::Int(number.parse().unwrap()))
                 }
                 'a'..='z' | 'A'..='Z' => {
                     let mut name = String::new();
@@ -132,11 +136,11 @@ impl<T: Iterator<Item=char>> Lexer<T> {
 
                     // TODO: add separate function to convert string to keyword
                     match &name[..] {
-                        "dup" => self.tokens.push(Token::Dup),
-                        "drop" => self.tokens.push(Token::Drop),
-                        "swap" => self.tokens.push(Token::Swap),
-                        "over" => self.tokens.push(Token::Over),
-                        _ => self.tokens.push(Token::Identifier(name)),
+                        "dup" => self.emit_token(Token::Dup),
+                        "drop" => self.emit_token(Token::Drop),
+                        "swap" => self.emit_token(Token::Swap),
+                        "over" => self.emit_token(Token::Over),
+                        _ => self.emit_token(Token::Identifier(name)),
                     }
                 }
                 _ => return Err(LexError::UnexpectedToken(char))
