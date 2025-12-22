@@ -54,9 +54,9 @@ pub struct Token {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TokenKind {
     // Literals
-    Int(i64),
-    Identifier(String),
-    Quote(String),
+    Int,
+    Identifier,
+    Quote,
 
     // Binary operators
     Add,
@@ -140,38 +140,14 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 ']' => self.eat_single_char(TokenKind::CloseBracket),
                 '(' => self.eat_single_char(TokenKind::OpenParen),
                 ')' => self.eat_single_char(TokenKind::CloseParen),
-                '\'' => {
-                    let mut word = String::new();
-                    word.push(char);
-
-                    while let Some(char) = self.next_char_if(char::is_ascii_alphanumeric) {
-                        word.push(char);
-                    }
-                    if word.is_empty() {
-                        return Err(LexError { kind: LexErrorKind::ExpectedIdentifier, location: (self.pos, self.pos + 1).into() });
-                    }
-
-                    self.eat_single_char(TokenKind::Quote(word))
-                }
+                '\'' => self.eat_single_char(TokenKind::Quote),
                 '0'..='9' => {
-                    let mut number = String::new();
-                    number.push(char);
-
-                    while let Some(char) = self.next_char_if(char::is_ascii_digit) {
-                        number.push(char);
-                    }
-
-                    self.eat_single_char(TokenKind::Int(number.parse().unwrap()))
+                    while self.next_char_if(char::is_ascii_digit).is_some() {}
+                    self.eat_single_char(TokenKind::Int)
                 }
                 'a'..='z' | 'A'..='Z' => {
-                    let mut name = String::new();
-                    name.push(char);
-
-                    while let Some(char) = self.next_char_if(char::is_ascii_alphanumeric) {
-                        name.push(char);
-                    }
-
-                    self.eat_single_char(TokenKind::Identifier(name))
+                    while self.next_char_if(char::is_ascii_alphanumeric).is_some() {}
+                    self.eat_single_char(TokenKind::Identifier)
                 }
                 _ => return Err(LexError { kind: LexErrorKind::UnexpectedToken(char), location: (start_pos, start_pos + 1).into() })
             }

@@ -59,15 +59,16 @@ pub enum Word {
     Execute { variable: Option<String>, location: Span },
 }
 
-struct Parser<T: Iterator<Item=Token>> {
+struct Parser<'a, T: Iterator<Item=Token>> {
+    code: &'a str,
     tokens: Peekable<T>,
     token: Option<Token>,
     words: Vec<Word>,
 }
 
-impl<T: Iterator<Item=Token>> Parser<T> {
-    fn new(tokens: T) -> Self {
-        let mut parser = Self { tokens: tokens.peekable(), token: None, words: Vec::new() };
+impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
+    fn new(code: &'a str, tokens: T) -> Self {
+        let mut parser = Self { code, tokens: tokens.peekable(), token: None, words: Vec::new() };
         parser.next_token();
         parser
     }
@@ -113,10 +114,14 @@ impl<T: Iterator<Item=Token>> Parser<T> {
         let location = token.location.clone();
 
         let result = match &token.kind {
-            TokenKind::Int(value) => Ok(Word::Int { value: value.clone(), location }),
-            TokenKind::Quote(name) => Ok(Word::Quote { name: name.clone(), location }),
-            TokenKind::Identifier(name) => {
-                match BuiltinKind::try_from(&name[..]) {
+            TokenKind::Int => Ok(Word::Int { value: self.code[location.start..location.end].parse().unwrap(), location }),
+            TokenKind::Quote => {
+                // TODO: check for identifier
+                todo!("check quote for identifier")
+                // Ok(Word::Quote { name: name.clone(), location })
+            }
+            TokenKind::Identifier => {
+                match BuiltinKind::try_from(&self.code[location.start..location.end]) {
                     Ok(builtin_kind) => Ok(Word::Builtin { kind: builtin_kind, location }),
                     Err(parse_error_kind) => Err(ParseError { kind: parse_error_kind, location })
                 }
@@ -125,7 +130,9 @@ impl<T: Iterator<Item=Token>> Parser<T> {
             TokenKind::Mul => Ok(Word::Mul { location }),
 
             // TODO: check if followed by identifier
-            TokenKind::Read => Ok(Word::Read { variable: None, location }),
+            TokenKind::Read => {
+                Ok(Word::Read { variable: None, location })
+            }
             TokenKind::Write => Ok(Word::Write { variable: None, location }),
             TokenKind::Execute => Ok(Word::Execute { variable: None, location }),
 
@@ -178,9 +185,10 @@ impl<T: Iterator<Item=Token>> Parser<T> {
 }
 
 pub fn parse(code: &str) -> Result<Vec<Word>, ParseError> {
+    // TODO: clean this up
     match tokenize(code) {
         Ok(tokens) => {
-            let parser = Parser::new(tokens.into_iter());
+            let parser = Parser::new(code, tokens.into_iter());
             parser.parse()
         }
         Err(lex_error) => {
