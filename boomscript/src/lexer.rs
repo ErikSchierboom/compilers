@@ -19,6 +19,16 @@ pub struct Span {
     pub end: usize,
 }
 
+impl Span {
+    pub const EMPTY: Self = Self { start: 0, end: 0 };
+}
+
+impl Default for Span {
+    fn default() -> Self {
+        Span::EMPTY
+    }
+}
+
 impl From<usize> for Span {
     fn from(start: usize) -> Self {
         Self { start, end: start + 1 }
@@ -37,7 +47,7 @@ pub struct Token {
     pub location: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TokenKind {
     // Literals
     Int(i64),
@@ -84,15 +94,11 @@ impl<T: Iterator<Item=char>> Lexer<T> {
         match self.chars.next_if(|(_, c)| f(c)) {
             Some((pos, c)) => {
                 self.pos = pos;
-                self.char = Some(c)
+                self.char = Some(c);
+                self.char
             }
-            None => {
-                self.pos += 1;
-                self.char = None
-            }
+            None => None
         }
-
-        self.char
     }
 
     fn next_char(&mut self) -> Option<char> {

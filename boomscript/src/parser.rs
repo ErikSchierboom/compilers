@@ -44,104 +44,101 @@ pub enum Word {
 
 struct Parser<T: Iterator<Item=Token>> {
     tokens: Peekable<T>,
+    token: Option<Token>,
+    words: Vec<Word>,
 }
 
 impl<T: Iterator<Item=Token>> Parser<T> {
     fn new(tokens: T) -> Self {
-        Self { tokens: tokens.peekable() }
+        let mut parser = Self { tokens: tokens.peekable(), token: None, words: Vec::new() };
+        parser.next_token();
+        parser
     }
 
-    fn parse(&mut self) -> Result<Vec<Word>, ParseError> {
-        let mut words = Vec::new();
-
-        while let Some(token) = self.tokens.next() {
-            let location = token.location;
-
-            match token.kind {
-                TokenKind::Int(i) => words.push(Word::Int { value: i, location }),
-                TokenKind::Quote(name) => words.push(Word::Quote { name, location }),
-                TokenKind::Identifier(name) => words.push(Word::Identifier { name, location }),
-                TokenKind::Add => words.push(Word::Add { location }),
-                TokenKind::Mul => words.push(Word::Mul { location }),
-                TokenKind::Dup => words.push(Word::Dup { location }),
-                TokenKind::Drop => words.push(Word::Drop { location }),
-                TokenKind::Swap => words.push(Word::Swap { location }),
-                TokenKind::Over => words.push(Word::Over { location }),
-
-                // TODO: check if followed by identifier
-                TokenKind::Read => words.push(Word::Read { variable: None, location }),
-                TokenKind::Write => words.push(Word::Write { variable: None, location }),
-                TokenKind::Execute => words.push(Word::Execute { variable: None, location }),
-
-                TokenKind::OpenBracket => words.push(self.parse_array()?),
-                TokenKind::CloseBracket => return Err(ParseError { kind: ParseErrorKind::UnexpectedToken(token.kind), location }),
-                TokenKind::OpenParen => words.push(self.parse_block()?),
-                TokenKind::CloseParen => return Err(ParseError { kind: ParseErrorKind::UnexpectedToken(token.kind), location }),
-            }
-        }
-
-        Ok(words)
+    fn next_token(&mut self) -> Option<&Token> {
+        self.next_token_if(|_| true)
     }
 
-    fn parse_block(&mut self) -> Result<Word, ParseError> {
-        let mut words = Vec::new();
-
-        loop {
-            match self.tokens.peek() {
-                None => return Err(ParseError::ExpectedToken(TokenKind::CloseParen)),
-                Some(Token { kind: TokenKind::CloseParen, .. }) => {
-                    self.tokens.next();
-                    break;
-                }
-                Some(_) => words.push(self.parse_word()?)
-            }
-        }
-
-        Ok(Word::Block(words))
+    fn next_token_if_kind(&mut self, kind: TokenKind) -> Option<&Token> {
+        self.next_token_if(|token| token.kind == kind)
     }
 
-    fn parse_array(&mut self) -> Result<Word, ParseError> {
-        let mut words = Vec::new();
-
-        loop {
-            match self.tokens.peek() {
-                None => return Err(ParseError::ExpectedToken(TokenKind::CloseBracket)),
-                Some(Token { kind: TokenKind::CloseBracket, .. }) => {
-                    self.tokens.next();
-                    break;
-                }
-                Some(_) => words.push(self.parse_word()?)
-            }
-        }
-
-        Ok(Word::Array(words))
-    }
-
-    fn parse_word(&mut self) -> Result<Word, ParseError> {
-        // TODO: remove duplication
-        match self.tokens.next() {
+    fn next_token_if(&mut self, f: impl FnOnce(&Token) -> bool) -> Option<&Token> {
+        match self.tokens.next_if(f) {
             Some(token) => {
-                match token.kind {
-                    TokenKind::Int(i) => Ok(Word::Int(i)),
-                    TokenKind::Quote(word) => Ok(Word::Quote(word)),
-                    TokenKind::Identifier(name) => Ok(Word::Identifier(name)),
-                    TokenKind::Add => Ok(Word::Add),
-                    TokenKind::Mul => Ok(Word::Mul),
-                    TokenKind::Dup => Ok(Word::Dup),
-                    TokenKind::Drop => Ok(Word::Drop),
-                    TokenKind::Swap => Ok(Word::Swap),
-                    TokenKind::Over => Ok(Word::Over),
-                    // TODO: check if followed by identifier
-                    TokenKind::Read => Ok(Word::Read(None)),
-                    TokenKind::Write => Ok(Word::Write(None)),
-                    TokenKind::Execute => Ok(Word::Execute(None)),
-                    TokenKind::OpenBracket => todo!("parse block"),
-                    TokenKind::CloseBracket => Err(ParseError::UnexpectedToken(token)),
-                    TokenKind::OpenParen => todo!("parse block"),
-                    TokenKind::CloseParen => Err(ParseError::UnexpectedToken(token)),
+                self.token = Some(token);
+                self.token.as_ref()
+            }
+            None => None
+        }
+    }
+
+    fn parse(mut self) -> Result<Vec<Word>, ParseError> {
+        while let Some(token) = &self.token {
+            let word = match &token.kind {
+                TokenKind::OpenParen => self.parse_block()?,
+                TokenKind::OpenBracket => self.parse_array()?,
+                _ => self.parse_expression()?
+            };
+
+            self.words.push(word);
+        }
+
+        Ok(self.words)
+    }
+
+    fn parse_block(&self) -> Result<Word, ParseError> {
+        todo!()
+    }
+
+    fn parse_array(&self) -> Result<Word, ParseError> {
+        let start_pos = self.token.unwrap()
+        let mut words = Vec::new();
+
+        loop {
+            match self.token {
+                None => {
+                    let location = words.last().map(|word| word.l)
+                    return Err(ParseError { kind: ParseErrorKind::ExpectedToken(TokenKind::CloseBracket), location: location.unwrap_or_default() })
+                },
+                Some(token) => {
+                    match token.kind {
+                        TokenKind::CloseBracket => break,
+                        _ => {
+                            todo!()
+                        }
+                    }
                 }
             }
-            _ => Err(ParseError::UnexpectedEndOfFile)
+        }
+
+        // Ok(Word::Array { elements: words))
+    }
+
+    fn parse_expression(&self) -> Result<Word, ParseError> {
+        match &self.token {
+            Some(token) => {
+                let location = token.location.clone();
+
+                match &token.kind {
+                    TokenKind::Int(value) => Ok(Word::Int { value: value.clone(), location }),
+                    TokenKind::Quote(name) => Ok(Word::Quote { name: name.clone(), location }),
+                    TokenKind::Identifier(name) => Ok(Word::Identifier { name: name.clone(), location }),
+                    TokenKind::Add => Ok(Word::Add { location }),
+                    TokenKind::Mul => Ok(Word::Mul { location }),
+                    TokenKind::Dup => Ok(Word::Dup { location }),
+                    TokenKind::Drop => Ok(Word::Drop { location }),
+                    TokenKind::Swap => Ok(Word::Swap { location }),
+                    TokenKind::Over => Ok(Word::Over { location }),
+
+                    // TODO: check if followed by identifier
+                    TokenKind::Read => Ok(Word::Read { variable: None, location }),
+                    TokenKind::Write => Ok(Word::Write { variable: None, location }),
+                    TokenKind::Execute => Ok(Word::Execute { variable: None, location }),
+                    _ => Err(ParseError { kind: ParseErrorKind::UnexpectedEndOfFile, location })
+                }
+            },
+            None => Err(ParseError { kind: ParseErrorKind::UnexpectedEndOfFile, location: Span { start: 0, end: 0 }})
         }
     }
 }
@@ -151,12 +148,11 @@ pub fn parse(code: &str) -> Result<Vec<Word>, ParseError> {
         Ok(tokens) => {
             let mut parser = Parser::new(tokens.into_iter());
             parser.parse()
-        },
+        }
         Err(lex_error) => {
             let location = lex_error.location.clone();
             let kind = ParseErrorKind::Lex(lex_error);
             Err(ParseError { kind, location })
         }
     }
-    
 }
