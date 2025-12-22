@@ -7,7 +7,15 @@ pub enum LexError {
     UnexpectedToken(char),
 }
 
-// TODO: add span
+pub struct Span {
+    start: u32,
+    end: u32,
+}
+
+pub struct Spanned<T> {
+    value: T,
+    location: Span,
+}
 
 #[derive(Clone, Debug)]
 pub enum Token {
@@ -27,9 +35,9 @@ pub enum Token {
     Over,
 
     // Memory operators
-    Read(Option<String>),
-    Write(Option<String>),
-    Execute(Option<String>),
+    Read,
+    Write,
+    Execute,
 
     // Delimiters
     OpenBracket,
@@ -88,9 +96,9 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 }
                 '+' => self.eat_single_char(Token::Add),
                 '*' => self.eat_single_char(Token::Mul),
-                '@' => self.eat_single_char(Token::Read(None)),
-                '%' => self.eat_single_char(Token::Write(None)),
-                '!' => self.eat_single_char(Token::Execute(None)),
+                '@' => self.eat_single_char(Token::Read),
+                '%' => self.eat_single_char(Token::Write),
+                '!' => self.eat_single_char(Token::Execute),
                 '[' => self.eat_single_char(Token::OpenBracket),
                 ']' => self.eat_single_char(Token::CloseBracket),
                 '(' => self.eat_single_char(Token::OpenParen),

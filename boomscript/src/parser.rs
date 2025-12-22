@@ -59,9 +59,12 @@ impl<T: Iterator<Item=Token>> Parser<T> {
                 Token::Drop => words.push(Word::Drop),
                 Token::Swap => words.push(Word::Swap),
                 Token::Over => words.push(Word::Over),
-                Token::Read(identifier) => words.push(Word::Read(identifier)),
-                Token::Write(identifier) => words.push(Word::Write(identifier)),
-                Token::Execute(identifier) => words.push(Word::Execute(identifier)),
+
+                // TODO: check if followed by identifier
+                Token::Read => words.push(Word::Read(None)),
+                Token::Write => words.push(Word::Write(None)),
+                Token::Execute => words.push(Word::Execute(None)),
+
                 Token::OpenBracket => words.push(self.parse_array()?),
                 Token::CloseBracket => return Err(ParseError::UnexpectedToken(token)),
                 Token::OpenParen => words.push(self.parse_block()?),
@@ -120,9 +123,10 @@ impl<T: Iterator<Item=Token>> Parser<T> {
                     Token::Drop => Ok(Word::Drop),
                     Token::Swap => Ok(Word::Swap),
                     Token::Over => Ok(Word::Over),
-                    Token::Read(identifier) => Ok(Word::Read(identifier)),
-                    Token::Write(identifier) => Ok(Word::Write(identifier)),
-                    Token::Execute(identifier) => Ok(Word::Execute(identifier)),
+                    // TODO: check if followed by identifier
+                    Token::Read => Ok(Word::Read(None)),
+                    Token::Write => Ok(Word::Write(None)),
+                    Token::Execute => Ok(Word::Execute(None)),
                     Token::OpenBracket => todo!("parse block"),
                     Token::CloseBracket => Err(ParseError::UnexpectedToken(token)),
                     Token::OpenParen => todo!("parse block"),
