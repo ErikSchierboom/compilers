@@ -84,7 +84,7 @@ impl<T: Iterator<Item=Token>> Parser<T> {
             }
         }
 
-        Ok(Word::Array(words))
+        Ok(Word::Block(words))
     }
 
     fn parse_array(&mut self) -> Result<Word, ParseError> {
@@ -101,7 +101,7 @@ impl<T: Iterator<Item=Token>> Parser<T> {
             }
         }
 
-        Ok(Word::Block(words))
+        Ok(Word::Array(words))
     }
 
     fn parse_word(&mut self) -> Result<Word, ParseError> {

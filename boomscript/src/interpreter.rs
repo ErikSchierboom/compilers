@@ -2,7 +2,7 @@ use crate::parser::{parse, ParseError, Word};
 use std::collections::HashMap;
 
 trait Executable {
-    fn execute(&self, interpreter: &mut Interpreter);
+    fn execute(&self, interpreter: &mut Interpreter) -> Result<(), RuntimeError>;
 }
 
 #[derive(Clone, Debug)]
@@ -14,7 +14,7 @@ pub enum Value {
 }
 
 impl Executable for Word {
-    fn execute(&self, interpreter: &mut Interpreter) {
+    fn execute(&self, interpreter: &mut Interpreter) -> Result<(), RuntimeError> {
         match self {
             Word::Int(i) => interpreter.stack.push(Value::ValInt(i.clone())),
             Word::Quote(word) => interpreter.stack.push(Value::ValQuote(word.clone())),
@@ -23,7 +23,7 @@ impl Executable for Word {
                 let stack_size_before = interpreter.stack.len();
 
                 for word in words {
-                    word.execute(interpreter)
+                    word.execute(interpreter)?
                 }
 
                 let elements = interpreter.stack.drain(stack_size_before..).collect();
@@ -34,6 +34,20 @@ impl Executable for Word {
                 let l = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
                 match (l, r) {
                     (Value::ValInt(l_i), Value::ValInt(r_i)) => interpreter.stack.push(Value::ValInt(l_i + r_i)),
+                    (Value::ValInt(i), Value::ValArray(mut a)) |
+                    (Value::ValArray(mut a), Value::ValInt(i)) => {
+                        // TODO: mutable array in-place to save on allocations
+
+                        for value in a.iter_mut() {
+                            match value {
+                                Value::ValInt(vi) => *vi = *vi + i,
+                                Value::ValArray(_) => todo!("support nested arrays"),
+                                _ => return Err(RuntimeError::ArrayHasNonNumericElement)
+                            }
+                        }
+
+                        interpreter.stack.push(Value::ValArray(a))
+                    }
                     _ => panic!("cannot add values on stack")
                 }
             }
@@ -100,19 +114,22 @@ impl Executable for Word {
                 match value {
                     Value::ValBlock(words) => {
                         for word in words {
-                            word.execute(interpreter)
+                            word.execute(interpreter)?
                         }
                     }
                     _ => panic!("expected quoted string")
                 }
             }
         }
+
+        Ok(())
     }
 }
 
 #[derive(Debug)]
 pub enum RuntimeError {
     Parse(ParseError),
+    ArrayHasNonNumericElement,
 }
 
 struct Interpreter {
@@ -129,7 +146,7 @@ impl Interpreter {
     fn run(&mut self) -> Result<Vec<Value>, RuntimeError> {
         let words = self.words.clone();
         for word in words {
-            word.execute(self)
+            word.execute(self)?
         }
 
         Ok(self.stack.iter().map(|value| value.clone()).collect())
