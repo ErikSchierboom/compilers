@@ -21,6 +21,10 @@ pub struct Span {
 
 impl Span {
     pub const EMPTY: Self = Self { start: 0, end: 0 };
+    
+    pub fn merge(&self, other: &Self) -> Self {
+        Self { start: self.start.min(other.start), end: self.end.max(other.end) }
+    }
 }
 
 impl Default for Span {
@@ -41,7 +45,7 @@ impl From<(usize, usize)> for Span {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Token {
     pub kind: TokenKind,
     pub location: Span,
@@ -102,7 +106,18 @@ impl<T: Iterator<Item=char>> Lexer<T> {
     }
 
     fn next_char(&mut self) -> Option<char> {
-        self.next_char_if(|_| true)
+        match self.chars.next() {
+            Some((pos, c)) => {
+                self.pos = pos;
+                self.char = Some(c);
+                self.char
+            }
+            None => {
+                self.pos += 1;
+                self.char = None;
+                self.char
+            }
+        }
     }
 
     fn emit(&mut self, token: Token) {
