@@ -16,21 +16,21 @@ pub enum Value {
 impl Executable for Word {
     fn execute(&self, interpreter: &mut Interpreter) -> Result<(), RuntimeError> {
         match self {
-            Word::Int(i) => interpreter.stack.push(Value::ValInt(i.clone())),
-            Word::Quote(word) => interpreter.stack.push(Value::ValQuote(word.clone())),
-            Word::Identifier(name) => todo!("evaluate word"),
-            Word::Block(words) => interpreter.stack.push(Value::ValBlock(words.clone())),
-            Word::Array(words) => {
+            Word::Int { value, .. } => interpreter.stack.push(Value::ValInt(value.clone())),
+            Word::Quote { name, .. } => interpreter.stack.push(Value::ValQuote(name.clone())),
+            Word::Identifier { name, .. } => todo!("evaluate word"),
+            Word::Block { words, .. } => interpreter.stack.push(Value::ValBlock(words.clone())),
+            Word::Array { elements, .. } => {
                 let stack_size_before = interpreter.stack.len();
 
-                for word in words {
-                    word.execute(interpreter)?
+                for element in elements {
+                    element.execute(interpreter)?
                 }
 
                 let elements = interpreter.stack.drain(stack_size_before..).collect();
                 interpreter.stack.push(Value::ValArray(elements))
             }
-            Word::Add => {
+            Word::Add { .. } => {
                 let r = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
                 let l = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
                 match (l, r) {
@@ -52,7 +52,7 @@ impl Executable for Word {
                     _ => panic!("cannot add values on stack")
                 }
             }
-            Word::Mul => {
+            Word::Mul { .. } => {
                 let r = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
                 let l = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
                 match (l, r) {
@@ -61,20 +61,20 @@ impl Executable for Word {
                 }
             }
 
-            Word::Dup => {
+            Word::Dup { .. } => {
                 let last = interpreter.stack.last().unwrap_or_else(|| panic!("not enough values on stack"));
                 interpreter.stack.push(last.clone())
             }
-            Word::Drop => {
+            Word::Drop { .. } => {
                 interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
             }
-            Word::Swap => {
+            Word::Swap { .. } => {
                 let r = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
                 let l = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
                 interpreter.stack.push(l);
                 interpreter.stack.push(r)
             }
-            Word::Over => {
+            Word::Over { .. } => {
                 let r = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
                 let l = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
                 interpreter.stack.push(l.clone());
@@ -82,7 +82,7 @@ impl Executable for Word {
                 interpreter.stack.push(l)
             }
 
-            Word::Read(variable) => {
+            Word::Read { variable, .. } => {
                 let name = match variable {
                     Some(name) => name.clone(),
                     None => match interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack")) {
@@ -94,7 +94,7 @@ impl Executable for Word {
                 let variable = interpreter.variables.get(&name).unwrap_or_else(|| panic!("could not find variable"));
                 interpreter.stack.push(variable.clone())
             }
-            Word::Write(variable) => {
+            Word::Write { variable, .. } => {
                 let name = match variable {
                     Some(name) => name.clone(),
                     None => match interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack")) {
@@ -106,7 +106,7 @@ impl Executable for Word {
                 let value = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
                 interpreter.variables.insert(name, value);
             }
-            Word::Execute(variable) => {
+            Word::Execute { variable, .. } => {
                 let value = match variable {
                     Some(name) => interpreter.variables.get(name).unwrap_or_else(|| panic!("could not find variable")).clone(),
                     None => interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"))

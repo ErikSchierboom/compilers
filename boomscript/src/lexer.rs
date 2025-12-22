@@ -1,24 +1,44 @@
 use std::iter::{Enumerate, Peekable};
 
 #[derive(Debug)]
-pub enum LexError {
+pub enum LexErrorKind {
     ExpectedIdentifier,
     UnknownIdentifier(String),
     UnexpectedToken(char),
 }
 
-pub struct Span {
-    start: u32,
-    end: u32,
-}
-
-pub struct Spanned<T> {
-    value: T,
-    location: Span,
+#[derive(Debug)]
+pub struct LexError {
+    pub kind: LexErrorKind,
+    pub location: Span,
 }
 
 #[derive(Clone, Debug)]
-pub enum Token {
+pub struct Span {
+    pub start: usize,
+    pub end: usize,
+}
+
+impl From<usize> for Span {
+    fn from(start: usize) -> Self {
+        Self { start, end: start + 1 }
+    }
+}
+
+impl From<(usize, usize)> for Span {
+    fn from((start, end): (usize, usize)) -> Self {
+        Self { start, end }
+    }
+}
+
+#[derive(Debug)]
+pub struct Token {
+    pub kind: TokenKind,
+    pub location: Span,
+}
+
+#[derive(Clone, Debug)]
+pub enum TokenKind {
     // Literals
     Int(i64),
     Identifier(String),
@@ -83,26 +103,28 @@ impl<T: Iterator<Item=char>> Lexer<T> {
         self.tokens.push(token)
     }
 
-    fn eat_single_char(&mut self, token: Token) {
+    fn eat_single_char(&mut self, token_kind: TokenKind) {
         self.next_char();
-        self.emit(token)
+        self.emit(Token { kind: token_kind, location: (self.pos - 1, self.pos).into() })
     }
 
     fn tokenize(mut self) -> Result<Vec<Token>, LexError> {
         while let Some(char) = self.char {
+            let start_pos = self.pos;
+
             match char {
                 ' ' | '\r' | '\n' | '\t' => {
                     self.next_char();
                 }
-                '+' => self.eat_single_char(Token::Add),
-                '*' => self.eat_single_char(Token::Mul),
-                '@' => self.eat_single_char(Token::Read),
-                '%' => self.eat_single_char(Token::Write),
-                '!' => self.eat_single_char(Token::Execute),
-                '[' => self.eat_single_char(Token::OpenBracket),
-                ']' => self.eat_single_char(Token::CloseBracket),
-                '(' => self.eat_single_char(Token::OpenParen),
-                ')' => self.eat_single_char(Token::CloseParen),
+                '+' => self.eat_single_char(TokenKind::Add),
+                '*' => self.eat_single_char(TokenKind::Mul),
+                '@' => self.eat_single_char(TokenKind::Read),
+                '%' => self.eat_single_char(TokenKind::Write),
+                '!' => self.eat_single_char(TokenKind::Execute),
+                '[' => self.eat_single_char(TokenKind::OpenBracket),
+                ']' => self.eat_single_char(TokenKind::CloseBracket),
+                '(' => self.eat_single_char(TokenKind::OpenParen),
+                ')' => self.eat_single_char(TokenKind::CloseParen),
                 '\'' => {
                     let mut word = String::new();
                     word.push(char);
@@ -111,10 +133,10 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                         word.push(char);
                     }
                     if word.is_empty() {
-                        return Err(LexError::ExpectedIdentifier);
+                        return Err(LexError { kind: LexErrorKind::ExpectedIdentifier, location: (self.pos, self.pos + 1).into() });
                     }
 
-                    self.eat_single_char(Token::Quote(word))
+                    self.eat_single_char(TokenKind::Quote(word))
                 }
                 '0'..='9' => {
                     let mut number = String::new();
@@ -124,7 +146,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                         number.push(char);
                     }
 
-                    self.eat_single_char(Token::Int(number.parse().unwrap()))
+                    self.eat_single_char(TokenKind::Int(number.parse().unwrap()))
                 }
                 'a'..='z' | 'A'..='Z' => {
                     let mut name = String::new();
@@ -136,14 +158,14 @@ impl<T: Iterator<Item=char>> Lexer<T> {
 
                     // TODO: add separate function to convert string to keyword
                     match &name[..] {
-                        "dup" => self.eat_single_char(Token::Dup),
-                        "drop" => self.eat_single_char(Token::Drop),
-                        "swap" => self.eat_single_char(Token::Swap),
-                        "over" => self.eat_single_char(Token::Over),
-                        _ => self.eat_single_char(Token::Identifier(name)),
+                        "dup" => self.eat_single_char(TokenKind::Dup),
+                        "drop" => self.eat_single_char(TokenKind::Drop),
+                        "swap" => self.eat_single_char(TokenKind::Swap),
+                        "over" => self.eat_single_char(TokenKind::Over),
+                        _ => self.eat_single_char(TokenKind::Identifier(name)),
                     }
                 }
-                _ => return Err(LexError::UnexpectedToken(char))
+                _ => return Err(LexError { kind: LexErrorKind::UnexpectedToken(char), location: (start_pos, start_pos + 1).into() })
             }
         }
 
@@ -151,7 +173,9 @@ impl<T: Iterator<Item=char>> Lexer<T> {
     }
 }
 
+// TODO: add iterator implementation
+
 pub fn tokenize(code: &str) -> Result<Vec<Token>, LexError> {
-    let mut lexer = Lexer::new(code.chars());
+    let lexer = Lexer::new(code.chars());
     lexer.tokenize()
 }
