@@ -21,7 +21,7 @@ pub struct Span {
 
 impl Span {
     pub const EMPTY: Self = Self { start: 0, end: 0 };
-    
+
     pub fn merge(&self, other: &Self) -> Self {
         Self { start: self.start.min(other.start), end: self.end.max(other.end) }
     }
@@ -61,12 +61,6 @@ pub enum TokenKind {
     // Binary operators
     Add,
     Mul,
-
-    // Stack operators
-    Dup,
-    Drop,
-    Swap,
-    Over,
 
     // Memory operators
     Read,
@@ -177,14 +171,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                         name.push(char);
                     }
 
-                    // TODO: add separate function to convert string to keyword
-                    match &name[..] {
-                        "dup" => self.eat_single_char(TokenKind::Dup),
-                        "drop" => self.eat_single_char(TokenKind::Drop),
-                        "swap" => self.eat_single_char(TokenKind::Swap),
-                        "over" => self.eat_single_char(TokenKind::Over),
-                        _ => self.eat_single_char(TokenKind::Identifier(name)),
-                    }
+                    self.eat_single_char(TokenKind::Identifier(name))
                 }
                 _ => return Err(LexError { kind: LexErrorKind::UnexpectedToken(char), location: (start_pos, start_pos + 1).into() })
             }

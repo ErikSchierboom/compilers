@@ -7,6 +7,7 @@ pub enum ParseErrorKind {
     ExpectedToken(TokenKind),
     UnexpectedToken(TokenKind),
     UnexpectedEndOfFile,
+    UnexpectedIdentifier(String),
 }
 
 #[derive(Debug)]
@@ -16,11 +17,33 @@ pub struct ParseError {
 }
 
 #[derive(Clone, Debug)]
+pub enum BuiltinKind {
+    Dup,
+    Drop,
+    Swap,
+    Over,
+}
+
+impl TryFrom<&str> for BuiltinKind {
+    type Error = ParseErrorKind;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "dup" => Ok(BuiltinKind::Dup),
+            "drop" => Ok(BuiltinKind::Drop),
+            "swap" => Ok(BuiltinKind::Swap),
+            "over" => Ok(BuiltinKind::Over),
+            _ => Err(ParseErrorKind::UnexpectedIdentifier(value.to_string()))
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum Word {
     // Literals
     Int { value: i64, location: Span },
     Quote { name: String, location: Span },
-    Identifier { name: String, location: Span },
+    Builtin { kind: BuiltinKind, location: Span },
 
     // Composite
     Block { words: Vec<Word>, location: Span },
@@ -29,12 +52,6 @@ pub enum Word {
     // Binary operators
     Add { location: Span },
     Mul { location: Span },
-
-    // Stack operators
-    Dup { location: Span },
-    Drop { location: Span },
-    Swap { location: Span },
-    Over { location: Span },
 
     // Memory operators
     Read { variable: Option<String>, location: Span },
@@ -98,13 +115,14 @@ impl<T: Iterator<Item=Token>> Parser<T> {
         let result = match &token.kind {
             TokenKind::Int(value) => Ok(Word::Int { value: value.clone(), location }),
             TokenKind::Quote(name) => Ok(Word::Quote { name: name.clone(), location }),
-            TokenKind::Identifier(name) => Ok(Word::Identifier { name: name.clone(), location }),
+            TokenKind::Identifier(name) => {
+                match BuiltinKind::try_from(&name[..]) {
+                    Ok(builtin_kind) => Ok(Word::Builtin { kind: builtin_kind, location }),
+                    Err(parse_error_kind) => Err(ParseError { kind: parse_error_kind, location })
+                }
+            }
             TokenKind::Add => Ok(Word::Add { location }),
             TokenKind::Mul => Ok(Word::Mul { location }),
-            TokenKind::Dup => Ok(Word::Dup { location }),
-            TokenKind::Drop => Ok(Word::Drop { location }),
-            TokenKind::Swap => Ok(Word::Swap { location }),
-            TokenKind::Over => Ok(Word::Over { location }),
 
             // TODO: check if followed by identifier
             TokenKind::Read => Ok(Word::Read { variable: None, location }),
