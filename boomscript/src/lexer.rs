@@ -24,6 +24,8 @@ pub enum Token {
     // Delimiters
     OpenBracket,
     CloseBracket,
+    OpenParen,
+    CloseParen,
 }
 
 struct Lexer<T: Iterator<Item=char>> {
@@ -49,6 +51,8 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 '!' => tokens.push(Token::Execute(self.lex_word())),
                 '[' => tokens.push(Token::OpenBracket),
                 ']' => tokens.push(Token::CloseBracket),
+                '(' => tokens.push(Token::OpenParen),
+                ')' => tokens.push(Token::CloseParen),
                 '\'' => {
                     match self.lex_word() {
                         Some(word) => tokens.push(Token::Quote(word)),

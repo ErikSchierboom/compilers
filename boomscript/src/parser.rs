@@ -9,6 +9,7 @@ pub enum Word {
 
     // Composite
     Block(Vec<Word>),
+    Array(Vec<Word>),
 
     // Binary operators
     Add,
@@ -51,8 +52,10 @@ impl<T: Iterator<Item=Token>> Parser<T> {
                 Token::Read(identifier) => words.push(Word::Read(identifier)),
                 Token::Write(identifier) => words.push(Word::Write(identifier)),
                 Token::Execute(identifier) => words.push(Word::Execute(identifier)),
-                Token::OpenBracket => words.push(self.parse_block()),
-                Token::CloseBracket => panic!("unexpected token")
+                Token::OpenBracket => words.push(self.parse_array()),
+                Token::CloseBracket => panic!("unexpected token"),
+                Token::OpenParen => words.push(self.parse_block()),
+                Token::CloseParen => panic!("unexpected token")
             }
         }
 
@@ -60,6 +63,23 @@ impl<T: Iterator<Item=Token>> Parser<T> {
     }
 
     fn parse_block(&mut self) -> Word {
+        let mut words = Vec::new();
+
+        loop {
+            match self.tokens.peek() {
+                None => panic!("expected ')'"),
+                Some(Token::CloseParen) => {
+                    self.tokens.next();
+                    break;
+                }
+                Some(_) => words.push(self.parse_word().unwrap_or_else(|| panic!("expected word")))
+            }
+        }
+
+        Word::Array(words)
+    }
+
+    fn parse_array(&mut self) -> Word {
         let mut words = Vec::new();
 
         loop {
@@ -91,7 +111,9 @@ impl<T: Iterator<Item=Token>> Parser<T> {
             Token::Write(identifier) => Some(Word::Write(identifier)),
             Token::Execute(identifier) => Some(Word::Execute(identifier)),
             Token::OpenBracket => todo!("parse block"),
-            Token::CloseBracket => panic!("unexpected token")
+            Token::CloseBracket => panic!("unexpected token"),
+            Token::OpenParen => todo!("parse block"),
+            Token::CloseParen => panic!("unexpected token")
         }
     }
 }

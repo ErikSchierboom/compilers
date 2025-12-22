@@ -1,6 +1,6 @@
 use crate::parser::{parse, Word};
 use std::collections::HashMap;
-
+use itertools::Itertools;
 // TODO: introduce trait for executing word
 
 trait Executable {
@@ -12,6 +12,7 @@ pub enum Value {
     ValInt(i64),
     ValQuote(String),
     ValBlock(Vec<Word>),
+    ValArray(Vec<Value>),
 }
 
 impl Executable for Word {
@@ -20,6 +21,16 @@ impl Executable for Word {
             Word::Int(i) => interpreter.stack.push(Value::ValInt(i.clone())),
             Word::Quote(word) => interpreter.stack.push(Value::ValQuote(word.clone())),
             Word::Block(words) => interpreter.stack.push(Value::ValBlock(words.clone())),
+            Word::Array(words) => {
+                let stack_size_before = interpreter.stack.len();
+                
+                for word in words {
+                    word.execute(interpreter)
+                }
+                
+                let elements = interpreter.stack.drain(stack_size_before..).collect();
+                interpreter.stack.push(Value::ValArray(elements))
+            }
             Word::Add => {
                 let r = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
                 let l = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
@@ -40,7 +51,7 @@ impl Executable for Word {
             Word::Dup => {
                 let last = interpreter.stack.last().unwrap_or_else(|| panic!("not enough values on stack"));
                 interpreter.stack.push(last.clone())
-            },
+            }
             Word::Drop => {
                 interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
             }
