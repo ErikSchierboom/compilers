@@ -134,25 +134,15 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             TokenKind::Mul => Ok(Word::Mul { location }),
 
             TokenKind::Read => {
-                // TODO: DRY duplicate code
-                let variable = self.tokens
-                    .next_if(|token| token.kind == TokenKind::Identifier)
-                    .map(|identifier_token| self.lexeme(&identifier_token.location).into());
-
+                let variable = self.parse_variable();
                 Ok(Word::Read { variable, location })
             }
             TokenKind::Write => {
-                let variable = self.tokens
-                    .next_if(|token| token.kind == TokenKind::Identifier)
-                    .map(|identifier_token| self.lexeme(&identifier_token.location).into());
-
+                let variable = self.parse_variable();
                 Ok(Word::Write { variable, location })
             }
             TokenKind::Execute => {
-                let variable = self.tokens
-                    .next_if(|token| token.kind == TokenKind::Identifier)
-                    .map(|identifier_token| self.lexeme(&identifier_token.location).into());
-
+                let variable = self.parse_variable();
                 Ok(Word::Execute { variable, location })
             }
 
@@ -163,6 +153,12 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         };
 
         Some(result)
+    }
+
+    fn parse_variable(&mut self) -> Option<String> {
+        self.tokens
+            .next_if(|token| token.kind == TokenKind::Identifier)
+            .map(|token| self.lexeme(&token.location).into())
     }
 
     fn parse_block(&mut self, start_location: Span) -> Result<Word, ParseError> {
