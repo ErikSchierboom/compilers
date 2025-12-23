@@ -69,9 +69,15 @@ struct Parser<'a, T: Iterator<Item=Token>> {
 
 impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
     fn new(code: &'a str, tokens: T) -> Self {
-        let mut parser = Self { code, tokens: tokens.peekable(), token: None, words: Vec::new() };
-        parser.next_token();
-        parser
+        Self { code, tokens: tokens.peekable(), token: None, words: Vec::new() }
+    }
+
+    fn parse(mut self) -> Result<Vec<Word>, ParseError> {
+        while let Some(word) = self.parse_word() {
+            self.words.push(word?);
+        }
+
+        Ok(self.words)
     }
 
     fn next_token(&mut self) -> Option<&Token> {
@@ -101,17 +107,8 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         }
     }
 
-    fn parse(mut self) -> Result<Vec<Word>, ParseError> {
-        while self.token.is_some() {
-            let word = self.parse_word()?;
-            self.words.push(word);
-        }
-
-        Ok(self.words)
-    }
-
-    fn parse_word(&mut self) -> Result<Word, ParseError> {
-        let token = self.token.as_ref().unwrap();
+    fn parse_word(&mut self) -> Option<Result<Word, ParseError>> {
+        let token = self.tokens.next()?;
         let location = token.location.clone();
 
         let result = match &token.kind {
@@ -132,10 +129,33 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
 
             // TODO: check if followed by identifier
             TokenKind::Read => {
-                Ok(Word::Read { variable: None, location })
+                // TODO: DRY duplicate code
+                let variable = if let Some(token) = self.tokens.next_if(|token| token.kind == TokenKind::Identifier) {
+                    Some(self.code[token.location.start..token.location.end].to_string())
+                } else {
+                    None
+                };
+
+                Ok(Word::Read { variable, location })
             }
-            TokenKind::Write => Ok(Word::Write { variable: None, location }),
-            TokenKind::Execute => Ok(Word::Execute { variable: None, location }),
+            TokenKind::Write => {
+                let variable = if let Some(token) = self.tokens.next_if(|token| token.kind == TokenKind::Identifier) {
+                    Some(self.code[token.location.start..token.location.end].to_string())
+                } else {
+                    None
+                };
+
+                Ok(Word::Write { variable, location })
+            }
+            TokenKind::Execute => {
+                let variable = if let Some(token) = self.tokens.next_if(|token| token.kind == TokenKind::Identifier) {
+                    Some(self.code[token.location.start..token.location.end].to_string())
+                } else {
+                    None
+                };
+
+                Ok(Word::Execute { variable, location })
+            }
 
             TokenKind::OpenBracket => self.parse_array(),
             TokenKind::OpenParen => self.parse_block(),
@@ -143,45 +163,45 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             _ => Err(ParseError { kind: ParseErrorKind::UnexpectedToken(token.kind.clone()), location })
         };
 
-        self.next_token();
-
-        result
+        Some(result)
     }
 
     fn parse_block(&mut self) -> Result<Word, ParseError> {
-        self.next_token();
-
-        let mut words = Vec::new();
-
-        loop {
-            // TODO: use correct location
-            match &self.token {
-                Some(Token { kind: TokenKind::CloseParen, .. }) => return Ok(Word::Block { words, location: Span::EMPTY }),
-                Some(_) => {
-                    let word = self.parse_word()?;
-                    words.push(word);
-                }
-                None => return Err(ParseError { kind: ParseErrorKind::ExpectedToken(TokenKind::CloseParen), location: Span::EMPTY })
-            }
-        }
+        todo!("parse block")
+        // self.next_token();
+        //
+        // let mut words = Vec::new();
+        //
+        // loop {
+        //     // TODO: use correct location
+        //     match &self.token {
+        //         Some(Token { kind: TokenKind::CloseParen, .. }) => return Ok(Word::Block { words, location: Span::EMPTY }),
+        //         Some(_) => {
+        //             let word = self.parse_word()?;
+        //             words.push(word);
+        //         }
+        //         None => return Err(ParseError { kind: ParseErrorKind::ExpectedToken(TokenKind::CloseParen), location: Span::EMPTY })
+        //     }
+        // }
     }
 
     fn parse_array(&mut self) -> Result<Word, ParseError> {
-        self.next_token();
-
-        let mut elements = Vec::new();
-
-        loop {
-            // TODO: use correct location
-            match &self.token {
-                Some(Token { kind: TokenKind::CloseBracket, .. }) => return Ok(Word::Array { elements, location: Span::EMPTY }),
-                Some(_) => {
-                    let word = self.parse_word()?;
-                    elements.push(word);
-                }
-                None => return Err(ParseError { kind: ParseErrorKind::ExpectedToken(TokenKind::CloseBracket), location: Span::EMPTY })
-            }
-        }
+        todo!("parse array")
+        // self.next_token();
+        //
+        // let mut elements = Vec::new();
+        //
+        // loop {
+        //     // TODO: use correct location
+        //     match &self.token {
+        //         Some(Token { kind: TokenKind::CloseBracket, .. }) => return Ok(Word::Array { elements, location: Span::EMPTY }),
+        //         Some(_) => {
+        //             let word = self.parse_word()?;
+        //             elements.push(word);
+        //         }
+        //         None => return Err(ParseError { kind: ParseErrorKind::ExpectedToken(TokenKind::CloseBracket), location: Span::EMPTY })
+        //     }
+        // }
     }
 }
 
