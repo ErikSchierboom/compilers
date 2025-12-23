@@ -1,4 +1,5 @@
-use crate::lexer::{tokenize, LexError, Span, Token, TokenKind};
+use crate::lexer::{tokenize, LexError, Token, TokenKind};
+use crate::location::Span;
 use std::iter::Peekable;
 
 #[derive(Debug)]

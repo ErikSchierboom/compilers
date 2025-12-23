@@ -1,3 +1,4 @@
+use crate::location::Span;
 use std::iter::{Enumerate, Peekable};
 
 #[derive(Debug)]
@@ -11,26 +12,6 @@ pub enum LexErrorKind {
 pub struct LexError {
     pub kind: LexErrorKind,
     pub location: Span,
-}
-
-#[derive(Clone, Debug)]
-pub struct Span {
-    pub start: usize,
-    pub end: usize,
-}
-
-impl Span {
-    pub const EMPTY: Self = Self { start: 0, end: 0 };
-
-    pub fn merge(&self, other: &Self) -> Self {
-        Self { start: self.start.min(other.start), end: self.end.max(other.end) }
-    }
-}
-
-impl Default for Span {
-    fn default() -> Self {
-        Span::EMPTY
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -78,33 +59,33 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 ' ' | '\r' | '\n' | '\t' => {
                     continue
                 }
-                '+' => self.emit_token(TokenKind::Add, start_pos, start_pos + 1),
-                '*' => self.emit_token(TokenKind::Mul, start_pos, start_pos + 1),
-                '@' => self.emit_token(TokenKind::Read, start_pos, start_pos + 1),
-                '%' => self.emit_token(TokenKind::Write, start_pos, start_pos + 1),
-                '!' => self.emit_token(TokenKind::Execute, start_pos, start_pos + 1),
-                '[' => self.emit_token(TokenKind::OpenBracket, start_pos, start_pos + 1),
-                ']' => self.emit_token(TokenKind::CloseBracket, start_pos, start_pos + 1),
-                '(' => self.emit_token(TokenKind::OpenParen, start_pos, start_pos + 1),
-                ')' => self.emit_token(TokenKind::CloseParen, start_pos, start_pos + 1),
-                '\'' => self.emit_token(TokenKind::Quote, start_pos, start_pos + 1),
+                '+' => self.emit(TokenKind::Add, start_pos, start_pos + 1),
+                '*' => self.emit(TokenKind::Mul, start_pos, start_pos + 1),
+                '@' => self.emit(TokenKind::Read, start_pos, start_pos + 1),
+                '%' => self.emit(TokenKind::Write, start_pos, start_pos + 1),
+                '!' => self.emit(TokenKind::Execute, start_pos, start_pos + 1),
+                '[' => self.emit(TokenKind::OpenBracket, start_pos, start_pos + 1),
+                ']' => self.emit(TokenKind::CloseBracket, start_pos, start_pos + 1),
+                '(' => self.emit(TokenKind::OpenParen, start_pos, start_pos + 1),
+                ')' => self.emit(TokenKind::CloseParen, start_pos, start_pos + 1),
+                '\'' => self.emit(TokenKind::Quote, start_pos, start_pos + 1),
                 '0'..='9' => {
                     let mut end_pos = start_pos + 1;
 
-                    while let Some((next_pos, _)) = self.chars.next_if(|(_, c)| c.is_ascii_digit()) {
-                        end_pos = next_pos + 1
+                    while self.chars.next_if(|(_, c)| c.is_ascii_digit()).is_some() {
+                        end_pos += 1
                     }
 
-                    self.emit_token(TokenKind::Int, start_pos, end_pos)
+                    self.emit(TokenKind::Int, start_pos, end_pos)
                 }
                 'a'..='z' | 'A'..='Z' => {
                     let mut end_pos = start_pos + 1;
 
-                    while let Some((next_pos, _)) = self.chars.next_if(|(_, c)| c.is_ascii_alphanumeric()) {
-                        end_pos = next_pos + 1
+                    while self.chars.next_if(|(_, c)| c.is_ascii_alphanumeric()).is_some() {
+                        end_pos += 1
                     }
 
-                    self.emit_token(TokenKind::Identifier, start_pos, end_pos)
+                    self.emit(TokenKind::Identifier, start_pos, end_pos)
                 }
                 _ => return Err(LexError { kind: LexErrorKind::UnexpectedToken(char), location: Span { start: start_pos, end: start_pos + 1 } })
             }
@@ -113,8 +94,8 @@ impl<T: Iterator<Item=char>> Lexer<T> {
         Ok(self.tokens)
     }
 
-    fn emit_token(&mut self, token_kind: TokenKind, start: usize, end: usize) {
-        let token = Token { kind: token_kind, location: Span { start, end } };
+    fn emit(&mut self, kind: TokenKind, start: usize, end: usize) {
+        let token = Token { kind, location: Span { start, end } };
         self.tokens.push(token)
     }
 }
