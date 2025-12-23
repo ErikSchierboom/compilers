@@ -1,6 +1,7 @@
 use crate::lexer::{tokenize, LexError, Token, TokenKind};
 use crate::location::Span;
 use std::iter::Peekable;
+use crate::parser::ParseErrorKind::Lex;
 
 #[derive(Debug)]
 pub enum ParseErrorKind {
@@ -9,12 +10,20 @@ pub enum ParseErrorKind {
     UnexpectedToken(TokenKind),
     UnexpectedEndOfFile,
     UnexpectedIdentifier(String),
+    ExpectedIdentifier,
 }
 
 #[derive(Debug)]
 pub struct ParseError {
     kind: ParseErrorKind,
     location: Span,
+}
+
+impl From<LexError> for ParseError {
+    fn from(value: LexError) -> Self {
+        let location = value.location.clone();
+        Self { kind: Lex(value), location }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -80,33 +89,6 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         Ok(self.words)
     }
 
-    fn next_token(&mut self) -> Option<&Token> {
-        match self.tokens.next() {
-            Some(token) => {
-                self.token = Some(token);
-                self.token.as_ref()
-            }
-            None => {
-                self.token = None;
-                None
-            }
-        }
-    }
-
-    fn next_token_if_kind(&mut self, kind: TokenKind) -> Option<&Token> {
-        self.next_token_if(|token| token.kind == kind)
-    }
-
-    fn next_token_if(&mut self, f: impl FnOnce(&Token) -> bool) -> Option<&Token> {
-        match self.tokens.next_if(f) {
-            Some(token) => {
-                self.token = Some(token);
-                self.token.as_ref()
-            }
-            None => None
-        }
-    }
-
     fn parse_word(&mut self) -> Option<Result<Word, ParseError>> {
         let token = self.tokens.next()?;
         let location = token.location.clone();
@@ -114,9 +96,14 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         let result = match &token.kind {
             TokenKind::Int => Ok(Word::Int { value: self.code[location.start..location.end].parse().unwrap(), location }),
             TokenKind::Quote => {
-                // TODO: check for identifier
-                todo!("check quote for identifier")
-                // Ok(Word::Quote { name: name.clone(), location })
+                match self.tokens.next() {
+                    Some(Token { kind: TokenKind::Identifier, .. }) => {
+                        let name = self.code[token.location.start..token.location.end].to_string();
+                        Ok(Word::Quote { name, location })
+                    }
+                    Some(token) => Err(ParseError { kind: ParseErrorKind::ExpectedIdentifier, location: token.location }),
+                    None => Err(ParseError { kind: ParseErrorKind::ExpectedIdentifier, location }),
+                }
             }
             TokenKind::Identifier => {
                 match BuiltinKind::try_from(&self.code[location.start..location.end]) {
@@ -206,16 +193,11 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
 }
 
 pub fn parse(code: &str) -> Result<Vec<Word>, ParseError> {
-    // TODO: clean this up
     match tokenize(code) {
         Ok(tokens) => {
             let parser = Parser::new(code, tokens.into_iter());
             parser.parse()
         }
-        Err(lex_error) => {
-            let location = lex_error.location.clone();
-            let kind = ParseErrorKind::Lex(lex_error);
-            Err(ParseError { kind, location })
-        }
+        Err(lex_error) => Err(lex_error.into())
     }
 }
