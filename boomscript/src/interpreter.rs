@@ -142,6 +142,12 @@ pub enum RuntimeError {
     ArrayHasNonNumericElement,
 }
 
+impl From<ParseError> for RuntimeError {
+    fn from(value: ParseError) -> Self {
+        Self::Parse(value)
+    }
+}
+
 struct Interpreter {
     words: Vec<Word>,
     stack: Vec<Value>,
@@ -164,7 +170,7 @@ impl Interpreter {
 }
 
 pub fn interpret(code: &str) -> Result<Vec<Value>, RuntimeError> {
-    let words = parse(code).map_err(RuntimeError::Parse)?;
+    let words = parse(code)?;
     let mut interpreter = Interpreter::new(words);
     interpreter.run()
 }

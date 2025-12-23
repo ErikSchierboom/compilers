@@ -1,7 +1,7 @@
 use crate::lexer::{tokenize, LexError, Token, TokenKind};
 use crate::location::Span;
-use std::iter::Peekable;
 use crate::parser::ParseErrorKind::Lex;
+use std::iter::Peekable;
 
 #[derive(Debug)]
 pub enum ParseErrorKind {
@@ -193,11 +193,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
 }
 
 pub fn parse(code: &str) -> Result<Vec<Word>, ParseError> {
-    match tokenize(code) {
-        Ok(tokens) => {
-            let parser = Parser::new(code, tokens.into_iter());
-            parser.parse()
-        }
-        Err(lex_error) => Err(lex_error.into())
-    }
+    let tokens = tokenize(code)?;
+    let parser = Parser::new(code, tokens.into_iter());
+    parser.parse()
 }
