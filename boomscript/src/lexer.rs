@@ -33,18 +33,6 @@ impl Default for Span {
     }
 }
 
-impl From<usize> for Span {
-    fn from(start: usize) -> Self {
-        Self { start, end: start + 1 }
-    }
-}
-
-impl From<(usize, usize)> for Span {
-    fn from((start, end): (usize, usize)) -> Self {
-        Self { start, end }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct Token {
     pub kind: TokenKind,
@@ -76,84 +64,58 @@ pub enum TokenKind {
 
 struct Lexer<T: Iterator<Item=char>> {
     chars: Peekable<Enumerate<T>>,
-    char: Option<char>,
-    pos: usize,
     tokens: Vec<Token>,
 }
 
 impl<T: Iterator<Item=char>> Lexer<T> {
     fn new(code: T) -> Self {
-        let mut lexer = Self { chars: code.enumerate().peekable(), char: None, pos: 0, tokens: Vec::new() };
-        lexer.next_char();
-        lexer
-    }
-
-    fn next_char_if(&mut self, f: impl FnOnce(&char) -> bool) -> Option<char> {
-        match self.chars.next_if(|(_, c)| f(c)) {
-            Some((pos, c)) => {
-                self.pos = pos;
-                self.char = Some(c);
-                self.char
-            }
-            None => None
-        }
-    }
-
-    fn next_char(&mut self) -> Option<char> {
-        match self.chars.next() {
-            Some((pos, c)) => {
-                self.pos = pos;
-                self.char = Some(c);
-                self.char
-            }
-            None => {
-                self.pos += 1;
-                self.char = None;
-                self.char
-            }
-        }
-    }
-
-    fn emit(&mut self, token: Token) {
-        self.tokens.push(token)
-    }
-
-    fn eat_single_char(&mut self, token_kind: TokenKind) {
-        self.next_char();
-        self.emit(Token { kind: token_kind, location: (self.pos - 1, self.pos).into() })
+        Self { chars: code.enumerate().peekable(), tokens: Vec::new() }
     }
 
     fn tokenize(mut self) -> Result<Vec<Token>, LexError> {
-        while let Some(char) = self.char {
-            let start_pos = self.pos;
-
+        while let Some((start_pos, char)) = self.chars.next() {
             match char {
                 ' ' | '\r' | '\n' | '\t' => {
-                    self.next_char();
+                    continue
                 }
-                '+' => self.eat_single_char(TokenKind::Add),
-                '*' => self.eat_single_char(TokenKind::Mul),
-                '@' => self.eat_single_char(TokenKind::Read),
-                '%' => self.eat_single_char(TokenKind::Write),
-                '!' => self.eat_single_char(TokenKind::Execute),
-                '[' => self.eat_single_char(TokenKind::OpenBracket),
-                ']' => self.eat_single_char(TokenKind::CloseBracket),
-                '(' => self.eat_single_char(TokenKind::OpenParen),
-                ')' => self.eat_single_char(TokenKind::CloseParen),
-                '\'' => self.eat_single_char(TokenKind::Quote),
+                '+' => self.emit_token(TokenKind::Add, start_pos, start_pos + 1),
+                '*' => self.emit_token(TokenKind::Mul, start_pos, start_pos + 1),
+                '@' => self.emit_token(TokenKind::Read, start_pos, start_pos + 1),
+                '%' => self.emit_token(TokenKind::Write, start_pos, start_pos + 1),
+                '!' => self.emit_token(TokenKind::Execute, start_pos, start_pos + 1),
+                '[' => self.emit_token(TokenKind::OpenBracket, start_pos, start_pos + 1),
+                ']' => self.emit_token(TokenKind::CloseBracket, start_pos, start_pos + 1),
+                '(' => self.emit_token(TokenKind::OpenParen, start_pos, start_pos + 1),
+                ')' => self.emit_token(TokenKind::CloseParen, start_pos, start_pos + 1),
+                '\'' => self.emit_token(TokenKind::Quote, start_pos, start_pos + 1),
                 '0'..='9' => {
-                    while self.next_char_if(char::is_ascii_digit).is_some() {}
-                    self.eat_single_char(TokenKind::Int)
+                    let mut end_pos = start_pos + 1;
+
+                    while let Some((next_pos, _)) = self.chars.next_if(|(_, c)| c.is_ascii_digit()) {
+                        end_pos = next_pos + 1
+                    }
+
+                    self.emit_token(TokenKind::Int, start_pos, end_pos)
                 }
                 'a'..='z' | 'A'..='Z' => {
-                    while self.next_char_if(char::is_ascii_alphanumeric).is_some() {}
-                    self.eat_single_char(TokenKind::Identifier)
+                    let mut end_pos = start_pos + 1;
+
+                    while let Some((next_pos, _)) = self.chars.next_if(|(_, c)| c.is_ascii_alphanumeric()) {
+                        end_pos = next_pos + 1
+                    }
+
+                    self.emit_token(TokenKind::Identifier, start_pos, end_pos)
                 }
-                _ => return Err(LexError { kind: LexErrorKind::UnexpectedToken(char), location: (start_pos, start_pos + 1).into() })
+                _ => return Err(LexError { kind: LexErrorKind::UnexpectedToken(char), location: Span { start: start_pos, end: start_pos + 1 } })
             }
         }
 
         Ok(self.tokens)
+    }
+
+    fn emit_token(&mut self, token_kind: TokenKind, start: usize, end: usize) {
+        let token = Token { kind: token_kind, location: Span { start, end } };
+        self.tokens.push(token)
     }
 }
 
