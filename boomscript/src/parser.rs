@@ -133,32 +133,25 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             TokenKind::Add => Ok(Word::Add { location }),
             TokenKind::Mul => Ok(Word::Mul { location }),
 
-            // TODO: check if followed by identifier
             TokenKind::Read => {
                 // TODO: DRY duplicate code
-                let variable = if let Some(token) = self.tokens.next_if(|token| token.kind == TokenKind::Identifier) {
-                    Some(self.lexeme(&location).into())
-                } else {
-                    None
-                };
+                let variable = self.tokens
+                    .next_if(|token| token.kind == TokenKind::Identifier)
+                    .map(|identifier_token| self.lexeme(&identifier_token.location).into());
 
                 Ok(Word::Read { variable, location })
             }
             TokenKind::Write => {
-                let variable = if let Some(token) = self.tokens.next_if(|token| token.kind == TokenKind::Identifier) {
-                    Some(self.lexeme(&location).into())
-                } else {
-                    None
-                };
+                let variable = self.tokens
+                    .next_if(|token| token.kind == TokenKind::Identifier)
+                    .map(|identifier_token| self.lexeme(&identifier_token.location).into());
 
                 Ok(Word::Write { variable, location })
             }
             TokenKind::Execute => {
-                let variable = if let Some(token) = self.tokens.next_if(|token| token.kind == TokenKind::Identifier) {
-                    Some(self.lexeme(&location).into())
-                } else {
-                    None
-                };
+                let variable = self.tokens
+                    .next_if(|token| token.kind == TokenKind::Identifier)
+                    .map(|identifier_token| self.lexeme(&identifier_token.location).into());
 
                 Ok(Word::Execute { variable, location })
             }
