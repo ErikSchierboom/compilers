@@ -8,7 +8,6 @@ pub enum ParseErrorKind {
     Lex(LexError),
     ExpectedToken(TokenKind),
     UnexpectedToken(TokenKind),
-    UnexpectedEndOfFile,
     UnexpectedIdentifier(String),
     ExpectedIdentifier,
 }
@@ -97,6 +96,10 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         Self { code, tokens: tokens.peekable(), words: Vec::new() }
     }
 
+    fn lexeme(&self, location: &Span) -> &'a str {
+        &self.code[location.start..location.end]
+    }
+
     fn parse(mut self) -> Result<Vec<Word>, ParseError> {
         while let Some(word) = self.parse_word() {
             self.words.push(word?);
@@ -110,11 +113,11 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         let location = token.location.clone();
 
         let result = match &token.kind {
-            TokenKind::Int => Ok(Word::Int { value: self.code[location.start..location.end].parse().unwrap(), location }),
+            TokenKind::Int => Ok(Word::Int { value: self.lexeme(&location).parse().unwrap(), location }),
             TokenKind::Quote => {
                 match self.tokens.next() {
                     Some(Token { kind: TokenKind::Identifier, .. }) => {
-                        let name = self.code[token.location.start..token.location.end].to_string();
+                        let name = self.lexeme(&location).into();
                         Ok(Word::Quote { name, location })
                     }
                     Some(token) => Err(ParseError { kind: ParseErrorKind::ExpectedIdentifier, location: token.location }),
@@ -122,7 +125,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                 }
             }
             TokenKind::Identifier => {
-                match BuiltinKind::try_from(&self.code[location.start..location.end]) {
+                match BuiltinKind::try_from(self.lexeme(&location)) {
                     Ok(builtin_kind) => Ok(Word::Builtin { kind: builtin_kind, location }),
                     Err(parse_error_kind) => Err(ParseError { kind: parse_error_kind, location })
                 }
@@ -134,7 +137,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             TokenKind::Read => {
                 // TODO: DRY duplicate code
                 let variable = if let Some(token) = self.tokens.next_if(|token| token.kind == TokenKind::Identifier) {
-                    Some(self.code[token.location.start..token.location.end].to_string())
+                    Some(self.lexeme(&location).into())
                 } else {
                     None
                 };
@@ -143,7 +146,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             }
             TokenKind::Write => {
                 let variable = if let Some(token) = self.tokens.next_if(|token| token.kind == TokenKind::Identifier) {
-                    Some(self.code[token.location.start..token.location.end].to_string())
+                    Some(self.lexeme(&location).into())
                 } else {
                     None
                 };
@@ -152,7 +155,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             }
             TokenKind::Execute => {
                 let variable = if let Some(token) = self.tokens.next_if(|token| token.kind == TokenKind::Identifier) {
-                    Some(self.code[token.location.start..token.location.end].to_string())
+                    Some(self.lexeme(&location).into())
                 } else {
                     None
                 };
