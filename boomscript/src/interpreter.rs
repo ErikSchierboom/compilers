@@ -51,7 +51,7 @@ impl Executable for Word {
             Word::Quote { name, .. } => interpreter.stack.push(Value::ValQuote(name.clone())),
             Word::Builtin { kind, .. } => kind.execute(interpreter)?,
             Word::Block { words, .. } => interpreter.stack.push(Value::ValBlock(words.clone())),
-            Word::Array { elements, .. } => {
+            Word::Array { words: elements, .. } => {
                 let stack_size_before = interpreter.stack.len();
 
                 for element in elements {

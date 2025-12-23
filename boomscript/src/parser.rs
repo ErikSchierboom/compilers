@@ -57,7 +57,7 @@ pub enum Word {
 
     // Composite
     Block { words: Vec<Word>, location: Span },
-    Array { elements: Vec<Word>, location: Span },
+    Array { words: Vec<Word>, location: Span },
 
     // Binary operators
     Add { location: Span },
@@ -69,16 +69,32 @@ pub enum Word {
     Execute { variable: Option<String>, location: Span },
 }
 
+impl Word {
+    fn location(&self) -> &Span {
+        match self {
+            Word::Int { location, .. } |
+            Word::Quote { location, .. } |
+            Word::Builtin { location, .. } |
+            Word::Block { location, .. } |
+            Word::Array { location, .. } |
+            Word::Add { location, .. } |
+            Word::Mul { location, .. } |
+            Word::Read { location, .. } |
+            Word::Write { location, .. } |
+            Word::Execute { location, .. } => location
+        }
+    }
+}
+
 struct Parser<'a, T: Iterator<Item=Token>> {
     code: &'a str,
     tokens: Peekable<T>,
-    token: Option<Token>,
     words: Vec<Word>,
 }
 
 impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
     fn new(code: &'a str, tokens: T) -> Self {
-        Self { code, tokens: tokens.peekable(), token: None, words: Vec::new() }
+        Self { code, tokens: tokens.peekable(), words: Vec::new() }
     }
 
     fn parse(mut self) -> Result<Vec<Word>, ParseError> {
@@ -144,8 +160,8 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                 Ok(Word::Execute { variable, location })
             }
 
-            TokenKind::OpenBracket => self.parse_array(),
-            TokenKind::OpenParen => self.parse_block(),
+            TokenKind::OpenBracket => self.parse_array(location),
+            TokenKind::OpenParen => self.parse_block(location),
 
             _ => Err(ParseError { kind: ParseErrorKind::UnexpectedToken(token.kind.clone()), location })
         };
@@ -153,42 +169,46 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         Some(result)
     }
 
-    fn parse_block(&mut self) -> Result<Word, ParseError> {
-        todo!("parse block")
-        // self.next_token();
-        //
-        // let mut words = Vec::new();
-        //
-        // loop {
-        //     // TODO: use correct location
-        //     match &self.token {
-        //         Some(Token { kind: TokenKind::CloseParen, .. }) => return Ok(Word::Block { words, location: Span::EMPTY }),
-        //         Some(_) => {
-        //             let word = self.parse_word()?;
-        //             words.push(word);
-        //         }
-        //         None => return Err(ParseError { kind: ParseErrorKind::ExpectedToken(TokenKind::CloseParen), location: Span::EMPTY })
-        //     }
-        // }
+    fn parse_block(&mut self, start_location: Span) -> Result<Word, ParseError> {
+        let mut words = Vec::new();
+
+        loop {
+            if let Some(token) = self.tokens.next_if(|token| token.kind == TokenKind::CloseParen) {
+                let location = start_location.merge(&token.location);
+                return Ok(Word::Block { words, location });
+            }
+
+            match self.parse_word() {
+                Some(Ok(word)) => words.push(word),
+                Some(Err(error)) => return Err(error.into()),
+                None => {
+                    let last_location = words.last().map(|word| word.location()).unwrap_or(&start_location).clone();
+                    let location = Span { start: last_location.end + 1, end: last_location.end + 2 };
+                    return Err(ParseError { kind: ParseErrorKind::ExpectedToken(TokenKind::CloseParen), location });
+                }
+            }
+        }
     }
 
-    fn parse_array(&mut self) -> Result<Word, ParseError> {
-        todo!("parse array")
-        // self.next_token();
-        //
-        // let mut elements = Vec::new();
-        //
-        // loop {
-        //     // TODO: use correct location
-        //     match &self.token {
-        //         Some(Token { kind: TokenKind::CloseBracket, .. }) => return Ok(Word::Array { elements, location: Span::EMPTY }),
-        //         Some(_) => {
-        //             let word = self.parse_word()?;
-        //             elements.push(word);
-        //         }
-        //         None => return Err(ParseError { kind: ParseErrorKind::ExpectedToken(TokenKind::CloseBracket), location: Span::EMPTY })
-        //     }
-        // }
+    fn parse_array(&mut self, start_location: Span) -> Result<Word, ParseError> {
+        let mut words = Vec::new();
+
+        loop {
+            if let Some(token) = self.tokens.next_if(|token| token.kind == TokenKind::CloseBracket) {
+                let location = start_location.merge(&token.location);
+                return Ok(Word::Array { words, location });
+            }
+
+            match self.parse_word() {
+                Some(Ok(word)) => words.push(word),
+                Some(Err(error)) => return Err(error.into()),
+                None => {
+                    let last_location = words.last().map(|word| word.location()).unwrap_or(&start_location).clone();
+                    let location = Span { start: last_location.end + 1, end: last_location.end + 2 };
+                    return Err(ParseError { kind: ParseErrorKind::ExpectedToken(TokenKind::CloseBracket), location });
+                }
+            }
+        }
     }
 }
 
