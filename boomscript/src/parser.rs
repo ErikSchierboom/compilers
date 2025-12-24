@@ -180,9 +180,9 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
 
             match self.parse_word() {
                 Some(Ok(word)) => words.push(word),
-                Some(Err(error)) => return Err(error.into()),
+                Some(Err(error)) => return Err(error),
                 None => {
-                    let last_location = words.last().map(|word| word.location()).unwrap_or(&start).clone();
+                    let last_location = words.last().map(Word::location).unwrap_or(&start);
                     let location = Span { start: last_location.end + 1, end: last_location.end + 2 };
                     return Err(ParseError { kind: ParseErrorKind::ExpectedToken(end_delimiter), location });
                 }
