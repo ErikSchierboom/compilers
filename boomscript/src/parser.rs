@@ -162,33 +162,22 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
     }
 
     fn parse_block(&mut self, start_location: Span) -> Result<Word, ParseError> {
-        let mut words = Vec::new();
-
-        loop {
-            if let Some(token) = self.tokens.next_if(|token| token.kind == TokenKind::CloseParen) {
-                let location = start_location.merge(&token.location);
-                return Ok(Word::Block { words, location });
-            }
-
-            match self.parse_word() {
-                Some(Ok(word)) => words.push(word),
-                Some(Err(error)) => return Err(error.into()),
-                None => {
-                    let last_location = words.last().map(|word| word.location()).unwrap_or(&start_location).clone();
-                    let location = Span { start: last_location.end + 1, end: last_location.end + 2 };
-                    return Err(ParseError { kind: ParseErrorKind::ExpectedToken(TokenKind::CloseParen), location });
-                }
-            }
-        }
+        let (words, location) = self.parse_delimited(TokenKind::CloseParen, start_location)?;
+        Ok(Word::Block { words, location })
     }
 
     fn parse_array(&mut self, start_location: Span) -> Result<Word, ParseError> {
+        let (words, location) = self.parse_delimited(TokenKind::CloseBracket, start_location)?;
+        Ok(Word::Array { words, location })
+    }
+
+    fn parse_delimited(&mut self, close_token_kind: TokenKind, start_location: Span) -> Result<(Vec<Word>, Span), ParseError> {
         let mut words = Vec::new();
 
         loop {
-            if let Some(token) = self.tokens.next_if(|token| token.kind == TokenKind::CloseBracket) {
+            if let Some(token) = self.tokens.next_if(|token| token.kind == close_token_kind) {
                 let location = start_location.merge(&token.location);
-                return Ok(Word::Array { words, location });
+                return Ok((words, location));
             }
 
             match self.parse_word() {
@@ -197,7 +186,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                 None => {
                     let last_location = words.last().map(|word| word.location()).unwrap_or(&start_location).clone();
                     let location = Span { start: last_location.end + 1, end: last_location.end + 2 };
-                    return Err(ParseError { kind: ParseErrorKind::ExpectedToken(TokenKind::CloseBracket), location });
+                    return Err(ParseError { kind: ParseErrorKind::ExpectedToken(close_token_kind), location });
                 }
             }
         }
