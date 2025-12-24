@@ -9,24 +9,24 @@ impl Executable for BuiltinKind {
     fn execute(&self, interpreter: &mut Interpreter) -> Result<(), RuntimeError> {
         match self {
             BuiltinKind::Dup { .. } => {
-                let last = interpreter.stack.last().unwrap_or_else(|| panic!("not enough values on stack"));
+                let last = interpreter.stack.last().ok_or_else(|| RuntimeError::EmptyStack)?;
                 interpreter.stack.push(last.clone());
                 Ok(())
             }
             BuiltinKind::Drop { .. } => {
-                interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
+                interpreter.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)?;
                 Ok(())
             }
             BuiltinKind::Swap { .. } => {
-                let r = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
-                let l = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
+                let r = interpreter.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)?;
+                let l = interpreter.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)?;
                 interpreter.stack.push(r);
                 interpreter.stack.push(l);
                 Ok(())
             }
             BuiltinKind::Over { .. } => {
-                let r = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
-                let l = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
+                let r = interpreter.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)?;
+                let l = interpreter.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)?;
                 interpreter.stack.push(l.clone());
                 interpreter.stack.push(r);
                 interpreter.stack.push(l);
@@ -49,8 +49,8 @@ impl Executable for Word {
         match self {
             Word::Int { value, .. } => interpreter.stack.push(Value::ValInt(value.clone())),
             Word::Quote { name, .. } => interpreter.stack.push(Value::ValQuote(name.clone())),
-            Word::Builtin { kind, .. } => kind.execute(interpreter)?,
             Word::Block { words, .. } => interpreter.stack.push(Value::ValBlock(words.clone())),
+            Word::Builtin { kind, .. } => kind.execute(interpreter)?,
             Word::Array { words: elements, .. } => {
                 let stack_size_before = interpreter.stack.len();
 
@@ -62,8 +62,8 @@ impl Executable for Word {
                 interpreter.stack.push(Value::ValArray(elements))
             }
             Word::Add { .. } => {
-                let r = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
-                let l = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
+                let r = interpreter.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)?;
+                let l = interpreter.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)?;
                 match (l, r) {
                     (Value::ValInt(l_i), Value::ValInt(r_i)) => interpreter.stack.push(Value::ValInt(l_i + r_i)),
                     (Value::ValInt(i), Value::ValArray(mut a)) |
@@ -80,45 +80,45 @@ impl Executable for Word {
 
                         interpreter.stack.push(Value::ValArray(a))
                     }
-                    _ => panic!("cannot add values on stack")
+                    _ => return Err(RuntimeError::UnsupportedOperands)
                 }
             }
             Word::Mul { .. } => {
-                let r = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
-                let l = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
+                let r = interpreter.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)?;
+                let l = interpreter.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)?;
                 match (l, r) {
                     (Value::ValInt(l_i), Value::ValInt(r_i)) => interpreter.stack.push(Value::ValInt(l_i * r_i)),
-                    _ => panic!("cannot add values on stack")
+                    _ => return Err(RuntimeError::UnsupportedOperands)
                 }
             }
             Word::Read { variable, .. } => {
                 let name = match variable {
                     Some(name) => name.clone(),
-                    None => match interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack")) {
+                    None => match interpreter.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)? {
                         Value::ValQuote(name) => name,
-                        _ => panic!("expected quoted string")
+                        _ => return Err(RuntimeError::ExpectedQuote)
                     }
                 };
 
-                let variable = interpreter.variables.get(&name).unwrap_or_else(|| panic!("could not find variable"));
+                let variable = interpreter.variables.get(&name).ok_or_else(|| RuntimeError::UnknownVariable(name.clone())).cloned()?;
                 interpreter.stack.push(variable.clone())
             }
             Word::Write { variable, .. } => {
                 let name = match variable {
                     Some(name) => name.clone(),
-                    None => match interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack")) {
+                    None => match interpreter.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)? {
                         Value::ValQuote(name) => name,
-                        _ => panic!("expected quoted string")
+                        _ => return Err(RuntimeError::ExpectedQuote)
                     }
                 };
 
-                let value = interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"));
+                let value = interpreter.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)?;
                 interpreter.variables.insert(name, value);
             }
             Word::Execute { variable, .. } => {
                 let value = match variable {
-                    Some(name) => interpreter.variables.get(name).unwrap_or_else(|| panic!("could not find variable")).clone(),
-                    None => interpreter.stack.pop().unwrap_or_else(|| panic!("not enough values on stack"))
+                    Some(name) => interpreter.variables.get(name).ok_or_else(|| RuntimeError::UnknownVariable(name.clone())).cloned()?,
+                    None => interpreter.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)?
                 };
 
                 match value {
@@ -127,7 +127,7 @@ impl Executable for Word {
                             word.execute(interpreter)?
                         }
                     }
-                    _ => panic!("expected quoted string")
+                    _ => return Err(RuntimeError::ExpectedBlock)
                 }
             }
         }
@@ -140,6 +140,11 @@ impl Executable for Word {
 pub enum RuntimeError {
     Parse(ParseError),
     ArrayHasNonNumericElement,
+    EmptyStack,
+    UnknownVariable(String),
+    ExpectedBlock,
+    UnsupportedOperands,
+    ExpectedQuote,
 }
 
 impl From<ParseError> for RuntimeError {

@@ -1,4 +1,3 @@
-use std::fmt::{Display, Formatter};
 use crate::location::Span;
 use std::iter::{Enumerate, Peekable};
 
