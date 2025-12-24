@@ -159,18 +159,18 @@ impl Interpreter {
         Self { words, stack: Vec::new(), variables: HashMap::new() }
     }
 
-    fn run(&mut self) -> Result<Vec<Value>, RuntimeError> {
+    fn run(mut self) -> Result<Vec<Value>, RuntimeError> {
         let words = self.words.clone();
         for word in words {
-            word.execute(self)?
+            word.execute(&mut self)?
         }
 
-        Ok(self.stack.iter().map(|value| value.clone()).collect())
+        Ok(self.stack)
     }
 }
 
 pub fn interpret(code: &str) -> Result<Vec<Value>, RuntimeError> {
     let words = parse(code)?;
-    let mut interpreter = Interpreter::new(words);
+    let interpreter = Interpreter::new(words);
     interpreter.run()
 }
