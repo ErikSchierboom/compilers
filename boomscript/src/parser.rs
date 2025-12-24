@@ -126,8 +126,8 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             }
             TokenKind::Identifier => {
                 match BuiltinKind::try_from(self.lexeme(&location)) {
-                    Ok(builtin_kind) => Ok(Word::Builtin { kind: builtin_kind, location }),
-                    Err(parse_error_kind) => Err(ParseError { kind: parse_error_kind, location })
+                    Ok(kind) => Ok(Word::Builtin { kind, location }),
+                    Err(kind) => Err(ParseError { kind, location })
                 }
             }
             TokenKind::Add => Ok(Word::Add { location }),
