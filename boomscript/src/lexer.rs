@@ -100,8 +100,6 @@ impl<T: Iterator<Item=char>> Lexer<T> {
     }
 }
 
-// TODO: add iterator implementation
-
 pub fn tokenize(code: &str) -> Result<Vec<Token>, LexError> {
     let lexer = Lexer::new(code.chars());
     lexer.tokenize()
