@@ -4,18 +4,18 @@ use crate::parser::ParseErrorKind::Lex;
 use std::iter::Peekable;
 
 #[derive(Debug)]
+pub struct ParseError {
+    kind: ParseErrorKind,
+    location: Span,
+}
+
+#[derive(Debug)]
 pub enum ParseErrorKind {
     Lex(LexError),
     ExpectedToken(TokenKind),
     UnexpectedToken(TokenKind),
     UnexpectedIdentifier(String),
     ExpectedIdentifier,
-}
-
-#[derive(Debug)]
-pub struct ParseError {
-    kind: ParseErrorKind,
-    location: Span,
 }
 
 impl From<LexError> for ParseError {
@@ -101,7 +101,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             TokenKind::Identifier => {
                 let name = self.lexeme(&location).into();
                 Ok(Word::Call { name, location })
-            },
+            }
             TokenKind::Add => Ok(Word::Add { location }),
             TokenKind::Mul => Ok(Word::Mul { location }),
 

@@ -2,16 +2,16 @@ use crate::location::Span;
 use std::iter::{Enumerate, Peekable};
 
 #[derive(Debug)]
+pub struct LexError {
+    pub kind: LexErrorKind,
+    pub location: Span,
+}
+
+#[derive(Debug)]
 pub enum LexErrorKind {
     ExpectedIdentifier,
     UnknownIdentifier(String),
     UnexpectedToken(char),
-}
-
-#[derive(Debug)]
-pub struct LexError {
-    pub kind: LexErrorKind,
-    pub location: Span,
 }
 
 #[derive(Clone, Debug)]
