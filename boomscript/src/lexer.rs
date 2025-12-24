@@ -1,7 +1,6 @@
+use std::fmt::{Display, Formatter};
 use crate::location::Span;
 use std::iter::{Enumerate, Peekable};
-
-// TODO: impl Display
 
 #[derive(Debug)]
 pub enum LexErrorKind {

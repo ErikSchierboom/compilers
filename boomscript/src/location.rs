@@ -19,3 +19,5 @@ impl Default for Span {
 }
 
 // TODO: add functionality to map Span to line/column
+// TODO: add diagnostic struct
+// TODO: impl Display for diagnostic
