@@ -96,10 +96,6 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         Self { code, tokens: tokens.peekable(), words: Vec::new() }
     }
 
-    fn lexeme(&self, location: &Span) -> &'a str {
-        &self.code[location.start..location.end]
-    }
-
     fn parse(mut self) -> Result<Vec<Word>, ParseError> {
         while let Some(word) = self.parse_word() {
             self.words.push(word?);
@@ -188,6 +184,10 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                 }
             }
         }
+    }
+
+    fn lexeme(&self, location: &Span) -> &'a str {
+        &self.code[location.start..location.end]
     }
 }
 
