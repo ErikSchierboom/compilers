@@ -1,4 +1,4 @@
-use crate::parser::{parse, BuiltinKind, ParseError, Word};
+use crate::parser::{parse, ParseError, Word};
 use std::collections::HashMap;
 use std::ops::{Add, Mul};
 
@@ -6,27 +6,35 @@ trait Executable {
     fn execute(&self, interpreter: &mut Interpreter) -> Result<(), RuntimeError>;
 }
 
-impl Executable for BuiltinKind {
+#[derive(Clone)]
+enum Builtin {
+    Dup,
+    Drop,
+    Swap,
+    Over,
+}
+
+impl Executable for Builtin {
     fn execute(&self, interpreter: &mut Interpreter) -> Result<(), RuntimeError> {
         match self {
-            BuiltinKind::Dup { .. } => {
+            Builtin::Dup { .. } => {
                 let top = interpreter.pop()?;
                 interpreter.push(top.clone());
                 interpreter.push(top);
                 Ok(())
             }
-            BuiltinKind::Drop { .. } => {
+            Builtin::Drop { .. } => {
                 interpreter.pop()?;
                 Ok(())
             }
-            BuiltinKind::Swap { .. } => {
+            Builtin::Swap { .. } => {
                 let top = interpreter.pop()?;
                 let snd = interpreter.pop()?;
                 interpreter.push(top);
                 interpreter.push(snd);
                 Ok(())
             }
-            BuiltinKind::Over { .. } => {
+            Builtin::Over { .. } => {
                 let top = interpreter.pop()?;
                 let snd = interpreter.pop()?;
                 interpreter.push(snd.clone());
@@ -52,13 +60,16 @@ impl Executable for Word {
             Word::Int { value, .. } => interpreter.push(Value::ValInt(value.clone())),
             Word::Quote { name, .. } => interpreter.push(Value::ValQuote(name.clone())),
             Word::Block { words, .. } => interpreter.push(Value::ValBlock(words.clone())),
-            Word::Builtin { kind, .. } => kind.execute(interpreter)?,
+            Word::Call { name, .. } => {
+                let builtin = interpreter.get_builtin(name)?.clone();
+                builtin.execute(interpreter)?;
+            }
             Word::Array { words, .. } => interpreter.push_array(words)?,
             Word::Add { .. } => interpreter.binary_int_op(i64::add)?,
             Word::Mul { .. } => interpreter.binary_int_op(i64::mul)?,
             Word::Read { variable, .. } => {
                 let name = interpreter.variable_name(variable)?;
-                let variable = interpreter.variables.get(&name).ok_or_else(|| RuntimeError::UnknownVariable(name.clone())).cloned()?;
+                let variable = interpreter.variables.get(&name).ok_or_else(|| RuntimeError::UnknownWord(name.clone())).cloned()?;
                 interpreter.push(variable.clone())
             }
             Word::Write { variable, .. } => {
@@ -92,12 +103,11 @@ pub enum RuntimeError {
     Parse(ParseError),
     ArrayHasNonNumericElement,
     EmptyStack,
-    UnknownVariable(String),
+    UnknownWord(String),
     ExpectedBlock,
     UnsupportedOperands,
     ExpectedQuote,
     VariableAlreadyExists,
-    ArrayHasNegativeStackEffe,
     ArrayHasNegativeStackEffect,
 }
 
@@ -111,11 +121,22 @@ struct Interpreter {
     words: Vec<Word>,
     stack: Vec<Value>,
     variables: HashMap<String, Value>,
+    builtins: HashMap<String, Builtin>,
 }
 
 impl Interpreter {
     fn new(words: Vec<Word>) -> Self {
-        Self { words, stack: Vec::new(), variables: HashMap::new() }
+        Self {
+            words,
+            stack: Vec::new(),
+            variables: HashMap::new(),
+            builtins: HashMap::from([
+                ("dup".into(), Builtin::Dup),
+                ("drop".into(), Builtin::Drop),
+                ("swap".into(), Builtin::Swap),
+                ("over".into(), Builtin::Over),
+            ]),
+        }
     }
 
     fn run(mut self) -> Result<Vec<Value>, RuntimeError> {
@@ -187,7 +208,7 @@ impl Interpreter {
     }
 
     fn get_variable(&mut self, name: &String) -> Result<Value, RuntimeError> {
-        self.variables.get(name).ok_or_else(|| RuntimeError::UnknownVariable(name.clone())).cloned()
+        self.variables.get(name).ok_or_else(|| RuntimeError::UnknownWord(name.clone())).cloned()
     }
 
     fn set_variable(&mut self, name: String, value: Value) -> Result<(), RuntimeError> {
@@ -197,6 +218,10 @@ impl Interpreter {
             self.variables.insert(name, value);
             Ok(())
         }
+    }
+
+    fn get_builtin(&self, name: &String) -> Result<&Builtin, RuntimeError> {
+        self.builtins.get(name).ok_or_else(|| RuntimeError::UnknownWord(name.clone()))
     }
 }
 

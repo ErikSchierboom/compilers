@@ -26,33 +26,11 @@ impl From<LexError> for ParseError {
 }
 
 #[derive(Clone, Debug)]
-pub enum BuiltinKind {
-    Dup,
-    Drop,
-    Swap,
-    Over,
-}
-
-impl TryFrom<&str> for BuiltinKind {
-    type Error = ParseErrorKind;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            "dup" => Ok(BuiltinKind::Dup),
-            "drop" => Ok(BuiltinKind::Drop),
-            "swap" => Ok(BuiltinKind::Swap),
-            "over" => Ok(BuiltinKind::Over),
-            _ => Err(ParseErrorKind::UnexpectedIdentifier(value.to_string()))
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
 pub enum Word {
     // Literals
     Int { value: i64, location: Span },
     Quote { name: String, location: Span },
-    Builtin { kind: BuiltinKind, location: Span },
+    Call { name: String, location: Span },
 
     // Composite
     Block { words: Vec<Word>, location: Span },
@@ -73,7 +51,7 @@ impl Word {
         match self {
             Word::Int { location, .. } |
             Word::Quote { location, .. } |
-            Word::Builtin { location, .. } |
+            Word::Call { location, .. } |
             Word::Block { location, .. } |
             Word::Array { location, .. } |
             Word::Add { location, .. } |
@@ -121,11 +99,9 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                 }
             }
             TokenKind::Identifier => {
-                match BuiltinKind::try_from(self.lexeme(&location)) {
-                    Ok(kind) => Ok(Word::Builtin { kind, location }),
-                    Err(kind) => Err(ParseError { kind, location })
-                }
-            }
+                let name = self.lexeme(&location).into();
+                Ok(Word::Call { name, location })
+            },
             TokenKind::Add => Ok(Word::Add { location }),
             TokenKind::Mul => Ok(Word::Mul { location }),
 
