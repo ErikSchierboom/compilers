@@ -160,8 +160,7 @@ impl Interpreter {
     }
 
     fn run(mut self) -> Result<Vec<Value>, RuntimeError> {
-        let words = self.words.clone();
-        for word in words {
+        for word in std::mem::take(&mut self.words) {
             word.execute(&mut self)?
         }
 

@@ -1,6 +1,8 @@
 use crate::location::Span;
 use std::iter::{Enumerate, Peekable};
 
+// TODO: impl Display
+
 #[derive(Debug)]
 pub enum LexErrorKind {
     ExpectedIdentifier,
