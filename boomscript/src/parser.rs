@@ -116,7 +116,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             TokenKind::Int => Ok(Word::Int { value: self.lexeme(&location).parse().unwrap(), location }),
             TokenKind::Quote => {
                 match self.tokens.next() {
-                    Some(Token { kind: TokenKind::Identifier, .. }) => {
+                    Some(Token { kind: TokenKind::Identifier, location }) => {
                         let name = self.lexeme(&location).into();
                         Ok(Word::Quote { name, location })
                     }
