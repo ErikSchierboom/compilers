@@ -1,4 +1,5 @@
 use crate::parser::{parse, ParseError, Word};
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::ops::{Add, Mul};
 
@@ -6,7 +7,7 @@ trait Executable {
     fn execute(&self, interpreter: &mut Interpreter) -> Result<(), RuntimeError>;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Builtin {
     Dup,
     Drop,
@@ -52,6 +53,7 @@ pub enum Value {
     ValQuote(String),
     ValBlock(Vec<Word>),
     ValArray(Vec<Value>),
+    ValBuiltin(Builtin),
 }
 
 impl Executable for Word {
@@ -61,21 +63,14 @@ impl Executable for Word {
             Word::Quote { name, .. } => interpreter.push(Value::ValQuote(name.clone())),
             Word::Block { words, .. } => interpreter.push(Value::ValBlock(words.clone())),
             Word::Call { name, .. } => {
-                match interpreter.get_variable(name) {
-                    Ok(value) => {
-                        match value {
-                            Value::ValBlock(words) => {
-                                for word in words {
-                                    word.execute(interpreter)?
-                                }
-                            }
-                            _ => return Err(RuntimeError::ExpectedBlock)
+                match interpreter.get_variable(name)? {
+                    Value::ValBlock(words) => {
+                        for word in words {
+                            word.execute(interpreter)?
                         }
                     }
-                    Err(_) => {
-                        let builtin = interpreter.get_builtin(name)?.clone();
-                        builtin.execute(interpreter)?;
-                    }
+                    Value::ValBuiltin(builtin) => builtin.execute(interpreter)?,
+                    value => interpreter.push(value)
                 }
             }
             Word::Array { words, .. } => interpreter.push_array(words)?,
@@ -108,11 +103,10 @@ pub enum RuntimeError {
     Parse(ParseError),
     ArrayHasNonNumericElement,
     EmptyStack,
+    WordAlreadyExists,
     UnknownWord(String),
-    ExpectedBlock,
     UnsupportedOperands,
     ExpectedQuote,
-    VariableAlreadyExists,
     ArrayHasNegativeStackEffect,
 }
 
@@ -126,7 +120,6 @@ struct Interpreter {
     words: Vec<Word>,
     stack: Vec<Value>,
     variables: HashMap<String, Value>,
-    builtins: HashMap<String, Builtin>,
 }
 
 impl Interpreter {
@@ -134,12 +127,11 @@ impl Interpreter {
         Self {
             words,
             stack: Vec::new(),
-            variables: HashMap::new(),
-            builtins: HashMap::from([
-                ("dup".into(), Builtin::Dup),
-                ("drop".into(), Builtin::Drop),
-                ("swap".into(), Builtin::Swap),
-                ("over".into(), Builtin::Over),
+            variables: HashMap::from([
+                ("dup".into(), Value::ValBuiltin(Builtin::Dup)),
+                ("drop".into(), Value::ValBuiltin(Builtin::Drop)),
+                ("swap".into(), Value::ValBuiltin(Builtin::Swap)),
+                ("over".into(), Value::ValBuiltin(Builtin::Over)),
             ]),
         }
     }
@@ -207,16 +199,13 @@ impl Interpreter {
     }
 
     fn set_variable(&mut self, name: String, value: Value) -> Result<(), RuntimeError> {
-        if self.variables.contains_key(&name) {
-            Err(RuntimeError::VariableAlreadyExists)
-        } else {
-            self.variables.insert(name, value);
-            Ok(())
+        match self.variables.entry(name) {
+            Entry::Occupied(_) => Err(RuntimeError::WordAlreadyExists),
+            Entry::Vacant(e) => {
+                e.insert(value);
+                Ok(())
+            }
         }
-    }
-
-    fn get_builtin(&self, name: &String) -> Result<&Builtin, RuntimeError> {
-        self.builtins.get(name).ok_or_else(|| RuntimeError::UnknownWord(name.clone()))
     }
 }
 
