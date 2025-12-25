@@ -134,10 +134,13 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         Ok(())
     }
 
-    fn emit_word_memory_operator_suffix(&mut self, token: &Token) {
-        if let Some(word_token) = self.tokens.next_if(|next_token| next_token.kind == TokenKind::Word && token.location.followed_by(&next_token.location)) {
-            let name = self.lexeme(&word_token.location).into();
-            self.emit(Word::Quote { name, location: word_token.location })
+    fn emit_word_memory_operator_suffix(&mut self, memory_operator_token: &Token) {
+        if let Some(next_word_token) = self.tokens.next_if(|next_token| {
+            next_token.kind == TokenKind::Word && 
+            memory_operator_token.location.followed_by(&next_token.location)
+        }) {
+            let name = self.lexeme(&next_word_token.location).into();
+            self.emit(Word::Quote { name, location: next_word_token.location })
         }
     }
 
