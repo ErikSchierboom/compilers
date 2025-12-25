@@ -11,7 +11,7 @@ fn main() {
     // let code = "(2 3 +) [2 4]";
     // let code = "2 'a 3 %b (2 +) %c @b !c";
 
-    let code = "(dup dup) 'mydup ! 2 mydup";
+    let code = "[[1 2] 7 [3 4] 9 [5 6]] 2 *";
 
     println!("{:?}", interpret(code))
 }

@@ -100,7 +100,7 @@ impl Executable for Word {
 #[derive(Debug)]
 pub enum RuntimeError {
     Parse(ParseError),
-    ArrayHasNonNumericElement,
+    UnsupportedArrayValue,
     EmptyStack,
     UnknownWord(String),
     UnsupportedOperands,
@@ -155,21 +155,27 @@ impl Interpreter {
         let snd = self.pop()?;
 
         match (snd, top) {
-            (Value::ValInt(l), Value::ValInt(r)) => {
-                self.push(Value::ValInt(f(l, r)));
+            (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
+                self.push(Value::ValInt(f(snd_val, top_val)));
                 Ok(())
             }
-            (Value::ValInt(i), Value::ValArray(mut arr)) |
-            (Value::ValArray(mut arr), Value::ValInt(i)) => {
-                for arr_val in arr.iter_mut() {
-                    match arr_val {
-                        Value::ValInt(arr_val_i) => *arr_val_i = f(*arr_val_i, i),
-                        Value::ValArray(_) => todo!("support nested arrays"),
-                        _ => return Err(RuntimeError::ArrayHasNonNumericElement)
+            (Value::ValInt(scalar), Value::ValArray(mut array)) |
+            (Value::ValArray(mut array), Value::ValInt(scalar)) => {
+                let mut array_mutation_queue = vec![&mut array];
+
+                while let Some(array_to_mutate) = array_mutation_queue.pop() {
+                    for array_val_to_mutate in array_to_mutate.iter_mut() {
+                        match array_val_to_mutate {
+                            Value::ValInt(array_int_value) => *array_int_value = f(*array_int_value, scalar),
+                            Value::ValArray(inner_array) => {
+                                array_mutation_queue.push(inner_array)
+                            }
+                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                        }
                     }
                 }
 
-                self.push(Value::ValArray(arr));
+                self.push(Value::ValArray(array));
                 Ok(())
             }
             _ => Err(RuntimeError::UnsupportedOperands)
