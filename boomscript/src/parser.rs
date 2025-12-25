@@ -30,7 +30,7 @@ pub enum Word {
     // Literals
     Int { value: i64, location: Span },
     Quote { name: String, location: Span },
-    Eval { name: String, location: Span },
+    Word { name: String, location: Span },
 
     // Composite
     Block { words: Vec<Word>, location: Span },
@@ -43,6 +43,7 @@ pub enum Word {
     // Memory operators
     Read { location: Span },
     Write { location: Span },
+    Execute { location: Span },
 }
 
 impl Word {
@@ -50,13 +51,14 @@ impl Word {
         match self {
             Word::Int { location, .. } |
             Word::Quote { location, .. } |
-            Word::Eval { location, .. } |
+            Word::Word { location, .. } |
             Word::Block { location, .. } |
             Word::Array { location, .. } |
             Word::Add { location, .. } |
             Word::Mul { location, .. } |
             Word::Read { location, .. } |
-            Word::Write { location, .. } => location
+            Word::Write { location, .. } |
+            Word::Execute { location, .. } => location
         }
     }
 }
@@ -98,7 +100,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             }
             TokenKind::Word => {
                 let name = self.lexeme(&location).into();
-                Ok(Word::Eval { name, location })
+                Ok(Word::Word { name, location })
             }
 
             TokenKind::Add => Ok(Word::Add { location }),
@@ -106,6 +108,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
 
             TokenKind::Read => Ok(Word::Read { location }),
             TokenKind::Write => Ok(Word::Write { location }),
+            TokenKind::Execute => Ok(Word::Execute { location }),
 
             TokenKind::OpenBracket => self.parse_array(location),
             TokenKind::OpenParen => self.parse_block(location),

@@ -6,12 +6,7 @@ mod interpreter;
 mod location;
 
 fn main() {
-    // let code = "1 %a [2 3 @a + +] %b !b";
-    // let code = "3 2 swap drop";
-    // let code = "(2 3 +) [2 4]";
-    // let code = "2 'a 3 %b (2 +) %c @b !c";
-
-    let code = "[[1 2] 7 [3 4] 9 [5 6]] 2 *";
+    let code = "(1 2) 'a % 'a @ !";
 
     println!("{:?}", interpret(code))
 }

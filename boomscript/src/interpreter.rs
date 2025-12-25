@@ -61,17 +61,10 @@ impl Executable for Word {
             Word::Int { value, .. } => interpreter.push(Value::ValInt(value.clone())),
             Word::Quote { name, .. } => interpreter.push(Value::ValQuote(name.clone())),
             Word::Block { words, .. } => interpreter.push(Value::ValBlock(words.clone())),
-            Word::Eval { name, .. } => {
-                match interpreter.get_variable(name)? {
-                    Value::ValBlock(words) => {
-                        for word in words {
-                            word.execute(interpreter)?
-                        }
-                    }
-                    Value::ValBuiltin(builtin) => builtin.execute(interpreter)?,
-                    value => interpreter.push(value)
-                }
-            }
+            Word::Word { name, .. } => {
+                let value = interpreter.get_variable(name)?;
+                interpreter.execute(value)?
+            },
             Word::Array { words, .. } => interpreter.push_array(words)?,
             Word::Add { .. } => interpreter.binary_int_op(i64::add)?,
             Word::Mul { .. } => interpreter.binary_int_op(i64::mul)?,
@@ -91,6 +84,15 @@ impl Executable for Word {
                 let value = interpreter.pop()?;
                 interpreter.set_variable(name, value)
             }
+            Word::Execute { .. } => {
+                let value = match interpreter.pop()? {
+                    Value::ValQuote(name) => interpreter.get_variable(&name)?,
+                    Value::ValBuiltin(builtin) => Value::ValBuiltin(builtin),
+                    Value::ValBlock(words) => Value::ValBlock(words),
+                    _ => return Err(RuntimeError::ExpectedExecutableWord)
+                };
+                interpreter.execute(value)?
+            }
         }
 
         Ok(())
@@ -106,6 +108,7 @@ pub enum RuntimeError {
     UnsupportedOperands,
     ExpectedQuote,
     ArrayHasNegativeStackEffect,
+    ExpectedExecutableWord,
 }
 
 impl From<ParseError> for RuntimeError {
@@ -204,6 +207,20 @@ impl Interpreter {
 
     fn set_variable(&mut self, name: String, value: Value) {
         self.variables.insert(name, value);
+    }
+
+    fn execute(&mut self, value: Value) -> Result<(), RuntimeError> {
+        match value {
+            Value::ValBlock(words) => {
+                for word in words {
+                    word.execute(self)?
+                }
+            }
+            Value::ValBuiltin(builtin) => builtin.execute(self)?,
+            value => self.push(value)
+        }
+        
+        Ok(())
     }
 }
 
