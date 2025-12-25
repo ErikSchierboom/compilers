@@ -24,7 +24,7 @@ pub struct Token {
 pub enum TokenKind {
     // Literals
     Int,
-    Identifier,
+    Word,
     Quote,
 
     // Binary operators
@@ -83,7 +83,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                         end_pos += 1
                     }
 
-                    self.emit(TokenKind::Identifier, start_pos, end_pos)
+                    self.emit(TokenKind::Word, start_pos, end_pos)
                 }
                 _ => return Err(LexError { kind: LexErrorKind::UnexpectedToken(char), location: Span { start: start_pos, end: start_pos + 1 } })
             }

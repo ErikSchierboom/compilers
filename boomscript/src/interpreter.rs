@@ -62,7 +62,7 @@ impl Executable for Word {
             Word::Int { value, .. } => interpreter.push(Value::ValInt(value.clone())),
             Word::Quote { name, .. } => interpreter.push(Value::ValQuote(name.clone())),
             Word::Block { words, .. } => interpreter.push(Value::ValBlock(words.clone())),
-            Word::Call { name, .. } => {
+            Word::Execute { name, .. } => {
                 match interpreter.get_variable(name)? {
                     Value::ValBlock(words) => {
                         for word in words {
