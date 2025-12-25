@@ -61,36 +61,41 @@ impl Executable for Word {
             Word::Quote { name, .. } => interpreter.push(Value::ValQuote(name.clone())),
             Word::Block { words, .. } => interpreter.push(Value::ValBlock(words.clone())),
             Word::Call { name, .. } => {
-                let builtin = interpreter.get_builtin(name)?.clone();
-                builtin.execute(interpreter)?;
+                match interpreter.get_variable(name) {
+                    Ok(value) => {
+                        match value {
+                            Value::ValBlock(words) => {
+                                for word in words {
+                                    word.execute(interpreter)?
+                                }
+                            }
+                            _ => return Err(RuntimeError::ExpectedBlock)
+                        }
+                    }
+                    Err(_) => {
+                        let builtin = interpreter.get_builtin(name)?.clone();
+                        builtin.execute(interpreter)?;
+                    }
+                }
             }
             Word::Array { words, .. } => interpreter.push_array(words)?,
             Word::Add { .. } => interpreter.binary_int_op(i64::add)?,
             Word::Mul { .. } => interpreter.binary_int_op(i64::mul)?,
-            Word::Read { variable, .. } => {
-                let name = interpreter.variable_name(variable)?;
-                let variable = interpreter.variables.get(&name).ok_or_else(|| RuntimeError::UnknownWord(name.clone())).cloned()?;
+            Word::Read { .. } => {
+                let name = match interpreter.pop()? {
+                    Value::ValQuote(name) => name,
+                    _ => return Err(RuntimeError::ExpectedQuote)
+                };
+                let variable = interpreter.get_variable(&name)?;
                 interpreter.push(variable.clone())
             }
-            Word::Write { variable, .. } => {
-                let name = interpreter.variable_name(variable)?;
+            Word::Write { .. } => {
+                let name = match interpreter.pop()? {
+                    Value::ValQuote(name) => name,
+                    _ => return Err(RuntimeError::ExpectedQuote)
+                };
                 let value = interpreter.pop()?;
                 interpreter.set_variable(name, value)?
-            }
-            Word::Execute { variable, .. } => {
-                let value = match variable {
-                    Some(name) => interpreter.get_variable(name)?,
-                    None => interpreter.pop()?
-                };
-
-                match value {
-                    Value::ValBlock(words) => {
-                        for word in words {
-                            word.execute(interpreter)?
-                        }
-                    }
-                    _ => return Err(RuntimeError::ExpectedBlock)
-                }
             }
         }
 
@@ -195,16 +200,6 @@ impl Interpreter {
         let elements = self.stack.drain(stack_size_before..).collect();
         self.push(Value::ValArray(elements));
         Ok(())
-    }
-
-    fn variable_name(&mut self, variable: &Option<String>) -> Result<String, RuntimeError> {
-        match variable {
-            Some(name) => Ok(name.clone()),
-            None => match self.pop()? {
-                Value::ValQuote(name) => Ok(name),
-                _ => Err(RuntimeError::ExpectedQuote)
-            }
-        }
     }
 
     fn get_variable(&mut self, name: &String) -> Result<Value, RuntimeError> {

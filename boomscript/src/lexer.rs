@@ -34,7 +34,6 @@ pub enum TokenKind {
     // Memory operators
     Read,
     Write,
-    Execute,
 
     // Delimiters
     OpenBracket,
@@ -62,8 +61,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 '+' => self.emit(TokenKind::Add, start_pos, start_pos + 1),
                 '*' => self.emit(TokenKind::Mul, start_pos, start_pos + 1),
                 '@' => self.emit(TokenKind::Read, start_pos, start_pos + 1),
-                '%' => self.emit(TokenKind::Write, start_pos, start_pos + 1),
-                '!' => self.emit(TokenKind::Execute, start_pos, start_pos + 1),
+                '!' => self.emit(TokenKind::Write, start_pos, start_pos + 1),
                 '[' => self.emit(TokenKind::OpenBracket, start_pos, start_pos + 1),
                 ']' => self.emit(TokenKind::CloseBracket, start_pos, start_pos + 1),
                 '(' => self.emit(TokenKind::OpenParen, start_pos, start_pos + 1),

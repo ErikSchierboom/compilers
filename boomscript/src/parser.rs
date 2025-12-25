@@ -41,9 +41,8 @@ pub enum Word {
     Mul { location: Span },
 
     // Memory operators
-    Read { variable: Option<String>, location: Span },
-    Write { variable: Option<String>, location: Span },
-    Execute { variable: Option<String>, location: Span },
+    Read { location: Span },
+    Write { location: Span },
 }
 
 impl Word {
@@ -57,8 +56,7 @@ impl Word {
             Word::Add { location, .. } |
             Word::Mul { location, .. } |
             Word::Read { location, .. } |
-            Word::Write { location, .. } |
-            Word::Execute { location, .. } => location
+            Word::Write { location, .. } => location
         }
     }
 }
@@ -102,21 +100,12 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                 let name = self.lexeme(&location).into();
                 Ok(Word::Call { name, location })
             }
+
             TokenKind::Add => Ok(Word::Add { location }),
             TokenKind::Mul => Ok(Word::Mul { location }),
 
-            TokenKind::Read => {
-                let variable = self.parse_variable();
-                Ok(Word::Read { variable, location })
-            }
-            TokenKind::Write => {
-                let variable = self.parse_variable();
-                Ok(Word::Write { variable, location })
-            }
-            TokenKind::Execute => {
-                let variable = self.parse_variable();
-                Ok(Word::Execute { variable, location })
-            }
+            TokenKind::Read => Ok(Word::Read { location }),
+            TokenKind::Write => Ok(Word::Write { location }),
 
             TokenKind::OpenBracket => self.parse_array(location),
             TokenKind::OpenParen => self.parse_block(location),
@@ -125,12 +114,6 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         };
 
         Some(result)
-    }
-
-    fn parse_variable(&mut self) -> Option<String> {
-        self.tokens
-            .next_if(|token| token.kind == TokenKind::Identifier)
-            .map(|token| self.lexeme(&token.location).into())
     }
 
     fn parse_block(&mut self, start: Span) -> Result<Word, ParseError> {
