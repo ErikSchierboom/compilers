@@ -30,7 +30,7 @@ pub enum Word {
     // Literals
     Int { value: i64, location: Span },
     Quote { name: String, location: Span },
-    Execute { name: String, location: Span },
+    Eval { name: String, location: Span },
 
     // Composite
     Block { words: Vec<Word>, location: Span },
@@ -50,7 +50,7 @@ impl Word {
         match self {
             Word::Int { location, .. } |
             Word::Quote { location, .. } |
-            Word::Execute { location, .. } |
+            Word::Eval { location, .. } |
             Word::Block { location, .. } |
             Word::Array { location, .. } |
             Word::Add { location, .. } |
@@ -98,7 +98,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             }
             TokenKind::Word => {
                 let name = self.lexeme(&location).into();
-                Ok(Word::Execute { name, location })
+                Ok(Word::Eval { name, location })
             }
 
             TokenKind::Add => Ok(Word::Add { location }),
