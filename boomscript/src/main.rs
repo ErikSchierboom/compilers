@@ -13,6 +13,5 @@ fn main() {
 
     let code = "(dup dup) 'mydup ! 2 mydup";
 
-    let result = interpret(code);
     println!("{:?}", interpret(code))
 }

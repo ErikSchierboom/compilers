@@ -1,5 +1,4 @@
 use crate::parser::{parse, ParseError, Word};
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::ops::{Add, Mul};
 
@@ -90,7 +89,7 @@ impl Executable for Word {
                     _ => return Err(RuntimeError::ExpectedQuote)
                 };
                 let value = interpreter.pop()?;
-                interpreter.set_variable(name, value)?
+                interpreter.set_variable(name, value)
             }
         }
 
@@ -103,7 +102,6 @@ pub enum RuntimeError {
     Parse(ParseError),
     ArrayHasNonNumericElement,
     EmptyStack,
-    WordAlreadyExists,
     UnknownWord(String),
     UnsupportedOperands,
     ExpectedQuote,
@@ -198,14 +196,8 @@ impl Interpreter {
         self.variables.get(name).ok_or_else(|| RuntimeError::UnknownWord(name.clone())).cloned()
     }
 
-    fn set_variable(&mut self, name: String, value: Value) -> Result<(), RuntimeError> {
-        match self.variables.entry(name) {
-            Entry::Occupied(_) => Err(RuntimeError::WordAlreadyExists),
-            Entry::Vacant(e) => {
-                e.insert(value);
-                Ok(())
-            }
-        }
+    fn set_variable(&mut self, name: String, value: Value) {
+        self.variables.insert(name, value);
     }
 }
 
