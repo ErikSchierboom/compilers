@@ -57,67 +57,40 @@ impl<T: Iterator<Item=char>> Lexer<T> {
     }
 
     fn tokenize(mut self) -> Result<Vec<Token>, LexError> {
-        while let Some((start_pos, char)) = self.chars.next() {
+        while let Some((start, char)) = self.chars.next() {
             match char {
-                ' ' | '\r' | '\n' | '\t' => {
-                    continue
-                }
-                '+' => self.emit(TokenKind::Add, start_pos, start_pos + 1),
-                '*' => self.emit(TokenKind::Mul, start_pos, start_pos + 1),
+                ' ' | '\r' | '\n' | '\t' => continue,
+                '+' => self.emit(TokenKind::Add, start, start + 1),
+                '*' => self.emit(TokenKind::Mul, start, start + 1),
                 '@' => {
-                    let mut end_pos = start_pos + 1;
-
-                    while self.chars.next_if(|(_, c)| c.is_ascii_alphanumeric()).is_some() {
-                        end_pos += 1
-                    }
-
-                    let kind = if end_pos == start_pos + 1 { TokenKind::Read } else { TokenKind::ReadVariable };
-                    self.emit(kind, start_pos, end_pos)
+                    let length = self.advance_while(char::is_ascii_alphanumeric);
+                    let kind = if length == 0 { TokenKind::Read } else { TokenKind::ReadVariable };
+                    self.emit(kind, start, start + 1 + length)
                 }
                 '%' => {
-                    let mut end_pos = start_pos + 1;
-
-                    while self.chars.next_if(|(_, c)| c.is_ascii_alphanumeric()).is_some() {
-                        end_pos += 1
-                    }
-
-                    let kind = if end_pos == start_pos + 1 { TokenKind::Write } else { TokenKind::WriteVariable };
-                    self.emit(kind, start_pos, end_pos)
+                    let length = self.advance_while(char::is_ascii_alphanumeric);
+                    let kind = if length == 0 { TokenKind::Write } else { TokenKind::WriteVariable };
+                    self.emit(kind, start, start + 1 + length)
                 }
                 '!' => {
-                    let mut end_pos = start_pos + 1;
-
-                    while self.chars.next_if(|(_, c)| c.is_ascii_alphanumeric()).is_some() {
-                        end_pos += 1
-                    }
-
-                    let kind = if end_pos == start_pos + 1 { TokenKind::Execute } else { TokenKind::ExecuteVariable };
-                    self.emit(kind, start_pos, end_pos)
+                    let length = self.advance_while(char::is_ascii_alphanumeric);
+                    let kind = if length == 0 { TokenKind::Execute } else { TokenKind::ExecuteVariable };
+                    self.emit(kind, start, start + 1 + length)
                 }
-                '[' => self.emit(TokenKind::OpenBracket, start_pos, start_pos + 1),
-                ']' => self.emit(TokenKind::CloseBracket, start_pos, start_pos + 1),
-                '(' => self.emit(TokenKind::OpenParen, start_pos, start_pos + 1),
-                ')' => self.emit(TokenKind::CloseParen, start_pos, start_pos + 1),
-                '\'' => self.emit(TokenKind::Quote, start_pos, start_pos + 1),
+                '[' => self.emit(TokenKind::OpenBracket, start, start + 1),
+                ']' => self.emit(TokenKind::CloseBracket, start, start + 1),
+                '(' => self.emit(TokenKind::OpenParen, start, start + 1),
+                ')' => self.emit(TokenKind::CloseParen, start, start + 1),
+                '\'' => self.emit(TokenKind::Quote, start, start + 1),
                 '0'..='9' => {
-                    let mut end_pos = start_pos + 1;
-
-                    while self.chars.next_if(|(_, c)| c.is_ascii_digit()).is_some() {
-                        end_pos += 1
-                    }
-
-                    self.emit(TokenKind::Int, start_pos, end_pos)
+                    let length = self.advance_while(char::is_ascii_digit) + 1;
+                    self.emit(TokenKind::Int, start, start + length)
                 }
                 'a'..='z' | 'A'..='Z' => {
-                    let mut end_pos = start_pos + 1;
-
-                    while self.chars.next_if(|(_, c)| c.is_ascii_alphanumeric()).is_some() {
-                        end_pos += 1
-                    }
-
-                    self.emit(TokenKind::Word, start_pos, end_pos)
+                    let length = self.advance_while(char::is_ascii_alphanumeric) + 1;
+                    self.emit(TokenKind::Word, start, start + length)
                 }
-                _ => return Err(LexError { kind: LexErrorKind::UnexpectedToken(char), location: Span { start: start_pos, end: start_pos + 1 } })
+                _ => return Err(LexError { kind: LexErrorKind::UnexpectedToken(char), location: Span { start, end: start + 1 } })
             }
         }
 
@@ -127,6 +100,11 @@ impl<T: Iterator<Item=char>> Lexer<T> {
     fn emit(&mut self, kind: TokenKind, start: usize, end: usize) {
         let token = Token { kind, location: Span { start, end } };
         self.tokens.push(token)
+    }
+
+    fn advance_while(&mut self, f: impl Fn(&char) -> bool) -> usize {
+        std::iter::from_fn(|| self.chars.next_if(|(_, c)| f(c)))
+            .count()
     }
 }
 
