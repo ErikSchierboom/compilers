@@ -111,19 +111,21 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             TokenKind::Add => self.emit(Word::Add { location }),
             TokenKind::Mul => self.emit(Word::Mul { location }),
 
-            TokenKind::Read => {
-                self.emit_word_memory_operator_suffix(&token);
+            TokenKind::Read => self.emit(Word::Read { location }),
+            TokenKind::ReadVariable => {
+                self.emit(Word::Quote { name: self.lexeme(&location)[1..].into(), location: location.clone() });
                 self.emit(Word::Read { location })
-            }
-            TokenKind::Write => {
-                self.emit_word_memory_operator_suffix(&token);
+            },
+            TokenKind::Write => self.emit(Word::Write { location }),
+            TokenKind::WriteVariable => {
+                self.emit(Word::Quote { name: self.lexeme(&location)[1..].into(), location: location.clone() });
                 self.emit(Word::Write { location })
-            }
-
-            TokenKind::Execute => {
-                self.emit_word_memory_operator_suffix(&token);
+            },
+            TokenKind::Execute => self.emit(Word::Execute { location }),
+            TokenKind::ExecuteVariable => {
+                self.emit(Word::Quote { name: self.lexeme(&location)[1..].into(), location: location.clone() });
                 self.emit(Word::Execute { location })
-            }
+            },
 
             TokenKind::OpenBracket => self.parse_array(location)?,
             TokenKind::OpenParen => self.parse_block(location)?,
@@ -132,16 +134,6 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         };
 
         Ok(())
-    }
-
-    fn emit_word_memory_operator_suffix(&mut self, memory_operator_token: &Token) {
-        if let Some(next_word_token) = self.tokens.next_if(|next_token| {
-            next_token.kind == TokenKind::Word && 
-            memory_operator_token.location.followed_by(&next_token.location)
-        }) {
-            let name = self.lexeme(&next_word_token.location).into();
-            self.emit(Word::Quote { name, location: next_word_token.location })
-        }
     }
 
     fn parse_block(&mut self, start: Span) -> Result<(), ParseError> {

@@ -33,8 +33,11 @@ pub enum TokenKind {
 
     // Memory operators
     Read,
+    ReadVariable,
     Write,
+    WriteVariable,
     Execute,
+    ExecuteVariable,
 
     // Delimiters
     OpenBracket,
@@ -61,9 +64,36 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 }
                 '+' => self.emit(TokenKind::Add, start_pos, start_pos + 1),
                 '*' => self.emit(TokenKind::Mul, start_pos, start_pos + 1),
-                '@' => self.emit(TokenKind::Read, start_pos, start_pos + 1),
-                '%' => self.emit(TokenKind::Write, start_pos, start_pos + 1),
-                '!' => self.emit(TokenKind::Execute, start_pos, start_pos + 1),
+                '@' => {
+                    let mut end_pos = start_pos + 1;
+
+                    while self.chars.next_if(|(_, c)| c.is_ascii_alphanumeric()).is_some() {
+                        end_pos += 1
+                    }
+
+                    let kind = if end_pos == start_pos + 1 { TokenKind::Read } else { TokenKind::ReadVariable };
+                    self.emit(kind, start_pos, end_pos)
+                }
+                '%' => {
+                    let mut end_pos = start_pos + 1;
+
+                    while self.chars.next_if(|(_, c)| c.is_ascii_alphanumeric()).is_some() {
+                        end_pos += 1
+                    }
+
+                    let kind = if end_pos == start_pos + 1 { TokenKind::Write } else { TokenKind::WriteVariable };
+                    self.emit(kind, start_pos, end_pos)
+                }
+                '!' => {
+                    let mut end_pos = start_pos + 1;
+
+                    while self.chars.next_if(|(_, c)| c.is_ascii_alphanumeric()).is_some() {
+                        end_pos += 1
+                    }
+
+                    let kind = if end_pos == start_pos + 1 { TokenKind::Execute } else { TokenKind::ExecuteVariable };
+                    self.emit(kind, start_pos, end_pos)
+                }
                 '[' => self.emit(TokenKind::OpenBracket, start_pos, start_pos + 1),
                 ']' => self.emit(TokenKind::CloseBracket, start_pos, start_pos + 1),
                 '(' => self.emit(TokenKind::OpenParen, start_pos, start_pos + 1),
