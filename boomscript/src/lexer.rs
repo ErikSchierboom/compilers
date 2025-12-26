@@ -27,12 +27,25 @@ pub enum TokenKind {
     Word,
     Quote,
 
-    // Binary operators
+    // Math operators
     Add,
     Sub,
     Mul,
     Div,
-    Pow,
+
+    // Binary operators
+    And,
+    Or,
+    Not,
+    Xor,
+
+    // Comparison operators
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
+    Equal,
+    NotEqual,
 
     // Memory operators
     Read,
@@ -67,7 +80,31 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 '-' => self.emit(TokenKind::Sub, start, start + 1),
                 '*' => self.emit(TokenKind::Mul, start, start + 1),
                 '/' => self.emit(TokenKind::Div, start, start + 1),
-                '^' => self.emit(TokenKind::Pow, start, start + 1),
+                '&' => self.emit(TokenKind::And, start, start + 1),
+                '|' => self.emit(TokenKind::Or, start, start + 1),
+                '^' => self.emit(TokenKind::Xor, start, start + 1),
+                '=' => self.emit(TokenKind::Equal, start, start + 1),
+                '!' => {
+                    if self.chars.next_if(|(_, c)| c == &'=').is_some() {
+                        self.emit(TokenKind::NotEqual, start, start + 2)
+                    } else {
+                        self.emit(TokenKind::Not, start, start + 1)
+                    }
+                }
+                '<' => {
+                    if self.chars.next_if(|(_, c)| c == &'=').is_some() {
+                        self.emit(TokenKind::LessEqual, start, start + 2)
+                    } else {
+                        self.emit(TokenKind::Less, start, start + 1)
+                    }
+                }
+                '>' => {
+                    if self.chars.next_if(|(_, c)| c == &'=').is_some() {
+                        self.emit(TokenKind::GreaterEqual, start, start + 2)
+                    } else {
+                        self.emit(TokenKind::Greater, start, start + 1)
+                    }
+                }
                 '@' => {
                     let length = self.advance_while(char::is_ascii_alphanumeric);
                     let kind = if length == 0 { TokenKind::Read } else { TokenKind::ReadVariable };

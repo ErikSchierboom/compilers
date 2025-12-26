@@ -1,6 +1,6 @@
 use crate::parser::{parse, ParseError, Word};
 use std::collections::HashMap;
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Not, Sub};
 
 trait Executable {
     fn execute(&self, interpreter: &mut Interpreter) -> Result<(), RuntimeError>;
@@ -66,11 +66,24 @@ impl Executable for Word {
                 interpreter.execute(value)?
             }
             Word::Array { words, .. } => interpreter.push_array(words)?,
+
             Word::Add { .. } => interpreter.binary_int_op(i64::add)?,
             Word::Sub { .. } => interpreter.binary_int_op(i64::sub)?,
             Word::Mul { .. } => interpreter.binary_int_op(i64::mul)?,
             Word::Div { .. } => interpreter.binary_int_op(i64::div)?,
-            Word::Pow { .. } => interpreter.binary_int_op(|l, r| l.pow(r as u32))?,
+
+            Word::And { .. } => interpreter.binary_int_op(i64::bitand)?,
+            Word::Or { .. } => interpreter.binary_int_op(i64::bitor)?,
+            Word::Xor { .. } => interpreter.binary_int_op(i64::bitxor)?,
+            Word::Not { .. } => interpreter.unary_int_op(i64::not)?,
+
+            Word::Greater { .. } => interpreter.binary_compare_op(i64::gt)?,
+            Word::GreaterEqual { .. } => interpreter.binary_compare_op(i64::ge)?,
+            Word::Less { .. } => interpreter.binary_compare_op(i64::lt)?,
+            Word::LessEqual { .. } => interpreter.binary_compare_op(i64::le)?,
+            Word::Equal { .. } => interpreter.binary_compare_op(i64::eq)?,
+            Word::NotEqual { .. } => interpreter.binary_compare_op(i64::ne)?,
+
             Word::Read { .. } => {
                 let name = match interpreter.pop()? {
                     Value::ValQuote(name) => name,
@@ -156,6 +169,36 @@ impl Interpreter {
         self.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)
     }
 
+    fn unary_int_op(&mut self, f: impl Fn(i64) -> i64) -> Result<(), RuntimeError> {
+        let top = self.pop()?;
+
+        match top {
+            Value::ValInt(top_val) => {
+                self.push(Value::ValInt(f(top_val)));
+                Ok(())
+            }
+            (Value::ValArray(mut array)) => {
+                let mut array_mutation_queue = vec![&mut array];
+
+                while let Some(array_to_mutate) = array_mutation_queue.pop() {
+                    for array_val_to_mutate in array_to_mutate.iter_mut() {
+                        match array_val_to_mutate {
+                            Value::ValInt(array_int_value) => *array_int_value = f(*array_int_value),
+                            Value::ValArray(inner_array) => {
+                                array_mutation_queue.push(inner_array)
+                            }
+                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                        }
+                    }
+                }
+
+                self.push(Value::ValArray(array));
+                Ok(())
+            }
+            _ => Err(RuntimeError::UnsupportedOperands)
+        }
+    }
+
     fn binary_int_op(&mut self, f: impl Fn(i64, i64) -> i64) -> Result<(), RuntimeError> {
         let top = self.pop()?;
         let snd = self.pop()?;
@@ -186,6 +229,10 @@ impl Interpreter {
             }
             _ => Err(RuntimeError::UnsupportedOperands)
         }
+    }
+
+    fn binary_compare_op(&mut self, f: impl Fn(&i64, &i64) -> bool) -> Result<(), RuntimeError> {
+        self.binary_int_op(|l, r| f(&l, &r) as i64)
     }
 
     fn push_array(&mut self, words: &Vec<Word>) -> Result<(), RuntimeError> {

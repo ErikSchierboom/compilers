@@ -37,12 +37,25 @@ pub enum Word {
     Block { words: Vec<Word>, location: Span },
     Array { words: Vec<Word>, location: Span },
 
-    // Binary operators
+    // Math operators
     Add { location: Span },
     Sub { location: Span },
     Mul { location: Span },
     Div { location: Span },
-    Pow { location: Span },
+
+    // Bitwise operators
+    And { location: Span },
+    Or { location: Span },
+    Xor { location: Span },
+    Not { location: Span },
+
+    // Comparison operators
+    Greater { location: Span },
+    GreaterEqual { location: Span },
+    Less { location: Span },
+    LessEqual { location: Span },
+    Equal { location: Span },
+    NotEqual { location: Span },
 
     // Memory operators
     Read { location: Span },
@@ -62,10 +75,19 @@ impl Word {
             Word::Sub { location, .. } |
             Word::Mul { location, .. } |
             Word::Div { location, .. } |
-            Word::Pow { location, .. } |
+            Word::And { location, .. } |
+            Word::Or { location, .. } |
+            Word::Xor { location, .. } |
+            Word::Not { location, .. } |
+            Word::Greater { location, .. } |
+            Word::GreaterEqual { location, .. } |
+            Word::Less { location, .. } |
+            Word::LessEqual { location, .. } |
+            Word::Equal { location, .. } |
+            Word::NotEqual { location, .. } |
             Word::Read { location, .. } |
             Word::Write { location, .. } |
-            Word::Execute { location, .. } => location
+            Word::Execute { location, .. } => location,
         }
     }
 }
@@ -118,7 +140,18 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             TokenKind::Sub => self.emit(Word::Sub { location }),
             TokenKind::Mul => self.emit(Word::Mul { location }),
             TokenKind::Div => self.emit(Word::Div { location }),
-            TokenKind::Pow => self.emit(Word::Pow { location }),
+
+            TokenKind::And => self.emit(Word::And { location }),
+            TokenKind::Or => self.emit(Word::Or { location }),
+            TokenKind::Xor => self.emit(Word::Xor { location }),
+            TokenKind::Not => self.emit(Word::Not { location }),
+
+            TokenKind::Greater => self.emit(Word::Greater { location }),
+            TokenKind::GreaterEqual => self.emit(Word::GreaterEqual { location }),
+            TokenKind::Less => self.emit(Word::Less { location }),
+            TokenKind::LessEqual => self.emit(Word::LessEqual { location }),
+            TokenKind::Equal => self.emit(Word::Equal { location }),
+            TokenKind::NotEqual => self.emit(Word::NotEqual { location }),
 
             TokenKind::Read => self.emit(Word::Read { location }),
             TokenKind::ReadVariable => {
