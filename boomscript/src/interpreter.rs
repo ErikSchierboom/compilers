@@ -7,7 +7,7 @@ trait Executable {
 }
 
 #[derive(Clone, Debug)]
-enum Builtin {
+pub enum Builtin {
     Dup,
     Drop,
     Swap,
