@@ -1,6 +1,6 @@
 use crate::parser::{parse, ParseError, Word};
 use std::collections::HashMap;
-use std::ops::{Add, Mul};
+use std::ops::{Add, Div, Mul, Sub};
 
 trait Executable {
     fn execute(&self, interpreter: &mut Interpreter) -> Result<(), RuntimeError>;
@@ -64,10 +64,12 @@ impl Executable for Word {
             Word::Word { name, .. } => {
                 let value = interpreter.get_variable(name)?;
                 interpreter.execute(value)?
-            },
+            }
             Word::Array { words, .. } => interpreter.push_array(words)?,
             Word::Add { .. } => interpreter.binary_int_op(i64::add)?,
+            Word::Sub { .. } => interpreter.binary_int_op(i64::sub)?,
             Word::Mul { .. } => interpreter.binary_int_op(i64::mul)?,
+            Word::Div { .. } => interpreter.binary_int_op(i64::div)?,
             Word::Read { .. } => {
                 let name = match interpreter.pop()? {
                     Value::ValQuote(name) => name,
@@ -219,7 +221,7 @@ impl Interpreter {
             Value::ValBuiltin(builtin) => builtin.execute(self)?,
             value => self.push(value)
         }
-        
+
         Ok(())
     }
 }

@@ -44,6 +44,8 @@ pub enum TokenKind {
     CloseBracket,
     OpenParen,
     CloseParen,
+    Sub,
+    Div,
 }
 
 struct Lexer<T: Iterator<Item=char>> {
@@ -61,7 +63,9 @@ impl<T: Iterator<Item=char>> Lexer<T> {
             match char {
                 ' ' | '\r' | '\n' | '\t' => continue,
                 '+' => self.emit(TokenKind::Add, start, start + 1),
+                '-' => self.emit(TokenKind::Sub, start, start + 1),
                 '*' => self.emit(TokenKind::Mul, start, start + 1),
+                '/' => self.emit(TokenKind::Div, start, start + 1),
                 '@' => {
                     let length = self.advance_while(char::is_ascii_alphanumeric);
                     let kind = if length == 0 { TokenKind::Read } else { TokenKind::ReadVariable };

@@ -39,7 +39,9 @@ pub enum Word {
 
     // Binary operators
     Add { location: Span },
+    Sub { location: Span },
     Mul { location: Span },
+    Div { location: Span },
 
     // Memory operators
     Read { location: Span },
@@ -56,7 +58,9 @@ impl Word {
             Word::Block { location, .. } |
             Word::Array { location, .. } |
             Word::Add { location, .. } |
+            Word::Sub { location, .. } |
             Word::Mul { location, .. } |
+            Word::Div { location, .. } |
             Word::Read { location, .. } |
             Word::Write { location, .. } |
             Word::Execute { location, .. } => location
@@ -109,23 +113,25 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             }
 
             TokenKind::Add => self.emit(Word::Add { location }),
+            TokenKind::Sub => self.emit(Word::Sub { location }),
             TokenKind::Mul => self.emit(Word::Mul { location }),
+            TokenKind::Div => self.emit(Word::Div { location }),
 
             TokenKind::Read => self.emit(Word::Read { location }),
             TokenKind::ReadVariable => {
                 self.emit(Word::Quote { name: self.lexeme(&location)[1..].into(), location: location.clone() });
                 self.emit(Word::Read { location })
-            },
+            }
             TokenKind::Write => self.emit(Word::Write { location }),
             TokenKind::WriteVariable => {
                 self.emit(Word::Quote { name: self.lexeme(&location)[1..].into(), location: location.clone() });
                 self.emit(Word::Write { location })
-            },
+            }
             TokenKind::Execute => self.emit(Word::Execute { location }),
             TokenKind::ExecuteVariable => {
                 self.emit(Word::Quote { name: self.lexeme(&location)[1..].into(), location: location.clone() });
                 self.emit(Word::Execute { location })
-            },
+            }
 
             TokenKind::OpenBracket => self.parse_array(location)?,
             TokenKind::OpenParen => self.parse_block(location)?,
