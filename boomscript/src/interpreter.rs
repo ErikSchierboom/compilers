@@ -70,6 +70,7 @@ impl Executable for Word {
             Word::Sub { .. } => interpreter.binary_int_op(i64::sub)?,
             Word::Mul { .. } => interpreter.binary_int_op(i64::mul)?,
             Word::Div { .. } => interpreter.binary_int_op(i64::div)?,
+            Word::Pow { .. } => interpreter.binary_int_op(|l, r| l.pow(r as u32))?,
             Word::Read { .. } => {
                 let name = match interpreter.pop()? {
                     Value::ValQuote(name) => name,

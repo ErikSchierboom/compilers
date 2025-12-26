@@ -42,6 +42,7 @@ pub enum Word {
     Sub { location: Span },
     Mul { location: Span },
     Div { location: Span },
+    Pow { location: Span },
 
     // Memory operators
     Read { location: Span },
@@ -61,6 +62,7 @@ impl Word {
             Word::Sub { location, .. } |
             Word::Mul { location, .. } |
             Word::Div { location, .. } |
+            Word::Pow { location, .. } |
             Word::Read { location, .. } |
             Word::Write { location, .. } |
             Word::Execute { location, .. } => location
@@ -116,6 +118,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             TokenKind::Sub => self.emit(Word::Sub { location }),
             TokenKind::Mul => self.emit(Word::Mul { location }),
             TokenKind::Div => self.emit(Word::Div { location }),
+            TokenKind::Pow => self.emit(Word::Pow { location }),
 
             TokenKind::Read => self.emit(Word::Read { location }),
             TokenKind::ReadVariable => {

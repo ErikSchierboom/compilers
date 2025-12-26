@@ -7,7 +7,7 @@ mod location;
 
 fn main() {
     let code = "(1 2) %a !a";
-    // let code = "1 23 456";
+    let code = "1 2 5 ^";
 
     // println!("{:?}", tokenize(code));
     println!("{:?}", interpret(code))
