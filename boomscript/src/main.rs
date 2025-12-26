@@ -6,8 +6,8 @@ mod interpreter;
 mod location;
 
 fn main() {
-    let code = "(1 2) %a !a";
-    let code = "2 2 ^";
+    // let code = "(1 2) $a @a %a";
+    let code = "2 2 !";
 
     // println!("{:?}", tokenize(code));
     println!("{:?}", interpret(code))
