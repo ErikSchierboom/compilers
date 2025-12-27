@@ -139,16 +139,16 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                     match self.advance() {
                         Some((backslash_pos, '\\')) => {
                             match self.advance() {
-                                Some((end_pos, 'n')) | 
-                                Some((end_pos, 'r')) | 
-                                Some((end_pos, 't')) | 
+                                Some((end_pos, 'n')) |
+                                Some((end_pos, 'r')) |
+                                Some((end_pos, 't')) |
                                 Some((end_pos, '\'')) => self.emit(TokenKind::Char, start_pos, end_pos + 1),
                                 Some((escape_pos, _)) => Err(Self::error(LexErrorKind::InvalidEscape, escape_pos, escape_pos + 1))?,
-                                None => Err(Self::error(LexErrorKind::ExpectedCharacter, backslash_pos, backslash_pos + 1))?
+                                None => return Err(Self::error(LexErrorKind::ExpectedCharacter, backslash_pos, backslash_pos + 1))
                             }
                         }
                         Some((end_pos, _)) => self.emit(TokenKind::Char, start_pos, end_pos + 1),
-                        None => Err(Self::error(LexErrorKind::ExpectedCharacter, start_pos + 1, start_pos + 2))?
+                        None => return Err(Self::error(LexErrorKind::ExpectedCharacter, start_pos + 1, start_pos + 2))
                     };
                 }
                 '"' => {
@@ -160,20 +160,20 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                             }
                             Some((backslash_pos, '\\')) => {
                                 match self.advance() {
-                                    Some((_, 'n')) | 
-                                    Some((_, 'r')) | 
-                                    Some((_, 't')) | 
+                                    Some((_, 'n')) |
+                                    Some((_, 'r')) |
+                                    Some((_, 't')) |
                                     Some((_, '"')) => {}
                                     Some((escape_pos, _)) => Err(Self::error(LexErrorKind::InvalidEscape, escape_pos, escape_pos + 1))?,
-                                    None => Err(Self::error(LexErrorKind::ExpectedCharacter, backslash_pos, backslash_pos + 1))?
+                                    None => return Err(Self::error(LexErrorKind::ExpectedCharacter, backslash_pos, backslash_pos + 1))
                                 }
                             }
                             Some(_) => {}
-                            None => Err(Self::error(LexErrorKind::ExpectedCharacter, start_pos + 1, start_pos + 2))?
+                            None => return Err(Self::error(LexErrorKind::ExpectedCharacter, start_pos + 1, start_pos + 2))
                         };
                     }
                 }
-                _ => Err(Self::error(LexErrorKind::UnexpectedToken(char), start_pos, start_pos + 1))?
+                _ => return Err(Self::error(LexErrorKind::UnexpectedToken(char), start_pos, start_pos + 1))
             }
         }
 

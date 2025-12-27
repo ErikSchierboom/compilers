@@ -276,14 +276,14 @@ impl Interpreter {
                 Ok(())
             }
             Value::ValArray(mut array) => {
-                let mut array_mutation_queue = vec![&mut array];
+                let mut mutation_queue = vec![&mut array];
 
-                while let Some(array_to_mutate) = array_mutation_queue.pop() {
-                    for array_val_to_mutate in array_to_mutate.iter_mut() {
-                        match array_val_to_mutate {
-                            Value::ValInt(array_int_value) => *array_int_value = f(*array_int_value),
-                            Value::ValArray(inner_array) => {
-                                array_mutation_queue.push(inner_array)
+                while let Some(array) = mutation_queue.pop() {
+                    for value in array.iter_mut() {
+                        match value {
+                            Value::ValInt(int) => *int = f(*int),
+                            Value::ValArray(inner_values) => {
+                                mutation_queue.push(inner_values)
                             }
                             _ => return Err(RuntimeError::UnsupportedArrayValue)
                         }
