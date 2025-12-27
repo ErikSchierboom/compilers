@@ -297,6 +297,8 @@ impl Interpreter {
         }
     }
 
+    // TODO: restrict operations for chars
+    // TODO: compare chars
     fn binary_int_op(&mut self, f: impl Fn(i64, i64) -> i64) -> Result<(), RuntimeError> {
         let top = self.pop()?;
         let snd = self.pop()?;
@@ -304,6 +306,10 @@ impl Interpreter {
         match (snd, top) {
             (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
                 self.push(Value::ValInt(f(snd_val, top_val)));
+                Ok(())
+            }
+            (Value::ValChar(snd_val), Value::ValInt(top_val)) => {
+                self.push(Value::ValChar(f(snd_val as i64, top_val) as u8 as char));
                 Ok(())
             }
             (Value::ValInt(scalar), Value::ValArray(mut array)) |
@@ -314,6 +320,7 @@ impl Interpreter {
                     for array_val_to_mutate in array_to_mutate.iter_mut() {
                         match array_val_to_mutate {
                             Value::ValInt(array_int_value) => *array_int_value = f(*array_int_value, scalar),
+                            Value::ValChar(array_char_value) => *array_char_value = f(*array_char_value as i64, scalar) as u8 as char,
                             Value::ValArray(inner_array) => {
                                 array_mutation_queue.push(inner_array)
                             }
