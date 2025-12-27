@@ -1,6 +1,7 @@
 use crate::lexer::{tokenize, LexError, Token, TokenKind};
 use crate::location::Span;
 use crate::parser::ParseErrorKind::Lex;
+use itertools::Itertools;
 use std::iter::Peekable;
 
 #[derive(Debug)]
@@ -31,6 +32,7 @@ pub enum Word {
     // Literals
     Int { value: i64, location: Span },
     Char { value: char, location: Span },
+    String { value: String, location: Span },
     Quote { name: String, location: Span },
     Word { name: String, location: Span },
 
@@ -69,6 +71,7 @@ impl Word {
         match self {
             Word::Int { location, .. } |
             Word::Char { location, .. } |
+            Word::String { location, .. } |
             Word::Quote { location, .. } |
             Word::Word { location, .. } |
             Word::Block { location, .. } |
@@ -127,12 +130,22 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                 self.emit(Word::Int { value, location })
             }
             TokenKind::Char => {
-                let value = match self.lexeme(&location) {
-                    "#\\n" => '\n',
-                    "#\\t" => '\t',
-                    lexeme => lexeme.chars().nth(1).unwrap()
+                let value = match &self.lexeme(&location)[1..] {
+                    "\\n" => '\n',
+                    "\\r" => '\r',
+                    "\\t" => '\t',
+                    "\\'" => '\'',
+                    lexeme => lexeme.chars().next().unwrap()
                 };
                 self.emit(Word::Char { value, location })
+            }
+            TokenKind::String => {
+                let value = String::from(&self.lexeme(&location)[1..location.end - location.start - 1])
+                    .replace("\\n", "\n")
+                    .replace("\\t", "\t")
+                    .replace("\\r", "\r")
+                    .replace("\\\"", "\"");
+                self.emit(Word::String { value, location })
             }
             TokenKind::Quote => {
                 match self.tokens.next() {

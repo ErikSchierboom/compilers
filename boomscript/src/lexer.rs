@@ -27,6 +27,7 @@ pub enum TokenKind {
     // Literals
     Int,
     Char,
+    String,
     Word,
     Quote,
 
@@ -138,20 +139,36 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 }
                 '#' => {
                     let length = match self.advance() {
-                        Some((_, '\\')) => {
+                        Some((backslash_pos, '\\')) => {
                             match self.advance() {
-                                Some((_, 'n')) |
-                                Some((_, 'r')) |
-                                Some((_, 't')) |
-                                Some((_, '\'')) => 2,
-                                Some(_) => return Err(LexError { kind: LexErrorKind::InvalidEscape, location: Span { start: start + 2, end: start + 3 } }),
-                                None => return Err(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start: start + 1, end: start + 2 } })
-                            }   
-                        },
+                                Some((_, 'n')) | Some((_, 'r')) | Some((_, 't')) | Some((_, '\'')) => 2,
+                                Some((escape_pos, _)) => return Err(LexError { kind: LexErrorKind::InvalidEscape, location: Span { start: escape_pos, end: escape_pos + 1 } }),
+                                None => return Err(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start: backslash_pos, end: backslash_pos + 1 } })
+                            }
+                        }
                         Some(_) => 1,
                         None => return Err(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start: start + 1, end: start + 2 } })
-                    }; 
+                    };
                     self.emit(TokenKind::Char, start, start + 1 + length)
+                }
+                '"' => {
+                    loop {
+                        match self.advance() {
+                            Some((end_pos, '"')) => {
+                                self.emit(TokenKind::String, start, end_pos + 1);
+                                break;
+                            }
+                            Some((backslash_pos, '\\')) => {
+                                match self.advance() {
+                                    Some((_, 'n')) | Some((_, 'r')) | Some((_, 't')) | Some((_, '"')) => {}
+                                    Some((escape_pos, _)) => return Err(LexError { kind: LexErrorKind::InvalidEscape, location: Span { start: escape_pos, end: escape_pos + 1 } }),
+                                    None => return Err(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start: backslash_pos, end: backslash_pos + 1 } })
+                                }
+                            }
+                            Some(_) => {}
+                            None => return Err(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start: start + 1, end: start + 2 } })
+                        };
+                    }
                 }
                 _ => return Err(LexError { kind: LexErrorKind::UnexpectedToken(char), location: Span { start, end: start + 1 } })
             }
