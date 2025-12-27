@@ -30,6 +30,7 @@ impl From<LexError> for ParseError {
 pub enum Word {
     // Literals
     Int { value: i64, location: Span },
+    Char { value: char, location: Span },
     Quote { name: String, location: Span },
     Word { name: String, location: Span },
 
@@ -67,6 +68,7 @@ impl Word {
     fn location(&self) -> &Span {
         match self {
             Word::Int { location, .. } |
+            Word::Char { location, .. } |
             Word::Quote { location, .. } |
             Word::Word { location, .. } |
             Word::Block { location, .. } |
@@ -120,7 +122,18 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         let location = token.location.clone();
 
         match &token.kind {
-            TokenKind::Int => self.emit(Word::Int { value: self.lexeme(&location).parse().unwrap(), location }),
+            TokenKind::Int => {
+                let value = self.lexeme(&location).parse().unwrap();
+                self.emit(Word::Int { value, location })
+            }
+            TokenKind::Char => {
+                let value = match self.lexeme(&location) {
+                    "#\\n" => '\n',
+                    "#\\t" => '\t',
+                    lexeme => lexeme.chars().nth(1).unwrap()
+                };
+                self.emit(Word::Char { value, location })
+            }
             TokenKind::Quote => {
                 match self.tokens.next() {
                     Some(Token { kind: TokenKind::Word, location }) => {

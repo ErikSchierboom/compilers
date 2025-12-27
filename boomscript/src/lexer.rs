@@ -10,8 +10,10 @@ pub struct LexError {
 #[derive(Debug)]
 pub enum LexErrorKind {
     ExpectedIdentifier,
+    ExpectedCharacter,
     UnknownIdentifier(String),
     UnexpectedToken(char),
+    InvalidEscape,
 }
 
 #[derive(Clone, Debug)]
@@ -24,6 +26,7 @@ pub struct Token {
 pub enum TokenKind {
     // Literals
     Int,
+    Char,
     Word,
     Quote,
 
@@ -132,6 +135,23 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 'a'..='z' | 'A'..='Z' => {
                     let length = self.advance_while(char::is_ascii_alphanumeric) + 1;
                     self.emit(TokenKind::Word, start, start + length)
+                }
+                '#' => {
+                    let length = match self.advance() {
+                        Some((_, '\\')) => {
+                            match self.advance() {
+                                Some((_, 'n')) |
+                                Some((_, 'r')) |
+                                Some((_, 't')) |
+                                Some((_, '\'')) => 2,
+                                Some(_) => return Err(LexError { kind: LexErrorKind::InvalidEscape, location: Span { start: start + 2, end: start + 3 } }),
+                                None => return Err(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start: start + 1, end: start + 2 } })
+                            }   
+                        },
+                        Some(_) => 1,
+                        None => return Err(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start: start + 1, end: start + 2 } })
+                    }; 
+                    self.emit(TokenKind::Char, start, start + 1 + length)
                 }
                 _ => return Err(LexError { kind: LexErrorKind::UnexpectedToken(char), location: Span { start, end: start + 1 } })
             }

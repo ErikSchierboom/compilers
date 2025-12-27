@@ -126,6 +126,7 @@ impl Executable for Builtin {
 #[derive(Clone, Debug)]
 pub enum Value {
     ValInt(i64),
+    ValChar(char),
     ValQuote(String),
     ValBlock(Vec<Word>),
     ValArray(Vec<Value>),
@@ -145,6 +146,7 @@ impl Executable for Word {
     fn execute(&self, interpreter: &mut Interpreter) -> Result<(), RuntimeError> {
         match self {
             Word::Int { value, .. } => interpreter.push(Value::ValInt(value.clone())),
+            Word::Char { value, .. } => interpreter.push(Value::ValChar(value.clone())),
             Word::Quote { name, .. } => interpreter.push(Value::ValQuote(name.clone())),
             Word::Block { words, .. } => interpreter.push(Value::ValBlock(words.clone())),
             Word::Word { name, .. } => {
