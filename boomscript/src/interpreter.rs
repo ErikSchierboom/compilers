@@ -12,6 +12,9 @@ pub enum Builtin {
     Drop,
     Swap,
     Over,
+    When,
+    Unless,
+    If,
 }
 
 impl Executable for Builtin {
@@ -42,6 +45,39 @@ impl Executable for Builtin {
                 interpreter.push(snd);
                 Ok(())
             }
+            Builtin::When => {
+                let top = interpreter.pop()?;
+                let snd = interpreter.pop()?;
+
+                if bool::from(snd) {
+                    interpreter.execute(top)?
+                }
+
+                Ok(())
+            }
+            Builtin::Unless => {
+                let top = interpreter.pop()?;
+                let snd = interpreter.pop()?;
+
+                if !bool::from(snd) {
+                    interpreter.execute(top)?
+                }
+
+                Ok(())
+            }
+            Builtin::If => {
+                let top = interpreter.pop()?;
+                let snd = interpreter.pop()?;
+                let third = interpreter.pop()?;
+
+                if bool::from(third) {
+                    interpreter.execute(snd)?
+                } else {
+                    interpreter.execute(top)?
+                }
+
+                Ok(())
+            }
         }
     }
 }
@@ -53,6 +89,15 @@ pub enum Value {
     ValBlock(Vec<Word>),
     ValArray(Vec<Value>),
     ValBuiltin(Builtin),
+}
+
+impl From<Value> for bool {
+    fn from(value: Value) -> Self {
+        match value {
+            Value::ValInt(0) => false,
+            _ => true
+        }
+    }
 }
 
 impl Executable for Word {
@@ -125,6 +170,7 @@ pub enum RuntimeError {
     ExpectedQuote,
     ArrayHasNegativeStackEffect,
     ExpectedExecutableWord,
+    ExpectedBlock,
 }
 
 impl From<ParseError> for RuntimeError {
@@ -149,6 +195,9 @@ impl Interpreter {
                 ("drop".into(), Value::ValBuiltin(Builtin::Drop)),
                 ("swap".into(), Value::ValBuiltin(Builtin::Swap)),
                 ("over".into(), Value::ValBuiltin(Builtin::Over)),
+                ("when".into(), Value::ValBuiltin(Builtin::When)),
+                ("unless".into(), Value::ValBuiltin(Builtin::Unless)),
+                ("if".into(), Value::ValBuiltin(Builtin::If)),
             ]),
         }
     }
