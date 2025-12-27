@@ -16,6 +16,8 @@ pub enum Builtin {
     When,
     Unless,
     If,
+    Clear,
+    Rot,
 }
 
 impl Executable for Builtin {
@@ -52,6 +54,10 @@ impl Executable for Builtin {
                 interpreter.push(top);
                 Ok(())
             }
+            Builtin::Clear { .. } => {
+                interpreter.stack.clear();
+                Ok(())
+            }
             Builtin::When => {
                 let top = interpreter.pop()?;
                 let snd = interpreter.pop()?;
@@ -83,6 +89,16 @@ impl Executable for Builtin {
                     interpreter.execute(top)?
                 }
 
+                Ok(())
+            }
+            Builtin::Rot => {
+                let top = interpreter.pop()?;
+                let snd = interpreter.pop()?;
+                let third = interpreter.pop()?;
+
+                interpreter.push(top);
+                interpreter.push(third);
+                interpreter.push(snd);
                 Ok(())
             }
         }
@@ -206,6 +222,8 @@ impl Interpreter {
                 ("when".into(), Value::ValBuiltin(Builtin::When)),
                 ("unless".into(), Value::ValBuiltin(Builtin::Unless)),
                 ("if".into(), Value::ValBuiltin(Builtin::If)),
+                ("clear".into(), Value::ValBuiltin(Builtin::Clear)),
+                ("rot".into(), Value::ValBuiltin(Builtin::Rot)),
             ]),
         }
     }
