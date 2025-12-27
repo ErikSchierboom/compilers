@@ -75,100 +75,105 @@ impl<T: Iterator<Item=char>> Lexer<T> {
     }
 
     fn tokenize(mut self) -> Result<Vec<Token>, LexError> {
-        while let Some((start, char)) = self.advance() {
+        while let Some((start_pos, char)) = self.advance() {
             match char {
                 ' ' | '\r' | '\n' | '\t' => continue,
-                '+' => self.emit(TokenKind::Add, start, start + 1),
-                '-' => self.emit(TokenKind::Sub, start, start + 1),
-                '*' => self.emit(TokenKind::Mul, start, start + 1),
-                '/' => self.emit(TokenKind::Div, start, start + 1),
-                '&' => self.emit(TokenKind::And, start, start + 1),
-                '|' => self.emit(TokenKind::Or, start, start + 1),
-                '^' => self.emit(TokenKind::Xor, start, start + 1),
-                '=' => self.emit(TokenKind::Equal, start, start + 1),
+                '+' => self.emit(TokenKind::Add, start_pos, start_pos + 1),
+                '-' => self.emit(TokenKind::Sub, start_pos, start_pos + 1),
+                '*' => self.emit(TokenKind::Mul, start_pos, start_pos + 1),
+                '/' => self.emit(TokenKind::Div, start_pos, start_pos + 1),
+                '&' => self.emit(TokenKind::And, start_pos, start_pos + 1),
+                '|' => self.emit(TokenKind::Or, start_pos, start_pos + 1),
+                '^' => self.emit(TokenKind::Xor, start_pos, start_pos + 1),
+                '=' => self.emit(TokenKind::Equal, start_pos, start_pos + 1),
                 '!' => {
                     if self.advance_if_eq(&'=') {
-                        self.emit(TokenKind::NotEqual, start, start + 2)
+                        self.emit(TokenKind::NotEqual, start_pos, start_pos + 2)
                     } else {
-                        self.emit(TokenKind::Not, start, start + 1)
+                        self.emit(TokenKind::Not, start_pos, start_pos + 1)
                     }
                 }
                 '<' => {
                     if self.advance_if_eq(&'=') {
-                        self.emit(TokenKind::LessEqual, start, start + 2)
+                        self.emit(TokenKind::LessEqual, start_pos, start_pos + 2)
                     } else {
-                        self.emit(TokenKind::Less, start, start + 1)
+                        self.emit(TokenKind::Less, start_pos, start_pos + 1)
                     }
                 }
                 '>' => {
                     if self.advance_if_eq(&'=') {
-                        self.emit(TokenKind::GreaterEqual, start, start + 2)
+                        self.emit(TokenKind::GreaterEqual, start_pos, start_pos + 2)
                     } else {
-                        self.emit(TokenKind::Greater, start, start + 1)
+                        self.emit(TokenKind::Greater, start_pos, start_pos + 1)
                     }
                 }
                 '@' => {
                     let length = self.advance_while(char::is_ascii_alphanumeric);
                     let kind = if length == 0 { TokenKind::Read } else { TokenKind::ReadVariable };
-                    self.emit(kind, start, start + 1 + length)
+                    self.emit(kind, start_pos, start_pos + 1 + length)
                 }
                 '$' => {
                     let length = self.advance_while(char::is_ascii_alphanumeric);
                     let kind = if length == 0 { TokenKind::Write } else { TokenKind::WriteVariable };
-                    self.emit(kind, start, start + 1 + length)
+                    self.emit(kind, start_pos, start_pos + 1 + length)
                 }
                 '%' => {
                     let length = self.advance_while(char::is_ascii_alphanumeric);
                     let kind = if length == 0 { TokenKind::Execute } else { TokenKind::ExecuteVariable };
-                    self.emit(kind, start, start + 1 + length)
+                    self.emit(kind, start_pos, start_pos + 1 + length)
                 }
-                '[' => self.emit(TokenKind::OpenBracket, start, start + 1),
-                ']' => self.emit(TokenKind::CloseBracket, start, start + 1),
-                '(' => self.emit(TokenKind::OpenParen, start, start + 1),
-                ')' => self.emit(TokenKind::CloseParen, start, start + 1),
-                '\'' => self.emit(TokenKind::Quote, start, start + 1),
+                '[' => self.emit(TokenKind::OpenBracket, start_pos, start_pos + 1),
+                ']' => self.emit(TokenKind::CloseBracket, start_pos, start_pos + 1),
+                '(' => self.emit(TokenKind::OpenParen, start_pos, start_pos + 1),
+                ')' => self.emit(TokenKind::CloseParen, start_pos, start_pos + 1),
+                '\'' => self.emit(TokenKind::Quote, start_pos, start_pos + 1),
                 '0'..='9' => {
                     let length = self.advance_while(char::is_ascii_digit) + 1;
-                    self.emit(TokenKind::Int, start, start + length)
+                    self.emit(TokenKind::Int, start_pos, start_pos + length)
                 }
                 'a'..='z' | 'A'..='Z' => {
                     let length = self.advance_while(char::is_ascii_alphanumeric) + 1;
-                    self.emit(TokenKind::Word, start, start + length)
+                    self.emit(TokenKind::Word, start_pos, start_pos + length)
                 }
                 '#' => {
-                    let length = match self.advance() {
+                    match self.advance() {
                         Some((backslash_pos, '\\')) => {
                             match self.advance() {
-                                Some((_, 'n')) | Some((_, 'r')) | Some((_, 't')) | Some((_, '\'')) => 2,
+                                Some((end_pos, 'n')) | 
+                                Some((end_pos, 'r')) | 
+                                Some((end_pos, 't')) | 
+                                Some((end_pos, '\'')) => self.emit(TokenKind::Char, start_pos, end_pos + 1),
                                 Some((escape_pos, _)) => Err(Self::error(LexErrorKind::InvalidEscape, escape_pos, escape_pos + 1))?,
                                 None => Err(Self::error(LexErrorKind::ExpectedCharacter, backslash_pos, backslash_pos + 1))?
                             }
                         }
-                        Some(_) => 1,
-                        None => Err(Self::error(LexErrorKind::ExpectedCharacter, start + 1, start + 2))?
+                        Some((end_pos, _)) => self.emit(TokenKind::Char, start_pos, end_pos + 1),
+                        None => Err(Self::error(LexErrorKind::ExpectedCharacter, start_pos + 1, start_pos + 2))?
                     };
-                    self.emit(TokenKind::Char, start, start + 1 + length)
                 }
                 '"' => {
                     loop {
                         match self.advance() {
                             Some((end_pos, '"')) => {
-                                self.emit(TokenKind::String, start, end_pos + 1);
+                                self.emit(TokenKind::String, start_pos, end_pos + 1);
                                 break;
                             }
                             Some((backslash_pos, '\\')) => {
                                 match self.advance() {
-                                    Some((_, 'n')) | Some((_, 'r')) | Some((_, 't')) | Some((_, '"')) => {}
+                                    Some((_, 'n')) | 
+                                    Some((_, 'r')) | 
+                                    Some((_, 't')) | 
+                                    Some((_, '"')) => {}
                                     Some((escape_pos, _)) => Err(Self::error(LexErrorKind::InvalidEscape, escape_pos, escape_pos + 1))?,
                                     None => Err(Self::error(LexErrorKind::ExpectedCharacter, backslash_pos, backslash_pos + 1))?
                                 }
                             }
                             Some(_) => {}
-                            None => Err(Self::error(LexErrorKind::ExpectedCharacter, start + 1, start + 2))?
+                            None => Err(Self::error(LexErrorKind::ExpectedCharacter, start_pos + 1, start_pos + 2))?
                         };
                     }
                 }
-                _ => Err(Self::error(LexErrorKind::UnexpectedToken(char), start, start + 1))?
+                _ => Err(Self::error(LexErrorKind::UnexpectedToken(char), start_pos, start_pos + 1))?
             }
         }
 
