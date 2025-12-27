@@ -18,6 +18,8 @@ pub enum Builtin {
     If,
     Clear,
     Rot,
+    Dip,
+    Keep,
 }
 
 impl Executable for Builtin {
@@ -99,6 +101,22 @@ impl Executable for Builtin {
                 interpreter.push(top);
                 interpreter.push(third);
                 interpreter.push(snd);
+                Ok(())
+            }
+            Builtin::Dip => {
+                let top = interpreter.pop()?;
+                let snd = interpreter.pop()?;
+                interpreter.execute(top)?;
+                interpreter.push(snd);
+                Ok(())
+            }
+            Builtin::Keep => {
+                let top = interpreter.pop()?;
+                let snd = interpreter.pop()?;
+                interpreter.push(snd.clone());
+                interpreter.execute(top)?;
+                interpreter.push(snd);
+
                 Ok(())
             }
         }
@@ -224,6 +242,8 @@ impl Interpreter {
                 ("if".into(), Value::ValBuiltin(Builtin::If)),
                 ("clear".into(), Value::ValBuiltin(Builtin::Clear)),
                 ("rot".into(), Value::ValBuiltin(Builtin::Rot)),
+                ("dip".into(), Value::ValBuiltin(Builtin::Dip)),
+                ("keep".into(), Value::ValBuiltin(Builtin::Keep)),
             ]),
         }
     }

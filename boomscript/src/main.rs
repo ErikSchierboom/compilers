@@ -7,7 +7,7 @@ mod location;
 
 fn main() {
     // let code = "(1 2) $a @a %a";
-    let code = "1 2 3 rot";
+    let code = "3 4 (+) keep";
 
     // println!("{:?}", tokenize(code));
     println!("{:?}", interpret(code))
