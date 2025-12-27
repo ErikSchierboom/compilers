@@ -12,6 +12,7 @@ pub enum Builtin {
     Drop,
     Swap,
     Over,
+    Nip,
     When,
     Unless,
     If,
@@ -43,6 +44,12 @@ impl Executable for Builtin {
                 interpreter.push(snd.clone());
                 interpreter.push(top);
                 interpreter.push(snd);
+                Ok(())
+            }
+            Builtin::Nip { .. } => {
+                let top = interpreter.pop()?;
+                let snd = interpreter.pop()?;
+                interpreter.push(top);
                 Ok(())
             }
             Builtin::When => {
@@ -195,6 +202,7 @@ impl Interpreter {
                 ("drop".into(), Value::ValBuiltin(Builtin::Drop)),
                 ("swap".into(), Value::ValBuiltin(Builtin::Swap)),
                 ("over".into(), Value::ValBuiltin(Builtin::Over)),
+                ("nip".into(), Value::ValBuiltin(Builtin::Nip)),
                 ("when".into(), Value::ValBuiltin(Builtin::When)),
                 ("unless".into(), Value::ValBuiltin(Builtin::Unless)),
                 ("if".into(), Value::ValBuiltin(Builtin::If)),
