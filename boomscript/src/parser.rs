@@ -1,7 +1,6 @@
 use crate::lexer::{tokenize, LexError, Token, TokenKind};
 use crate::location::Span;
 use crate::parser::ParseErrorKind::Lex;
-use itertools::Itertools;
 use std::iter::Peekable;
 
 #[derive(Debug)]
@@ -13,9 +12,7 @@ pub struct ParseError {
 #[derive(Debug)]
 pub enum ParseErrorKind {
     Lex(LexError),
-    ExpectedToken(TokenKind),
     UnexpectedToken(TokenKind),
-    UnexpectedIdentifier(String),
     ExpectedIdentifier,
     UnexpectedEndOfFile,
 }
@@ -153,8 +150,8 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                         let name = self.lexeme(&location).into();
                         self.emit(Word::Quote { name, location })
                     }
-                    Some(token) => return Err(Self::error(ParseErrorKind::ExpectedIdentifier, token.location)),
-                    None => return Err(Self::error(ParseErrorKind::ExpectedIdentifier, location)),
+                    Some(token) => Err(Self::error(ParseErrorKind::ExpectedIdentifier, token.location))?,
+                    None => Err(Self::error(ParseErrorKind::ExpectedIdentifier, location))?,
                 }
             }
             TokenKind::Word => {
@@ -198,7 +195,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             TokenKind::OpenBracket => self.parse_array(location)?,
             TokenKind::OpenParen => self.parse_block(location)?,
 
-            _ => return Err(Self::error(ParseErrorKind::UnexpectedToken(token.kind.clone()), location))
+            _ => Err(Self::error(ParseErrorKind::UnexpectedToken(token.kind.clone()), location))?
         };
 
         Ok(())

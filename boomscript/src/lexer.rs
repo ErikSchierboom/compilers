@@ -9,9 +9,7 @@ pub struct LexError {
 
 #[derive(Debug)]
 pub enum LexErrorKind {
-    ExpectedIdentifier,
     ExpectedCharacter,
-    UnknownIdentifier(String),
     UnexpectedToken(char),
     InvalidEscape,
 }
@@ -142,12 +140,12 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                         Some((backslash_pos, '\\')) => {
                             match self.advance() {
                                 Some((_, 'n')) | Some((_, 'r')) | Some((_, 't')) | Some((_, '\'')) => 2,
-                                Some((escape_pos, _)) => return Err(LexError { kind: LexErrorKind::InvalidEscape, location: Span { start: escape_pos, end: escape_pos + 1 } }),
-                                None => return Err(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start: backslash_pos, end: backslash_pos + 1 } })
+                                Some((escape_pos, _)) => Err(Self::error(LexErrorKind::InvalidEscape, escape_pos, escape_pos + 1))?,
+                                None => Err(Self::error(LexErrorKind::ExpectedCharacter, backslash_pos, backslash_pos + 1))?
                             }
                         }
                         Some(_) => 1,
-                        None => return Err(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start: start + 1, end: start + 2 } })
+                        None => Err(Self::error(LexErrorKind::ExpectedCharacter, start + 1, start + 2))?
                     };
                     self.emit(TokenKind::Char, start, start + 1 + length)
                 }
@@ -161,16 +159,16 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                             Some((backslash_pos, '\\')) => {
                                 match self.advance() {
                                     Some((_, 'n')) | Some((_, 'r')) | Some((_, 't')) | Some((_, '"')) => {}
-                                    Some((escape_pos, _)) => return Err(LexError { kind: LexErrorKind::InvalidEscape, location: Span { start: escape_pos, end: escape_pos + 1 } }),
-                                    None => return Err(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start: backslash_pos, end: backslash_pos + 1 } })
+                                    Some((escape_pos, _)) => Err(Self::error(LexErrorKind::InvalidEscape, escape_pos, escape_pos + 1))?,
+                                    None => Err(Self::error(LexErrorKind::ExpectedCharacter, backslash_pos, backslash_pos + 1))?
                                 }
                             }
                             Some(_) => {}
-                            None => return Err(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start: start + 1, end: start + 2 } })
+                            None => Err(Self::error(LexErrorKind::ExpectedCharacter, start + 1, start + 2))?
                         };
                     }
                 }
-                _ => return Err(LexError { kind: LexErrorKind::UnexpectedToken(char), location: Span { start, end: start + 1 } })
+                _ => Err(Self::error(LexErrorKind::UnexpectedToken(char), start, start + 1))?
             }
         }
 
@@ -193,6 +191,10 @@ impl<T: Iterator<Item=char>> Lexer<T> {
     fn emit(&mut self, kind: TokenKind, start: usize, end: usize) {
         let token = Token { kind, location: Span { start, end } };
         self.tokens.push(token)
+    }
+
+    fn error(kind: LexErrorKind, start: usize, end: usize) -> LexError {
+        LexError { kind, location: Span { start, end } }
     }
 }
 

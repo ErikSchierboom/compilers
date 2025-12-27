@@ -52,7 +52,7 @@ impl Executable for Builtin {
             }
             Builtin::Nip { .. } => {
                 let top = interpreter.pop()?;
-                let snd = interpreter.pop()?;
+                interpreter.pop()?;
                 interpreter.push(top);
                 Ok(())
             }
@@ -215,7 +215,6 @@ pub enum RuntimeError {
     ExpectedQuote,
     ArrayHasNegativeStackEffect,
     ExpectedExecutableWord,
-    ExpectedBlock,
 }
 
 impl From<ParseError> for RuntimeError {
@@ -276,7 +275,7 @@ impl Interpreter {
                 self.push(Value::ValInt(f(top_val)));
                 Ok(())
             }
-            (Value::ValArray(mut array)) => {
+            Value::ValArray(mut array) => {
                 let mut array_mutation_queue = vec![&mut array];
 
                 while let Some(array_to_mutate) = array_mutation_queue.pop() {
