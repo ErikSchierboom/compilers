@@ -312,6 +312,10 @@ impl Interpreter {
                 self.push(Value::ValChar(f(snd_val as i64, top_val) as u8 as char));
                 Ok(())
             }
+            (Value::ValChar(snd_val), Value::ValChar(top_val)) => {
+                self.push(Value::ValInt(f(snd_val as i64, top_val as i64)));
+                Ok(())
+            }
             (Value::ValInt(scalar), Value::ValArray(mut array)) |
             (Value::ValArray(mut array), Value::ValInt(scalar)) => {
                 let mut array_mutation_queue = vec![&mut array];
