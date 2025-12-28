@@ -298,7 +298,6 @@ impl Interpreter {
     }
 
     // TODO: restrict operations for chars
-    // TODO: compare chars
     fn binary_int_op(&mut self, f: impl Fn(i64, i64) -> i64) -> Result<(), RuntimeError> {
         let top = self.pop()?;
         let snd = self.pop()?;
