@@ -159,12 +159,12 @@ impl Executable for Word {
 
             Word::Add { .. } => interpreter.binary_int_op(i64::add)?,
             Word::Sub { .. } => interpreter.binary_int_op(i64::sub)?,
-            Word::Mul { .. } => interpreter.binary_int_op(i64::mul)?,
-            Word::Div { .. } => interpreter.binary_int_op(i64::div)?,
+            Word::Mul { .. } => interpreter.binary_int_only_op(i64::mul)?,
+            Word::Div { .. } => interpreter.binary_int_only_op(i64::div)?,
 
-            Word::And { .. } => interpreter.binary_int_op(i64::bitand)?,
-            Word::Or { .. } => interpreter.binary_int_op(i64::bitor)?,
-            Word::Xor { .. } => interpreter.binary_int_op(i64::bitxor)?,
+            Word::And { .. } => interpreter.binary_int_only_op(i64::bitand)?,
+            Word::Or { .. } => interpreter.binary_int_only_op(i64::bitor)?,
+            Word::Xor { .. } => interpreter.binary_int_only_op(i64::bitxor)?,
             Word::Not { .. } => interpreter.unary_int_op(i64::not)?,
 
             Word::Greater { .. } => interpreter.binary_compare_op(i64::gt)?,
@@ -297,7 +297,6 @@ impl Interpreter {
         }
     }
 
-    // TODO: restrict operations for chars
     fn binary_int_op(&mut self, f: impl Fn(i64, i64) -> i64) -> Result<(), RuntimeError> {
         let top = self.pop()?;
         let snd = self.pop()?;
@@ -324,6 +323,38 @@ impl Interpreter {
                         match array_val_to_mutate {
                             Value::ValInt(array_int_value) => *array_int_value = f(*array_int_value, scalar),
                             Value::ValChar(array_char_value) => *array_char_value = f(*array_char_value as i64, scalar) as u8 as char,
+                            Value::ValArray(inner_array) => {
+                                array_mutation_queue.push(inner_array)
+                            }
+                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                        }
+                    }
+                }
+
+                self.push(Value::ValArray(array));
+                Ok(())
+            }
+            _ => Err(RuntimeError::UnsupportedOperands)
+        }
+    }
+
+    fn binary_int_only_op(&mut self, f: impl Fn(i64, i64) -> i64) -> Result<(), RuntimeError> {
+        let top = self.pop()?;
+        let snd = self.pop()?;
+
+        match (snd, top) {
+            (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
+                self.push(Value::ValInt(f(snd_val, top_val)));
+                Ok(())
+            }
+            (Value::ValInt(scalar), Value::ValArray(mut array)) |
+            (Value::ValArray(mut array), Value::ValInt(scalar)) => {
+                let mut array_mutation_queue = vec![&mut array];
+
+                while let Some(array_to_mutate) = array_mutation_queue.pop() {
+                    for array_val_to_mutate in array_to_mutate.iter_mut() {
+                        match array_val_to_mutate {
+                            Value::ValInt(array_int_value) => *array_int_value = f(*array_int_value, scalar),
                             Value::ValArray(inner_array) => {
                                 array_mutation_queue.push(inner_array)
                             }
