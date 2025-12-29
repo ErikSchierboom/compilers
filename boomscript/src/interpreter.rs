@@ -3,14 +3,14 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Not, Sub};
 
-pub type RunResult = Result<(), RuntimeError>;
+type RunResult = Result<(), RuntimeError>;
 
 trait Executable {
     fn execute(&self, interpreter: &mut Interpreter) -> RunResult;
 }
 
 #[derive(Clone, Debug)]
-pub struct Builtin(fn(&mut Interpreter) -> RunResult);
+struct Builtin(fn(&mut Interpreter) -> RunResult);
 
 impl Executable for Builtin {
     fn execute(&self, interpreter: &mut Interpreter) -> RunResult {
@@ -290,7 +290,7 @@ impl From<Value> for bool {
 }
 
 impl Executable for Word {
-    fn execute(&self, interpreter: &mut Interpreter) -> Result<(), RuntimeError> {
+    fn execute(&self, interpreter: &mut Interpreter) -> RunResult {
         match self {
             Word::Int { value, .. } => interpreter.push(Value::ValInt(value.clone())),
             Word::Char { value, .. } => interpreter.push(Value::ValChar(value.clone())),
@@ -423,7 +423,7 @@ impl Interpreter {
         self.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)
     }
 
-    fn unary_int_op(&mut self, f: impl Fn(i64) -> i64) -> Result<(), RuntimeError> {
+    fn unary_int_op(&mut self, f: impl Fn(i64) -> i64) -> RunResult {
         let top = self.pop()?;
 
         match top {
@@ -453,7 +453,7 @@ impl Interpreter {
         }
     }
 
-    fn binary_int_op(&mut self, f: impl Fn(i64, i64) -> i64) -> Result<(), RuntimeError> {
+    fn binary_int_op(&mut self, f: impl Fn(i64, i64) -> i64) -> RunResult {
         let top = self.pop()?;
         let snd = self.pop()?;
 
@@ -494,7 +494,7 @@ impl Interpreter {
         }
     }
 
-    fn binary_int_only_op(&mut self, f: impl Fn(i64, i64) -> i64) -> Result<(), RuntimeError> {
+    fn binary_int_only_op(&mut self, f: impl Fn(i64, i64) -> i64) -> RunResult {
         let top = self.pop()?;
         let snd = self.pop()?;
 
@@ -526,11 +526,11 @@ impl Interpreter {
         }
     }
 
-    fn binary_compare_op(&mut self, f: impl Fn(&i64, &i64) -> bool) -> Result<(), RuntimeError> {
+    fn binary_compare_op(&mut self, f: impl Fn(&i64, &i64) -> bool) -> RunResult {
         self.binary_int_op(|l, r| f(&l, &r) as i64)
     }
 
-    fn push_array(&mut self, words: &Vec<Word>) -> Result<(), RuntimeError> {
+    fn push_array(&mut self, words: &Vec<Word>) -> RunResult {
         let stack_size_before = self.stack.len();
 
         for word in words {
@@ -554,7 +554,7 @@ impl Interpreter {
         self.variables.insert(name, value);
     }
 
-    fn execute(&mut self, value: Value) -> Result<(), RuntimeError> {
+    fn execute(&mut self, value: Value) -> RunResult {
         match value {
             Value::ValBlock(words) => {
                 for word in words {
