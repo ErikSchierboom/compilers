@@ -10,7 +10,8 @@ fn main() {
     let code = "[1 2 3] 2 max";
 
     // TODO: support quoting operators
-    let code = "(2 3) (4 * +) ++";
+    let code = "[2 3] [4 5] ++";
+    // let code = "2 3 swap";
 
     // println!("{:?}", tokenize(code));
     println!("{:?}", interpret(code))

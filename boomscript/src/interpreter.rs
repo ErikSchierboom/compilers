@@ -3,264 +3,270 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Not, Sub};
 
+pub type RunResult = Result<(), RuntimeError>;
+
 trait Executable {
-    fn execute(&self, interpreter: &mut Interpreter) -> Result<(), RuntimeError>;
+    fn execute(&self, interpreter: &mut Interpreter) -> RunResult;
 }
 
 #[derive(Clone, Debug)]
-pub enum Builtin {
-    Dup,
-    Drop,
-    Swap,
-    Over,
-    Nip,
-    When,
-    Unless,
-    If,
-    Clear,
-    Rot,
-    Dip,
-    Keep,
-    Map,
-    Mod,
-    Filter,
-    Max,
-    Min,
-    Fold,
-    Reduce,
-    Concat,
-}
+pub struct Builtin(fn(&mut Interpreter) -> RunResult);
 
 impl Executable for Builtin {
-    fn execute(&self, interpreter: &mut Interpreter) -> Result<(), RuntimeError> {
-        match self {
-            Builtin::Dup { .. } => {
-                let top = interpreter.pop()?;
-                interpreter.push(top.clone());
-                interpreter.push(top);
-                Ok(())
-            }
-            Builtin::Drop { .. } => {
-                interpreter.pop()?;
-                Ok(())
-            }
-            Builtin::Swap { .. } => {
-                let top = interpreter.pop()?;
-                let snd = interpreter.pop()?;
-                interpreter.push(top);
-                interpreter.push(snd);
-                Ok(())
-            }
-            Builtin::Over { .. } => {
-                let top = interpreter.pop()?;
-                let snd = interpreter.pop()?;
-                interpreter.push(snd.clone());
-                interpreter.push(top);
-                interpreter.push(snd);
-                Ok(())
-            }
-            Builtin::Nip { .. } => {
-                let top = interpreter.pop()?;
-                interpreter.pop()?;
-                interpreter.push(top);
-                Ok(())
-            }
-            Builtin::Clear { .. } => {
-                interpreter.stack.clear();
-                Ok(())
-            }
-            Builtin::When => {
-                let top = interpreter.pop()?;
-                let snd = interpreter.pop()?;
+    fn execute(&self, interpreter: &mut Interpreter) -> RunResult {
+        self.0(interpreter)
+    }
+}
 
-                if bool::from(snd) {
-                    interpreter.execute(top)?
+fn dup(interpreter: &mut Interpreter) -> RunResult {
+    let top = interpreter.pop()?;
+    interpreter.push(top.clone());
+    interpreter.push(top);
+    Ok(())
+}
+
+fn drop(interpreter: &mut Interpreter) -> RunResult {
+    interpreter.pop()?;
+    Ok(())
+}
+
+fn swap(interpreter: &mut Interpreter) -> RunResult {
+    let top = interpreter.pop()?;
+    let snd = interpreter.pop()?;
+    interpreter.push(top);
+    interpreter.push(snd);
+    Ok(())
+}
+
+fn over(interpreter: &mut Interpreter) -> RunResult {
+    let top = interpreter.pop()?;
+    let snd = interpreter.pop()?;
+    interpreter.push(snd.clone());
+    interpreter.push(top);
+    interpreter.push(snd);
+    Ok(())
+}
+
+fn nip(interpreter: &mut Interpreter) -> RunResult {
+    let top = interpreter.pop()?;
+    interpreter.pop()?;
+    interpreter.push(top);
+    Ok(())
+}
+
+fn clear(interpreter: &mut Interpreter) -> RunResult {
+    interpreter.stack.clear();
+    Ok(())
+}
+
+fn when(interpreter: &mut Interpreter) -> RunResult {
+    let top = interpreter.pop()?;
+    let snd = interpreter.pop()?;
+
+    if bool::from(snd) {
+        interpreter.execute(top)?
+    }
+
+    Ok(())
+}
+
+fn unless(interpreter: &mut Interpreter) -> RunResult {
+    let top = interpreter.pop()?;
+    let snd = interpreter.pop()?;
+
+    if !bool::from(snd) {
+        interpreter.execute(top)?
+    }
+
+    Ok(())
+}
+
+fn iff(interpreter: &mut Interpreter) -> RunResult {
+    let top = interpreter.pop()?;
+    let snd = interpreter.pop()?;
+    let third = interpreter.pop()?;
+
+    if bool::from(third) {
+        interpreter.execute(snd)?
+    } else {
+        interpreter.execute(top)?
+    }
+
+    Ok(())
+}
+
+fn rot(interpreter: &mut Interpreter) -> RunResult {
+    let top = interpreter.pop()?;
+    let snd = interpreter.pop()?;
+    let third = interpreter.pop()?;
+
+    interpreter.push(top);
+    interpreter.push(third);
+    interpreter.push(snd);
+    Ok(())
+}
+
+fn dip(interpreter: &mut Interpreter) -> RunResult {
+    let top = interpreter.pop()?;
+    let snd = interpreter.pop()?;
+    interpreter.execute(top)?;
+    interpreter.push(snd);
+    Ok(())
+}
+
+fn keep(interpreter: &mut Interpreter) -> RunResult {
+    let top = interpreter.pop()?;
+    let snd = interpreter.pop()?;
+    interpreter.push(snd.clone());
+    interpreter.execute(top)?;
+    interpreter.push(snd);
+
+    Ok(())
+}
+
+fn rem(interpreter: &mut Interpreter) -> RunResult {
+    interpreter.binary_int_op(i64::rem_euclid)
+}
+
+fn max(interpreter: &mut Interpreter) -> RunResult {
+    interpreter.binary_int_op(i64::max)
+}
+
+fn min(interpreter: &mut Interpreter) -> RunResult {
+    interpreter.binary_int_op(i64::min)
+}
+
+fn map(interpreter: &mut Interpreter) -> RunResult {
+    let top = interpreter.pop()?;
+    let snd = interpreter.pop()?;
+
+    match snd {
+        Value::ValArray(array) => {
+            let mut mapped_array = Vec::new();
+
+            for element in array {
+                let stack_length_before = interpreter.stack.len();
+                interpreter.push(element);
+                interpreter.execute(top.clone())?;
+
+                if interpreter.stack.len() < stack_length_before {
+                    return Err(RuntimeError::WordHasNegativeStackEffect);
                 }
 
-                Ok(())
-            }
-            Builtin::Unless => {
-                let top = interpreter.pop()?;
-                let snd = interpreter.pop()?;
-
-                if !bool::from(snd) {
-                    interpreter.execute(top)?
+                match interpreter.stack.len() - stack_length_before {
+                    0 => return Err(RuntimeError::WordDoesNotHavePositiveStackEffect),
+                    1 => mapped_array.push(interpreter.pop()?),
+                    _ => mapped_array.push(Value::ValArray(interpreter.stack.drain(stack_length_before..).collect())),
                 }
-
-                Ok(())
             }
-            Builtin::If => {
-                let top = interpreter.pop()?;
-                let snd = interpreter.pop()?;
-                let third = interpreter.pop()?;
 
-                if bool::from(third) {
-                    interpreter.execute(snd)?
-                } else {
-                    interpreter.execute(top)?
-                }
+            interpreter.push(Value::ValArray(mapped_array))
+        }
+        _ => return Err(RuntimeError::UnsupportedOperands)
+    }
 
-                Ok(())
-            }
-            Builtin::Rot => {
-                let top = interpreter.pop()?;
-                let snd = interpreter.pop()?;
-                let third = interpreter.pop()?;
+    Ok(())
+}
 
-                interpreter.push(top);
-                interpreter.push(third);
-                interpreter.push(snd);
-                Ok(())
-            }
-            Builtin::Dip => {
-                let top = interpreter.pop()?;
-                let snd = interpreter.pop()?;
-                interpreter.execute(top)?;
-                interpreter.push(snd);
-                Ok(())
-            }
-            Builtin::Keep => {
-                let top = interpreter.pop()?;
-                let snd = interpreter.pop()?;
-                interpreter.push(snd.clone());
-                interpreter.execute(top)?;
-                interpreter.push(snd);
+fn filter(interpreter: &mut Interpreter) -> RunResult {
+    let top = interpreter.pop()?;
+    let snd = interpreter.pop()?;
 
-                Ok(())
-            }
-            Builtin::Mod => interpreter.binary_int_op(i64::rem_euclid),
-            Builtin::Max => interpreter.binary_int_op(i64::max),
-            Builtin::Min => interpreter.binary_int_op(i64::min),
-            Builtin::Map => {
-                let top = interpreter.pop()?;
-                let snd = interpreter.pop()?;
+    match snd {
+        Value::ValArray(array) => {
+            let mut filtered_array = Vec::new();
 
-                match snd {
-                    Value::ValArray(array) => {
-                        let mut mapped_array = Vec::new();
+            for element in array {
+                let stack_length_before = interpreter.stack.len();
+                interpreter.push(element.clone());
+                interpreter.execute(top.clone())?;
 
-                        for element in array {
-                            let stack_length_before = interpreter.stack.len();
-                            interpreter.push(element);
-                            interpreter.execute(top.clone())?;
-
-                            if interpreter.stack.len() < stack_length_before {
-                                return Err(RuntimeError::WordHasNegativeStackEffect);
-                            }
-
-                            match interpreter.stack.len() - stack_length_before {
-                                0 => return Err(RuntimeError::WordDoesNotHavePositiveStackEffect),
-                                1 => mapped_array.push(interpreter.pop()?),
-                                _ => mapped_array.push(Value::ValArray(interpreter.stack.drain(stack_length_before..).collect())),
+                match interpreter.stack.len().cmp(&stack_length_before) {
+                    Ordering::Less => return Err(RuntimeError::WordHasNegativeStackEffect),
+                    Ordering::Equal => return Err(RuntimeError::WordDoesNotHavePositiveStackEffect),
+                    Ordering::Greater => {
+                        if interpreter.stack.len() == stack_length_before + 1 {
+                            if bool::from(interpreter.pop()?) {
+                                filtered_array.push(element)
                             }
                         }
-
-                        interpreter.push(Value::ValArray(mapped_array))
                     }
-                    _ => return Err(RuntimeError::UnsupportedOperands)
                 }
-
-                Ok(())
             }
-            Builtin::Filter => {
-                let top = interpreter.pop()?;
-                let snd = interpreter.pop()?;
 
-                match snd {
-                    Value::ValArray(array) => {
-                        let mut filtered_array = Vec::new();
+            interpreter.push(Value::ValArray(filtered_array))
+        }
+        _ => return Err(RuntimeError::UnsupportedOperands)
+    }
 
-                        for element in array {
-                            let stack_length_before = interpreter.stack.len();
-                            interpreter.push(element.clone());
-                            interpreter.execute(top.clone())?;
+    Ok(())
+}
 
-                            match interpreter.stack.len().cmp(&stack_length_before) {
-                                Ordering::Less => return Err(RuntimeError::WordHasNegativeStackEffect),
-                                Ordering::Equal => return Err(RuntimeError::WordDoesNotHavePositiveStackEffect),
-                                Ordering::Greater => {
-                                    if interpreter.stack.len() == stack_length_before + 1 {
-                                        if bool::from(interpreter.pop()?) {
-                                            filtered_array.push(element)
-                                        }
-                                    }
-                                }
-                            }
-                        }
+fn reduce(interpreter: &mut Interpreter) -> RunResult {
+    let top = interpreter.pop()?;
+    let snd = interpreter.pop()?;
 
-                        interpreter.push(Value::ValArray(filtered_array))
+    match snd {
+        Value::ValArray(mut array) => {
+            match array.split_first_mut() {
+                Some((head, tail)) => {
+                    interpreter.push(head.to_owned());
+
+                    for element in tail.to_owned() {
+                        interpreter.push(element);
+                        interpreter.execute(top.clone())?;
                     }
-                    _ => return Err(RuntimeError::UnsupportedOperands)
                 }
-
-                Ok(())
-            }
-            Builtin::Reduce => {
-                let top = interpreter.pop()?;
-                let snd = interpreter.pop()?;
-
-                match snd {
-                    Value::ValArray(mut array) => {
-                        match array.split_first_mut() {
-                            Some((head, tail)) => {
-                                interpreter.push(head.to_owned());
-
-                                for element in tail.to_owned() {
-                                    interpreter.push(element);
-                                    interpreter.execute(top.clone())?;
-                                }
-                            }
-                            None => return Err(RuntimeError::EmptyArray),
-                        }
-                    }
-                    _ => return Err(RuntimeError::UnsupportedOperands)
-                }
-
-                Ok(())
-            }
-            Builtin::Fold => {
-                let top = interpreter.pop()?;
-                let snd = interpreter.pop()?;
-                let third = interpreter.pop()?;
-
-                match third {
-                    Value::ValArray(array) => {
-                        interpreter.push(snd);
-
-                        for element in array {
-                            interpreter.push(element);
-                            interpreter.execute(top.clone())?;
-                        }
-                    }
-                    _ => return Err(RuntimeError::UnsupportedOperands)
-                }
-
-                Ok(())
-            }
-            Builtin::Concat => {
-                let top = interpreter.pop()?;
-                let snd = interpreter.pop()?;
-
-                match (snd, top) {
-                    (Value::ValArray(mut l), Value::ValArray(mut r)) => {
-                        l.append(&mut r);
-                        interpreter.push(Value::ValArray(l));
-                    }
-                    (Value::ValBlock(mut l), Value::ValBlock(mut r)) => {
-                        l.append(&mut r);
-                        interpreter.push(Value::ValBlock(l));
-                    }
-                    (Value::ValString(mut l), Value::ValString(r)) => {
-                        l.push_str(&r);
-                        interpreter.push(Value::ValString(l));
-                    }
-                    _ => return Err(RuntimeError::UnsupportedOperands)
-                }
-
-                Ok(())
+                None => return Err(RuntimeError::EmptyArray),
             }
         }
+        _ => return Err(RuntimeError::UnsupportedOperands)
     }
+
+    Ok(())
+}
+
+fn fold(interpreter: &mut Interpreter) -> RunResult {
+    let top = interpreter.pop()?;
+    let snd = interpreter.pop()?;
+    let third = interpreter.pop()?;
+
+    match third {
+        Value::ValArray(array) => {
+            interpreter.push(snd);
+
+            for element in array {
+                interpreter.push(element);
+                interpreter.execute(top.clone())?;
+            }
+        }
+        _ => return Err(RuntimeError::UnsupportedOperands)
+    }
+
+    Ok(())
+}
+
+fn concat(interpreter: &mut Interpreter) -> RunResult {
+    let top = interpreter.pop()?;
+    let snd = interpreter.pop()?;
+
+    match (snd, top) {
+        (Value::ValArray(mut l), Value::ValArray(mut r)) => {
+            l.append(&mut r);
+            interpreter.push(Value::ValArray(l));
+        }
+        (Value::ValBlock(mut l), Value::ValBlock(mut r)) => {
+            l.append(&mut r);
+            interpreter.push(Value::ValBlock(l));
+        }
+        (Value::ValString(mut l), Value::ValString(r)) => {
+            l.push_str(&r);
+            interpreter.push(Value::ValString(l));
+        }
+        _ => return Err(RuntimeError::UnsupportedOperands)
+    }
+
+    Ok(())
 }
 
 #[derive(Clone, Debug)]
@@ -377,26 +383,26 @@ impl Interpreter {
             words,
             stack: Vec::new(),
             variables: HashMap::from([
-                ("dup".into(), Value::ValBuiltin(Builtin::Dup)),
-                ("drop".into(), Value::ValBuiltin(Builtin::Drop)),
-                ("swap".into(), Value::ValBuiltin(Builtin::Swap)),
-                ("over".into(), Value::ValBuiltin(Builtin::Over)),
-                ("nip".into(), Value::ValBuiltin(Builtin::Nip)),
-                ("when".into(), Value::ValBuiltin(Builtin::When)),
-                ("unless".into(), Value::ValBuiltin(Builtin::Unless)),
-                ("if".into(), Value::ValBuiltin(Builtin::If)),
-                ("clear".into(), Value::ValBuiltin(Builtin::Clear)),
-                ("rot".into(), Value::ValBuiltin(Builtin::Rot)),
-                ("dip".into(), Value::ValBuiltin(Builtin::Dip)),
-                ("keep".into(), Value::ValBuiltin(Builtin::Keep)),
-                ("map".into(), Value::ValBuiltin(Builtin::Map)),
-                ("filter".into(), Value::ValBuiltin(Builtin::Filter)),
-                ("mod".into(), Value::ValBuiltin(Builtin::Mod)),
-                ("max".into(), Value::ValBuiltin(Builtin::Max)),
-                ("min".into(), Value::ValBuiltin(Builtin::Min)),
-                ("fold".into(), Value::ValBuiltin(Builtin::Fold)),
-                ("reduce".into(), Value::ValBuiltin(Builtin::Reduce)),
-                ("concat".into(), Value::ValBuiltin(Builtin::Concat)),
+                ("dup".into(), Value::ValBuiltin(Builtin(dup))),
+                ("drop".into(), Value::ValBuiltin(Builtin(drop))),
+                ("swap".into(), Value::ValBuiltin(Builtin(swap))),
+                ("over".into(), Value::ValBuiltin(Builtin(over))),
+                ("nip".into(), Value::ValBuiltin(Builtin(nip))),
+                ("when".into(), Value::ValBuiltin(Builtin(when))),
+                ("unless".into(), Value::ValBuiltin(Builtin(unless))),
+                ("if".into(), Value::ValBuiltin(Builtin(iff))),
+                ("clear".into(), Value::ValBuiltin(Builtin(clear))),
+                ("rot".into(), Value::ValBuiltin(Builtin(rot))),
+                ("dip".into(), Value::ValBuiltin(Builtin(dip))),
+                ("keep".into(), Value::ValBuiltin(Builtin(keep))),
+                ("map".into(), Value::ValBuiltin(Builtin(map))),
+                ("filter".into(), Value::ValBuiltin(Builtin(filter))),
+                ("mod".into(), Value::ValBuiltin(Builtin(rem))),
+                ("max".into(), Value::ValBuiltin(Builtin(max))),
+                ("min".into(), Value::ValBuiltin(Builtin(min))),
+                ("fold".into(), Value::ValBuiltin(Builtin(fold))),
+                ("reduce".into(), Value::ValBuiltin(Builtin(reduce))),
+                ("concat".into(), Value::ValBuiltin(Builtin(concat))),
             ]),
         }
     }
