@@ -10,7 +10,7 @@ fn main() {
     let code = "[1 2 3] 2 max";
 
     // TODO: support quoting operators
-    let code = "[1 2 3] (+) reduce";
+    let code = "(2 3) (4 * +) ++";
 
     // println!("{:?}", tokenize(code));
     println!("{:?}", interpret(code))

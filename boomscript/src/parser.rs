@@ -159,22 +159,24 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                 self.emit(Word::Word { name, location })
             }
 
-            TokenKind::Add => self.emit(Word::Add { location }),
-            TokenKind::Sub => self.emit(Word::Sub { location }),
-            TokenKind::Mul => self.emit(Word::Mul { location }),
-            TokenKind::Div => self.emit(Word::Div { location }),
+            TokenKind::Plus => self.emit(Word::Add { location }),
+            TokenKind::Minus => self.emit(Word::Sub { location }),
+            TokenKind::Star => self.emit(Word::Mul { location }),
+            TokenKind::Slash => self.emit(Word::Div { location }),
+            
+            TokenKind::PlusPlus => self.emit(Word::Word { name: "concat".into(), location }),
 
-            TokenKind::And => self.emit(Word::And { location }),
-            TokenKind::Or => self.emit(Word::Or { location }),
-            TokenKind::Xor => self.emit(Word::Xor { location }),
-            TokenKind::Not => self.emit(Word::Not { location }),
+            TokenKind::Ampersand => self.emit(Word::And { location }),
+            TokenKind::Pipe => self.emit(Word::Or { location }),
+            TokenKind::Caret => self.emit(Word::Xor { location }),
+            TokenKind::Bang => self.emit(Word::Not { location }),
 
             TokenKind::Greater => self.emit(Word::Greater { location }),
             TokenKind::GreaterEqual => self.emit(Word::GreaterEqual { location }),
             TokenKind::Less => self.emit(Word::Less { location }),
             TokenKind::LessEqual => self.emit(Word::LessEqual { location }),
             TokenKind::Equal => self.emit(Word::Equal { location }),
-            TokenKind::NotEqual => self.emit(Word::NotEqual { location }),
+            TokenKind::BangEqual => self.emit(Word::NotEqual { location }),
 
             TokenKind::Read => self.emit(Word::Read { location }),
             TokenKind::ReadVariable => {

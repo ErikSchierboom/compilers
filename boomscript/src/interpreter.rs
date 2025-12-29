@@ -28,6 +28,7 @@ pub enum Builtin {
     Min,
     Fold,
     Reduce,
+    Concat,
 }
 
 impl Executable for Builtin {
@@ -236,6 +237,28 @@ impl Executable for Builtin {
 
                 Ok(())
             }
+            Builtin::Concat => {
+                let top = interpreter.pop()?;
+                let snd = interpreter.pop()?;
+
+                match (snd, top) {
+                    (Value::ValArray(mut l), Value::ValArray(mut r)) => {
+                        l.append(&mut r);
+                        interpreter.push(Value::ValArray(l));
+                    }
+                    (Value::ValBlock(mut l), Value::ValBlock(mut r)) => {
+                        l.append(&mut r);
+                        interpreter.push(Value::ValBlock(l));
+                    }
+                    (Value::ValString(mut l), Value::ValString(r)) => {
+                        l.push_str(&r);
+                        interpreter.push(Value::ValString(l));
+                    }
+                    _ => return Err(RuntimeError::UnsupportedOperands)
+                }
+
+                Ok(())
+            }
         }
     }
 }
@@ -373,6 +396,7 @@ impl Interpreter {
                 ("min".into(), Value::ValBuiltin(Builtin::Min)),
                 ("fold".into(), Value::ValBuiltin(Builtin::Fold)),
                 ("reduce".into(), Value::ValBuiltin(Builtin::Reduce)),
+                ("concat".into(), Value::ValBuiltin(Builtin::Concat)),
             ]),
         }
     }

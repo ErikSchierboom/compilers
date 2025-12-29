@@ -30,16 +30,16 @@ pub enum TokenKind {
     Quote,
 
     // Math operators
-    Add,
-    Sub,
-    Mul,
-    Div,
+    Plus,
+    Minus,
+    Star,
+    Slash,
 
     // Binary operators
-    And,
-    Or,
-    Not,
-    Xor,
+    Ampersand,
+    Pipe,
+    Bang,
+    Caret,
 
     // Comparison operators
     Greater,
@@ -47,7 +47,7 @@ pub enum TokenKind {
     Less,
     LessEqual,
     Equal,
-    NotEqual,
+    BangEqual,
 
     // Memory operators
     Read,
@@ -62,6 +62,7 @@ pub enum TokenKind {
     CloseBracket,
     OpenParen,
     CloseParen,
+    PlusPlus,
 }
 
 struct Lexer<T: Iterator<Item=char>> {
@@ -78,19 +79,25 @@ impl<T: Iterator<Item=char>> Lexer<T> {
         while let Some((start_pos, char)) = self.advance() {
             match char {
                 ' ' | '\r' | '\n' | '\t' => continue,
-                '+' => self.emit(TokenKind::Add, start_pos, start_pos + 1),
-                '-' => self.emit(TokenKind::Sub, start_pos, start_pos + 1),
-                '*' => self.emit(TokenKind::Mul, start_pos, start_pos + 1),
-                '/' => self.emit(TokenKind::Div, start_pos, start_pos + 1),
-                '&' => self.emit(TokenKind::And, start_pos, start_pos + 1),
-                '|' => self.emit(TokenKind::Or, start_pos, start_pos + 1),
-                '^' => self.emit(TokenKind::Xor, start_pos, start_pos + 1),
+                '+' => {
+                    if self.advance_if_eq(&'+') {
+                        self.emit(TokenKind::PlusPlus, start_pos, start_pos + 1)
+                    } else {
+                        self.emit(TokenKind::Plus, start_pos, start_pos + 1)
+                    }
+                }
+                '-' => self.emit(TokenKind::Minus, start_pos, start_pos + 1),
+                '*' => self.emit(TokenKind::Star, start_pos, start_pos + 1),
+                '/' => self.emit(TokenKind::Slash, start_pos, start_pos + 1),
+                '&' => self.emit(TokenKind::Ampersand, start_pos, start_pos + 1),
+                '|' => self.emit(TokenKind::Pipe, start_pos, start_pos + 1),
+                '^' => self.emit(TokenKind::Caret, start_pos, start_pos + 1),
                 '=' => self.emit(TokenKind::Equal, start_pos, start_pos + 1),
                 '!' => {
                     if self.advance_if_eq(&'=') {
-                        self.emit(TokenKind::NotEqual, start_pos, start_pos + 2)
+                        self.emit(TokenKind::BangEqual, start_pos, start_pos + 2)
                     } else {
-                        self.emit(TokenKind::Not, start_pos, start_pos + 1)
+                        self.emit(TokenKind::Bang, start_pos, start_pos + 1)
                     }
                 }
                 '<' => {
