@@ -12,7 +12,6 @@ pub struct ParseError {
 #[derive(Debug)]
 pub enum ParseErrorKind {
     Lex(LexError),
-    UnexpectedToken(TokenKind),
     ExpectedIdentifier,
     UnexpectedEndOfFile,
 }
@@ -36,35 +35,10 @@ pub enum Word {
     // Composite
     Block { words: Vec<Word>, location: Span },
     Array { words: Vec<Word>, location: Span },
-
-    // Math operators
-    Add { location: Span },
-    Sub { location: Span },
-    Mul { location: Span },
-    Div { location: Span },
-
-    // Bitwise operators
-    And { location: Span },
-    Or { location: Span },
-    Xor { location: Span },
-    Not { location: Span },
-
-    // Comparison operators
-    Greater { location: Span },
-    GreaterEqual { location: Span },
-    Less { location: Span },
-    LessEqual { location: Span },
-    Equal { location: Span },
-    NotEqual { location: Span },
-
-    // Memory operators
-    Read { location: Span },
-    Write { location: Span },
-    Execute { location: Span },
 }
 
 impl Word {
-    fn location(&self) -> &Span {
+    pub fn location(&self) -> &Span {
         match self {
             Word::Int { location, .. } |
             Word::Char { location, .. } |
@@ -72,24 +46,7 @@ impl Word {
             Word::Quote { location, .. } |
             Word::Identifier { location, .. } |
             Word::Block { location, .. } |
-            Word::Array { location, .. } |
-            Word::Add { location, .. } |
-            Word::Sub { location, .. } |
-            Word::Mul { location, .. } |
-            Word::Div { location, .. } |
-            Word::And { location, .. } |
-            Word::Or { location, .. } |
-            Word::Xor { location, .. } |
-            Word::Not { location, .. } |
-            Word::Greater { location, .. } |
-            Word::GreaterEqual { location, .. } |
-            Word::Less { location, .. } |
-            Word::LessEqual { location, .. } |
-            Word::Equal { location, .. } |
-            Word::NotEqual { location, .. } |
-            Word::Read { location, .. } |
-            Word::Write { location, .. } |
-            Word::Execute { location, .. } => location,
+            Word::Array { location, .. } => location,
         }
     }
 }
@@ -158,30 +115,12 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                 let name = self.lexeme(&location).into();
                 self.emit(Word::Identifier { name, location })
             }
-
-            // TODO: map operators to words (e.g. "+" => "plus")
-            TokenKind::Plus => self.emit(Word::Add { location }),
-            TokenKind::Minus => self.emit(Word::Sub { location }),
-            TokenKind::Star => self.emit(Word::Mul { location }),
-            TokenKind::Slash => self.emit(Word::Div { location }),
-            TokenKind::PlusPlus => self.emit(Word::Identifier { name: "concat".into(), location }),
-            TokenKind::Ampersand => self.emit(Word::And { location }),
-            TokenKind::Pipe => self.emit(Word::Or { location }),
-            TokenKind::Caret => self.emit(Word::Xor { location }),
-            TokenKind::Bang => self.emit(Word::Not { location }),
-            TokenKind::Greater => self.emit(Word::Greater { location }),
-            TokenKind::GreaterEqual => self.emit(Word::GreaterEqual { location }),
-            TokenKind::Less => self.emit(Word::Less { location }),
-            TokenKind::LessEqual => self.emit(Word::LessEqual { location }),
-            TokenKind::Equal => self.emit(Word::Equal { location }),
-            TokenKind::BangEqual => self.emit(Word::NotEqual { location }),
-            TokenKind::At => self.emit(Word::Read { location }),
-            TokenKind::Dollar => self.emit(Word::Write { location }),
-            TokenKind::Percent => self.emit(Word::Execute { location }),
             TokenKind::OpenBracket => self.parse_array(location)?,
             TokenKind::OpenParen => self.parse_block(location)?,
-
-            _ => return Err(Self::error(ParseErrorKind::UnexpectedToken(token.kind.clone()), location))
+            _ => {
+                let name = self.lexeme(&location).into();
+                self.emit(Word::Identifier { name, location })
+            }
         };
 
         Ok(())

@@ -11,12 +11,66 @@ trait Executable {
 }
 
 #[derive(Clone, Debug)]
-struct Builtin(fn(&mut Interpreter) -> RunResult);
+pub struct Builtin(fn(&mut Interpreter) -> RunResult);
 
 impl Executable for Builtin {
     fn execute(&self, interpreter: &mut Interpreter) -> RunResult {
         self.0(interpreter)
     }
+}
+
+fn add(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_int_op(i64::add) }
+fn sub(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_int_op(i64::sub) }
+fn mul(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_int_only_op(i64::mul) }
+fn div(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_int_only_op(i64::div) }
+fn and(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_int_only_op(i64::bitand) }
+fn or(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_int_only_op(i64::bitor) }
+fn xor(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_int_only_op(i64::bitxor) }
+fn not(interpreter: &mut Interpreter) -> RunResult { interpreter.unary_int_op(i64::not) }
+fn greater(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::gt) }
+fn greater_or_equal(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::ge) }
+fn less(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::lt) }
+fn less_or_equal(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::le) }
+fn equal(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::eq) }
+fn not_equal(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::ne) }
+fn rem(interpreter: &mut Interpreter) -> RunResult {
+    interpreter.binary_int_op(i64::rem_euclid)
+}
+fn max(interpreter: &mut Interpreter) -> RunResult {
+    interpreter.binary_int_op(i64::max)
+}
+fn min(interpreter: &mut Interpreter) -> RunResult {
+    interpreter.binary_int_op(i64::min)
+}
+
+fn read(interpreter: &mut Interpreter) -> RunResult {
+    let name = match interpreter.pop()? {
+        Value::ValQuote(name) => name,
+        _ => return Err(RuntimeError::ExpectedQuote)
+    };
+    let variable = interpreter.get_variable(&name)?;
+    interpreter.push(variable.clone());
+    Ok(())
+}
+
+fn write(interpreter: &mut Interpreter) -> RunResult {
+    let name = match interpreter.pop()? {
+        Value::ValQuote(name) => name,
+        _ => return Err(RuntimeError::ExpectedQuote)
+    };
+    let value = interpreter.pop()?;
+    interpreter.set_variable(name, value);
+    Ok(())
+}
+
+fn execute(interpreter: &mut Interpreter) -> RunResult {
+    let value = match interpreter.pop()? {
+        Value::ValQuote(name) => interpreter.get_variable(&name)?,
+        Value::ValBuiltin(builtin) => Value::ValBuiltin(builtin),
+        Value::ValBlock(words) => Value::ValBlock(words),
+        _ => return Err(RuntimeError::ExpectedExecutableWord)
+    };
+    interpreter.execute(value)
 }
 
 fn dup(interpreter: &mut Interpreter) -> RunResult {
@@ -121,20 +175,7 @@ fn keep(interpreter: &mut Interpreter) -> RunResult {
     interpreter.push(snd.clone());
     interpreter.execute(top)?;
     interpreter.push(snd);
-
     Ok(())
-}
-
-fn rem(interpreter: &mut Interpreter) -> RunResult {
-    interpreter.binary_int_op(i64::rem_euclid)
-}
-
-fn max(interpreter: &mut Interpreter) -> RunResult {
-    interpreter.binary_int_op(i64::max)
-}
-
-fn min(interpreter: &mut Interpreter) -> RunResult {
-    interpreter.binary_int_op(i64::min)
 }
 
 fn map(interpreter: &mut Interpreter) -> RunResult {
@@ -298,52 +339,9 @@ impl Executable for Word {
             Word::String { value, .. } => interpreter.push(Value::ValString(value.clone())),
             Word::Quote { name, .. } => interpreter.push(Value::ValQuote(name.clone())),
             Word::Block { words, .. } => interpreter.push(Value::ValBlock(words.clone())),
+            Word::Array { words, .. } => interpreter.push_array(words)?,
             Word::Identifier { name, .. } => {
                 let value = interpreter.get_variable(name)?;
-                interpreter.execute(value)?
-            }
-            Word::Array { words, .. } => interpreter.push_array(words)?,
-
-            Word::Add { .. } => interpreter.binary_int_op(i64::add)?,
-            Word::Sub { .. } => interpreter.binary_int_op(i64::sub)?,
-            Word::Mul { .. } => interpreter.binary_int_only_op(i64::mul)?,
-            Word::Div { .. } => interpreter.binary_int_only_op(i64::div)?,
-
-            Word::And { .. } => interpreter.binary_int_only_op(i64::bitand)?,
-            Word::Or { .. } => interpreter.binary_int_only_op(i64::bitor)?,
-            Word::Xor { .. } => interpreter.binary_int_only_op(i64::bitxor)?,
-            Word::Not { .. } => interpreter.unary_int_op(i64::not)?,
-
-            Word::Greater { .. } => interpreter.binary_compare_op(i64::gt)?,
-            Word::GreaterEqual { .. } => interpreter.binary_compare_op(i64::ge)?,
-            Word::Less { .. } => interpreter.binary_compare_op(i64::lt)?,
-            Word::LessEqual { .. } => interpreter.binary_compare_op(i64::le)?,
-            Word::Equal { .. } => interpreter.binary_compare_op(i64::eq)?,
-            Word::NotEqual { .. } => interpreter.binary_compare_op(i64::ne)?,
-
-            Word::Read { .. } => {
-                let name = match interpreter.pop()? {
-                    Value::ValQuote(name) => name,
-                    _ => return Err(RuntimeError::ExpectedQuote)
-                };
-                let variable = interpreter.get_variable(&name)?;
-                interpreter.push(variable.clone())
-            }
-            Word::Write { .. } => {
-                let name = match interpreter.pop()? {
-                    Value::ValQuote(name) => name,
-                    _ => return Err(RuntimeError::ExpectedQuote)
-                };
-                let value = interpreter.pop()?;
-                interpreter.set_variable(name, value)
-            }
-            Word::Execute { .. } => {
-                let value = match interpreter.pop()? {
-                    Value::ValQuote(name) => interpreter.get_variable(&name)?,
-                    Value::ValBuiltin(builtin) => Value::ValBuiltin(builtin),
-                    Value::ValBlock(words) => Value::ValBlock(words),
-                    _ => return Err(RuntimeError::ExpectedExecutableWord)
-                };
                 interpreter.execute(value)?
             }
         }
@@ -384,6 +382,24 @@ impl Interpreter {
             words,
             stack: Vec::new(),
             variables: HashMap::from([
+                ("+".into(), Value::ValBuiltin(Builtin(add))),
+                ("-".into(), Value::ValBuiltin(Builtin(sub))),
+                ("*".into(), Value::ValBuiltin(Builtin(mul))),
+                ("/".into(), Value::ValBuiltin(Builtin(div))),
+                ("&".into(), Value::ValBuiltin(Builtin(and))),
+                ("|".into(), Value::ValBuiltin(Builtin(or))),
+                ("^".into(), Value::ValBuiltin(Builtin(xor))),
+                ("!".into(), Value::ValBuiltin(Builtin(not))),
+                (">".into(), Value::ValBuiltin(Builtin(greater))),
+                (">=".into(), Value::ValBuiltin(Builtin(greater_or_equal))),
+                ("<".into(), Value::ValBuiltin(Builtin(less))),
+                ("<=".into(), Value::ValBuiltin(Builtin(less_or_equal))),
+                ("=".into(), Value::ValBuiltin(Builtin(equal))),
+                ("!=".into(), Value::ValBuiltin(Builtin(not_equal))),
+                ("++".into(), Value::ValBuiltin(Builtin(concat))),
+                ("@".into(), Value::ValBuiltin(Builtin(read))),
+                ("$".into(), Value::ValBuiltin(Builtin(write))),
+                ("%".into(), Value::ValBuiltin(Builtin(execute))),
                 ("dup".into(), Value::ValBuiltin(Builtin(dup))),
                 ("drop".into(), Value::ValBuiltin(Builtin(drop))),
                 ("swap".into(), Value::ValBuiltin(Builtin(swap))),
@@ -403,7 +419,6 @@ impl Interpreter {
                 ("min".into(), Value::ValBuiltin(Builtin(min))),
                 ("fold".into(), Value::ValBuiltin(Builtin(fold))),
                 ("reduce".into(), Value::ValBuiltin(Builtin(reduce))),
-                ("concat".into(), Value::ValBuiltin(Builtin(concat))),
             ]),
         }
     }
