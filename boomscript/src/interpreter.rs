@@ -547,17 +547,13 @@ impl Interpreter {
     }
 
     fn push_array(&mut self, words: &Vec<Word>) -> RunResult {
-        let stack_size_before = self.stack.len();
+        let array_start_stack_idx = self.stack.len();
 
         for word in words {
             word.execute(self)?
         }
 
-        if self.stack.len() < stack_size_before {
-            return Err(RuntimeError::WordHasNegativeStackEffect);
-        }
-
-        let elements = self.stack.drain(stack_size_before..).collect();
+        let elements = self.stack.drain(array_start_stack_idx..).collect();
         self.push(Value::ValArray(elements));
         Ok(())
     }
