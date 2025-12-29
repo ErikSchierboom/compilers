@@ -24,6 +24,8 @@ pub enum Builtin {
     Map,
     Mod,
     Filter,
+    Max,
+    Min,
 }
 
 impl Executable for Builtin {
@@ -123,10 +125,9 @@ impl Executable for Builtin {
 
                 Ok(())
             }
-            Builtin::Mod => {
-                interpreter.binary_int_op(i64::rem_euclid)?;
-                Ok(())
-            }
+            Builtin::Mod => interpreter.binary_int_op(i64::rem_euclid),
+            Builtin::Max => interpreter.binary_int_op(i64::max),
+            Builtin::Min => interpreter.binary_int_op(i64::min),
             Builtin::Map => {
                 let top = interpreter.pop()?;
                 let snd = interpreter.pop()?;
@@ -323,6 +324,8 @@ impl Interpreter {
                 ("map".into(), Value::ValBuiltin(Builtin::Map)),
                 ("filter".into(), Value::ValBuiltin(Builtin::Filter)),
                 ("mod".into(), Value::ValBuiltin(Builtin::Mod)),
+                ("max".into(), Value::ValBuiltin(Builtin::Max)),
+                ("min".into(), Value::ValBuiltin(Builtin::Min)),
             ]),
         }
     }
