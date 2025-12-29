@@ -1,3 +1,4 @@
+use crate::lowering::lower;
 use crate::parser::{parse, ParseError, Word};
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -297,7 +298,7 @@ impl Executable for Word {
             Word::String { value, .. } => interpreter.push(Value::ValString(value.clone())),
             Word::Quote { name, .. } => interpreter.push(Value::ValQuote(name.clone())),
             Word::Block { words, .. } => interpreter.push(Value::ValBlock(words.clone())),
-            Word::Word { name, .. } => {
+            Word::Identifier { name, .. } => {
                 let value = interpreter.get_variable(name)?;
                 interpreter.execute(value)?
             }
@@ -574,7 +575,7 @@ impl Interpreter {
 }
 
 pub fn interpret(code: &str) -> Result<Vec<Value>, RuntimeError> {
-    let words = parse(code)?;
+    let words = lower(parse(code)?);
     let interpreter = Interpreter::new(words);
     interpreter.run()
 }

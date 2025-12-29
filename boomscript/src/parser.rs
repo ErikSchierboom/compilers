@@ -31,7 +31,7 @@ pub enum Word {
     Char { value: char, location: Span },
     String { value: String, location: Span },
     Quote { name: String, location: Span },
-    Word { name: String, location: Span },
+    Identifier { name: String, location: Span },
 
     // Composite
     Block { words: Vec<Word>, location: Span },
@@ -70,7 +70,7 @@ impl Word {
             Word::Char { location, .. } |
             Word::String { location, .. } |
             Word::Quote { location, .. } |
-            Word::Word { location, .. } |
+            Word::Identifier { location, .. } |
             Word::Block { location, .. } |
             Word::Array { location, .. } |
             Word::Add { location, .. } |
@@ -146,7 +146,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             }
             TokenKind::Quote => {
                 match self.tokens.next() {
-                    Some(Token { kind: TokenKind::Word, location }) => {
+                    Some(Token { kind: TokenKind::Identifier, location }) => {
                         let name = self.lexeme(&location).into();
                         self.emit(Word::Quote { name, location })
                     }
@@ -154,9 +154,9 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                     None => return Err(Self::error(ParseErrorKind::ExpectedIdentifier, location)),
                 }
             }
-            TokenKind::Word => {
+            TokenKind::Identifier => {
                 let name = self.lexeme(&location).into();
-                self.emit(Word::Word { name, location })
+                self.emit(Word::Identifier { name, location })
             }
 
             // TODO: map operators to words (e.g. "+" => "plus")
@@ -164,37 +164,20 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             TokenKind::Minus => self.emit(Word::Sub { location }),
             TokenKind::Star => self.emit(Word::Mul { location }),
             TokenKind::Slash => self.emit(Word::Div { location }),
-            
-            TokenKind::PlusPlus => self.emit(Word::Word { name: "concat".into(), location }),
-
+            TokenKind::PlusPlus => self.emit(Word::Identifier { name: "concat".into(), location }),
             TokenKind::Ampersand => self.emit(Word::And { location }),
             TokenKind::Pipe => self.emit(Word::Or { location }),
             TokenKind::Caret => self.emit(Word::Xor { location }),
             TokenKind::Bang => self.emit(Word::Not { location }),
-
             TokenKind::Greater => self.emit(Word::Greater { location }),
             TokenKind::GreaterEqual => self.emit(Word::GreaterEqual { location }),
             TokenKind::Less => self.emit(Word::Less { location }),
             TokenKind::LessEqual => self.emit(Word::LessEqual { location }),
             TokenKind::Equal => self.emit(Word::Equal { location }),
             TokenKind::BangEqual => self.emit(Word::NotEqual { location }),
-
-            TokenKind::Read => self.emit(Word::Read { location }),
-            TokenKind::ReadVariable => {
-                self.emit(Word::Quote { name: self.lexeme(&location)[1..].into(), location: location.clone() });
-                self.emit(Word::Read { location })
-            }
-            TokenKind::Write => self.emit(Word::Write { location }),
-            TokenKind::WriteVariable => {
-                self.emit(Word::Quote { name: self.lexeme(&location)[1..].into(), location: location.clone() });
-                self.emit(Word::Write { location })
-            }
-            TokenKind::Execute => self.emit(Word::Execute { location }),
-            TokenKind::ExecuteVariable => {
-                self.emit(Word::Quote { name: self.lexeme(&location)[1..].into(), location: location.clone() });
-                self.emit(Word::Execute { location })
-            }
-
+            TokenKind::At => self.emit(Word::Read { location }),
+            TokenKind::Dollar => self.emit(Word::Write { location }),
+            TokenKind::Percent => self.emit(Word::Execute { location }),
             TokenKind::OpenBracket => self.parse_array(location)?,
             TokenKind::OpenParen => self.parse_block(location)?,
 

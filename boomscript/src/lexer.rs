@@ -26,36 +26,27 @@ pub enum TokenKind {
     Int,
     Char,
     String,
-    Word,
+    Identifier,
     Quote,
 
-    // Math operators
+    // Operators
     Plus,
     Minus,
     Star,
     Slash,
-
-    // Binary operators
     Ampersand,
     Pipe,
     Bang,
     Caret,
-
-    // Comparison operators
+    At,
+    Dollar,
+    Percent,
     Greater,
     GreaterEqual,
     Less,
     LessEqual,
     Equal,
     BangEqual,
-
-    // Memory operators
-    Read,
-    ReadVariable,
-    Write,
-    WriteVariable,
-    Execute,
-    ExecuteVariable,
 
     // Delimiters
     OpenBracket,
@@ -93,6 +84,14 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 '|' => self.emit(TokenKind::Pipe, start_pos, start_pos + 1),
                 '^' => self.emit(TokenKind::Caret, start_pos, start_pos + 1),
                 '=' => self.emit(TokenKind::Equal, start_pos, start_pos + 1),
+                '@' => self.emit(TokenKind::At, start_pos, start_pos + 1),
+                '$' => self.emit(TokenKind::Dollar, start_pos, start_pos + 1),
+                '%' => self.emit(TokenKind::Percent, start_pos, start_pos + 1),
+                '[' => self.emit(TokenKind::OpenBracket, start_pos, start_pos + 1),
+                ']' => self.emit(TokenKind::CloseBracket, start_pos, start_pos + 1),
+                '(' => self.emit(TokenKind::OpenParen, start_pos, start_pos + 1),
+                ')' => self.emit(TokenKind::CloseParen, start_pos, start_pos + 1),
+                '\'' => self.emit(TokenKind::Quote, start_pos, start_pos + 1),
                 '!' => {
                     if self.advance_if_eq(&'=') {
                         self.emit(TokenKind::BangEqual, start_pos, start_pos + 2)
@@ -114,33 +113,13 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                         self.emit(TokenKind::Greater, start_pos, start_pos + 1)
                     }
                 }
-                '@' => {
-                    let length = self.advance_while(char::is_ascii_alphanumeric);
-                    let kind = if length == 0 { TokenKind::Read } else { TokenKind::ReadVariable };
-                    self.emit(kind, start_pos, start_pos + 1 + length)
-                }
-                '$' => {
-                    let length = self.advance_while(char::is_ascii_alphanumeric);
-                    let kind = if length == 0 { TokenKind::Write } else { TokenKind::WriteVariable };
-                    self.emit(kind, start_pos, start_pos + 1 + length)
-                }
-                '%' => {
-                    let length = self.advance_while(char::is_ascii_alphanumeric);
-                    let kind = if length == 0 { TokenKind::Execute } else { TokenKind::ExecuteVariable };
-                    self.emit(kind, start_pos, start_pos + 1 + length)
-                }
-                '[' => self.emit(TokenKind::OpenBracket, start_pos, start_pos + 1),
-                ']' => self.emit(TokenKind::CloseBracket, start_pos, start_pos + 1),
-                '(' => self.emit(TokenKind::OpenParen, start_pos, start_pos + 1),
-                ')' => self.emit(TokenKind::CloseParen, start_pos, start_pos + 1),
-                '\'' => self.emit(TokenKind::Quote, start_pos, start_pos + 1),
                 '0'..='9' => {
                     let length = self.advance_while(char::is_ascii_digit) + 1;
                     self.emit(TokenKind::Int, start_pos, start_pos + length)
                 }
                 'a'..='z' | 'A'..='Z' => {
                     let length = self.advance_while(char::is_ascii_alphanumeric) + 1;
-                    self.emit(TokenKind::Word, start_pos, start_pos + length)
+                    self.emit(TokenKind::Identifier, start_pos, start_pos + length)
                 }
                 '#' => {
                     match self.advance() {
