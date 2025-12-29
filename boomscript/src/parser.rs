@@ -159,6 +159,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                 self.emit(Word::Word { name, location })
             }
 
+            // TODO: map operators to words (e.g. "+" => "plus")
             TokenKind::Plus => self.emit(Word::Add { location }),
             TokenKind::Minus => self.emit(Word::Sub { location }),
             TokenKind::Star => self.emit(Word::Mul { location }),
