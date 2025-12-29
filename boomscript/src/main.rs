@@ -7,7 +7,7 @@ mod location;
 
 fn main() {
     // let code = "(1 2) $a @a %a";
-    let code = "#a 3 +";
+    let code = "[1 2 3] (2 mod) filter";
 
     // println!("{:?}", tokenize(code));
     println!("{:?}", interpret(code))

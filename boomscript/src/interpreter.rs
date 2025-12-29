@@ -1,4 +1,5 @@
 use crate::parser::{parse, ParseError, Word};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Not, Sub};
 
@@ -20,6 +21,9 @@ pub enum Builtin {
     Rot,
     Dip,
     Keep,
+    Map,
+    Mod,
+    Filter,
 }
 
 impl Executable for Builtin {
@@ -119,6 +123,74 @@ impl Executable for Builtin {
 
                 Ok(())
             }
+            Builtin::Mod => {
+                interpreter.binary_int_op(i64::rem_euclid)?;
+                Ok(())
+            }
+            Builtin::Map => {
+                let top = interpreter.pop()?;
+                let snd = interpreter.pop()?;
+
+                match snd {
+                    Value::ValArray(array) => {
+                        let mut mapped_array = Vec::new();
+
+                        for element in array {
+                            let stack_length_before = interpreter.stack.len();
+                            interpreter.push(element);
+                            interpreter.execute(top.clone())?;
+
+                            if interpreter.stack.len() < stack_length_before {
+                                return Err(RuntimeError::WordHasNegativeStackEffect);
+                            }
+
+                            match interpreter.stack.len() - stack_length_before {
+                                0 => return Err(RuntimeError::WordDoesNotHavePositiveStackEffect),
+                                1 => mapped_array.push(interpreter.pop()?),
+                                _ => mapped_array.push(Value::ValArray(interpreter.stack.drain(stack_length_before..).collect())),
+                            }
+                        }
+
+                        interpreter.push(Value::ValArray(mapped_array))
+                    }
+                    _ => return Err(RuntimeError::UnsupportedOperands)
+                }
+
+                Ok(())
+            }
+            Builtin::Filter => {
+                let top = interpreter.pop()?;
+                let snd = interpreter.pop()?;
+
+                match snd {
+                    Value::ValArray(array) => {
+                        let mut filtered_array = Vec::new();
+
+                        for element in array {
+                            let stack_length_before = interpreter.stack.len();
+                            interpreter.push(element.clone());
+                            interpreter.execute(top.clone())?;
+
+                            match interpreter.stack.len().cmp(&stack_length_before) {
+                                Ordering::Less => return Err(RuntimeError::WordHasNegativeStackEffect),
+                                Ordering::Equal => return Err(RuntimeError::WordDoesNotHavePositiveStackEffect),
+                                Ordering::Greater => {
+                                    if interpreter.stack.len() == stack_length_before + 1 {
+                                        if bool::from(interpreter.pop()?) {
+                                            filtered_array.push(element)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        interpreter.push(Value::ValArray(filtered_array))
+                    }
+                    _ => return Err(RuntimeError::UnsupportedOperands)
+                }
+
+                Ok(())
+            }
         }
     }
 }
@@ -213,7 +285,8 @@ pub enum RuntimeError {
     UnknownWord(String),
     UnsupportedOperands,
     ExpectedQuote,
-    ArrayHasNegativeStackEffect,
+    WordHasNegativeStackEffect,
+    WordDoesNotHavePositiveStackEffect,
     ExpectedExecutableWord,
 }
 
@@ -247,6 +320,9 @@ impl Interpreter {
                 ("rot".into(), Value::ValBuiltin(Builtin::Rot)),
                 ("dip".into(), Value::ValBuiltin(Builtin::Dip)),
                 ("keep".into(), Value::ValBuiltin(Builtin::Keep)),
+                ("map".into(), Value::ValBuiltin(Builtin::Map)),
+                ("filter".into(), Value::ValBuiltin(Builtin::Filter)),
+                ("mod".into(), Value::ValBuiltin(Builtin::Mod)),
             ]),
         }
     }
@@ -382,7 +458,7 @@ impl Interpreter {
         }
 
         if self.stack.len() < stack_size_before {
-            return Err(RuntimeError::ArrayHasNegativeStackEffect);
+            return Err(RuntimeError::WordHasNegativeStackEffect);
         }
 
         let elements = self.stack.drain(stack_size_before..).collect();
