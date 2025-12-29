@@ -9,6 +9,9 @@ fn main() {
     // let code = "(1 2) $a @a %a";
     let code = "[1 2 3] 2 max";
 
+    // TODO: support quoting operators
+    let code = "[1 2 3] (+) reduce";
+
     // println!("{:?}", tokenize(code));
     println!("{:?}", interpret(code))
 }

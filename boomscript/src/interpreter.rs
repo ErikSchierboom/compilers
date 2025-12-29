@@ -26,6 +26,8 @@ pub enum Builtin {
     Filter,
     Max,
     Min,
+    Fold,
+    Reduce,
 }
 
 impl Executable for Builtin {
@@ -192,6 +194,48 @@ impl Executable for Builtin {
 
                 Ok(())
             }
+            Builtin::Reduce => {
+                let top = interpreter.pop()?;
+                let snd = interpreter.pop()?;
+
+                match snd {
+                    Value::ValArray(mut array) => {
+                        match array.split_first_mut() {
+                            Some((head, tail)) => {
+                                interpreter.push(head.to_owned());
+
+                                for element in tail.to_owned() {
+                                    interpreter.push(element);
+                                    interpreter.execute(top.clone())?;
+                                }
+                            }
+                            None => return Err(RuntimeError::EmptyArray),
+                        }
+                    }
+                    _ => return Err(RuntimeError::UnsupportedOperands)
+                }
+
+                Ok(())
+            }
+            Builtin::Fold => {
+                let top = interpreter.pop()?;
+                let snd = interpreter.pop()?;
+                let third = interpreter.pop()?;
+
+                match third {
+                    Value::ValArray(array) => {
+                        interpreter.push(snd);
+
+                        for element in array {
+                            interpreter.push(element);
+                            interpreter.execute(top.clone())?;
+                        }
+                    }
+                    _ => return Err(RuntimeError::UnsupportedOperands)
+                }
+
+                Ok(())
+            }
         }
     }
 }
@@ -289,6 +333,7 @@ pub enum RuntimeError {
     WordHasNegativeStackEffect,
     WordDoesNotHavePositiveStackEffect,
     ExpectedExecutableWord,
+    EmptyArray,
 }
 
 impl From<ParseError> for RuntimeError {
@@ -326,6 +371,8 @@ impl Interpreter {
                 ("mod".into(), Value::ValBuiltin(Builtin::Mod)),
                 ("max".into(), Value::ValBuiltin(Builtin::Max)),
                 ("min".into(), Value::ValBuiltin(Builtin::Min)),
+                ("fold".into(), Value::ValBuiltin(Builtin::Fold)),
+                ("reduce".into(), Value::ValBuiltin(Builtin::Reduce)),
             ]),
         }
     }
@@ -485,6 +532,10 @@ impl Interpreter {
                 }
             }
             Value::ValBuiltin(builtin) => builtin.execute(self)?,
+            Value::ValQuote(name) => {
+                let value = self.get_variable(&name)?;
+                self.execute(value)?
+            }
             value => self.push(value)
         }
 
