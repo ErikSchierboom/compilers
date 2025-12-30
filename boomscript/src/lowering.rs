@@ -1,17 +1,26 @@
+use crate::location::Span;
 use crate::parser::Word;
 
 pub fn lower(words: Vec<Word>) -> Vec<Word> {
     let mut lowered = Vec::with_capacity(words.len());
-    let mut words = words.into_iter().peekable();
 
-    while let Some(word) = words.next() {
-        if matches!(&word, Word::Identifier { name, .. } if matches!(name.as_str(), "@" | "$" | "%")) {
-            if let Some(Word::Identifier { name, location }) = words.next_if(|next| word.location().is_contiguous_with(&next.location()) && matches!(next, Word::Identifier { .. })) {
-                lowered.push(Word::Quote { name, location })
+    for word in words {
+        match word {
+            Word::Name { name, location } if name.starts_with(&['@', '$', '%']) => {
+                lowered.push(Word::Quote {
+                    name: name[1..].into(),
+                    location: Span { start: location.start + 1, end: location.end },
+                });
+                lowered.push(Word::Name {
+                    name: name[0..1].into(),
+                    location: Span {
+                        start: location.start,
+                        end: location.start + 1,
+                    },
+                });
             }
+            word => lowered.push(word),
         }
-
-        lowered.push(word)
     }
 
     lowered

@@ -14,6 +14,7 @@ pub enum ParseErrorKind {
     Lex(LexError),
     ExpectedIdentifier,
     UnexpectedEndOfFile,
+    UnexpectedToken(TokenKind),
 }
 
 impl From<LexError> for ParseError {
@@ -30,7 +31,7 @@ pub enum Word {
     Char { value: char, location: Span },
     String { value: String, location: Span },
     Quote { name: String, location: Span },
-    Identifier { name: String, location: Span },
+    Name { name: String, location: Span },
 
     // Composite
     Block { words: Vec<Word>, location: Span },
@@ -44,7 +45,7 @@ impl Word {
             Word::Char { location, .. } |
             Word::String { location, .. } |
             Word::Quote { location, .. } |
-            Word::Identifier { location, .. } |
+            Word::Name { location, .. } |
             Word::Block { location, .. } |
             Word::Array { location, .. } => location,
         }
@@ -74,6 +75,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         self.words.push(word)
     }
 
+    // TODO: merge this with parse
     fn parse_word(&mut self) -> Result<(), ParseError> {
         let token = self.tokens.next().ok_or_else(|| Self::error(ParseErrorKind::UnexpectedEndOfFile, Span::EMPTY))?;
         let location = token.location.clone();
@@ -103,7 +105,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             }
             TokenKind::Quote => {
                 match self.tokens.next() {
-                    Some(Token { kind: TokenKind::Identifier, location }) => {
+                    Some(Token { kind: TokenKind::Word, location }) => if token.location.is_contiguous_with(&location) {
                         let name = self.lexeme(&location).into();
                         self.emit(Word::Quote { name, location })
                     }
@@ -111,16 +113,14 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                     None => return Err(Self::error(ParseErrorKind::ExpectedIdentifier, location)),
                 }
             }
-            TokenKind::Identifier => {
+            TokenKind::Word => {
                 let name = self.lexeme(&location).into();
-                self.emit(Word::Identifier { name, location })
+                self.emit(Word::Name { name, location })
             }
             TokenKind::OpenBracket => self.parse_array(location)?,
             TokenKind::OpenParen => self.parse_block(location)?,
-            _ => {
-                let name = self.lexeme(&location).into();
-                self.emit(Word::Identifier { name, location })
-            }
+            TokenKind::CloseBracket |
+            TokenKind::CloseParen => return Err(Self::error(ParseErrorKind::UnexpectedToken(token.kind), location)),
         };
 
         Ok(())

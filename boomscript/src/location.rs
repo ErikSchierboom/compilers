@@ -10,7 +10,7 @@ impl Span {
     pub fn merge(&self, other: &Self) -> Self {
         Self { start: self.start.min(other.start), end: self.end.max(other.end) }
     }
-    
+
     pub fn is_contiguous_with(&self, other: &Self) -> bool {
         self.end == other.start
     }

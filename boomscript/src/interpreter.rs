@@ -340,7 +340,7 @@ impl Executable for Word {
             Word::Quote { name, .. } => interpreter.push(Value::ValQuote(name.clone())),
             Word::Block { words, .. } => interpreter.push(Value::ValBlock(words.clone())),
             Word::Array { words, .. } => interpreter.push_array(words)?,
-            Word::Identifier { name, .. } => {
+            Word::Name { name, .. } => {
                 let value = interpreter.get_variable(name)?;
                 interpreter.execute(value)?
             }
