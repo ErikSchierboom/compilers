@@ -24,6 +24,7 @@ pub struct Token {
 pub enum TokenKind {
     // Literals
     Int,
+    // TODO: support floats
     Char,
     String,
     Quote,
@@ -54,7 +55,10 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 ']' => self.emit(TokenKind::CloseBracket, start, start + 1),
                 '(' => self.emit(TokenKind::OpenParen, start, start + 1),
                 ')' => self.emit(TokenKind::CloseParen, start, start + 1),
-                '\'' => self.emit(TokenKind::Quote, start, start + 1),
+                '\'' => {
+                    let length = self.advance_while(Self::is_word_character) + 1;
+                    self.emit(TokenKind::Quote, start, start + length)
+                }
                 '0'..='9' => {
                     let length = self.advance_while(char::is_ascii_digit) + 1;
                     self.emit(TokenKind::Int, start, start + length)
@@ -97,22 +101,23 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                         };
                     }
                 }
-                _ => {
-                    let length = self.advance_while(|c| (c.is_ascii_alphanumeric() || c.is_ascii_punctuation()) && !matches!(c, '[' | ']' | '(' | ')' | '"' | '#' | '\'')) + 1;
+                c if Self::is_word_character(&c) => {
+                    let length = self.advance_while(Self::is_word_character) + 1;
                     self.emit(TokenKind::Word, start, start + length)
                 }
+                _ => return Err(Self::error(LexErrorKind::UnexpectedToken(c), start, start + 1))
             }
         }
 
         Ok(self.tokens)
     }
 
-    fn advance(&mut self) -> Option<(usize, char)> {
-        self.chars.next()
+    fn is_word_character(c: &char) -> bool {
+        matches!(c, 'a'..='z' | 'A'..='Z' | '0'..= '9' | '.' | '<' | '>' | '=' | '?' | '$' | '%' | '!' | '+' | '-' | '*' | '/' | '&' | '^')
     }
 
-    fn advance_if_eq(&mut self, expected: &char) -> bool {
-        self.chars.next_if(|(_, c)| c == expected).is_some()
+    fn advance(&mut self) -> Option<(usize, char)> {
+        self.chars.next()
     }
 
     fn advance_while(&mut self, f: impl Fn(&char) -> bool) -> usize {

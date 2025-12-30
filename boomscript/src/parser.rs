@@ -104,14 +104,8 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                 self.emit(Word::String { value, location })
             }
             TokenKind::Quote => {
-                match self.tokens.next() {
-                    Some(Token { kind: TokenKind::Word, location }) => if token.location.is_contiguous_with(&location) {
-                        let name = self.lexeme(&location).into();
-                        self.emit(Word::Quote { name, location })
-                    }
-                    Some(token) => return Err(Self::error(ParseErrorKind::ExpectedIdentifier, token.location)),
-                    None => return Err(Self::error(ParseErrorKind::ExpectedIdentifier, location)),
-                }
+                let name = self.lexeme(&location)[1..].into();
+                self.emit(Word::Quote { name, location })
             }
             TokenKind::Word => {
                 let name = self.lexeme(&location).into();

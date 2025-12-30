@@ -382,6 +382,7 @@ impl Interpreter {
             words,
             stack: Vec::new(),
             variables: HashMap::from([
+                // TODO: support ? for printing stack and . for pop and print top
                 ("+".into(), Value::ValBuiltin(Builtin(add))),
                 ("-".into(), Value::ValBuiltin(Builtin(sub))),
                 ("*".into(), Value::ValBuiltin(Builtin(mul))),
