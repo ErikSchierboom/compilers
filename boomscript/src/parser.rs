@@ -71,14 +71,14 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
     fn parse_word(&mut self) -> Option<Result<Word, ParseError>> {
         let Token { kind, location } = self.tokens.next()?;
 
-        let result = match kind {
+        match kind {
             TokenKind::Int => {
                 let value = self.lexeme(&location).parse().unwrap();
-                Ok(Word::Int { value, location })
+                Some(Ok(Word::Int { value, location }))
             }
             TokenKind::Float => {
                 let value = self.lexeme(&location).parse().unwrap();
-                Ok(Word::Float { value, location })
+                Some(Ok(Word::Float { value, location }))
             }
             TokenKind::Char => {
                 let value = match &self.lexeme(&location)[1..] {
@@ -88,7 +88,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                     "\\'" => '\'',
                     lexeme => lexeme.chars().next().unwrap()
                 };
-                Ok(Word::Char { value, location })
+                Some(Ok(Word::Char { value, location }))
             }
             TokenKind::String => {
                 let value = String::from(&self.lexeme(&location)[1..location.end - location.start - 1])
@@ -96,32 +96,31 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                     .replace("\\t", "\t")
                     .replace("\\r", "\r")
                     .replace("\\\"", "\"");
-                Ok(Word::String { value, location })
+                Some(Ok(Word::String { value, location }))
             }
             TokenKind::Quote => {
                 let name = self.lexeme(&location)[1..].into();
-                Ok(Word::Quote { name, location })
+                Some(Ok(Word::Quote { name, location }))
             }
             TokenKind::Word => {
                 let name = self.lexeme(&location).into();
-                Ok(Word::Name { name, location })
+                Some(Ok(Word::Name { name, location }))
             }
-            TokenKind::OpenBracket => self.parse_array(location),
-            TokenKind::OpenParen => self.parse_block(location),
-            TokenKind::CloseBracket | TokenKind::CloseParen => Err(Self::error(ParseErrorKind::UnexpectedToken(kind), location)),
-        };
-
-        Some(result)
-    }
-
-    fn parse_block(&mut self, start: Span) -> Result<Word, ParseError> {
-        let (words, location) = self.parse_delimited(TokenKind::CloseParen, start)?;
-        Ok(Word::Block { words, location })
-    }
-
-    fn parse_array(&mut self, start: Span) -> Result<Word, ParseError> {
-        let (words, location) = self.parse_delimited(TokenKind::CloseBracket, start)?;
-        Ok(Word::Array { words, location })
+            TokenKind::OpenBracket => {
+                match self.parse_delimited(TokenKind::CloseBracket, location) {
+                    Ok((words, location)) => Some(Ok(Word::Array { words, location })),
+                    Err(err) => Some(Err(err))
+                }
+            }
+            TokenKind::OpenParen => {
+                match self.parse_delimited(TokenKind::CloseParen, location) {
+                    Ok((words, location)) => Some(Ok(Word::Block { words, location })),
+                    Err(err) => Some(Err(err))
+                }
+            }
+            TokenKind::CloseBracket |
+            TokenKind::CloseParen => Some(Err(Self::error(ParseErrorKind::UnexpectedToken(kind), location))),
+        }
     }
 
     fn parse_delimited(&mut self, end_delimiter: TokenKind, start: Span) -> Result<(Vec<Word>, Span), ParseError> {
