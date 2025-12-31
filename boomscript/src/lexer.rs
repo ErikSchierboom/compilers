@@ -38,13 +38,12 @@ pub enum TokenKind {
 }
 
 struct Lexer<T: Iterator<Item=char>> {
-    chars: Peekable<Enumerate<T>>,
-    tokens: Vec<Token>,
+    chars: Peekable<Enumerate<T>>
 }
 
 impl<T: Iterator<Item=char>> Lexer<T> {
     fn new(code: T) -> Self {
-        Self { chars: code.enumerate().peekable(), tokens: Vec::new() }
+        Self { chars: code.enumerate().peekable() }
     }
 
     // TODO: return multiple errors
@@ -56,24 +55,26 @@ impl<T: Iterator<Item=char>> Lexer<T> {
     fn lex_token(&mut self) -> Option<Result<Token, LexError>> {
         self.advance_while(char::is_ascii_whitespace);
 
+        // TODO: maybe also return end?
         let (start, c) = self.advance()?;
-        let result = match c {
-            '[' => Ok(Self::token(TokenKind::OpenBracket, start, start + 1)),
-            ']' => Ok(Self::token(TokenKind::CloseBracket, start, start + 1)),
-            '(' => Ok(Self::token(TokenKind::OpenParen, start, start + 1)),
-            ')' => Ok(Self::token(TokenKind::CloseParen, start, start + 1)),
+        
+        match c {
+            '[' => Some(Ok(Token { kind: TokenKind::OpenBracket, location: Span { start, end: start + 1 } })),
+            ']' => Some(Ok(Token { kind: TokenKind::CloseBracket, location: Span { start, end: start + 1 } })),
+            '(' => Some(Ok(Token { kind: TokenKind::OpenParen, location: Span { start, end: start + 1 } })),
+            ')' => Some(Ok(Token { kind: TokenKind::CloseParen, location: Span { start, end: start + 1 } })),
             '\'' => {
                 let length = self.advance_while(Self::is_word_character) + 1;
-                Ok(Self::token(TokenKind::Quote, start, start + length))
+                Some(Ok(Token { kind: TokenKind::Quote, location: Span { start, end: start + length } }))
             }
             '0'..='9' => {
                 let length = self.advance_while(char::is_ascii_digit) + 1;
 
                 if self.advance_if_eq(&'.') {
                     let precision_length = self.advance_while(char::is_ascii_digit) + 1;
-                    Ok(Self::token(TokenKind::Float, start, start + length + precision_length))
+                    Some(Ok(Token { kind: TokenKind::Float, location: Span { start, end: start + length + precision_length } }))
                 } else {
-                    Ok(Self::token(TokenKind::Int, start, start + length))
+                    Some(Ok(Token { kind: TokenKind::Int, location: Span { start, end: start + length } }))
                 }
             }
             '#' => {
@@ -83,44 +84,48 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                             Some((end_pos, 'n')) |
                             Some((end_pos, 'r')) |
                             Some((end_pos, 't')) |
-                            Some((end_pos, '\'')) => Ok(Self::token(TokenKind::Char, start, end_pos + 1)),
-                            Some((escape_pos, _)) => Err(Self::error(LexErrorKind::InvalidEscape, escape_pos, escape_pos + 1)),
-                            None => Err(Self::error(LexErrorKind::ExpectedCharacter, backslash_pos, backslash_pos + 1))
+                            Some((end_pos, '\'')) => {
+                                Some(Ok(Token { kind: TokenKind::Char, location: Span { start, end: end_pos + 1 } }))
+                            }
+                            Some((escape_pos, _)) => {
+                                Some(Err(LexError { kind: LexErrorKind::InvalidEscape, location: Span { start: escape_pos, end: escape_pos + 1 } }))
+                            }
+                            None => {
+                                Some(Err(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start: backslash_pos, end: backslash_pos + 1 } }))
+                            }
                         }
                     }
-                    Some((end_pos, _)) => Ok(Self::token(TokenKind::Char, start, end_pos + 1)),
-                    None => Err(Self::error(LexErrorKind::ExpectedCharacter, start + 1, start + 2))
+                    Some((end_pos, _)) => Some(Ok(Token { kind: TokenKind::Char, location: Span { start, end: end_pos + 1 } })),
+                    None => Some(Err(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start: start + 1, end: start + 2 } })))
                 }
             }
             '"' => {
                 loop {
                     match self.advance() {
                         Some((end_pos, '"')) => {
-                            return Some(Ok(Self::token(TokenKind::String, start, end_pos + 1)))
+                            return Some(Ok(Token { kind: TokenKind::String, location: Span { start, end: end_pos + 1 } }))
                         }
-                        Some((backslash_pos, '\\')) => {
-                            match self.advance() {
-                                Some((_, 'n')) |
-                                Some((_, 'r')) |
-                                Some((_, 't')) |
-                                Some((_, '"')) => {}
-                                Some((escape_pos, _)) => return Some(Err(Self::error(LexErrorKind::InvalidEscape, escape_pos, escape_pos + 1))),
-                                None => return Some(Err(Self::error(LexErrorKind::ExpectedCharacter, backslash_pos, backslash_pos + 1)))
-                            }
-                        }
+                        Some((backslash_pos, '\\')) => match self.advance() {
+                            Some((_, 'n')) |
+                            Some((_, 'r')) |
+                            Some((_, 't')) |
+                            Some((_, '"')) => {}
+                            Some((escape_pos, _)) => return Some(Err(LexError { kind: LexErrorKind::InvalidEscape, location: Span { start: escape_pos, end: escape_pos + 1 } })),
+                            None => return Some(Err(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start: backslash_pos, end: backslash_pos + 1 } })),
+                        },
                         Some(_) => {}
-                        None => return Some(Err(Self::error(LexErrorKind::ExpectedCharacter, start + 1, start + 2)))
+                        None => {
+                            return Some(Err(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start: start + 1, end: start + 2 } }))
+                        }
                     }
                 }
             }
             c if Self::is_word_character(&c) => {
                 let length = self.advance_while(Self::is_word_character) + 1;
-                Ok(Self::token(TokenKind::Word, start, start + length))
+                Some(Ok(Token { kind: TokenKind::Word, location: Span { start, end: start + length } }))
             }
-            _ => Err(Self::error(LexErrorKind::UnexpectedToken(c), start, start + 1))
-        };
-
-        Some(result)
+            _ => Some(Err(LexError { kind: LexErrorKind::UnexpectedToken(c), location: Span { start, end: start + 1 } })),
+        }
     }
 
     fn is_word_character(c: &char) -> bool {
@@ -137,14 +142,6 @@ impl<T: Iterator<Item=char>> Lexer<T> {
 
     fn advance_while(&mut self, f: impl Fn(&char) -> bool) -> usize {
         std::iter::from_fn(|| self.chars.next_if(|(_, c)| f(c))).count()
-    }
-
-    fn token(kind: TokenKind, start: usize, end: usize) -> Token {
-        Token { kind, location: Span { start, end } }
-    }
-
-    fn error(kind: LexErrorKind, start: usize, end: usize) -> LexError {
-        LexError { kind, location: Span { start, end } }
     }
 }
 
