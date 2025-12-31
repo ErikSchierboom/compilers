@@ -53,9 +53,8 @@ impl<T: Iterator<Item=char>> Lexer<T> {
     }
 
     fn lex_token(&mut self) -> Option<Result<Token, LexError>> {
-        self.advance_while(char::is_ascii_whitespace);
+        self.advance_while(char::is_ascii_whitespace, 0);
 
-        // TODO: maybe also return end?
         let (start, c, end) = self.advance()?;
 
         match c {
@@ -64,17 +63,17 @@ impl<T: Iterator<Item=char>> Lexer<T> {
             '(' => Some(Ok(Token { kind: TokenKind::OpenParen, location: Span { start, end } })),
             ')' => Some(Ok(Token { kind: TokenKind::CloseParen, location: Span { start, end } })),
             '\'' => {
-                let length = self.advance_while(Self::is_word_character) + 1;
-                Some(Ok(Token { kind: TokenKind::Quote, location: Span { start, end: start + length } }))
+                let end = self.advance_while(Self::is_word_character, start);
+                Some(Ok(Token { kind: TokenKind::Quote, location: Span { start, end } }))
             }
             '0'..='9' => {
-                let length = self.advance_while(char::is_ascii_digit) + 1;
+                let end = self.advance_while(char::is_ascii_digit, start);
 
                 if self.advance_if_eq(&'.') {
-                    let precision_length = self.advance_while(char::is_ascii_digit) + 1;
-                    Some(Ok(Token { kind: TokenKind::Float, location: Span { start, end: start + length + precision_length } }))
+                    let end = self.advance_while(char::is_ascii_digit, end + 1);
+                    Some(Ok(Token { kind: TokenKind::Float, location: Span { start, end } }))
                 } else {
-                    Some(Ok(Token { kind: TokenKind::Int, location: Span { start, end: start + length } }))
+                    Some(Ok(Token { kind: TokenKind::Int, location: Span { start, end } }))
                 }
             }
             '#' => {
@@ -111,8 +110,8 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 }
             }
             c if Self::is_word_character(&c) => {
-                let length = self.advance_while(Self::is_word_character) + 1;
-                Some(Ok(Token { kind: TokenKind::Word, location: Span { start, end: start + length } }))
+                let end = self.advance_while(Self::is_word_character, start);
+                Some(Ok(Token { kind: TokenKind::Word, location: Span { start, end } }))
             }
             _ => Some(Err(LexError { kind: LexErrorKind::UnexpectedToken(c), location: Span { start, end } })),
         }
@@ -130,8 +129,8 @@ impl<T: Iterator<Item=char>> Lexer<T> {
         self.chars.next_if(|(_, c)| c == expected).is_some()
     }
 
-    fn advance_while(&mut self, f: impl Fn(&char) -> bool) -> usize {
-        std::iter::from_fn(|| self.chars.next_if(|(_, c)| f(c))).count()
+    fn advance_while(&mut self, f: impl Fn(&char) -> bool, start: usize) -> usize {
+        std::iter::from_fn(|| self.chars.next_if(|(_, c)| f(c))).count() + start + 1
     }
 }
 
