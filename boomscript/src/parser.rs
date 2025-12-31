@@ -57,39 +57,29 @@ impl Word {
 struct Parser<'a, T: Iterator<Item=Token>> {
     code: &'a str,
     tokens: Peekable<T>,
-    words: Vec<Word>,
 }
 
 impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
     fn new(code: &'a str, tokens: T) -> Self {
-        Self { code, tokens: tokens.peekable(), words: Vec::new() }
+        Self { code, tokens: tokens.peekable() }
     }
 
     fn parse(mut self) -> Result<Vec<Word>, ParseError> {
-        while self.tokens.peek().is_some() {
-            self.parse_word()?
-        }
-
-        Ok(self.words)
+        std::iter::from_fn(|| self.parse_word()).collect()
     }
 
-    fn emit(&mut self, word: Word) {
-        self.words.push(word)
-    }
-
-    // TODO: merge this with parse
-    fn parse_word(&mut self) -> Result<(), ParseError> {
-        let token = self.tokens.next().ok_or_else(|| Self::error(ParseErrorKind::UnexpectedEndOfFile, Span::EMPTY))?;
+    fn parse_word(&mut self) -> Option<Result<Word, ParseError>> {
+        let token = self.tokens.next()?;
         let location = token.location.clone();
 
-        match &token.kind {
+        let result = match &token.kind {
             TokenKind::Int => {
                 let value = self.lexeme(&location).parse().unwrap();
-                self.emit(Word::Int { value, location })
+                Ok(Word::Int { value, location })
             }
             TokenKind::Float => {
                 let value = self.lexeme(&location).parse().unwrap();
-                self.emit(Word::Float { value, location })
+                Ok(Word::Float { value, location })
             }
             TokenKind::Char => {
                 let value = match &self.lexeme(&location)[1..] {
@@ -99,7 +89,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                     "\\'" => '\'',
                     lexeme => lexeme.chars().next().unwrap()
                 };
-                self.emit(Word::Char { value, location })
+                Ok(Word::Char { value, location })
             }
             TokenKind::String => {
                 let value = String::from(&self.lexeme(&location)[1..location.end - location.start - 1])
@@ -107,48 +97,45 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                     .replace("\\t", "\t")
                     .replace("\\r", "\r")
                     .replace("\\\"", "\"");
-                self.emit(Word::String { value, location })
+                Ok(Word::String { value, location })
             }
             TokenKind::Quote => {
                 let name = self.lexeme(&location)[1..].into();
-                self.emit(Word::Quote { name, location })
+                Ok(Word::Quote { name, location })
             }
             TokenKind::Word => {
                 let name = self.lexeme(&location).into();
-                self.emit(Word::Name { name, location })
+                Ok(Word::Name { name, location })
             }
-            TokenKind::OpenBracket => self.parse_array(location)?,
-            TokenKind::OpenParen => self.parse_block(location)?,
-            TokenKind::CloseBracket |
-            TokenKind::CloseParen => return Err(Self::error(ParseErrorKind::UnexpectedToken(token.kind), location)),
+            TokenKind::OpenBracket => self.parse_array(location),
+            TokenKind::OpenParen => self.parse_block(location),
+            TokenKind::CloseBracket | TokenKind::CloseParen => Err(Self::error(ParseErrorKind::UnexpectedToken(token.kind), location)),
         };
 
-        Ok(())
+        Some(result)
     }
 
-    fn parse_block(&mut self, start: Span) -> Result<(), ParseError> {
+    fn parse_block(&mut self, start: Span) -> Result<Word, ParseError> {
         let (words, location) = self.parse_delimited(TokenKind::CloseParen, start)?;
-        self.emit(Word::Block { words, location });
-        Ok(())
+        Ok(Word::Block { words, location })
     }
 
-    fn parse_array(&mut self, start: Span) -> Result<(), ParseError> {
+    fn parse_array(&mut self, start: Span) -> Result<Word, ParseError> {
         let (words, location) = self.parse_delimited(TokenKind::CloseBracket, start)?;
-        self.emit(Word::Array { words, location });
-        Ok(())
+        Ok(Word::Array { words, location })
     }
 
     fn parse_delimited(&mut self, end_delimiter: TokenKind, start: Span) -> Result<(Vec<Word>, Span), ParseError> {
-        let num_words_before = self.words.len();
+        let mut words = Vec::new();
 
         loop {
             if let Some(token) = self.tokens.next_if(|token| token.kind == end_delimiter) {
-                let words = self.words.drain(num_words_before..).collect();
                 let location = start.merge(&token.location);
                 return Ok((words, location));
             }
 
-            self.parse_word()?
+            let word = self.parse_word().ok_or_else(|| Self::error(ParseErrorKind::UnexpectedEndOfFile, Span::EMPTY))??;
+            words.push(word)
         }
     }
 

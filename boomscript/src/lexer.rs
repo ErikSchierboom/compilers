@@ -48,6 +48,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
     }
 
     // TODO: return multiple errors
+    // TODO: lex whitespace
     fn tokenize(mut self) -> Result<Vec<Token>, LexError> {
         while let Some((start, c)) = self.advance() {
             match c {
