@@ -69,10 +69,9 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
     }
 
     fn parse_word(&mut self) -> Option<Result<Word, ParseError>> {
-        let token = self.tokens.next()?;
-        let location = token.location.clone();
+        let Token { kind, location } = self.tokens.next()?;
 
-        let result = match &token.kind {
+        let result = match kind {
             TokenKind::Int => {
                 let value = self.lexeme(&location).parse().unwrap();
                 Ok(Word::Int { value, location })
@@ -109,7 +108,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
             }
             TokenKind::OpenBracket => self.parse_array(location),
             TokenKind::OpenParen => self.parse_block(location),
-            TokenKind::CloseBracket | TokenKind::CloseParen => Err(Self::error(ParseErrorKind::UnexpectedToken(token.kind), location)),
+            TokenKind::CloseBracket | TokenKind::CloseParen => Err(Self::error(ParseErrorKind::UnexpectedToken(kind), location)),
         };
 
         Some(result)
