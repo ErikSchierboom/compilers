@@ -47,6 +47,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
         Self { chars: code.enumerate().peekable(), tokens: Vec::new() }
     }
 
+    // TODO: return multiple errors
     fn tokenize(mut self) -> Result<Vec<Token>, LexError> {
         while let Some((start, c)) = self.advance() {
             match c {
@@ -131,8 +132,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
     }
 
     fn advance_while(&mut self, f: impl Fn(&char) -> bool) -> usize {
-        std::iter::from_fn(|| self.chars.next_if(|(_, c)| f(c)))
-            .count()
+        std::iter::from_fn(|| self.chars.next_if(|(_, c)| f(c))).count()
     }
 
     fn emit(&mut self, kind: TokenKind, start: usize, end: usize) {
