@@ -19,29 +19,23 @@ impl Executable for Builtin {
     }
 }
 
-fn add(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_int_op(i64::add) }
-fn sub(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_int_op(i64::sub) }
-fn mul(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_int_only_op(i64::mul) }
-fn div(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_int_only_op(i64::div) }
+fn add(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_number_and_char_op(i64::add, f64::add) }
+fn sub(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_number_and_char_op(i64::sub, f64::sub) }
+fn mul(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_number_only_op(i64::mul, f64::mul) }
+fn div(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_number_only_op(i64::div, f64::mul) }
 fn and(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_int_only_op(i64::bitand) }
 fn or(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_int_only_op(i64::bitor) }
 fn xor(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_int_only_op(i64::bitxor) }
-fn not(interpreter: &mut Interpreter) -> RunResult { interpreter.unary_int_op(i64::not) }
-fn greater(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::gt) }
-fn greater_or_equal(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::ge) }
-fn less(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::lt) }
-fn less_or_equal(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::le) }
-fn equal(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::eq) }
-fn not_equal(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::ne) }
-fn rem(interpreter: &mut Interpreter) -> RunResult {
-    interpreter.binary_int_op(i64::rem_euclid)
-}
-fn max(interpreter: &mut Interpreter) -> RunResult {
-    interpreter.binary_int_op(i64::max)
-}
-fn min(interpreter: &mut Interpreter) -> RunResult {
-    interpreter.binary_int_op(i64::min)
-}
+fn not(interpreter: &mut Interpreter) -> RunResult { interpreter.unary_int_only_op(i64::not) }
+fn greater(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::gt, f64::gt) }
+fn greater_or_equal(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::ge, f64::ge) }
+fn less(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::lt, f64::lt) }
+fn less_or_equal(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::le, f64::le) }
+fn equal(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::eq, f64::eq) }
+fn not_equal(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_compare_op(i64::ne, f64::ne) }
+fn rem(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_number_and_char_op(i64::rem_euclid, f64::rem_euclid) }
+fn max(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_number_and_char_op(i64::max, f64::max) }
+fn min(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_number_and_char_op(i64::min, f64::min) }
 
 fn read(interpreter: &mut Interpreter) -> RunResult {
     let name = match interpreter.pop()? {
@@ -314,6 +308,7 @@ fn concat(interpreter: &mut Interpreter) -> RunResult {
 #[derive(Clone, Debug)]
 pub enum Value {
     ValInt(i64),
+    ValFloat(f64),
     ValChar(char),
     ValString(String),
     ValQuote(String),
@@ -326,6 +321,7 @@ impl From<Value> for bool {
     fn from(value: Value) -> Self {
         match value {
             Value::ValInt(0) => false,
+            Value::ValFloat(0.0) => false,
             _ => true
         }
     }
@@ -333,8 +329,10 @@ impl From<Value> for bool {
 
 impl Executable for Word {
     fn execute(&self, interpreter: &mut Interpreter) -> RunResult {
+        // TODO: get rid of clones
         match self {
             Word::Int { value, .. } => interpreter.push(Value::ValInt(value.clone())),
+            Word::Float { value, .. } => interpreter.push(Value::ValFloat(value.clone())),
             Word::Char { value, .. } => interpreter.push(Value::ValChar(value.clone())),
             Word::String { value, .. } => interpreter.push(Value::ValString(value.clone())),
             Word::Quote { name, .. } => interpreter.push(Value::ValQuote(name.clone())),
@@ -440,7 +438,7 @@ impl Interpreter {
         self.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)
     }
 
-    fn unary_int_op(&mut self, f: impl Fn(i64) -> i64) -> RunResult {
+    fn unary_int_only_op(&mut self, f: impl Fn(i64) -> i64) -> RunResult {
         let top = self.pop()?;
 
         match top {
@@ -470,21 +468,25 @@ impl Interpreter {
         }
     }
 
-    fn binary_int_op(&mut self, f: impl Fn(i64, i64) -> i64) -> RunResult {
+    fn binary_number_and_char_op(&mut self, f_int: impl Fn(i64, i64) -> i64, f_float: impl Fn(f64, f64) -> f64) -> RunResult {
         let top = self.pop()?;
         let snd = self.pop()?;
 
         match (snd, top) {
             (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
-                self.push(Value::ValInt(f(snd_val, top_val)));
+                self.push(Value::ValInt(f_int(snd_val, top_val)));
+                Ok(())
+            }
+            (Value::ValFloat(snd_val), Value::ValFloat(top_val)) => {
+                self.push(Value::ValFloat(f_float(snd_val, top_val)));
                 Ok(())
             }
             (Value::ValChar(snd_val), Value::ValInt(top_val)) => {
-                self.push(Value::ValChar(f(snd_val as i64, top_val) as u8 as char));
+                self.push(Value::ValChar(f_int(snd_val as i64, top_val) as u8 as char));
                 Ok(())
             }
             (Value::ValChar(snd_val), Value::ValChar(top_val)) => {
-                self.push(Value::ValInt(f(snd_val as i64, top_val as i64)));
+                self.push(Value::ValInt(f_int(snd_val as i64, top_val as i64)));
                 Ok(())
             }
             (Value::ValInt(scalar), Value::ValArray(mut array)) |
@@ -494,8 +496,27 @@ impl Interpreter {
                 while let Some(array_to_mutate) = array_mutation_queue.pop() {
                     for array_val_to_mutate in array_to_mutate.iter_mut() {
                         match array_val_to_mutate {
-                            Value::ValInt(array_int_value) => *array_int_value = f(*array_int_value, scalar),
-                            Value::ValChar(array_char_value) => *array_char_value = f(*array_char_value as i64, scalar) as u8 as char,
+                            Value::ValInt(array_int_value) => *array_int_value = f_int(*array_int_value, scalar),
+                            Value::ValChar(array_char_value) => *array_char_value = f_int(*array_char_value as i64, scalar) as u8 as char,
+                            Value::ValArray(inner_array) => {
+                                array_mutation_queue.push(inner_array)
+                            }
+                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                        }
+                    }
+                }
+
+                self.push(Value::ValArray(array));
+                Ok(())
+            }
+            (Value::ValFloat(scalar), Value::ValArray(mut array)) |
+            (Value::ValArray(mut array), Value::ValFloat(scalar)) => {
+                let mut array_mutation_queue = vec![&mut array];
+
+                while let Some(array_to_mutate) = array_mutation_queue.pop() {
+                    for array_val_to_mutate in array_to_mutate.iter_mut() {
+                        match array_val_to_mutate {
+                            Value::ValFloat(array_int_value) => *array_int_value = f_float(*array_int_value, scalar),
                             Value::ValArray(inner_array) => {
                                 array_mutation_queue.push(inner_array)
                             }
@@ -511,13 +532,21 @@ impl Interpreter {
         }
     }
 
-    fn binary_int_only_op(&mut self, f: impl Fn(i64, i64) -> i64) -> RunResult {
+    fn binary_int_and_char_op(&mut self, f_int: impl Fn(i64, i64) -> i64) -> RunResult {
         let top = self.pop()?;
         let snd = self.pop()?;
 
         match (snd, top) {
             (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
-                self.push(Value::ValInt(f(snd_val, top_val)));
+                self.push(Value::ValInt(f_int(snd_val, top_val)));
+                Ok(())
+            }
+            (Value::ValChar(snd_val), Value::ValInt(top_val)) => {
+                self.push(Value::ValChar(f_int(snd_val as i64, top_val) as u8 as char));
+                Ok(())
+            }
+            (Value::ValChar(snd_val), Value::ValChar(top_val)) => {
+                self.push(Value::ValInt(f_int(snd_val as i64, top_val as i64)));
                 Ok(())
             }
             (Value::ValInt(scalar), Value::ValArray(mut array)) |
@@ -527,7 +556,8 @@ impl Interpreter {
                 while let Some(array_to_mutate) = array_mutation_queue.pop() {
                     for array_val_to_mutate in array_to_mutate.iter_mut() {
                         match array_val_to_mutate {
-                            Value::ValInt(array_int_value) => *array_int_value = f(*array_int_value, scalar),
+                            Value::ValInt(array_int_value) => *array_int_value = f_int(*array_int_value, scalar),
+                            Value::ValChar(array_char_value) => *array_char_value = f_int(*array_char_value as i64, scalar) as u8 as char,
                             Value::ValArray(inner_array) => {
                                 array_mutation_queue.push(inner_array)
                             }
@@ -543,8 +573,150 @@ impl Interpreter {
         }
     }
 
-    fn binary_compare_op(&mut self, f: impl Fn(&i64, &i64) -> bool) -> RunResult {
-        self.binary_int_op(|l, r| f(&l, &r) as i64)
+    fn binary_number_only_op(&mut self, f_int: impl Fn(i64, i64) -> i64, f_float: impl Fn(f64, f64) -> f64) -> RunResult {
+        let top = self.pop()?;
+        let snd = self.pop()?;
+
+        match (snd, top) {
+            (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
+                self.push(Value::ValInt(f_int(snd_val, top_val)));
+                Ok(())
+            }
+            (Value::ValFloat(snd_val), Value::ValFloat(top_val)) => {
+                self.push(Value::ValFloat(f_float(snd_val, top_val)));
+                Ok(())
+            }
+            (Value::ValInt(scalar), Value::ValArray(mut array)) |
+            (Value::ValArray(mut array), Value::ValInt(scalar)) => {
+                let mut array_mutation_queue = vec![&mut array];
+
+                while let Some(array_to_mutate) = array_mutation_queue.pop() {
+                    for array_val_to_mutate in array_to_mutate.iter_mut() {
+                        match array_val_to_mutate {
+                            Value::ValInt(array_int_value) => *array_int_value = f_int(*array_int_value, scalar),
+                            Value::ValArray(inner_array) => {
+                                array_mutation_queue.push(inner_array)
+                            }
+                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                        }
+                    }
+                }
+
+                self.push(Value::ValArray(array));
+                Ok(())
+            }
+            (Value::ValFloat(scalar), Value::ValArray(mut array)) |
+            (Value::ValArray(mut array), Value::ValFloat(scalar)) => {
+                let mut array_mutation_queue = vec![&mut array];
+
+                while let Some(array_to_mutate) = array_mutation_queue.pop() {
+                    for array_val_to_mutate in array_to_mutate.iter_mut() {
+                        match array_val_to_mutate {
+                            Value::ValFloat(array_int_value) => *array_int_value = f_float(*array_int_value, scalar),
+                            Value::ValArray(inner_array) => {
+                                array_mutation_queue.push(inner_array)
+                            }
+                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                        }
+                    }
+                }
+
+                self.push(Value::ValArray(array));
+                Ok(())
+            }
+            _ => Err(RuntimeError::UnsupportedOperands)
+        }
+    }
+
+    fn binary_int_only_op(&mut self, f_int: impl Fn(i64, i64) -> i64) -> RunResult {
+        let top = self.pop()?;
+        let snd = self.pop()?;
+
+        match (snd, top) {
+            (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
+                self.push(Value::ValInt(f_int(snd_val, top_val)));
+                Ok(())
+            }
+            (Value::ValInt(scalar), Value::ValArray(mut array)) |
+            (Value::ValArray(mut array), Value::ValInt(scalar)) => {
+                let mut array_mutation_queue = vec![&mut array];
+
+                while let Some(array_to_mutate) = array_mutation_queue.pop() {
+                    for array_val_to_mutate in array_to_mutate.iter_mut() {
+                        match array_val_to_mutate {
+                            Value::ValInt(array_int_value) => *array_int_value = f_int(*array_int_value, scalar),
+                            Value::ValArray(inner_array) => {
+                                array_mutation_queue.push(inner_array)
+                            }
+                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                        }
+                    }
+                }
+
+                self.push(Value::ValArray(array));
+                Ok(())
+            }
+            _ => Err(RuntimeError::UnsupportedOperands)
+        }
+    }
+
+    fn binary_compare_op(&mut self, f_int: impl Fn(&i64, &i64) -> bool, f_float: impl Fn(&f64, &f64) -> bool) -> RunResult {
+        let top = self.pop()?;
+        let snd = self.pop()?;
+
+        match (snd, top) {
+            (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
+                self.push(Value::ValInt(f_int(&snd_val, &top_val).into()));
+                Ok(())
+            }
+            (Value::ValFloat(snd_val), Value::ValFloat(top_val)) => {
+                self.push(Value::ValInt(f_float(&snd_val, &top_val).into()));
+                Ok(())
+            }
+            (Value::ValChar(snd_val), Value::ValChar(top_val)) => {
+                self.push(Value::ValInt(f_int(&(snd_val as i64), &(top_val as i64)).into()));
+                Ok(())
+            }
+            (Value::ValInt(scalar), Value::ValArray(mut array)) |
+            (Value::ValArray(mut array), Value::ValInt(scalar)) => {
+                let mut array_mutation_queue = vec![&mut array];
+
+                while let Some(array_to_mutate) = array_mutation_queue.pop() {
+                    for array_val_to_mutate in array_to_mutate.iter_mut() {
+                        match array_val_to_mutate {
+                            Value::ValInt(array_int_value) => *array_int_value = f_int(array_int_value, &scalar).into(),
+                            Value::ValArray(inner_array) => {
+                                array_mutation_queue.push(inner_array)
+                            }
+                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                        }
+                    }
+                }
+
+                self.push(Value::ValArray(array));
+                Ok(())
+            }
+            (Value::ValFloat(scalar), Value::ValArray(mut array)) |
+            (Value::ValArray(mut array), Value::ValFloat(scalar)) => {
+                let mut array_mutation_queue = vec![&mut array];
+
+                while let Some(array_to_mutate) = array_mutation_queue.pop() {
+                    for array_val_to_mutate in array_to_mutate.iter_mut() {
+                        match array_val_to_mutate {
+                            Value::ValFloat(array_float_value) => *array_val_to_mutate = Value::ValInt(f_float(array_float_value, &scalar).into()),
+                            Value::ValArray(inner_array) => {
+                                array_mutation_queue.push(inner_array)
+                            }
+                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                        }
+                    }
+                }
+
+                self.push(Value::ValArray(array));
+                Ok(())
+            }
+            _ => Err(RuntimeError::UnsupportedOperands)
+        }
     }
 
     fn push_array(&mut self, words: &Vec<Word>) -> RunResult {

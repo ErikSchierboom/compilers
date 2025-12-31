@@ -24,7 +24,7 @@ pub struct Token {
 pub enum TokenKind {
     // Literals
     Int,
-    // TODO: support floats
+    Float,
     Char,
     String,
     Quote,
@@ -61,7 +61,13 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 }
                 '0'..='9' => {
                     let length = self.advance_while(char::is_ascii_digit) + 1;
-                    self.emit(TokenKind::Int, start, start + length)
+
+                    if self.advance_if_eq(&'.') {
+                        let precision_length = self.advance_while(char::is_ascii_digit) + 1;
+                        self.emit(TokenKind::Float, start, start + length + precision_length)
+                    } else {
+                        self.emit(TokenKind::Int, start, start + length)
+                    }
                 }
                 '#' => {
                     match self.advance() {
@@ -118,6 +124,10 @@ impl<T: Iterator<Item=char>> Lexer<T> {
 
     fn advance(&mut self) -> Option<(usize, char)> {
         self.chars.next()
+    }
+
+    fn advance_if_eq(&mut self, expected: &char) -> bool {
+        self.chars.next_if(|(_, c)| c == expected).is_some()
     }
 
     fn advance_while(&mut self, f: impl Fn(&char) -> bool) -> usize {
