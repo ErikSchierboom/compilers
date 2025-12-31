@@ -119,7 +119,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                 }
             }
             TokenKind::CloseBracket |
-            TokenKind::CloseParen => Some(Err(Self::error(ParseErrorKind::UnexpectedToken(kind), location))),
+            TokenKind::CloseParen => Some(Err(ParseError { kind: ParseErrorKind::UnexpectedToken(kind), location })),
         }
     }
 
@@ -132,17 +132,13 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                 return Ok((words, location));
             }
 
-            let word = self.parse_word().ok_or_else(|| Self::error(ParseErrorKind::UnexpectedEndOfFile, Span::EMPTY))??;
+            let word = self.parse_word().ok_or_else(|| ParseError { kind: ParseErrorKind::UnexpectedEndOfFile, location: Span::EMPTY })??;
             words.push(word)
         }
     }
 
     fn lexeme(&self, location: &Span) -> &'a str {
         &self.code[location.start..location.end]
-    }
-
-    fn error(kind: ParseErrorKind, location: Span) -> ParseError {
-        ParseError { kind, location }
     }
 }
 
