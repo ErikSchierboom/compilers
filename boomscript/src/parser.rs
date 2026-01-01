@@ -64,8 +64,22 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         Self { code, tokens: tokens.peekable() }
     }
 
-    fn parse(mut self) -> Result<Vec<Word>, ParseError> {
-        std::iter::from_fn(|| self.parse_word()).collect()
+    fn parse(mut self) -> Result<Vec<Word>, Vec<ParseError>> {
+        let mut tokens = Vec::new();
+        let mut errors = Vec::new();
+
+        while let Some(result) = self.parse_word() {
+            match result {
+                Ok(word) => tokens.push(word),
+                Err(parse_error) => errors.push(parse_error)
+            }
+        }
+
+        if errors.is_empty() {
+            Ok(tokens)
+        } else {
+            Err(errors)
+        }
     }
 
     fn parse_word(&mut self) -> Option<Result<Word, ParseError>> {
@@ -142,8 +156,12 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
     }
 }
 
-pub fn parse(code: &str) -> Result<Vec<Word>, ParseError> {
-    let tokens = tokenize(code)?;
-    let parser = Parser::new(code, tokens.into_iter());
-    parser.parse()
+pub fn parse(code: &str) -> Result<Vec<Word>, Vec<ParseError>> {
+    match tokenize(code) {
+        Ok(tokens) => {
+            let parser = Parser::new(code, tokens.into_iter());
+            parser.parse()
+        }
+        Err(lex_errors) => Err(lex_errors.into_iter().map(ParseError::from).collect())
+    }
 }

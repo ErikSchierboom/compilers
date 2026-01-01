@@ -1,7 +1,7 @@
 use crate::lowering::lower;
 use crate::parser::{parse, ParseError, Word};
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Not, Sub};
 
 type RunResult = Result<(), RuntimeError>;
@@ -369,7 +369,7 @@ impl From<ParseError> for RuntimeError {
 }
 
 struct Interpreter {
-    words: Vec<Word>,
+    words: VecDeque<Word>,
     stack: Vec<Value>,
     variables: HashMap<String, Value>,
 }
@@ -377,7 +377,7 @@ struct Interpreter {
 impl Interpreter {
     fn new(words: Vec<Word>) -> Self {
         Self {
-            words,
+            words: words.into_iter().collect(),
             stack: Vec::new(),
             variables: HashMap::from([
                 // TODO: support ? for printing stack and . for pop and print top
@@ -422,9 +422,12 @@ impl Interpreter {
         }
     }
 
-    fn run(mut self) -> Result<Vec<Value>, RuntimeError> {
-        for word in std::mem::take(&mut self.words) {
-            word.execute(&mut self)?
+    fn run(mut self) -> Result<Vec<Value>, Vec<RuntimeError>> {
+        while let Some(word) = self.words.pop_front() {
+            match word.execute(&mut self) {
+                Ok(_) => {}
+                Err(error) => return Err(vec![error])
+            }
         }
 
         Ok(self.stack)
@@ -758,8 +761,12 @@ impl Interpreter {
     }
 }
 
-pub fn interpret(code: &str) -> Result<Vec<Value>, RuntimeError> {
-    let words = lower(parse(code)?);
-    let interpreter = Interpreter::new(words);
-    interpreter.run()
+pub fn interpret(code: &str) -> Result<Vec<Value>, Vec<RuntimeError>> {
+    match parse(code).map(lower) {
+        Ok(words) => {
+            let interpreter = Interpreter::new(words);
+            interpreter.run()
+        }
+        Err(parse_errors) => Err(parse_errors.into_iter().map(RuntimeError::from).collect())
+    }
 }
