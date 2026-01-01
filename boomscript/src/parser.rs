@@ -12,8 +12,7 @@ pub struct ParseError {
 #[derive(Debug)]
 pub enum ParseErrorKind {
     Lex(LexError),
-    ExpectedIdentifier,
-    UnexpectedEndOfFile,
+    ExpectedToken(TokenKind),
     UnexpectedToken(TokenKind),
 }
 
@@ -71,7 +70,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         while let Some(result) = self.parse_word() {
             match result {
                 Ok(word) => tokens.push(word),
-                Err(parse_error) => errors.push(parse_error)
+                Err(parse_error) => errors.extend(parse_error)
             }
         }
 
@@ -82,7 +81,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         }
     }
 
-    fn parse_word(&mut self) -> Option<Result<Word, ParseError>> {
+    fn parse_word(&mut self) -> Option<Result<Word, Vec<ParseError>>> {
         let Token { kind, location } = self.tokens.next()?;
 
         match kind {
@@ -133,21 +132,33 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                 }
             }
             TokenKind::CloseBracket |
-            TokenKind::CloseParen => Some(Err(ParseError { kind: ParseErrorKind::UnexpectedToken(kind), location })),
+            TokenKind::CloseParen => Some(Err(vec![ParseError { kind: ParseErrorKind::UnexpectedToken(kind), location }])),
         }
     }
 
-    fn parse_delimited(&mut self, end_delimiter: TokenKind, start: Span) -> Result<(Vec<Word>, Span), ParseError> {
+    fn parse_delimited(&mut self, end_delimiter: TokenKind, start: Span) -> Result<(Vec<Word>, Span), Vec<ParseError>> {
         let mut words = Vec::new();
+        let mut errors = Vec::new();
 
         loop {
             if let Some(token) = self.tokens.next_if(|token| token.kind == end_delimiter) {
                 let location = start.merge(&token.location);
-                return Ok((words, location));
+                if errors.is_empty() {
+                    return Ok((words, location));
+                } else {
+                    return Err(errors);
+                }
             }
 
-            let word = self.parse_word().ok_or_else(|| ParseError { kind: ParseErrorKind::UnexpectedEndOfFile, location: Span::EMPTY })??;
-            words.push(word)
+            match self.parse_word() {
+                None => {
+                    // TODO: get the right location
+                    errors.push(ParseError { kind: ParseErrorKind::ExpectedToken(end_delimiter), location: Span::EMPTY });
+                    return Err(errors);
+                }
+                Some(Ok(word)) => words.push(word),
+                Some(Err(err)) => errors.extend(err)
+            }
         }
     }
 
