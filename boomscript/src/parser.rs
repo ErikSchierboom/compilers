@@ -152,7 +152,6 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
 
             match self.parse_word() {
                 None => {
-                    // TODO: get the right location
                     errors.push(ParseError { kind: ParseErrorKind::ExpectedToken(end_delimiter), location: Span::EMPTY });
                     return Err(errors);
                 }
