@@ -762,11 +762,12 @@ impl Interpreter {
 }
 
 pub fn interpret(code: &str) -> Result<Vec<Value>, Vec<RuntimeError>> {
-    match parse(code).map(lower) {
+    match parse(code) {
         Ok(words) => {
-            let interpreter = Interpreter::new(words);
+            let lowered = lower(words);
+            let interpreter = Interpreter::new(lowered);
             interpreter.run()
         }
-        Err(parse_errors) => Err(parse_errors.into_iter().map(RuntimeError::from).collect())
+        Err(errors) => Err(errors.into_iter().map(RuntimeError::from).collect())
     }
 }

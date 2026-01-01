@@ -172,6 +172,6 @@ pub fn parse(code: &str) -> Result<Vec<Word>, Vec<ParseError>> {
             let parser = Parser::new(code, tokens.into_iter());
             parser.parse()
         }
-        Err(lex_errors) => Err(lex_errors.into_iter().map(ParseError::from).collect())
+        Err(errors) => Err(errors.into_iter().map(ParseError::from).collect())
     }
 }
