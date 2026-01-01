@@ -10,8 +10,8 @@ pub struct LexError {
 #[derive(Debug)]
 pub enum LexErrorKind {
     ExpectedCharacter,
-    UnexpectedToken(char),
-    InvalidEscape,
+    UnexpectedCharacter(char),
+    InvalidEscape(char),
 }
 
 #[derive(Clone, Debug)]
@@ -80,7 +80,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                                 Some((_, 'r', end)) |
                                 Some((_, 't', end)) |
                                 Some((_, '\'', end)) => tokens.push(Token { kind: TokenKind::Char, location: Span { start, end } }),
-                                Some((start, _, end)) => errors.push(LexError { kind: LexErrorKind::InvalidEscape, location: Span { start, end } }),
+                                Some((start, c, end)) => errors.push(LexError { kind: LexErrorKind::InvalidEscape(c), location: Span { start, end } }),
                                 None => errors.push(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start, end } }),
                             }
                         }
@@ -97,7 +97,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                                 Some((_, 'r', _)) |
                                 Some((_, 't', _)) |
                                 Some((_, '"', _)) => {}
-                                Some((start, _, end)) => errors.push(LexError { kind: LexErrorKind::InvalidEscape, location: Span { start, end } }),
+                                Some((start, c, end)) => errors.push(LexError { kind: LexErrorKind::InvalidEscape(c), location: Span { start, end } }),
                                 None => errors.push(LexError { kind: LexErrorKind::ExpectedCharacter, location: Span { start, end } }),
                             },
                             Some(_) => {}
@@ -109,7 +109,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                     let end = self.advance_while(Self::is_word_character, start);
                     tokens.push(Token { kind: TokenKind::Word, location: Span { start, end } })
                 }
-                _ => errors.push(LexError { kind: LexErrorKind::UnexpectedToken(c), location: Span { start, end } }),
+                _ => errors.push(LexError { kind: LexErrorKind::UnexpectedCharacter(c), location: Span { start, end } }),
             }
         }
 
