@@ -1,3 +1,5 @@
+use crate::interpreter::RuntimeError::Parse;
+use crate::location::Span;
 use crate::lowering::lower;
 use crate::parser::{parse, ParseError, Word};
 use std::cmp::Ordering;
@@ -38,19 +40,19 @@ fn max(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_number_a
 fn min(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_number_and_char_op(i64::min, f64::min) }
 
 fn read(interpreter: &mut Interpreter) -> RunResult {
-    let name = match interpreter.pop()? {
-        Value::ValQuote(name) => name,
-        _ => return Err(RuntimeError::ExpectedQuote)
+    let (name, location) = match interpreter.pop()? {
+        Value::ValQuote(name, location) => (name, location),
+        value => return Err(RuntimeError::ExpectedQuote(value.location().clone()))
     };
-    let variable = interpreter.get_variable(&name)?;
+    let variable = interpreter.get_variable(&name, &location)?;
     interpreter.push(variable.clone());
     Ok(())
 }
 
 fn write(interpreter: &mut Interpreter) -> RunResult {
     let name = match interpreter.pop()? {
-        Value::ValQuote(name) => name,
-        _ => return Err(RuntimeError::ExpectedQuote)
+        Value::ValQuote(name, _) => name,
+        value => return Err(RuntimeError::ExpectedQuote(value.location().clone()))
     };
     let value = interpreter.pop()?;
     interpreter.set_variable(name, value);
@@ -59,10 +61,10 @@ fn write(interpreter: &mut Interpreter) -> RunResult {
 
 fn execute(interpreter: &mut Interpreter) -> RunResult {
     let value = match interpreter.pop()? {
-        Value::ValQuote(name) => interpreter.get_variable(&name)?,
+        Value::ValQuote(name, location) => interpreter.get_variable(&name, &location)?,
         Value::ValBuiltin(builtin) => Value::ValBuiltin(builtin),
-        Value::ValBlock(words) => Value::ValBlock(words),
-        _ => return Err(RuntimeError::ExpectedExecutableWord)
+        Value::ValBlock(words, location) => Value::ValBlock(words, location),
+        value => return Err(RuntimeError::ExpectedExecutableWord(value.location().clone()))
     };
     interpreter.execute(value)
 }
@@ -177,7 +179,7 @@ fn map(interpreter: &mut Interpreter) -> RunResult {
     let snd = interpreter.pop()?;
 
     match snd {
-        Value::ValArray(array) => {
+        Value::ValArray(array, location) => {
             let mut mapped_array = Vec::new();
 
             for element in array {
@@ -186,19 +188,19 @@ fn map(interpreter: &mut Interpreter) -> RunResult {
                 interpreter.execute(top.clone())?;
 
                 if interpreter.stack.len() < stack_length_before {
-                    return Err(RuntimeError::WordHasNegativeStackEffect);
+                    return Err(RuntimeError::WordHasNegativeStackEffect(location.clone()));
                 }
 
                 match interpreter.stack.len() - stack_length_before {
-                    0 => return Err(RuntimeError::WordDoesNotHavePositiveStackEffect),
+                    0 => return Err(RuntimeError::WordDoesNotHavePositiveStackEffect(location.clone())),
                     1 => mapped_array.push(interpreter.pop()?),
-                    _ => mapped_array.push(Value::ValArray(interpreter.stack.drain(stack_length_before..).collect())),
+                    _ => mapped_array.push(Value::ValArray(interpreter.stack.drain(stack_length_before..).collect(), location)),
                 }
             }
 
-            interpreter.push(Value::ValArray(mapped_array))
+            interpreter.push(Value::ValArray(mapped_array, location))
         }
-        _ => return Err(RuntimeError::UnsupportedOperands)
+        value => return Err(RuntimeError::UnsupportedOperands(value.location().clone()))
     }
 
     Ok(())
@@ -209,7 +211,7 @@ fn filter(interpreter: &mut Interpreter) -> RunResult {
     let snd = interpreter.pop()?;
 
     match snd {
-        Value::ValArray(array) => {
+        Value::ValArray(array, location) => {
             let mut filtered_array = Vec::new();
 
             for element in array {
@@ -218,8 +220,8 @@ fn filter(interpreter: &mut Interpreter) -> RunResult {
                 interpreter.execute(top.clone())?;
 
                 match interpreter.stack.len().cmp(&stack_length_before) {
-                    Ordering::Less => return Err(RuntimeError::WordHasNegativeStackEffect),
-                    Ordering::Equal => return Err(RuntimeError::WordDoesNotHavePositiveStackEffect),
+                    Ordering::Less => return Err(RuntimeError::WordHasNegativeStackEffect(location)),
+                    Ordering::Equal => return Err(RuntimeError::WordDoesNotHavePositiveStackEffect(location)),
                     Ordering::Greater => {
                         if interpreter.stack.len() == stack_length_before + 1 {
                             if bool::from(interpreter.pop()?) {
@@ -230,9 +232,9 @@ fn filter(interpreter: &mut Interpreter) -> RunResult {
                 }
             }
 
-            interpreter.push(Value::ValArray(filtered_array))
+            interpreter.push(Value::ValArray(filtered_array, location))
         }
-        _ => return Err(RuntimeError::UnsupportedOperands)
+        value => return Err(RuntimeError::UnsupportedOperands(value.location().clone()))
     }
 
     Ok(())
@@ -243,7 +245,7 @@ fn reduce(interpreter: &mut Interpreter) -> RunResult {
     let snd = interpreter.pop()?;
 
     match snd {
-        Value::ValArray(mut array) => {
+        Value::ValArray(mut array, location) => {
             match array.split_first_mut() {
                 Some((head, tail)) => {
                     interpreter.push(head.to_owned());
@@ -253,10 +255,10 @@ fn reduce(interpreter: &mut Interpreter) -> RunResult {
                         interpreter.execute(top.clone())?;
                     }
                 }
-                None => return Err(RuntimeError::EmptyArray),
+                None => return Err(RuntimeError::EmptyArray(location)),
             }
         }
-        _ => return Err(RuntimeError::UnsupportedOperands)
+        value => return Err(RuntimeError::UnsupportedOperands(value.location().clone()))
     }
 
     Ok(())
@@ -268,7 +270,7 @@ fn fold(interpreter: &mut Interpreter) -> RunResult {
     let third = interpreter.pop()?;
 
     match third {
-        Value::ValArray(array) => {
+        Value::ValArray(array, _) => {
             interpreter.push(snd);
 
             for element in array {
@@ -276,7 +278,7 @@ fn fold(interpreter: &mut Interpreter) -> RunResult {
                 interpreter.execute(top.clone())?;
             }
         }
-        _ => return Err(RuntimeError::UnsupportedOperands)
+        value => return Err(RuntimeError::UnsupportedOperands(value.location().clone()))
     }
 
     Ok(())
@@ -287,19 +289,19 @@ fn concat(interpreter: &mut Interpreter) -> RunResult {
     let snd = interpreter.pop()?;
 
     match (snd, top) {
-        (Value::ValArray(mut l), Value::ValArray(mut r)) => {
+        (Value::ValArray(mut l, location_l), Value::ValArray(mut r, location_r)) => {
             l.append(&mut r);
-            interpreter.push(Value::ValArray(l));
+            interpreter.push(Value::ValArray(l, location_l.merge(&location_r)));
         }
-        (Value::ValBlock(mut l), Value::ValBlock(mut r)) => {
+        (Value::ValBlock(mut l, location_l), Value::ValBlock(mut r, location_r)) => {
             l.append(&mut r);
-            interpreter.push(Value::ValBlock(l));
+            interpreter.push(Value::ValBlock(l, location_l.merge(&location_r)));
         }
-        (Value::ValString(mut l), Value::ValString(r)) => {
+        (Value::ValString(mut l, location_l), Value::ValString(r, location_r)) => {
             l.push_str(&r);
-            interpreter.push(Value::ValString(l));
+            interpreter.push(Value::ValString(l, location_l.merge(&location_r)));
         }
-        _ => return Err(RuntimeError::UnsupportedOperands)
+        (l, r) => return Err(RuntimeError::UnsupportedOperands(l.location().merge(r.location())))
     }
 
     Ok(())
@@ -307,21 +309,36 @@ fn concat(interpreter: &mut Interpreter) -> RunResult {
 
 #[derive(Clone, Debug)]
 pub enum Value {
-    ValInt(i64),
-    ValFloat(f64),
-    ValChar(char),
-    ValString(String),
-    ValQuote(String),
-    ValBlock(Vec<Word>),
-    ValArray(Vec<Value>),
-    ValBuiltin(Builtin),
+    ValInt(i64, Span),
+    ValFloat(f64, Span),
+    ValChar(char, Span),
+    ValString(String, Span),
+    ValQuote(String, Span),
+    ValBlock(Vec<Word>, Span),
+    ValArray(Vec<Value>, Span),
+    ValBuiltin(Builtin), // TODO: check if this needs a span too
+}
+
+impl Value {
+    fn location(&self) -> &Span {
+        match self {
+            Value::ValInt(_, location) |
+            Value::ValFloat(_, location) |
+            Value::ValChar(_, location) |
+            Value::ValString(_, location) |
+            Value::ValQuote(_, location) |
+            Value::ValBlock(_, location) |
+            Value::ValArray(_, location) => location,
+            Value::ValBuiltin(_) => &Span::EMPTY
+        }
+    }
 }
 
 impl From<Value> for bool {
     fn from(value: Value) -> Self {
         match value {
-            Value::ValInt(0) => false,
-            Value::ValFloat(0.0) => false,
+            Value::ValInt(0, _) => false,
+            Value::ValFloat(0.0, _) => false,
             _ => true
         }
     }
@@ -331,15 +348,15 @@ impl Executable for Word {
     fn execute(&self, interpreter: &mut Interpreter) -> RunResult {
         // TODO: get rid of clones
         match self {
-            Word::Int { value, .. } => interpreter.push(Value::ValInt(value.clone())),
-            Word::Float { value, .. } => interpreter.push(Value::ValFloat(value.clone())),
-            Word::Char { value, .. } => interpreter.push(Value::ValChar(value.clone())),
-            Word::String { value, .. } => interpreter.push(Value::ValString(value.clone())),
-            Word::Quote { name, .. } => interpreter.push(Value::ValQuote(name.clone())),
-            Word::Block { words, .. } => interpreter.push(Value::ValBlock(words.clone())),
-            Word::Array { words, .. } => interpreter.push_array(words)?,
-            Word::Name { name, .. } => {
-                let value = interpreter.get_variable(name)?;
+            Word::Int(value, location) => interpreter.push(Value::ValInt(value.clone(), location.clone())),
+            Word::Float(value, location) => interpreter.push(Value::ValFloat(value.clone(), location.clone())),
+            Word::Char(value, location) => interpreter.push(Value::ValChar(value.clone(), location.clone())),
+            Word::String(value, location) => interpreter.push(Value::ValString(value.clone(), location.clone())),
+            Word::Quote(name, location) => interpreter.push(Value::ValQuote(name.clone(), location.clone())),
+            Word::Block(words, location) => interpreter.push(Value::ValBlock(words.clone(), location.clone())),
+            Word::Array(words, location) => interpreter.push_array(words, location)?,
+            Word::Name(name, location) => {
+                let value = interpreter.get_variable(name, location)?;
                 interpreter.execute(value)?
             }
         }
@@ -350,21 +367,22 @@ impl Executable for Word {
 
 #[derive(Debug)]
 pub enum RuntimeError {
-    Parse(ParseError),
-    UnsupportedArrayValue,
-    EmptyStack,
-    UnknownWord(String),
-    UnsupportedOperands,
-    ExpectedQuote,
-    WordHasNegativeStackEffect,
-    WordDoesNotHavePositiveStackEffect,
-    ExpectedExecutableWord,
-    EmptyArray,
+    Parse(ParseError, Span),
+    UnsupportedArrayValue(Span),
+    EmptyStack(Span),
+    UnknownWord(String, Span),
+    UnsupportedOperands(Span),
+    ExpectedQuote(Span),
+    WordHasNegativeStackEffect(Span),
+    WordDoesNotHavePositiveStackEffect(Span),
+    ExpectedExecutableWord(Span),
+    EmptyArray(Span),
 }
 
 impl From<ParseError> for RuntimeError {
     fn from(value: ParseError) -> Self {
-        Self::Parse(value)
+        let location = value.location().clone();
+        Parse(value, location)
     }
 }
 
@@ -445,29 +463,29 @@ impl Interpreter {
         let top = self.pop()?;
 
         match top {
-            Value::ValInt(top_val) => {
-                self.push(Value::ValInt(f(top_val)));
+            Value::ValInt(top_val, location) => {
+                self.push(Value::ValInt(f(top_val), location));
                 Ok(())
             }
-            Value::ValArray(mut array) => {
+            Value::ValArray(mut array, location) => {
                 let mut mutation_queue = vec![&mut array];
 
                 while let Some(array) = mutation_queue.pop() {
                     for value in array.iter_mut() {
                         match value {
-                            Value::ValInt(int) => *int = f(*int),
-                            Value::ValArray(inner_values) => {
+                            Value::ValInt(int, _) => *int = f(*int),
+                            Value::ValArray(inner_values, _) => {
                                 mutation_queue.push(inner_values)
                             }
-                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                            _ => return Err(RuntimeError::UnsupportedArrayValue(location))
                         }
                     }
                 }
 
-                self.push(Value::ValArray(array));
+                self.push(Value::ValArray(array, location));
                 Ok(())
             }
-            _ => Err(RuntimeError::UnsupportedOperands)
+            value => Err(RuntimeError::UnsupportedOperands(value.location().clone()))
         }
     }
 
@@ -476,19 +494,19 @@ impl Interpreter {
         let snd = self.pop()?;
 
         match (snd, top) {
-            (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
-                self.push(Value::ValInt(f_int(snd_val, top_val)));
+            (Value::ValInt(snd_val, snd_location), Value::ValInt(top_val, top_location)) => {
+                self.push(Value::ValInt(f_int(snd_val, top_val), snd_location.merge(&top_location)));
                 Ok(())
             }
-            (Value::ValFloat(snd_val), Value::ValFloat(top_val)) => {
+            (Value::ValFloat(snd_val, snd_loc), Value::ValFloat(top_val, top_loc)) => {
                 self.push(Value::ValFloat(f_float(snd_val, top_val)));
                 Ok(())
             }
-            (Value::ValChar(snd_val), Value::ValInt(top_val)) => {
+            (Value::ValChar(snd_val, snd_loc), Value::ValInt(top_val, top_loc)) => {
                 self.push(Value::ValChar(f_int(snd_val as i64, top_val) as u8 as char));
                 Ok(())
             }
-            (Value::ValChar(snd_val), Value::ValChar(top_val)) => {
+            (Value::ValChar(snd_val, snd_loc), Value::ValChar(top_val, top_loc)) => {
                 self.push(Value::ValInt(f_int(snd_val as i64, top_val as i64)));
                 Ok(())
             }
@@ -540,11 +558,11 @@ impl Interpreter {
         let snd = self.pop()?;
 
         match (snd, top) {
-            (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
+            (Value::ValInt(snd_val, snd_loc), Value::ValInt(top_val, top_loc)) => {
                 self.push(Value::ValInt(f_int(snd_val, top_val)));
                 Ok(())
             }
-            (Value::ValFloat(snd_val), Value::ValFloat(top_val)) => {
+            (Value::ValFloat(snd_val, snd_loc), Value::ValFloat(top_val, top_loc)) => {
                 self.push(Value::ValFloat(f_float(snd_val, top_val)));
                 Ok(())
             }
@@ -595,7 +613,7 @@ impl Interpreter {
         let snd = self.pop()?;
 
         match (snd, top) {
-            (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
+            (Value::ValInt(snd_val, snd_loc), Value::ValInt(top_val, top_loc)) => {
                 self.push(Value::ValInt(f_int(snd_val, top_val)));
                 Ok(())
             }
@@ -627,15 +645,15 @@ impl Interpreter {
         let snd = self.pop()?;
 
         match (snd, top) {
-            (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
+            (Value::ValInt(snd_val, snd_loc), Value::ValInt(top_val, top_loc)) => {
                 self.push(Value::ValInt(f_int(&snd_val, &top_val).into()));
                 Ok(())
             }
-            (Value::ValFloat(snd_val), Value::ValFloat(top_val)) => {
+            (Value::ValFloat(snd_val, snd_loc), Value::ValFloat(top_val, top_loc)) => {
                 self.push(Value::ValInt(f_float(&snd_val, &top_val).into()));
                 Ok(())
             }
-            (Value::ValChar(snd_val), Value::ValChar(top_val)) => {
+            (Value::ValChar(snd_val, snd_loc), Value::ValChar(top_val, top_loc)) => {
                 self.push(Value::ValInt(f_int(&(snd_val as i64), &(top_val as i64)).into()));
                 Ok(())
             }
@@ -677,11 +695,11 @@ impl Interpreter {
                 self.push(Value::ValArray(array));
                 Ok(())
             }
-            _ => Err(RuntimeError::UnsupportedOperands)
+            (snd, top) => Err(RuntimeError::UnsupportedOperands(snd.location().merge(top.location())))
         }
     }
 
-    fn push_array(&mut self, words: &Vec<Word>) -> RunResult {
+    fn push_array(&mut self, words: &Vec<Word>, location: &Span) -> RunResult {
         let array_start_stack_idx = self.stack.len();
 
         for word in words {
@@ -689,12 +707,15 @@ impl Interpreter {
         }
 
         let elements = self.stack.drain(array_start_stack_idx..).collect();
-        self.push(Value::ValArray(elements));
+        self.push(Value::ValArray(elements, location.clone()));
         Ok(())
     }
 
-    fn get_variable(&mut self, name: &String) -> Result<Value, RuntimeError> {
-        self.variables.get(name).ok_or_else(|| RuntimeError::UnknownWord(name.clone())).cloned()
+    fn get_variable(&mut self, name: &String, location: &Span) -> Result<Value, RuntimeError> {
+        match self.variables.get(name) {
+            None => Err(RuntimeError::UnknownWord(name.clone(), location.clone())),
+            Some(value) => Ok(value.clone())
+        }
     }
 
     fn set_variable(&mut self, name: String, value: Value) {
@@ -703,14 +724,14 @@ impl Interpreter {
 
     fn execute(&mut self, value: Value) -> RunResult {
         match value {
-            Value::ValBlock(words) => {
+            Value::ValBlock(words, _) => {
                 for word in words {
                     word.execute(self)?
                 }
             }
             Value::ValBuiltin(builtin) => builtin.execute(self)?,
-            Value::ValQuote(name) => {
-                let value = self.get_variable(&name)?;
+            Value::ValQuote(name, location) => {
+                let value = self.get_variable(&name, &location)?;
                 self.execute(value)?
             }
             value => self.push(value)
