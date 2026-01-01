@@ -6,7 +6,7 @@ use std::iter::Peekable;
 #[derive(Debug)]
 pub struct ParseError {
     kind: ParseErrorKind,
-    location: Span,
+    span: Span,
 }
 
 #[derive(Debug)]
@@ -18,37 +18,37 @@ pub enum ParseErrorKind {
 
 impl From<LexError> for ParseError {
     fn from(value: LexError) -> Self {
-        let location = value.location.clone();
-        Self { kind: Lex(value), location }
+        let location = value.span.clone();
+        Self { kind: Lex(value), span: location }
     }
 }
 
 #[derive(Clone, Debug)]
 pub enum Word {
     // Literals
-    Int { value: i64, location: Span },
-    Float { value: f64, location: Span },
-    Char { value: char, location: Span },
-    String { value: String, location: Span },
-    Quote { name: String, location: Span },
-    Name { name: String, location: Span },
+    Int { value: i64, span: Span },
+    Float { value: f64, span: Span },
+    Char { value: char, span: Span },
+    String { value: String, span: Span },
+    Quote { name: String, span: Span },
+    Name { name: String, span: Span },
 
     // Composite
-    Block { words: Vec<Word>, location: Span },
-    Array { words: Vec<Word>, location: Span },
+    Block { words: Vec<Word>, span: Span },
+    Array { words: Vec<Word>, span: Span },
 }
 
 impl Word {
-    pub fn location(&self) -> &Span {
+    pub fn span(&self) -> &Span {
         match self {
-            Word::Int { location, .. } |
-            Word::Float { location, .. } |
-            Word::Char { location, .. } |
-            Word::String { location, .. } |
-            Word::Quote { location, .. } |
-            Word::Name { location, .. } |
-            Word::Block { location, .. } |
-            Word::Array { location, .. } => location,
+            Word::Int { span, .. } |
+            Word::Float { span, .. } |
+            Word::Char { span, .. } |
+            Word::String { span, .. } |
+            Word::Quote { span, .. } |
+            Word::Name { span, .. } |
+            Word::Block { span, .. } |
+            Word::Array { span, .. } => span,
         }
     }
 }
@@ -82,57 +82,57 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
     }
 
     fn parse_word(&mut self) -> Option<Result<Word, Vec<ParseError>>> {
-        let Token { kind, location } = self.tokens.next()?;
+        let Token { kind, span } = self.tokens.next()?;
 
         match kind {
             TokenKind::Int => {
-                let value = self.lexeme(&location).parse().unwrap();
-                Some(Ok(Word::Int { value, location }))
+                let value = self.lexeme(&span).parse().unwrap();
+                Some(Ok(Word::Int { value, span }))
             }
             TokenKind::Float => {
-                let value = self.lexeme(&location).parse().unwrap();
-                Some(Ok(Word::Float { value, location }))
+                let value = self.lexeme(&span).parse().unwrap();
+                Some(Ok(Word::Float { value, span }))
             }
             TokenKind::Char => {
-                let value = match &self.lexeme(&location)[1..] {
+                let value = match &self.lexeme(&span)[1..] {
                     "\\n" => '\n',
                     "\\r" => '\r',
                     "\\t" => '\t',
                     "\\'" => '\'',
                     lexeme => lexeme.chars().next().unwrap()
                 };
-                Some(Ok(Word::Char { value, location }))
+                Some(Ok(Word::Char { value, span }))
             }
             TokenKind::String => {
-                let value = String::from(&self.lexeme(&location)[1..location.end - location.start - 1])
+                let value = String::from(&self.lexeme(&span)[1..span.end - span.start - 1])
                     .replace("\\n", "\n")
                     .replace("\\t", "\t")
                     .replace("\\r", "\r")
                     .replace("\\\"", "\"");
-                Some(Ok(Word::String { value, location }))
+                Some(Ok(Word::String { value, span }))
             }
             TokenKind::Quote => {
-                let name = self.lexeme(&location)[1..].into();
-                Some(Ok(Word::Quote { name, location }))
+                let name = self.lexeme(&span)[1..].into();
+                Some(Ok(Word::Quote { name, span }))
             }
             TokenKind::Word => {
-                let name = self.lexeme(&location).into();
-                Some(Ok(Word::Name { name, location }))
+                let name = self.lexeme(&span).into();
+                Some(Ok(Word::Name { name, span }))
             }
             TokenKind::OpenBracket => {
-                match self.parse_delimited(TokenKind::CloseBracket, location) {
-                    Ok((words, location)) => Some(Ok(Word::Array { words, location })),
+                match self.parse_delimited(TokenKind::CloseBracket, span) {
+                    Ok((words, span)) => Some(Ok(Word::Array { words, span })),
                     Err(err) => Some(Err(err))
                 }
             }
             TokenKind::OpenParen => {
-                match self.parse_delimited(TokenKind::CloseParen, location) {
-                    Ok((words, location)) => Some(Ok(Word::Block { words, location })),
+                match self.parse_delimited(TokenKind::CloseParen, span) {
+                    Ok((words, span)) => Some(Ok(Word::Block { words, span })),
                     Err(err) => Some(Err(err))
                 }
             }
             TokenKind::CloseBracket |
-            TokenKind::CloseParen => Some(Err(vec![ParseError { kind: ParseErrorKind::UnexpectedToken(kind), location }])),
+            TokenKind::CloseParen => Some(Err(vec![ParseError { kind: ParseErrorKind::UnexpectedToken(kind), span }])),
         }
     }
 
@@ -142,9 +142,9 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
 
         loop {
             if let Some(token) = self.tokens.next_if(|token| token.kind == end_delimiter) {
-                let location = start.merge(&token.location);
+                let span = start.merge(&token.span);
                 if errors.is_empty() {
-                    return Ok((words, location));
+                    return Ok((words, span));
                 } else {
                     return Err(errors);
                 }
@@ -152,7 +152,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
 
             match self.parse_word() {
                 None => {
-                    errors.push(ParseError { kind: ParseErrorKind::ExpectedToken(end_delimiter), location: Span::EMPTY });
+                    errors.push(ParseError { kind: ParseErrorKind::ExpectedToken(end_delimiter), span: Span::EMPTY });
                     return Err(errors);
                 }
                 Some(Ok(word)) => words.push(word),
@@ -161,8 +161,8 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         }
     }
 
-    fn lexeme(&self, location: &Span) -> &'a str {
-        &self.code[location.start..location.end]
+    fn lexeme(&self, span: &Span) -> &'a str {
+        &self.code[span.start..span.end]
     }
 }
 
