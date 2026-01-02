@@ -79,17 +79,26 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 '"' => {
                     loop {
                         match self.advance() {
-                            Some((string_end, '"')) => tokens.push(Spanned::new(Token::String, start, string_end + 1)),
+                            Some((string_end, '"')) => {
+                                tokens.push(Spanned::new(Token::String, start, string_end + 1));
+                                break
+                            },
                             Some((backslash_start, '\\')) => match self.advance() {
                                 Some((_, 'n')) |
                                 Some((_, 'r')) |
                                 Some((_, 't')) |
                                 Some((_, '"')) => {}
                                 Some((escape_char_start, c)) => errors.push(Spanned::new(LexError::InvalidEscape(c), escape_char_start, escape_char_start + 1)),
-                                None => errors.push(Spanned::new(LexError::ExpectedCharacter, backslash_start + 1,  backslash_start + 2)),
+                                None => {
+                                    errors.push(Spanned::new(LexError::ExpectedCharacter, backslash_start + 1,  backslash_start + 2));
+                                    break
+                                },
                             },
                             Some(_) => {},
-                            None => errors.push(Spanned::new(LexError::ExpectedCharacter, start + 1, start + 2)),
+                            None => {
+                                errors.push(Spanned::new(LexError::ExpectedCharacter, start + 1, start + 2));
+                                break
+                            },
                         }
                     }
                 }
