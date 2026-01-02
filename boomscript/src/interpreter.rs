@@ -1,14 +1,14 @@
-use crate::builtin::{add, and, clear, concat, dip, div, drop, dup, equal, execute, filter, fold, greater, greater_or_equal, iff, keep, less, less_or_equal, map, max, min, mul, nip, not, not_equal, or, over, read, reduce, rem, rot, sub, swap, unless, when, write, xor, Builtin};
+use crate::builtin::{add, and, clear, concat, dip, div, dup, drop, equal, execute, filter, fold, greater, greater_or_equal, iff, keep, less, less_or_equal, map, max, min, mul, nip, not, not_equal, or, over, read, reduce, rem, rot, sub, swap, unless, when, write, xor, Builtin};
 use crate::interpreter::RuntimeError::Parse;
-use crate::location::Spanned;
+use crate::location::{Span, Spanned};
 use crate::lowering::lower;
 use crate::parser::{parse, ParseError, Word};
 use std::collections::{HashMap, VecDeque};
 
-pub type RunResult = Result<(), RuntimeError>;
+pub type RunResult = Result<(), Spanned<RuntimeError>>;
 
 pub trait Executable {
-    fn execute(&self, interpreter: &mut Interpreter) -> RunResult;
+    fn execute(&self, interpreter: &mut Interpreter, span: &Span) -> RunResult;
 }
 
 #[derive(Clone, Debug)]
@@ -34,19 +34,19 @@ impl From<Value> for bool {
 }
 
 impl Executable for Word {
-    fn execute(&self, interpreter: &mut Interpreter) -> RunResult {
+    fn execute(&self, interpreter: &mut Interpreter, span: &Span) -> RunResult {
         // TODO: get rid of clones
         match self {
-            Word::Int(value) => interpreter.push(Value::ValInt(value.clone())),
-            Word::Float(value) => interpreter.push(Value::ValFloat(value.clone())),
-            Word::Char(value) => interpreter.push(Value::ValChar(value.clone())),
-            Word::String(value) => interpreter.push(Value::ValString(value.clone())),
-            Word::QuotedWord(name) => interpreter.push(Value::ValQuotedWord(name.clone())),
-            Word::Block(words) => interpreter.push(Value::ValBlock(words.clone())),
+            Word::Int(value) => interpreter.push(Value::ValInt(value.clone()), span.clone()),
+            Word::Float(value) => interpreter.push(Value::ValFloat(value.clone()), span.clone()),
+            Word::Char(value) => interpreter.push(Value::ValChar(value.clone()), span.clone()),
+            Word::String(value) => interpreter.push(Value::ValString(value.clone()), span.clone()),
+            Word::QuotedWord(name) => interpreter.push(Value::ValQuotedWord(name.clone()), span.clone()),
+            Word::Block(words) => interpreter.push(Value::ValBlock(words.clone()), span.clone()),
             Word::Array(words) => interpreter.push_array(words)?,
             Word::Word(name) => {
-                let value = interpreter.get_variable(name)?;
-                interpreter.execute(value)?
+                let variable = interpreter.get_variable(name, span)?;
+                interpreter.execute(variable)?
             }
         }
 
@@ -76,8 +76,8 @@ impl From<ParseError> for RuntimeError {
 
 pub struct Interpreter {
     words: VecDeque<Spanned<Word>>,
-    pub stack: Vec<Value>,
-    pub variables: HashMap<String, Value>,
+    pub stack: Vec<Spanned<Value>>,
+    pub variables: HashMap<String, Spanned<Value>>,
 }
 
 impl Interpreter {
@@ -87,43 +87,43 @@ impl Interpreter {
             stack: Vec::new(),
             variables: HashMap::from([
                 // TODO: support ? for printing stack and . for pop and print top
-                ("+".into(), Value::ValBuiltin(Builtin(add))),
-                ("-".into(), Value::ValBuiltin(Builtin(sub))),
-                ("*".into(), Value::ValBuiltin(Builtin(mul))),
-                ("/".into(), Value::ValBuiltin(Builtin(div))),
-                ("&".into(), Value::ValBuiltin(Builtin(and))),
-                ("|".into(), Value::ValBuiltin(Builtin(or))),
-                ("^".into(), Value::ValBuiltin(Builtin(xor))),
-                ("!".into(), Value::ValBuiltin(Builtin(not))),
-                (">".into(), Value::ValBuiltin(Builtin(greater))),
-                (">=".into(), Value::ValBuiltin(Builtin(greater_or_equal))),
-                ("<".into(), Value::ValBuiltin(Builtin(less))),
-                ("<=".into(), Value::ValBuiltin(Builtin(less_or_equal))),
-                ("=".into(), Value::ValBuiltin(Builtin(equal))),
-                ("!=".into(), Value::ValBuiltin(Builtin(not_equal))),
-                ("++".into(), Value::ValBuiltin(Builtin(concat))),
-                ("@".into(), Value::ValBuiltin(Builtin(read))),
-                ("$".into(), Value::ValBuiltin(Builtin(write))),
-                ("%".into(), Value::ValBuiltin(Builtin(execute))),
-                ("dup".into(), Value::ValBuiltin(Builtin(dup))),
-                ("drop".into(), Value::ValBuiltin(Builtin(drop))),
-                ("swap".into(), Value::ValBuiltin(Builtin(swap))),
-                ("over".into(), Value::ValBuiltin(Builtin(over))),
-                ("nip".into(), Value::ValBuiltin(Builtin(nip))),
-                ("when".into(), Value::ValBuiltin(Builtin(when))),
-                ("unless".into(), Value::ValBuiltin(Builtin(unless))),
-                ("if".into(), Value::ValBuiltin(Builtin(iff))),
-                ("clear".into(), Value::ValBuiltin(Builtin(clear))),
-                ("rot".into(), Value::ValBuiltin(Builtin(rot))),
-                ("dip".into(), Value::ValBuiltin(Builtin(dip))),
-                ("keep".into(), Value::ValBuiltin(Builtin(keep))),
-                ("map".into(), Value::ValBuiltin(Builtin(map))),
-                ("filter".into(), Value::ValBuiltin(Builtin(filter))),
-                ("mod".into(), Value::ValBuiltin(Builtin(rem))),
-                ("max".into(), Value::ValBuiltin(Builtin(max))),
-                ("min".into(), Value::ValBuiltin(Builtin(min))),
-                ("fold".into(), Value::ValBuiltin(Builtin(fold))),
-                ("reduce".into(), Value::ValBuiltin(Builtin(reduce))),
+                ("+".into(), Spanned::new(Value::ValBuiltin(Builtin(add)), Span::EMPTY)),
+                ("-".into(), Spanned::new(Value::ValBuiltin(Builtin(sub)), Span::EMPTY)),
+                ("*".into(), Spanned::new(Value::ValBuiltin(Builtin(mul)), Span::EMPTY)),
+                ("/".into(), Spanned::new(Value::ValBuiltin(Builtin(div)), Span::EMPTY)),
+                ("&".into(), Spanned::new(Value::ValBuiltin(Builtin(and)), Span::EMPTY)),
+                ("|".into(), Spanned::new(Value::ValBuiltin(Builtin(or)), Span::EMPTY)),
+                ("^".into(), Spanned::new(Value::ValBuiltin(Builtin(xor)), Span::EMPTY)),
+                ("!".into(), Spanned::new(Value::ValBuiltin(Builtin(not)), Span::EMPTY)),
+                (">".into(), Spanned::new(Value::ValBuiltin(Builtin(greater)), Span::EMPTY)),
+                (">=".into(), Spanned::new(Value::ValBuiltin(Builtin(greater_or_equal)), Span::EMPTY)),
+                ("<".into(), Spanned::new(Value::ValBuiltin(Builtin(less)), Span::EMPTY)),
+                ("<=".into(), Spanned::new(Value::ValBuiltin(Builtin(less_or_equal)), Span::EMPTY)),
+                ("=".into(), Spanned::new(Value::ValBuiltin(Builtin(equal)), Span::EMPTY)),
+                ("!=".into(), Spanned::new(Value::ValBuiltin(Builtin(not_equal)), Span::EMPTY)),
+                ("++".into(), Spanned::new(Value::ValBuiltin(Builtin(concat)), Span::EMPTY)),
+                ("@".into(), Spanned::new(Value::ValBuiltin(Builtin(read)), Span::EMPTY)),
+                ("$".into(), Spanned::new(Value::ValBuiltin(Builtin(write)), Span::EMPTY)),
+                ("%".into(), Spanned::new(Value::ValBuiltin(Builtin(execute)), Span::EMPTY)),
+                ("dup".into(), Spanned::new(Value::ValBuiltin(Builtin(dup)), Span::EMPTY)),
+                ("drop".into(), Spanned::new(Value::ValBuiltin(Builtin(drop)), Span::EMPTY)),
+                ("swap".into(), Spanned::new(Value::ValBuiltin(Builtin(swap)), Span::EMPTY)),
+                ("over".into(), Spanned::new(Value::ValBuiltin(Builtin(over)), Span::EMPTY)),
+                ("nip".into(), Spanned::new(Value::ValBuiltin(Builtin(nip)), Span::EMPTY)),
+                ("when".into(), Spanned::new(Value::ValBuiltin(Builtin(when)), Span::EMPTY)),
+                ("unless".into(), Spanned::new(Value::ValBuiltin(Builtin(unless)), Span::EMPTY)),
+                ("if".into(), Spanned::new(Value::ValBuiltin(Builtin(iff)), Span::EMPTY)),
+                ("clear".into(), Spanned::new(Value::ValBuiltin(Builtin(clear)), Span::EMPTY)),
+                ("rot".into(), Spanned::new(Value::ValBuiltin(Builtin(rot)), Span::EMPTY)),
+                ("dip".into(), Spanned::new(Value::ValBuiltin(Builtin(dip)), Span::EMPTY)),
+                ("keep".into(), Spanned::new(Value::ValBuiltin(Builtin(keep)), Span::EMPTY)),
+                ("map".into(), Spanned::new(Value::ValBuiltin(Builtin(map)), Span::EMPTY)),
+                ("filter".into(), Spanned::new(Value::ValBuiltin(Builtin(filter)), Span::EMPTY)),
+                ("mod".into(), Spanned::new(Value::ValBuiltin(Builtin(rem)), Span::EMPTY)),
+                ("max".into(), Spanned::new(Value::ValBuiltin(Builtin(max)), Span::EMPTY)),
+                ("min".into(), Spanned::new(Value::ValBuiltin(Builtin(min)), Span::EMPTY)),
+                ("fold".into(), Spanned::new(Value::ValBuiltin(Builtin(fold)), Span::EMPTY)),
+                ("reduce".into(), Spanned::new(Value::ValBuiltin(Builtin(reduce)))
             ]),
         }
     }
@@ -139,12 +139,12 @@ impl Interpreter {
         Ok(self.stack)
     }
 
-    pub fn push(&mut self, value: Value) {
-        self.stack.push(value)
+    pub fn push(&mut self, value: Value, span: Span) {
+        self.stack.push(Spanned::new(value, span))
     }
 
-    pub fn pop(&mut self) -> Result<Value, RuntimeError> {
-        self.stack.pop().ok_or_else(|| RuntimeError::EmptyStack)
+    pub fn pop(&mut self, span: &Span) -> Result<Spanned<Value>, Spanned<RuntimeError>> {
+        self.stack.pop().ok_or_else(|| Spanned::new(RuntimeError::EmptyStack, span.clone()))
     }
 
     pub fn unary_int_only_op(&mut self, f: impl Fn(i64) -> i64) -> RunResult {
@@ -390,8 +390,8 @@ impl Interpreter {
     pub fn push_array(&mut self, words: &Vec<Spanned<Word>>) -> RunResult {
         let array_start_stack_idx = self.stack.len();
 
-        for word in words {
-            word.value.execute(self)?
+        for Spanned { value: word, span } in words {
+            word.execute(self, span)?
         }
 
         let elements = self.stack.drain(array_start_stack_idx..).collect();
@@ -399,30 +399,31 @@ impl Interpreter {
         Ok(())
     }
 
-    pub fn get_variable(&mut self, name: &String) -> Result<Value, RuntimeError> {
+    pub fn get_variable(&mut self, name: &String, span: &Span) -> Result<Spanned<Value>, Spanned<RuntimeError>> {
         match self.variables.get(name) {
-            None => Err(RuntimeError::UnknownWord(name.clone())),
+            None => Err(Spanned::new(RuntimeError::UnknownWord(name.clone()), span.clone())),
             Some(value) => Ok(value.clone())
         }
     }
 
-    pub fn set_variable(&mut self, name: String, value: Value) {
-        self.variables.insert(name, value);
+    pub fn set_variable(&mut self, name: String, value: Value, span: Span) {
+        self.variables.insert(name, Spanned::new(value, span));
     }
 
-    pub fn execute(&mut self, value: Value) -> RunResult {
+    pub fn execute(&mut self, spanned_value: Spanned<Value>) -> RunResult {
+        let Spanned { value, span } = spanned_value;
         match value {
             Value::ValBlock(words) => {
-                for word in words {
-                    word.execute(self)?
+                for Spanned { value: word, span } in words {
+                    word.execute(self, &span)?
                 }
             }
-            Value::ValBuiltin(builtin) => builtin.execute(self)?,
+            Value::ValBuiltin(builtin) => builtin.execute(self, &span)?,
             Value::ValQuotedWord(name) => {
-                let value = self.get_variable(&name)?;
+                let value = self.get_variable(&name, &span)?;
                 self.execute(value)?
             }
-            value => self.push(value)
+            value => self.push(value, span)
         }
 
         Ok(())
