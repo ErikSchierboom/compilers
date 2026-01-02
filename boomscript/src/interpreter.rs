@@ -146,7 +146,7 @@ impl Interpreter {
         self.stack.pop().ok_or_else(|| Spanned::new(RuntimeError::EmptyStack, span.clone()))
     }
 
-    pub fn unary_int_only_op(&mut self, f: impl Fn(i64) -> i64) -> RunResult {
+    pub fn unary_int_only_op(&mut self, f: impl Fn(i64) -> i64, span: &Span) -> RunResult {
         let Spanned { value: top, span } = self.pop()?;
 
         match top {
@@ -176,7 +176,7 @@ impl Interpreter {
         }
     }
 
-    pub fn binary_number_and_char_op(&mut self, f_int: impl Fn(i64, i64) -> i64, f_float: impl Fn(f64, f64) -> f64) -> RunResult {
+    pub fn binary_number_and_char_op(&mut self, f_int: impl Fn(i64, i64) -> i64, f_float: impl Fn(f64, f64) -> f64, span: &Span) -> RunResult {
         let Spanned { value: top, span: top_span } = self.pop()?;
         let Spanned { value: snd, span: snd_span } = self.pop()?;
 
@@ -240,7 +240,7 @@ impl Interpreter {
         }
     }
 
-    pub fn binary_number_only_op(&mut self, f_int: impl Fn(i64, i64) -> i64, f_float: impl Fn(f64, f64) -> f64) -> RunResult {
+    pub fn binary_number_only_op(&mut self, f_int: impl Fn(i64, i64) -> i64, f_float: impl Fn(f64, f64) -> f64, span: &Span) -> RunResult {
         let top = self.pop()?;
         let snd = self.pop()?;
 
@@ -295,7 +295,7 @@ impl Interpreter {
         }
     }
 
-    pub fn binary_int_only_op(&mut self, f_int: impl Fn(i64, i64) -> i64) -> RunResult {
+    pub fn binary_int_only_op(&mut self, f_int: impl Fn(i64, i64) -> i64, span: &Span) -> RunResult {
         let top = self.pop()?;
         let snd = self.pop()?;
 
@@ -327,7 +327,7 @@ impl Interpreter {
         }
     }
 
-    pub fn binary_compare_op(&mut self, f_int: impl Fn(&i64, &i64) -> bool, f_float: impl Fn(&f64, &f64) -> bool) -> RunResult {
+    pub fn binary_compare_op(&mut self, f_int: impl Fn(&i64, &i64) -> bool, f_float: impl Fn(&f64, &f64) -> bool, span: &Span) -> RunResult {
         let top = self.pop()?;
         let snd = self.pop()?;
 

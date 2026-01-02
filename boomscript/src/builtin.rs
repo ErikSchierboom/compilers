@@ -12,27 +12,27 @@ impl Executable for Builtin {
     }
 }
 
-pub fn add(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::add, f64::add) }
-pub fn sub(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::sub, f64::sub) }
-pub fn mul(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_only_op(i64::mul, f64::mul) }
-pub fn div(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_only_op(i64::div, f64::mul) }
-pub fn and(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_int_only_op(i64::bitand) }
-pub fn or(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_int_only_op(i64::bitor) }
-pub fn xor(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_int_only_op(i64::bitxor) }
-pub fn not(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.unary_int_only_op(i64::not) }
-pub fn greater(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::gt, f64::gt) }
-pub fn greater_or_equal(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::ge, f64::ge) }
-pub fn less(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::lt, f64::lt) }
-pub fn less_or_equal(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::le, f64::le) }
-pub fn equal(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::eq, f64::eq) }
-pub fn not_equal(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::ne, f64::ne) }
-pub fn rem(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::rem_euclid, f64::rem_euclid) }
-pub fn max(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::max, f64::max) }
-pub fn min(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::min, f64::min) }
+pub fn add(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::add, f64::add, span) }
+pub fn sub(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::sub, f64::sub, span) }
+pub fn mul(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_only_op(i64::mul, f64::mul, span) }
+pub fn div(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_only_op(i64::div, f64::mul, span) }
+pub fn and(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_int_only_op(i64::bitand, span) }
+pub fn or(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_int_only_op(i64::bitor, span) }
+pub fn xor(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_int_only_op(i64::bitxor, span) }
+pub fn not(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.unary_int_only_op(i64::not, span) }
+pub fn greater(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::gt, f64::gt, span) }
+pub fn greater_or_equal(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::ge, f64::ge, span) }
+pub fn less(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::lt, f64::lt, span) }
+pub fn less_or_equal(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::le, f64::le, span) }
+pub fn equal(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::eq, f64::eq, span) }
+pub fn not_equal(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::ne, f64::ne, span) }
+pub fn rem(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::rem_euclid, f64::rem_euclid, span) }
+pub fn max(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::max, f64::max, span) }
+pub fn min(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::min, f64::min, span) }
 
 pub fn read(interpreter: &mut Interpreter, span: &Span) -> RunResult {
-    let (name, location) = match interpreter.pop()? {
-        Value::ValQuotedWord(name, location) => (name, location),
+    let (name, location) = match interpreter.pop(span)? {
+        Value::ValQuotedWord(name) => (name, location),
         value => return Err(RuntimeError::ExpectedQuote(value.location().clone()))
     };
     let variable = interpreter.get_variable(&name)?;
