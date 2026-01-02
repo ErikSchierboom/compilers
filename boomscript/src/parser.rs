@@ -1,73 +1,49 @@
 use crate::lexer::{tokenize, LexError, Token};
-use crate::location::Span;
+use crate::location::{Span, Spanned};
 use crate::parser::ParseError::Lex;
 use std::iter::Peekable;
 
 #[derive(Debug)]
 pub enum ParseError {
-    Lex(LexError, Span),
-    UnexpectedToken(String, Span),
-    UnexpectedEndOfFile(Span),
+    Lex(LexError),
+    UnexpectedToken(Token),
+    UnexpectedEndOfFile,
 }
 
-impl ParseError {
-    pub fn location(&self) -> &Span {
-        match self {
-            Lex(_, location) |
-            ParseError::UnexpectedToken(_, location) |
-            ParseError::UnexpectedEndOfFile(location) => location
-        }
-    }
-}
 
 impl From<LexError> for ParseError {
     fn from(value: LexError) -> Self {
-        let location = value.location().clone();
-        Lex(value, location)
+        Lex(value)
     }
 }
 
 #[derive(Clone, Debug)]
 pub enum Word {
     // Literals
-    Int(i64, Span),
-    Float(f64, Span),
-    Char(char, Span),
-    String(String, Span),
-    Quote(String, Span),
-    Name(String, Span),
+    Int(i64),
+    Float(f64),
+    Char(char),
+    String(String),
+    Quote(String),
+    Name(String),
 
     // Composite
-    Block(Vec<Word>, Span),
-    Array(Vec<Word>, Span),
+    Block(Vec<Spanned<Word>>),
+    Array(Vec<Spanned<Word>>),
 }
 
-impl Word {
-    pub fn location(&self) -> &Span {
-        match self {
-            Word::Int(_, location) |
-            Word::Float(_, location) |
-            Word::Char(_, location) |
-            Word::String(_, location) |
-            Word::Quote(_, location) |
-            Word::Name(_, location) |
-            Word::Block(_, location) |
-            Word::Array(_, location) => location,
-        }
-    }
-}
 
-struct Parser<'a, T: Iterator<Item=Token>> {
+struct Parser<'a, T: Iterator<Item=Spanned<Token>>> {
     code: &'a str,
     tokens: Peekable<T>,
 }
 
-impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
+impl<'a, T: Iterator<Item=Spanned<Token>>> Parser<'a, T> {
     fn new(code: &'a str, tokens: T) -> Self {
         Self { code, tokens: tokens.peekable() }
     }
 
-    fn parse(mut self) -> Result<Vec<Word>, Vec<ParseError>> {
+    fn parse(mut self) -> Result<Vec<Spanned<Word>>, Vec<Spanned<ParseError>>> {
         let mut tokens = Vec::new();
         let mut errors = Vec::new();
 
@@ -85,19 +61,20 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
         }
     }
 
-    fn parse_word(&mut self) -> Option<Result<Word, Vec<ParseError>>> {
-        let token = self.tokens.next()?;
+    fn parse_word(&mut self) -> Option<Result<Spanned<Word>, Vec<Spanned<ParseError>>>> {
+        let spanned = self.tokens.next()?;
+        let Spanned { value: token, span: location } = spanned;
 
         match token {
-            Token::Int(location) => {
+            Token::Int => {
                 let value = self.lexeme(&location).parse().unwrap();
-                Some(Ok(Word::Int(value, location)))
+                Some(Ok(Spanned::new(Word::Int(value), location)))
             }
-            Token::Float(location) => {
+            Token::Float => {
                 let value = self.lexeme(&location).parse().unwrap();
-                Some(Ok(Word::Float(value, location)))
+                Some(Ok(Spanned::new(Word::Float(value), location)))
             }
-            Token::Char(location) => {
+            Token::Char => {
                 let value = match &self.lexeme(&location)[1..] {
                     "\\n" => '\n',
                     "\\r" => '\r',
@@ -105,48 +82,48 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
                     "\\'" => '\'',
                     lexeme => lexeme.chars().next().unwrap()
                 };
-                Some(Ok(Word::Char(value, location)))
+                Some(Ok(Spanned::new(Word::Char(value), location)))
             }
-            Token::String(location) => {
+            Token::String => {
                 let value = String::from(&self.lexeme(&location)[1..location.end - location.start - 1])
                     .replace("\\n", "\n")
                     .replace("\\t", "\t")
                     .replace("\\r", "\r")
                     .replace("\\\"", "\"");
-                Some(Ok(Word::String(value, location)))
+                Some(Ok(Spanned::new(Word::String(value), location)))
             }
-            Token::Quote(location) => {
+            Token::Quote => {
                 let name = self.lexeme(&location)[1..].into();
-                Some(Ok(Word::Quote(name, location)))
+                Some(Ok(Spanned::new(Word::Quote(name), location)))
             }
-            Token::Word(location) => {
+            Token::Word => {
                 let name = self.lexeme(&location).into();
-                Some(Ok(Word::Name(name, location)))
+                Some(Ok(Spanned::new(Word::Name(name), location)))
             }
-            Token::OpenBracket(location) => {
-                match self.parse_delimited(|token| matches!(token, Token::CloseBracket(_)), location) {
-                    Ok((words, location)) => Some(Ok(Word::Array(words, location))),
+            Token::OpenBracket => {
+                match self.parse_delimited(Token::CloseBracket, location) {
+                    Ok((words, location)) => Some(Ok(Spanned::new(Word::Array(words), location))),
                     Err(err) => Some(Err(err))
                 }
             }
-            Token::OpenParen(location) => {
-                match self.parse_delimited(|token| matches!(token, Token::CloseParen(_)), location) {
-                    Ok((words, location)) => Some(Ok(Word::Block(words, location))),
+            Token::OpenParen => {
+                match self.parse_delimited(Token::CloseParen, location) {
+                    Ok((words, location)) => Some(Ok(Spanned::new(Word::Block(words), location))),
                     Err(err) => Some(Err(err))
                 }
             }
-            Token::CloseBracket(location) |
-            Token::CloseParen(location) => Some(Err(vec![ParseError::UnexpectedToken(self.lexeme(&location).into(), location.clone())])),
+            Token::CloseBracket |
+            Token::CloseParen => Some(Err(vec![Spanned::new(ParseError::UnexpectedToken(token), location)])),
         }
     }
 
-    fn parse_delimited(&mut self, stop_parsing: impl Fn(&Token) -> bool, start: Span) -> Result<(Vec<Word>, Span), Vec<ParseError>> {
+    fn parse_delimited(&mut self, close_delimiter: Token, start: Span) -> Result<(Vec<Spanned<Word>>, Span), Vec<Spanned<ParseError>>> {
         let mut words = Vec::new();
         let mut errors = Vec::new();
 
         loop {
-            if let Some(token) = self.tokens.next_if(|token| stop_parsing(token)) {
-                let location = start.merge(&token.location());
+            if let Some(token) = self.tokens.next_if(|token| token.value == close_delimiter) {
+                let location = start.merge(&token.span);
                 if errors.is_empty() {
                     return Ok((words, location));
                 } else {
@@ -156,7 +133,7 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
 
             match self.parse_word() {
                 None => {
-                    errors.push(ParseError::UnexpectedEndOfFile(Span { start: self.code.len(), end: self.code.len() + 1 }));
+                    errors.push(Spanned::new(ParseError::UnexpectedEndOfFile, Span { start: self.code.len(), end: self.code.len() + 1 }));
                     return Err(errors);
                 }
                 Some(Ok(word)) => words.push(word),
@@ -170,12 +147,12 @@ impl<'a, T: Iterator<Item=Token>> Parser<'a, T> {
     }
 }
 
-pub fn parse(code: &str) -> Result<Vec<Word>, Vec<ParseError>> {
+pub fn parse(code: &str) -> Result<Vec<Spanned<Word>>, Vec<Spanned<ParseError>>> {
     match tokenize(code) {
         Ok(tokens) => {
             let parser = Parser::new(code, tokens.into_iter());
             parser.parse()
         }
-        Err(errors) => Err(errors.into_iter().map(ParseError::from).collect())
+        Err(errors) => Err(errors.into_iter().map(|error| error.map(ParseError::from)).collect())
     }
 }

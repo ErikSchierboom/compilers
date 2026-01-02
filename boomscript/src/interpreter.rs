@@ -1,6 +1,6 @@
 use crate::builtin::{add, and, clear, concat, dip, div, drop, dup, equal, execute, filter, fold, greater, greater_or_equal, iff, keep, less, less_or_equal, map, max, min, mul, nip, not, not_equal, or, over, read, reduce, rem, rot, sub, swap, unless, when, write, xor, Builtin};
 use crate::interpreter::RuntimeError::Parse;
-use crate::location::Span;
+use crate::location::{Span, Spanned};
 use crate::lowering::lower;
 use crate::parser::{parse, ParseError, Word};
 use std::collections::{HashMap, VecDeque};
@@ -13,53 +13,38 @@ pub trait Executable {
 
 #[derive(Clone, Debug)]
 pub enum Value {
-    ValInt(i64, Span),
-    ValFloat(f64, Span),
-    ValChar(char, Span),
-    ValString(String, Span),
-    ValQuote(String, Span),
-    ValBlock(Vec<Word>, Span),
-    ValArray(Vec<Value>, Span),
+    ValInt(i64),
+    ValFloat(f64),
+    ValChar(char),
+    ValString(String),
+    ValQuote(String),
+    ValBlock(Vec<Spanned<Word>>), // TODO: update the span when being executed
+    ValArray(Vec<Value>),
     ValBuiltin(Builtin), // TODO: check if this needs a span too
-}
-
-impl Value {
-    pub fn location(&self) -> &Span {
-        match self {
-            Value::ValInt(_, location) |
-            Value::ValFloat(_, location) |
-            Value::ValChar(_, location) |
-            Value::ValString(_, location) |
-            Value::ValQuote(_, location) |
-            Value::ValBlock(_, location) |
-            Value::ValArray(_, location) => location,
-            Value::ValBuiltin(_) => &Span::EMPTY
-        }
-    }
 }
 
 impl From<Value> for bool {
     fn from(value: Value) -> Self {
         match value {
-            Value::ValInt(0, _) => false,
-            Value::ValFloat(0.0, _) => false,
+            Value::ValInt(0) | 
+            Value::ValFloat(0.0) => false,
             _ => true
         }
     }
 }
 
-impl Executable for Word {
+impl Executable for Spanned<Word> {
     fn execute(&self, interpreter: &mut Interpreter) -> RunResult {
         // TODO: get rid of clones
         match self {
-            Word::Int(value, location) => interpreter.push(Value::ValInt(value.clone(), location.clone())),
-            Word::Float(value, location) => interpreter.push(Value::ValFloat(value.clone(), location.clone())),
-            Word::Char(value, location) => interpreter.push(Value::ValChar(value.clone(), location.clone())),
-            Word::String(value, location) => interpreter.push(Value::ValString(value.clone(), location.clone())),
-            Word::Quote(name, location) => interpreter.push(Value::ValQuote(name.clone(), location.clone())),
-            Word::Block(words, location) => interpreter.push(Value::ValBlock(words.clone(), location.clone())),
-            Word::Array(words, location) => interpreter.push_array(words, location)?,
-            Word::Name(name, location) => {
+            Spanned { value: Word::Int(value), span: location} => interpreter.push(Value::ValInt(value.clone(), location.clone())),
+            Spanned { value: Word::Float(value), span: location} => interpreter.push(Value::ValFloat(value.clone(), location.clone())),
+            Spanned { value: Word::Char(value), span: location} => interpreter.push(Value::ValChar(value.clone(), location.clone())),
+            Spanned { value: Word::String(value), span: location} => interpreter.push(Value::ValString(value.clone(), location.clone())),
+            Spanned { value: Word::Quote(name), span: location} => interpreter.push(Value::ValQuote(name.clone(), location.clone())),
+            Spanned { value: Word::Block(words), span: location} => interpreter.push(Value::ValBlock(words.clone(), location.clone())),
+            Spanned { value: Word::Array(words), span: location} => interpreter.push_array(words, location)?,
+            Spanned { value: Word::Name(name), span: location} => {
                 let value = interpreter.get_variable(name, location)?;
                 interpreter.execute(value)?
             }
@@ -71,33 +56,32 @@ impl Executable for Word {
 
 #[derive(Debug)]
 pub enum RuntimeError {
-    Parse(ParseError, Span),
-    UnsupportedArrayValue(Span),
-    EmptyStack(Span),
-    UnknownWord(String, Span),
-    UnsupportedOperands(Span),
-    ExpectedQuote(Span),
-    WordHasNegativeStackEffect(Span),
-    WordDoesNotHavePositiveStackEffect(Span),
-    ExpectedExecutableWord(Span),
-    EmptyArray(Span),
+    Parse(ParseError),
+    UnsupportedArrayValue,
+    EmptyStack,
+    UnknownWord(String),
+    UnsupportedOperands,
+    ExpectedQuote,
+    WordHasNegativeStackEffect,
+    WordDoesNotHavePositiveStackEffect,
+    ExpectedExecutableWord,
+    EmptyArray,
 }
 
 impl From<ParseError> for RuntimeError {
     fn from(value: ParseError) -> Self {
-        let location = value.location().clone();
-        Parse(value, location)
+        Parse(value)
     }
 }
 
 pub struct Interpreter {
-    words: VecDeque<Word>,
+    words: VecDeque<Spanned<Word>>,
     pub stack: Vec<Value>,
     pub variables: HashMap<String, Value>,
 }
 
 impl Interpreter {
-    fn new(words: Vec<Word>) -> Self {
+    fn new(words: Vec<Spanned<Word>>) -> Self {
         Self {
             words: words.into_iter().collect(),
             stack: Vec::new(),
@@ -403,7 +387,7 @@ impl Interpreter {
         }
     }
 
-    pub fn push_array(&mut self, words: &Vec<Word>, location: &Span) -> RunResult {
+    pub fn push_array(&mut self, words: &Vec<Spanned<Word>>, location: &Span) -> RunResult {
         let array_start_stack_idx = self.stack.len();
 
         for word in words {
@@ -452,6 +436,6 @@ pub fn interpret(code: &str) -> Result<Vec<Value>, Vec<RuntimeError>> {
             let interpreter = Interpreter::new(lowered);
             interpreter.run()
         }
-        Err(errors) => Err(errors.into_iter().map(RuntimeError::from).collect())
+        Err(errors) => Err(errors.into_iter().map(|error| error.map(RuntimeError::from)).collect())
     }
 }

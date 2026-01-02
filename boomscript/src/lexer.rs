@@ -8,7 +8,7 @@ pub enum LexError {
     InvalidEscape(char),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     // Literals
     Int,
@@ -42,22 +42,22 @@ impl<T: Iterator<Item=char>> Lexer<T> {
         while let Some((start, c)) = self.advance() {
             match c {
                 ' ' | '\t' | '\r' | '\n' => continue,
-                '[' => tokens.push(Spanned::new(Token::OpenBracket, start, start + 1)),
-                ']' => tokens.push(Spanned::new(Token::CloseBracket, start, start + 1)),
-                '(' => tokens.push(Spanned::new(Token::OpenParen, start, start + 1)),
-                ')' => tokens.push(Spanned::new(Token::CloseParen, start, start + 1)),
+                '[' => tokens.push(Spanned::from_start_end(Token::OpenBracket, start, start + 1)),
+                ']' => tokens.push(Spanned::from_start_end(Token::CloseBracket, start, start + 1)),
+                '(' => tokens.push(Spanned::from_start_end(Token::OpenParen, start, start + 1)),
+                ')' => tokens.push(Spanned::from_start_end(Token::CloseParen, start, start + 1)),
                 '\'' => {
                     let end = start + self.advance_while(is_word_character) + 1;
-                    tokens.push(Spanned::new(Token::Quote, start, end))
+                    tokens.push(Spanned::from_start_end(Token::Quote, start, end))
                 }
                 '0'..='9' => {
                     let end = start + self.advance_while(char::is_ascii_digit) + 1;
 
                     if self.advance_if_eq(&'.') {
                         let end = end + self.advance_while(char::is_ascii_digit) + 2;
-                        tokens.push(Spanned::new(Token::Float, start, end))
+                        tokens.push(Spanned::from_start_end(Token::Float, start, end))
                     } else {
-                        tokens.push(Spanned::new(Token::Int, start, end))
+                        tokens.push(Spanned::from_start_end(Token::Int, start, end))
                     }
                 }
                 '#' => {
@@ -67,20 +67,20 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                                 Some((escape_char_start, 'n')) |
                                 Some((escape_char_start, 'r')) |
                                 Some((escape_char_start, 't')) |
-                                Some((escape_char_start, '\'')) => tokens.push(Spanned::new(Token::Char, start, escape_char_start + 1)),
-                                Some((escape_char_start, c)) => errors.push(Spanned::new(LexError::InvalidEscape(c), escape_char_start, escape_char_start + 1)),
-                                None => errors.push(Spanned::new(LexError::ExpectedCharacter, backslash_start + 1, backslash_start + 2)),
+                                Some((escape_char_start, '\'')) => tokens.push(Spanned::from_start_end(Token::Char, start, escape_char_start + 1)),
+                                Some((escape_char_start, c)) => errors.push(Spanned::from_start_end(LexError::InvalidEscape(c), escape_char_start, escape_char_start + 1)),
+                                None => errors.push(Spanned::from_start_end(LexError::ExpectedCharacter, backslash_start + 1, backslash_start + 2)),
                             }
                         }
-                        Some((char_start, _)) => tokens.push(Spanned::new(Token::Char, start, char_start + 1)),
-                        None => errors.push(Spanned::new(LexError::ExpectedCharacter, start + 1, start + 2))
+                        Some((char_start, _)) => tokens.push(Spanned::from_start_end(Token::Char, start, char_start + 1)),
+                        None => errors.push(Spanned::from_start_end(LexError::ExpectedCharacter, start + 1, start + 2))
                     }
                 }
                 '"' => {
                     loop {
                         match self.advance() {
                             Some((string_end, '"')) => {
-                                tokens.push(Spanned::new(Token::String, start, string_end + 1));
+                                tokens.push(Spanned::from_start_end(Token::String, start, string_end + 1));
                                 break
                             },
                             Some((backslash_start, '\\')) => match self.advance() {
@@ -88,15 +88,15 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                                 Some((_, 'r')) |
                                 Some((_, 't')) |
                                 Some((_, '"')) => {}
-                                Some((escape_char_start, c)) => errors.push(Spanned::new(LexError::InvalidEscape(c), escape_char_start, escape_char_start + 1)),
+                                Some((escape_char_start, c)) => errors.push(Spanned::from_start_end(LexError::InvalidEscape(c), escape_char_start, escape_char_start + 1)),
                                 None => {
-                                    errors.push(Spanned::new(LexError::ExpectedCharacter, backslash_start + 1,  backslash_start + 2));
+                                    errors.push(Spanned::from_start_end(LexError::ExpectedCharacter, backslash_start + 1, backslash_start + 2));
                                     break
                                 },
                             },
                             Some(_) => {},
                             None => {
-                                errors.push(Spanned::new(LexError::ExpectedCharacter, start + 1, start + 2));
+                                errors.push(Spanned::from_start_end(LexError::ExpectedCharacter, start + 1, start + 2));
                                 break
                             },
                         }
@@ -104,9 +104,9 @@ impl<T: Iterator<Item=char>> Lexer<T> {
                 }
                 c if is_word_character(&c) => {
                     let end = start +self.advance_while(is_word_character) + 1;
-                    tokens.push(Spanned::new(Token::Word, start, end))
+                    tokens.push(Spanned::from_start_end(Token::Word, start, end))
                 }
-                _ => errors.push(Spanned::new(LexError::UnexpectedCharacter(c), start, start + 1))
+                _ => errors.push(Spanned::from_start_end(LexError::UnexpectedCharacter(c), start, start + 1))
             }
         }
 
