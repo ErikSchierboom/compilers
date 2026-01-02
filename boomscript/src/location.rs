@@ -7,6 +7,10 @@ pub struct Span {
 impl Span {
     pub const EMPTY: Self = Self { start: 0, end: 0 };
 
+    pub fn next_position(&self) -> Self {
+        Self { start: self.start + 1, end: self.end + 1 }
+    }
+
     pub fn merge(&self, other: &Self) -> Self {
         Self { start: self.start.min(other.start), end: self.end.max(other.end) }
     }
@@ -23,11 +27,11 @@ impl Default for Span {
 }
 
 #[derive(Debug)]
-pub struct Spanned<T>(T, Span);
+pub struct Spanned<T>(pub T, pub Span);
 
 impl<T> Spanned<T> {
-    pub fn new(value: T, start: usize, end: usize) -> Self {
-        Self(value, Span { start, end })
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Spanned<U> {
+        Spanned(f(self.0), self.1)
     }
 }
 
