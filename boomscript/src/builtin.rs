@@ -68,21 +68,21 @@ pub fn dup(interpreter: &mut Interpreter, span: &Span) -> RunResult {
 }
 
 pub fn drop(interpreter: &mut Interpreter, span: &Span) -> RunResult {
-    interpreter.pop()?;
+    interpreter.pop(span)?;
     Ok(())
 }
 
 pub fn swap(interpreter: &mut Interpreter, span: &Span) -> RunResult {
-    let top = interpreter.pop()?;
-    let snd = interpreter.pop()?;
+    let top = interpreter.pop(span)?;
+    let snd = interpreter.pop(span)?;
     interpreter.push(top);
     interpreter.push(snd);
     Ok(())
 }
 
 pub fn over(interpreter: &mut Interpreter, span: &Span) -> RunResult {
-    let top = interpreter.pop()?;
-    let snd = interpreter.pop()?;
+    let top = interpreter.pop(span)?;
+    let snd = interpreter.pop(span)?;
     interpreter.push(snd.clone());
     interpreter.push(top);
     interpreter.push(snd);
@@ -90,8 +90,8 @@ pub fn over(interpreter: &mut Interpreter, span: &Span) -> RunResult {
 }
 
 pub fn nip(interpreter: &mut Interpreter, span: &Span) -> RunResult {
-    let top = interpreter.pop()?;
-    interpreter.pop()?;
+    let top = interpreter.pop(span)?;
+    interpreter.pop(span)?;
     interpreter.push(top);
     Ok(())
 }
@@ -102,8 +102,8 @@ pub fn clear(interpreter: &mut Interpreter, span: &Span) -> RunResult {
 }
 
 pub fn when(interpreter: &mut Interpreter, span: &Span) -> RunResult {
-    let top = interpreter.pop()?;
-    let snd = interpreter.pop()?;
+    let top = interpreter.pop(span)?;
+    let snd = interpreter.pop(span)?;
 
     if bool::from(snd) {
         interpreter.execute(top)?
@@ -113,8 +113,8 @@ pub fn when(interpreter: &mut Interpreter, span: &Span) -> RunResult {
 }
 
 pub fn unless(interpreter: &mut Interpreter, span: &Span) -> RunResult {
-    let top = interpreter.pop()?;
-    let snd = interpreter.pop()?;
+    let top = interpreter.pop(span)?;
+    let snd = interpreter.pop(span)?;
 
     if !bool::from(snd) {
         interpreter.execute(top)?
