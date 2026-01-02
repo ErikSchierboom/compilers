@@ -23,11 +23,15 @@ impl Default for Span {
 }
 
 #[derive(Debug)]
-pub struct Spanned<T>(T, Span);
+pub struct Spanned<T> {
+    value: T,
+    span: Span
+}
 
 impl<T> Spanned<T> {
     pub fn new(value: T, start: usize, end: usize) -> Self {
-        Self(value, Span { start, end })
+        let span = Span { start, end }; 
+        Self { value, span }
     }
 }
 
