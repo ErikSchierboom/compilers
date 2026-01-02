@@ -5,6 +5,7 @@ mod parser;
 mod interpreter;
 mod location;
 mod lowering;
+mod builtin;
 
 fn main() {
     // let code = "(1 2 +) $a %a";
