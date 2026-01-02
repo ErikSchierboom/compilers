@@ -1,4 +1,4 @@
-use crate::builtin::{add, and, clear, concat, dip, div, dup, drop, equal, execute, filter, fold, greater, greater_or_equal, iff, keep, less, less_or_equal, map, max, min, mul, nip, not, not_equal, or, over, read, reduce, rem, rot, sub, swap, unless, when, write, xor, Builtin};
+use crate::builtin::{add, and, clear, concat, dip, div, drop, dup, equal, execute, filter, fold, greater, greater_or_equal, iff, keep, less, less_or_equal, map, max, min, mul, nip, not, not_equal, or, over, read, reduce, rem, rot, sub, swap, unless, when, write, xor, Builtin};
 use crate::interpreter::RuntimeError::Parse;
 use crate::location::{Span, Spanned};
 use crate::lowering::lower;
@@ -19,7 +19,7 @@ pub enum Value {
     ValString(String),
     ValQuotedWord(String),
     ValBlock(Vec<Spanned<Word>>),
-    ValArray(Vec<Value>),
+    ValArray(Vec<Spanned<Value>>),
     ValBuiltin(Builtin),
 }
 
@@ -35,15 +35,14 @@ impl From<Value> for bool {
 
 impl Executable for Word {
     fn execute(&self, interpreter: &mut Interpreter, span: &Span) -> RunResult {
-        // TODO: get rid of clones
         match self {
-            Word::Int(value) => interpreter.push(Value::ValInt(value.clone()), span.clone()),
-            Word::Float(value) => interpreter.push(Value::ValFloat(value.clone()), span.clone()),
-            Word::Char(value) => interpreter.push(Value::ValChar(value.clone()), span.clone()),
-            Word::String(value) => interpreter.push(Value::ValString(value.clone()), span.clone()),
-            Word::QuotedWord(name) => interpreter.push(Value::ValQuotedWord(name.clone()), span.clone()),
-            Word::Block(words) => interpreter.push(Value::ValBlock(words.clone()), span.clone()),
-            Word::Array(words) => interpreter.push_array(words)?,
+            Word::Int(value) => interpreter.push(Spanned::new(Value::ValInt(value.clone()), span.clone())),
+            Word::Float(value) => interpreter.push(Spanned::new(Value::ValFloat(value.clone()), span.clone())),
+            Word::Char(value) => interpreter.push(Spanned::new(Value::ValChar(value.clone()), span.clone())),
+            Word::String(value) => interpreter.push(Spanned::new(Value::ValString(value.clone()), span.clone())),
+            Word::QuotedWord(name) => interpreter.push(Spanned::new(Value::ValQuotedWord(name.clone()), span.clone())),
+            Word::Block(words) => interpreter.push(Spanned::new(Value::ValBlock(words.clone()), span.clone())),
+            Word::Array(words) => interpreter.push_array(words, span)?,
             Word::Word(name) => {
                 let variable = interpreter.get_variable(name, span)?;
                 interpreter.execute(variable)?
@@ -123,14 +122,14 @@ impl Interpreter {
                 ("max".into(), Spanned::new(Value::ValBuiltin(Builtin(max)), Span::EMPTY)),
                 ("min".into(), Spanned::new(Value::ValBuiltin(Builtin(min)), Span::EMPTY)),
                 ("fold".into(), Spanned::new(Value::ValBuiltin(Builtin(fold)), Span::EMPTY)),
-                ("reduce".into(), Spanned::new(Value::ValBuiltin(Builtin(reduce)))
+                ("reduce".into(), Spanned::new(Value::ValBuiltin(Builtin(reduce)), Span::EMPTY))
             ]),
         }
     }
 
-    fn run(mut self) -> Result<Vec<Value>, Vec<RuntimeError>> {
+    fn run(mut self) -> Result<Vec<Spanned<Value>>, Vec<Spanned<RuntimeError>>> {
         while let Some(word) = self.words.pop_front() {
-            match word.execute(&mut self) {
+            match word.value.execute(&mut self, &word.span) {
                 Ok(_) => {}
                 Err(error) => return Err(vec![error])
             }
@@ -139,8 +138,8 @@ impl Interpreter {
         Ok(self.stack)
     }
 
-    pub fn push(&mut self, value: Value, span: Span) {
-        self.stack.push(Spanned::new(value, span))
+    pub fn push(&mut self, value: Spanned<Value>) {
+        self.stack.push(value)
     }
 
     pub fn pop(&mut self, span: &Span) -> Result<Spanned<Value>, Spanned<RuntimeError>> {
@@ -148,11 +147,11 @@ impl Interpreter {
     }
 
     pub fn unary_int_only_op(&mut self, f: impl Fn(i64) -> i64) -> RunResult {
-        let top = self.pop()?;
+        let Spanned { value: top, span } = self.pop()?;
 
         match top {
             Value::ValInt(top_val) => {
-                self.push(Value::ValInt(f(top_val)));
+                self.push(Spanned::new(Value::ValInt(f(top_val)), span));
                 Ok(())
             }
             Value::ValArray(mut array) => {
@@ -165,21 +164,21 @@ impl Interpreter {
                             Value::ValArray(inner_values) => {
                                 mutation_queue.push(inner_values)
                             }
-                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                            _ => return Err(Spanned::new(RuntimeError::UnsupportedArrayValue, span))
                         }
                     }
                 }
 
-                self.push(Value::ValArray(array));
+                self.push(Spanned::new(Value::ValArray(array), span));
                 Ok(())
             }
-            _ => Err(RuntimeError::UnsupportedOperands)
+            _ => Err(Spanned::new(RuntimeError::UnsupportedOperands, span))
         }
     }
 
     pub fn binary_number_and_char_op(&mut self, f_int: impl Fn(i64, i64) -> i64, f_float: impl Fn(f64, f64) -> f64) -> RunResult {
-        let top = self.pop()?;
-        let snd = self.pop()?;
+        let Spanned { value: top, span: top_span } = self.pop()?;
+        let Spanned { value: snd, span: snd_span } = self.pop()?;
 
         match (snd, top) {
             (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
@@ -387,7 +386,7 @@ impl Interpreter {
         }
     }
 
-    pub fn push_array(&mut self, words: &Vec<Spanned<Word>>) -> RunResult {
+    pub fn push_array(&mut self, words: &Vec<Spanned<Word>>, span: &Span) -> RunResult {
         let array_start_stack_idx = self.stack.len();
 
         for Spanned { value: word, span } in words {
@@ -395,7 +394,7 @@ impl Interpreter {
         }
 
         let elements = self.stack.drain(array_start_stack_idx..).collect();
-        self.push(Value::ValArray(elements));
+        self.push(Spanned::new(Value::ValArray(elements), span.clone()));
         Ok(())
     }
 
@@ -423,14 +422,14 @@ impl Interpreter {
                 let value = self.get_variable(&name, &span)?;
                 self.execute(value)?
             }
-            value => self.push(value, span)
+            value => self.push(Spanned { value, span })
         }
 
         Ok(())
     }
 }
 
-pub fn interpret(code: &str) -> Result<Vec<Value>, Vec<RuntimeError>> {
+pub fn interpret(code: &str) -> Result<Vec<Spanned<Value>>, Vec<Spanned<RuntimeError>>> {
     match parse(code) {
         Ok(words) => {
             let lowered = lower(words);
