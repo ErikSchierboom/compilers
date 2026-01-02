@@ -24,14 +24,13 @@ pub enum Word {
     Float(f64),
     Char(char),
     String(String),
-    Quote(String),
-    Name(String),
+    QuotedWord(String),
+    Word(String),
 
     // Composite
     Block(Vec<Spanned<Word>>),
     Array(Vec<Spanned<Word>>),
 }
-
 
 struct Parser<'a, T: Iterator<Item=Spanned<Token>>> {
     code: &'a str,
@@ -94,11 +93,11 @@ impl<'a, T: Iterator<Item=Spanned<Token>>> Parser<'a, T> {
             }
             Token::Quote => {
                 let name = self.lexeme(&location)[1..].into();
-                Some(Ok(Spanned::new(Word::Quote(name), location)))
+                Some(Ok(Spanned::new(Word::QuotedWord(name), location)))
             }
             Token::Word => {
                 let name = self.lexeme(&location).into();
-                Some(Ok(Spanned::new(Word::Name(name), location)))
+                Some(Ok(Spanned::new(Word::Word(name), location)))
             }
             Token::OpenBracket => {
                 match self.parse_delimited(Token::CloseBracket, location) {

@@ -31,17 +31,17 @@ pub fn min(interpreter: &mut Interpreter) -> RunResult { interpreter.binary_numb
 
 pub fn read(interpreter: &mut Interpreter) -> RunResult {
     let (name, location) = match interpreter.pop()? {
-        Value::ValQuote(name, location) => (name, location),
+        Value::ValQuotedWord(name, location) => (name, location),
         value => return Err(RuntimeError::ExpectedQuote(value.location().clone()))
     };
-    let variable = interpreter.get_variable(&name, &location)?;
+    let variable = interpreter.get_variable(&name)?;
     interpreter.push(variable.clone());
     Ok(())
 }
 
 pub fn write(interpreter: &mut Interpreter) -> RunResult {
     let name = match interpreter.pop()? {
-        Value::ValQuote(name, _) => name,
+        Value::ValQuotedWord(name, _) => name,
         value => return Err(RuntimeError::ExpectedQuote(value.location().clone()))
     };
     let value = interpreter.pop()?;
@@ -51,7 +51,7 @@ pub fn write(interpreter: &mut Interpreter) -> RunResult {
 
 pub fn execute(interpreter: &mut Interpreter) -> RunResult {
     let value = match interpreter.pop()? {
-        Value::ValQuote(name, location) => interpreter.get_variable(&name, &location)?,
+        Value::ValQuotedWord(name, location) => interpreter.get_variable(&name)?,
         Value::ValBuiltin(builtin) => Value::ValBuiltin(builtin),
         Value::ValBlock(words, location) => Value::ValBlock(words, location),
         value => return Err(RuntimeError::ExpectedExecutableWord(value.location().clone()))
