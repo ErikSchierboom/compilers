@@ -23,6 +23,15 @@ impl Default for Span {
 }
 
 #[derive(Debug)]
+pub struct Spanned<T>(T, Span);
+
+impl<T> Spanned<T> {
+    pub fn new(value: T, start: usize, end: usize) -> Self {
+        Self(value, Span { start, end })
+    }
+}
+
+#[derive(Debug)]
 pub struct Position {
     pub line: u16,
     pub column: u16,
