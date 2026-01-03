@@ -25,23 +25,22 @@ impl Default for Span {
 #[derive(Clone, Debug)]
 pub struct Spanned<T> {
     pub value: T,
-    pub span: Span
+    pub span: Span,
 }
 
 impl<T> Spanned<T> {
-
     pub fn new(value: T, span: Span) -> Self {
         Self { value, span }
     }
 
-    pub fn from_start_end(value: T, start: usize, end: usize) -> Self {
+    pub fn from_range(value: T, start: usize, end: usize) -> Self {
         Self { value, span: Span { start, end } }
     }
 
     pub fn map<B>(self, f: impl FnOnce(T) -> B) -> Spanned<B> {
-        Spanned { 
+        Spanned {
             value: f(self.value),
-            span: self.span 
+            span: self.span,
         }
     }
 }
