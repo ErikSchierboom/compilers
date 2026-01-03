@@ -455,10 +455,15 @@ impl Environment {
     }
 
     pub fn get_variable(&mut self, name: &String, span: &Span) -> Result<Value, Spanned<RuntimeError>> {
-        // TODO: get variable from parent
         match self.variables.get(name) {
-            None => Err(Spanned::new(RuntimeError::UnknownWord(name.clone()), span.clone())),
-            Some(value) => Ok(value.clone())
+            Some(value) => Ok(value.clone()),
+            None => {
+                if let Some(parent) = &self.parent {
+                    parent.borrow_mut().get_variable(name, span)
+                } else {
+                    Err(Spanned::new(RuntimeError::UnknownWord(name.clone()), span.clone()))
+                }
+            }
         }
     }
 
