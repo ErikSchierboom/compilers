@@ -4,14 +4,16 @@ use crate::interpreter::RuntimeError::Parse;
 use crate::location::{Span, Spanned};
 use crate::lowering::lower;
 use crate::parser::{parse, ParseError, Word};
+use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::fmt::{Display, Formatter};
+use std::rc::Rc;
 
 pub type RunResult = Result<(), Spanned<RuntimeError>>;
 
 pub trait Executable {
-    fn execute(&self, interpreter: &mut Interpreter, span: &Span) -> RunResult;
+    fn execute(&self, interpreter: &mut Environment, span: &Span) -> RunResult;
 }
 
 #[derive(Clone, Debug)]
@@ -72,7 +74,7 @@ impl From<Value> for bool {
 }
 
 impl Executable for Word {
-    fn execute(&self, interpreter: &mut Interpreter, span: &Span) -> RunResult {
+    fn execute(&self, interpreter: &mut Environment, span: &Span) -> RunResult {
         match self {
             Word::Int(value) => interpreter.push(Value::ValInt(value.clone())),
             Word::Float(value) => interpreter.push(Value::ValFloat(value.clone())),
@@ -128,18 +130,17 @@ impl From<ParseError> for RuntimeError {
     }
 }
 
-// TODO: create frames for execution of blocks to allow for locals
-pub struct Interpreter {
-    words: VecDeque<Spanned<Word>>,
-    pub stack: Vec<Value>,
+pub struct Environment {
+    pub parent: Option<Rc<RefCell<Environment>>>,
+    pub stack: Rc<RefCell<Vec<Value>>>,
     pub variables: HashMap<String, Value>,
 }
 
-impl Interpreter {
-    fn new(words: Vec<Spanned<Word>>) -> Self {
+impl Environment {
+    fn default() -> Self {
         Self {
-            words: words.into_iter().collect(),
-            stack: Vec::new(),
+            parent: None,
+            stack: Rc::new(RefCell::new(Vec::new())),
             variables: HashMap::from([
                 ("+".into(), Value::ValBuiltin(Builtin::Add)),
                 ("-".into(), Value::ValBuiltin(Builtin::Sub)),
@@ -184,23 +185,21 @@ impl Interpreter {
         }
     }
 
-    fn run(mut self) -> Result<Vec<Value>, Vec<Spanned<RuntimeError>>> {
-        while let Some(word) = self.words.pop_front() {
-            match word.value.execute(&mut self, &word.span) {
-                Ok(_) => {}
-                Err(error) => return Err(vec![error])
-            }
-        }
-
-        Ok(self.stack)
+    pub fn child(parent: Rc<RefCell<Environment>>) -> Rc<RefCell<Self>> {
+        let stack = Rc::clone(&parent.borrow().stack);
+        Rc::new(RefCell::new(Self {
+            stack,
+            variables: HashMap::new(),
+            parent: Some(parent),
+        }))
     }
 
     pub fn push(&mut self, value: Value) {
-        self.stack.push(value)
+        self.stack.borrow_mut().push(value)
     }
 
     pub fn pop(&mut self, span: &Span) -> Result<Value, Spanned<RuntimeError>> {
-        self.stack.pop().ok_or_else(|| Spanned::new(RuntimeError::EmptyStack, span.clone()))
+        self.stack.borrow_mut().pop().ok_or_else(|| Spanned::new(RuntimeError::EmptyStack, span.clone()))
     }
 
     pub fn unary_int_only_op(&mut self, f: impl Fn(i64) -> i64, span: &Span) -> RunResult {
@@ -444,18 +443,19 @@ impl Interpreter {
     }
 
     pub fn push_array(&mut self, words: &Vec<Spanned<Word>>) -> RunResult {
-        let array_start_stack_idx = self.stack.len();
+        let array_start_stack_idx = self.stack.borrow_mut().len();
 
         for Spanned { value: word, span } in words {
             word.execute(self, span)?
         }
 
-        let elements = self.stack.drain(array_start_stack_idx..).collect();
+        let elements = self.stack.borrow_mut().drain(array_start_stack_idx..).collect();
         self.push(Value::ValArray(elements));
         Ok(())
     }
 
     pub fn get_variable(&mut self, name: &String, span: &Span) -> Result<Value, Spanned<RuntimeError>> {
+        // TODO: get variable from parent
         match self.variables.get(name) {
             None => Err(Spanned::new(RuntimeError::UnknownWord(name.clone()), span.clone())),
             Some(value) => Ok(value.clone())
@@ -482,6 +482,32 @@ impl Interpreter {
         }
 
         Ok(())
+    }
+}
+
+// TODO: create frames for execution of blocks to allow for locals
+pub struct Interpreter {
+    words: VecDeque<Spanned<Word>>,
+    environment: Environment,
+}
+
+impl Interpreter {
+    fn new(words: Vec<Spanned<Word>>) -> Self {
+        Self {
+            words: words.into_iter().collect(),
+            environment: Environment::default(),
+        }
+    }
+
+    fn run(mut self) -> Result<Vec<Value>, Vec<Spanned<RuntimeError>>> {
+        while let Some(word) = self.words.pop_front() {
+            match word.value.execute(&mut self.environment, &word.span) {
+                Ok(_) => {}
+                Err(error) => return Err(vec![error])
+            }
+        }
+
+        Ok(self.environment.stack.take())
     }
 }
 

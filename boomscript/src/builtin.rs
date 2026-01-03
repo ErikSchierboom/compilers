@@ -1,4 +1,4 @@
-use crate::interpreter::{Executable, Interpreter, RunResult, RuntimeError, Value};
+use crate::interpreter::{Environment, Executable, RunResult, RuntimeError, Value};
 use crate::location::{Span, Spanned};
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
@@ -48,7 +48,7 @@ pub enum Builtin {
 }
 
 impl Executable for Builtin {
-    fn execute(&self, interpreter: &mut Interpreter, span: &Span) -> RunResult {
+    fn execute(&self, interpreter: &mut Environment, span: &Span) -> RunResult {
         match self {
             Builtin::Add => add(interpreter, span),
             Builtin::Sub => sub(interpreter, span),
@@ -99,38 +99,38 @@ impl Display for Builtin {
     }
 }
 
-pub fn add(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::add, f64::add, span) }
-pub fn sub(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::sub, f64::sub, span) }
-pub fn mul(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_only_op(i64::mul, f64::mul, span) }
-pub fn div(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_only_op(i64::div, f64::mul, span) }
-pub fn and(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_int_only_op(i64::bitand, span) }
-pub fn or(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_int_only_op(i64::bitor, span) }
-pub fn xor(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_int_only_op(i64::bitxor, span) }
-pub fn not(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.unary_int_only_op(i64::not, span) }
-pub fn greater(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::gt, f64::gt, span) }
-pub fn greater_or_equal(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::ge, f64::ge, span) }
-pub fn less(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::lt, f64::lt, span) }
-pub fn less_or_equal(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::le, f64::le, span) }
-pub fn equal(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::eq, f64::eq, span) }
-pub fn not_equal(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::ne, f64::ne, span) }
-pub fn rem(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::rem_euclid, f64::rem_euclid, span) }
-pub fn max(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::max, f64::max, span) }
-pub fn min(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::min, f64::min, span) }
+pub fn add(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::add, f64::add, span) }
+pub fn sub(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::sub, f64::sub, span) }
+pub fn mul(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.binary_number_only_op(i64::mul, f64::mul, span) }
+pub fn div(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.binary_number_only_op(i64::div, f64::mul, span) }
+pub fn and(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.binary_int_only_op(i64::bitand, span) }
+pub fn or(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.binary_int_only_op(i64::bitor, span) }
+pub fn xor(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.binary_int_only_op(i64::bitxor, span) }
+pub fn not(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.unary_int_only_op(i64::not, span) }
+pub fn greater(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::gt, f64::gt, span) }
+pub fn greater_or_equal(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::ge, f64::ge, span) }
+pub fn less(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::lt, f64::lt, span) }
+pub fn less_or_equal(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::le, f64::le, span) }
+pub fn equal(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::eq, f64::eq, span) }
+pub fn not_equal(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.binary_compare_op(i64::ne, f64::ne, span) }
+pub fn rem(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::rem_euclid, f64::rem_euclid, span) }
+pub fn max(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::max, f64::max, span) }
+pub fn min(interpreter: &mut Environment, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::min, f64::min, span) }
 
-pub fn print(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn print(interpreter: &mut Environment, span: &Span) -> RunResult {
     let value = interpreter.pop(&span)?;
     println!("{value}");
     Ok(())
 }
 
-pub fn stack(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn stack(interpreter: &mut Environment, span: &Span) -> RunResult {
     while let Ok(value) = interpreter.pop(span) {
         println!("{value}")
     }
     Ok(())
 }
 
-pub fn read(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn read(interpreter: &mut Environment, span: &Span) -> RunResult {
     match interpreter.pop(span)? {
         Value::ValQuotedWord(name) => {
             let variable = interpreter.get_variable(&name, span)?;
@@ -141,7 +141,7 @@ pub fn read(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     }
 }
 
-pub fn write(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn write(interpreter: &mut Environment, span: &Span) -> RunResult {
     match interpreter.pop(span)? {
         Value::ValQuotedWord(name) => {
             let value = interpreter.pop(span)?;
@@ -152,7 +152,7 @@ pub fn write(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     }
 }
 
-pub fn execute(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn execute(interpreter: &mut Environment, span: &Span) -> RunResult {
     let value = match interpreter.pop(span)? {
         Value::ValQuotedWord(name) => interpreter.get_variable(&name, &span)?,
         Value::ValBuiltin(builtin) => Value::ValBuiltin(builtin),
@@ -162,19 +162,19 @@ pub fn execute(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     interpreter.execute(value, span)
 }
 
-pub fn dup(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn dup(interpreter: &mut Environment, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     interpreter.push(top.clone());
     interpreter.push(top);
     Ok(())
 }
 
-pub fn drop(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn drop(interpreter: &mut Environment, span: &Span) -> RunResult {
     interpreter.pop(span)?;
     Ok(())
 }
 
-pub fn swap(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn swap(interpreter: &mut Environment, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
     interpreter.push(top);
@@ -182,7 +182,7 @@ pub fn swap(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     Ok(())
 }
 
-pub fn over(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn over(interpreter: &mut Environment, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
     interpreter.push(snd.clone());
@@ -191,19 +191,19 @@ pub fn over(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     Ok(())
 }
 
-pub fn nip(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn nip(interpreter: &mut Environment, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     interpreter.pop(span)?;
     interpreter.push(top);
     Ok(())
 }
 
-pub fn clear(interpreter: &mut Interpreter, _span: &Span) -> RunResult {
-    interpreter.stack.clear();
+pub fn clear(interpreter: &mut Environment, _span: &Span) -> RunResult {
+    interpreter.stack.borrow_mut().clear();
     Ok(())
 }
 
-pub fn when(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn when(interpreter: &mut Environment, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
 
@@ -214,7 +214,7 @@ pub fn when(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     Ok(())
 }
 
-pub fn unless(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn unless(interpreter: &mut Environment, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
 
@@ -225,7 +225,7 @@ pub fn unless(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     Ok(())
 }
 
-pub fn iff(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn iff(interpreter: &mut Environment, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
     let third = interpreter.pop(span)?;
@@ -239,7 +239,7 @@ pub fn iff(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     Ok(())
 }
 
-pub fn rot(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn rot(interpreter: &mut Environment, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
     let third = interpreter.pop(span)?;
@@ -250,7 +250,7 @@ pub fn rot(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     Ok(())
 }
 
-pub fn dip(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn dip(interpreter: &mut Environment, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
     interpreter.execute(top, span)?;
@@ -258,7 +258,7 @@ pub fn dip(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     Ok(())
 }
 
-pub fn keep(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn keep(interpreter: &mut Environment, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
     interpreter.push(snd.clone());
@@ -267,7 +267,7 @@ pub fn keep(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     Ok(())
 }
 
-pub fn map(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn map(interpreter: &mut Environment, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
 
@@ -276,18 +276,20 @@ pub fn map(interpreter: &mut Interpreter, span: &Span) -> RunResult {
             let mut mapped_array = Vec::new();
 
             for element in array {
-                let stack_length_before = interpreter.stack.len();
+                let stack_length_before = interpreter.stack.borrow().len();
                 interpreter.push(element);
                 interpreter.execute(top.clone(), span)?;
 
-                if interpreter.stack.len() < stack_length_before {
+                let stack_len = interpreter.stack.borrow().len();
+
+                if stack_len < stack_length_before {
                     return Err(Spanned::new(RuntimeError::WordHasNegativeStackEffect, span.clone()));
                 }
 
-                match interpreter.stack.len() - stack_length_before {
+                match stack_len - stack_length_before {
                     0 => return Err(Spanned::new(RuntimeError::WordDoesNotHavePositiveStackEffect, span.clone())),
                     1 => mapped_array.push(interpreter.pop(span)?),
-                    _ => mapped_array.push(Value::ValArray(interpreter.stack.drain(stack_length_before..).collect())),
+                    _ => mapped_array.push(Value::ValArray(interpreter.stack.borrow_mut().drain(stack_length_before..).collect())),
                 }
             }
 
@@ -298,7 +300,7 @@ pub fn map(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     }
 }
 
-pub fn filter(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn filter(interpreter: &mut Environment, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
 
@@ -307,15 +309,17 @@ pub fn filter(interpreter: &mut Interpreter, span: &Span) -> RunResult {
             let mut filtered_array = Vec::new();
 
             for element in array {
-                let stack_length_before = interpreter.stack.len();
+                let stack_length_before = interpreter.stack.borrow().len();
                 interpreter.push(element.clone());
                 interpreter.execute(top.clone(), span)?;
 
-                match interpreter.stack.len().cmp(&stack_length_before) {
+                let stack_len = interpreter.stack.borrow().len();
+
+                match stack_len.cmp(&stack_length_before) {
                     Ordering::Less => return Err(Spanned::new(RuntimeError::WordHasNegativeStackEffect, span.clone())),
                     Ordering::Equal => return Err(Spanned::new(RuntimeError::WordDoesNotHavePositiveStackEffect, span.clone())),
                     Ordering::Greater => {
-                        if interpreter.stack.len() == stack_length_before + 1 {
+                        if interpreter.stack.borrow().len() == stack_length_before + 1 {
                             if bool::from(interpreter.pop(span)?) {
                                 filtered_array.push(element)
                             }
@@ -331,7 +335,7 @@ pub fn filter(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     }
 }
 
-pub fn reduce(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn reduce(interpreter: &mut Environment, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
 
@@ -355,7 +359,7 @@ pub fn reduce(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     }
 }
 
-pub fn fold(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn fold(interpreter: &mut Environment, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
     let third = interpreter.pop(span)?;
@@ -375,7 +379,7 @@ pub fn fold(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     }
 }
 
-pub fn concat(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn concat(interpreter: &mut Environment, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
 
