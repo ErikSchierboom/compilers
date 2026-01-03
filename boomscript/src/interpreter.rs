@@ -454,7 +454,7 @@ impl Environment {
         Ok(())
     }
 
-    pub fn get_variable(&mut self, name: &String, span: &Span) -> Result<Value, Spanned<RuntimeError>> {
+    pub fn get_variable(&self, name: &String, span: &Span) -> Result<Value, Spanned<RuntimeError>> {
         match self.variables.get(name) {
             Some(value) => Ok(value.clone()),
             None => {
