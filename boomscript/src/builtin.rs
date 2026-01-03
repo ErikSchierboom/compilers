@@ -1,5 +1,5 @@
 use crate::interpreter::{Executable, Interpreter, RunResult, RuntimeError, Value};
-use crate::location::Span;
+use crate::location::{Span, Spanned};
 use std::cmp::Ordering;
 use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Not, Sub};
 
@@ -31,33 +31,35 @@ pub fn max(interpreter: &mut Interpreter, span: &Span) -> RunResult { interprete
 pub fn min(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::min, f64::min, span) }
 
 pub fn read(interpreter: &mut Interpreter, span: &Span) -> RunResult {
-    let (name, location) = match interpreter.pop(span)? {
-        Value::ValQuotedWord(name) => (name, location),
-        value => return Err(RuntimeError::ExpectedQuote(value.location().clone()))
-    };
-    let variable = interpreter.get_variable(&name)?;
-    interpreter.push(variable.clone());
-    Ok(())
+    match interpreter.pop(span)? {
+        Value::ValQuotedWord(name) => {
+            let variable = interpreter.get_variable(&name, span)?;
+            interpreter.push(variable.clone());
+            Ok(())
+        }
+        _ => Err(Spanned::new(RuntimeError::ExpectedQuote, span.clone()))
+    }
 }
 
 pub fn write(interpreter: &mut Interpreter, span: &Span) -> RunResult {
-    let name = match interpreter.pop(span)? {
-        Value::ValQuotedWord(name, _) => name,
-        value => return Err(RuntimeError::ExpectedQuote(value.location().clone()))
-    };
-    let value = interpreter.pop(span)?;
-    interpreter.set_variable(name, value);
-    Ok(())
+    match interpreter.pop(span)? {
+        Value::ValQuotedWord(name) => {
+            let value = interpreter.pop(span)?;
+            interpreter.set_variable(name, value);
+            Ok(())
+        }
+        _ => Err(Spanned::new(RuntimeError::ExpectedQuote, span.clone()))
+    }
 }
 
 pub fn execute(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     let value = match interpreter.pop(span)? {
-        Value::ValQuotedWord(name, location) => interpreter.get_variable(&name)?,
+        Value::ValQuotedWord(name) => interpreter.get_variable(&name, &span)?,
         Value::ValBuiltin(builtin) => Value::ValBuiltin(builtin),
-        Value::ValBlock(words, location) => Value::ValBlock(words, location),
-        value => return Err(RuntimeError::ExpectedExecutableWord(value.location().clone()))
+        Value::ValBlock(words) => Value::ValBlock(words),
+        _ => return Err(Spanned::new(RuntimeError::ExpectedExecutableWord, span.clone()))
     };
-    interpreter.execute(value)
+    interpreter.execute(value, span)
 }
 
 pub fn dup(interpreter: &mut Interpreter, span: &Span) -> RunResult {
@@ -96,7 +98,7 @@ pub fn nip(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     Ok(())
 }
 
-pub fn clear(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+pub fn clear(interpreter: &mut Interpreter, _span: &Span) -> RunResult {
     interpreter.stack.clear();
     Ok(())
 }
@@ -105,8 +107,8 @@ pub fn when(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
 
-    if bool::from(snd.value) {
-        interpreter.execute(top)?
+    if bool::from(snd) {
+        interpreter.execute(top, span)?
     }
 
     Ok(())
@@ -116,8 +118,8 @@ pub fn unless(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
 
-    if !bool::from(snd.value) {
-        interpreter.execute(top)?
+    if !bool::from(snd) {
+        interpreter.execute(top, span)?
     }
 
     Ok(())
@@ -128,10 +130,10 @@ pub fn iff(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     let snd = interpreter.pop(span)?;
     let third = interpreter.pop(span)?;
 
-    if bool::from(third.value) {
-        interpreter.execute(snd)?
+    if bool::from(third) {
+        interpreter.execute(snd, span)?
     } else {
-        interpreter.execute(top)?
+        interpreter.execute(top, span)?
     }
 
     Ok(())
@@ -151,7 +153,7 @@ pub fn rot(interpreter: &mut Interpreter, span: &Span) -> RunResult {
 pub fn dip(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
-    interpreter.execute(top)?;
+    interpreter.execute(top, span)?;
     interpreter.push(snd);
     Ok(())
 }
@@ -160,7 +162,7 @@ pub fn keep(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     let top = interpreter.pop(span)?;
     let snd = interpreter.pop(span)?;
     interpreter.push(snd.clone());
-    interpreter.execute(top)?;
+    interpreter.execute(top, span)?;
     interpreter.push(snd);
     Ok(())
 }
@@ -170,31 +172,30 @@ pub fn map(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     let snd = interpreter.pop(span)?;
 
     match snd {
-        Value::ValArray(array, location) => {
+        Value::ValArray(array) => {
             let mut mapped_array = Vec::new();
 
             for element in array {
                 let stack_length_before = interpreter.stack.len();
                 interpreter.push(element);
-                interpreter.execute(top.clone())?;
+                interpreter.execute(top.clone(), span)?;
 
                 if interpreter.stack.len() < stack_length_before {
-                    return Err(RuntimeError::WordHasNegativeStackEffect(location.clone()));
+                    return Err(Spanned::new(RuntimeError::WordHasNegativeStackEffect, span.clone()));
                 }
 
                 match interpreter.stack.len() - stack_length_before {
-                    0 => return Err(RuntimeError::WordDoesNotHavePositiveStackEffect(location.clone())),
+                    0 => return Err(Spanned::new(RuntimeError::WordDoesNotHavePositiveStackEffect, span.clone())),
                     1 => mapped_array.push(interpreter.pop(span)?),
-                    _ => mapped_array.push(Value::ValArray(interpreter.stack.drain(stack_length_before..).collect(), location)),
+                    _ => mapped_array.push(Value::ValArray(interpreter.stack.drain(stack_length_before..).collect())),
                 }
             }
 
-            interpreter.push(Value::ValArray(mapped_array, location))
+            interpreter.push(Value::ValArray(mapped_array));
+            Ok(())
         }
-        value => return Err(RuntimeError::UnsupportedOperands(value.location().clone()))
+        _ => Err(Spanned::new(RuntimeError::UnsupportedOperands, span.clone()))
     }
-
-    Ok(())
 }
 
 pub fn filter(interpreter: &mut Interpreter, span: &Span) -> RunResult {
@@ -202,17 +203,17 @@ pub fn filter(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     let snd = interpreter.pop(span)?;
 
     match snd {
-        Value::ValArray(array, location) => {
+        Value::ValArray(array) => {
             let mut filtered_array = Vec::new();
 
             for element in array {
                 let stack_length_before = interpreter.stack.len();
                 interpreter.push(element.clone());
-                interpreter.execute(top.clone())?;
+                interpreter.execute(top.clone(), span)?;
 
                 match interpreter.stack.len().cmp(&stack_length_before) {
-                    Ordering::Less => return Err(RuntimeError::WordHasNegativeStackEffect(location)),
-                    Ordering::Equal => return Err(RuntimeError::WordDoesNotHavePositiveStackEffect(location)),
+                    Ordering::Less => return Err(Spanned::new(RuntimeError::WordHasNegativeStackEffect, span.clone())),
+                    Ordering::Equal => return Err(Spanned::new(RuntimeError::WordDoesNotHavePositiveStackEffect, span.clone())),
                     Ordering::Greater => {
                         if interpreter.stack.len() == stack_length_before + 1 {
                             if bool::from(interpreter.pop(span)?) {
@@ -223,12 +224,11 @@ pub fn filter(interpreter: &mut Interpreter, span: &Span) -> RunResult {
                 }
             }
 
-            interpreter.push(Value::ValArray(filtered_array, location))
+            interpreter.push(Value::ValArray(filtered_array));
+            Ok(())
         }
-        value => return Err(RuntimeError::UnsupportedOperands(value.location().clone()))
+        _ => Err(Spanned::new(RuntimeError::UnsupportedOperands, span.clone()))
     }
-
-    Ok(())
 }
 
 pub fn reduce(interpreter: &mut Interpreter, span: &Span) -> RunResult {
@@ -236,23 +236,23 @@ pub fn reduce(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     let snd = interpreter.pop(span)?;
 
     match snd {
-        Value::ValArray(mut array, location) => {
+        Value::ValArray(mut array) => {
             match array.split_first_mut() {
                 Some((head, tail)) => {
                     interpreter.push(head.to_owned());
 
                     for element in tail.to_owned() {
                         interpreter.push(element);
-                        interpreter.execute(top.clone())?;
+                        interpreter.execute(top.clone(), span)?;
                     }
+
+                    Ok(())
                 }
-                None => return Err(RuntimeError::EmptyArray(location)),
+                None => Err(Spanned::new(RuntimeError::EmptyArray, span.clone())),
             }
         }
-        value => return Err(RuntimeError::UnsupportedOperands(value.location().clone()))
+        _ => Err(Spanned::new(RuntimeError::UnsupportedOperands, span.clone())),
     }
-
-    Ok(())
 }
 
 pub fn fold(interpreter: &mut Interpreter, span: &Span) -> RunResult {
@@ -261,18 +261,18 @@ pub fn fold(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     let third = interpreter.pop(span)?;
 
     match third {
-        Value::ValArray(array, _) => {
+        Value::ValArray(array) => {
             interpreter.push(snd);
 
             for element in array {
                 interpreter.push(element);
-                interpreter.execute(top.clone())?;
+                interpreter.execute(top.clone(), span)?;
             }
-        }
-        value => return Err(RuntimeError::UnsupportedOperands(value.location().clone()))
-    }
 
-    Ok(())
+            Ok(())
+        }
+        _ => Err(Spanned::new(RuntimeError::UnsupportedOperands, span.clone()))
+    }
 }
 
 pub fn concat(interpreter: &mut Interpreter, span: &Span) -> RunResult {
@@ -280,20 +280,21 @@ pub fn concat(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     let snd = interpreter.pop(span)?;
 
     match (snd, top) {
-        (Value::ValArray(mut l, location_l), Value::ValArray(mut r, location_r)) => {
+        (Value::ValArray(mut l), Value::ValArray(mut r)) => {
             l.append(&mut r);
-            interpreter.push(Value::ValArray(l, location_l.merge(&location_r)));
+            interpreter.push(Value::ValArray(l));
+            Ok(())
         }
-        (Value::ValBlock(mut l, location_l), Value::ValBlock(mut r, location_r)) => {
+        (Value::ValBlock(mut l), Value::ValBlock(mut r)) => {
             l.append(&mut r);
-            interpreter.push(Value::ValBlock(l, location_l.merge(&location_r)));
+            interpreter.push(Value::ValBlock(l));
+            Ok(())
         }
-        (Value::ValString(mut l, location_l), Value::ValString(r, location_r)) => {
+        (Value::ValString(mut l), Value::ValString(r)) => {
             l.push_str(&r);
-            interpreter.push(Value::ValString(l, location_l.merge(&location_r)));
+            interpreter.push(Value::ValString(l));
+            Ok(())
         }
-        (l, r) => return Err(RuntimeError::UnsupportedOperands(l.location().merge(r.location())))
+        _ => Err(Spanned::new(RuntimeError::UnsupportedOperands, span.clone()))
     }
-
-    Ok(())
 }

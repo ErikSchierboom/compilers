@@ -19,7 +19,7 @@ pub enum Value {
     ValString(String),
     ValQuotedWord(String),
     ValBlock(Vec<Spanned<Word>>),
-    ValArray(Vec<Spanned<Value>>),
+    ValArray(Vec<Value>),
     ValBuiltin(Builtin),
 }
 
@@ -36,16 +36,16 @@ impl From<Value> for bool {
 impl Executable for Word {
     fn execute(&self, interpreter: &mut Interpreter, span: &Span) -> RunResult {
         match self {
-            Word::Int(value) => interpreter.push(Spanned::new(Value::ValInt(value.clone()), span.clone())),
-            Word::Float(value) => interpreter.push(Spanned::new(Value::ValFloat(value.clone()), span.clone())),
-            Word::Char(value) => interpreter.push(Spanned::new(Value::ValChar(value.clone()), span.clone())),
-            Word::String(value) => interpreter.push(Spanned::new(Value::ValString(value.clone()), span.clone())),
-            Word::QuotedWord(name) => interpreter.push(Spanned::new(Value::ValQuotedWord(name.clone()), span.clone())),
-            Word::Block(words) => interpreter.push(Spanned::new(Value::ValBlock(words.clone()), span.clone())),
-            Word::Array(words) => interpreter.push_array(words, span)?,
+            Word::Int(value) => interpreter.push(Value::ValInt(value.clone())),
+            Word::Float(value) => interpreter.push(Value::ValFloat(value.clone())),
+            Word::Char(value) => interpreter.push(Value::ValChar(value.clone())),
+            Word::String(value) => interpreter.push(Value::ValString(value.clone())),
+            Word::QuotedWord(name) => interpreter.push(Value::ValQuotedWord(name.clone())),
+            Word::Block(words) => interpreter.push(Value::ValBlock(words.clone())),
+            Word::Array(words) => interpreter.push_array(words)?,
             Word::Word(name) => {
                 let variable = interpreter.get_variable(name, span)?;
-                interpreter.execute(variable)?
+                interpreter.execute(variable, span)?
             }
         }
 
@@ -73,10 +73,11 @@ impl From<ParseError> for RuntimeError {
     }
 }
 
+// TODO: create frames for execution of blocks to allow for locals
 pub struct Interpreter {
     words: VecDeque<Spanned<Word>>,
-    pub stack: Vec<Spanned<Value>>,
-    pub variables: HashMap<String, Spanned<Value>>,
+    pub stack: Vec<Value>,
+    pub variables: HashMap<String, Value>,
 }
 
 impl Interpreter {
@@ -86,48 +87,48 @@ impl Interpreter {
             stack: Vec::new(),
             variables: HashMap::from([
                 // TODO: support ? for printing stack and . for pop and print top
-                ("+".into(), Spanned::new(Value::ValBuiltin(Builtin(add)), Span::EMPTY)),
-                ("-".into(), Spanned::new(Value::ValBuiltin(Builtin(sub)), Span::EMPTY)),
-                ("*".into(), Spanned::new(Value::ValBuiltin(Builtin(mul)), Span::EMPTY)),
-                ("/".into(), Spanned::new(Value::ValBuiltin(Builtin(div)), Span::EMPTY)),
-                ("&".into(), Spanned::new(Value::ValBuiltin(Builtin(and)), Span::EMPTY)),
-                ("|".into(), Spanned::new(Value::ValBuiltin(Builtin(or)), Span::EMPTY)),
-                ("^".into(), Spanned::new(Value::ValBuiltin(Builtin(xor)), Span::EMPTY)),
-                ("!".into(), Spanned::new(Value::ValBuiltin(Builtin(not)), Span::EMPTY)),
-                (">".into(), Spanned::new(Value::ValBuiltin(Builtin(greater)), Span::EMPTY)),
-                (">=".into(), Spanned::new(Value::ValBuiltin(Builtin(greater_or_equal)), Span::EMPTY)),
-                ("<".into(), Spanned::new(Value::ValBuiltin(Builtin(less)), Span::EMPTY)),
-                ("<=".into(), Spanned::new(Value::ValBuiltin(Builtin(less_or_equal)), Span::EMPTY)),
-                ("=".into(), Spanned::new(Value::ValBuiltin(Builtin(equal)), Span::EMPTY)),
-                ("!=".into(), Spanned::new(Value::ValBuiltin(Builtin(not_equal)), Span::EMPTY)),
-                ("++".into(), Spanned::new(Value::ValBuiltin(Builtin(concat)), Span::EMPTY)),
-                ("@".into(), Spanned::new(Value::ValBuiltin(Builtin(read)), Span::EMPTY)),
-                ("$".into(), Spanned::new(Value::ValBuiltin(Builtin(write)), Span::EMPTY)),
-                ("%".into(), Spanned::new(Value::ValBuiltin(Builtin(execute)), Span::EMPTY)),
-                ("dup".into(), Spanned::new(Value::ValBuiltin(Builtin(dup)), Span::EMPTY)),
-                ("drop".into(), Spanned::new(Value::ValBuiltin(Builtin(drop)), Span::EMPTY)),
-                ("swap".into(), Spanned::new(Value::ValBuiltin(Builtin(swap)), Span::EMPTY)),
-                ("over".into(), Spanned::new(Value::ValBuiltin(Builtin(over)), Span::EMPTY)),
-                ("nip".into(), Spanned::new(Value::ValBuiltin(Builtin(nip)), Span::EMPTY)),
-                ("when".into(), Spanned::new(Value::ValBuiltin(Builtin(when)), Span::EMPTY)),
-                ("unless".into(), Spanned::new(Value::ValBuiltin(Builtin(unless)), Span::EMPTY)),
-                ("if".into(), Spanned::new(Value::ValBuiltin(Builtin(iff)), Span::EMPTY)),
-                ("clear".into(), Spanned::new(Value::ValBuiltin(Builtin(clear)), Span::EMPTY)),
-                ("rot".into(), Spanned::new(Value::ValBuiltin(Builtin(rot)), Span::EMPTY)),
-                ("dip".into(), Spanned::new(Value::ValBuiltin(Builtin(dip)), Span::EMPTY)),
-                ("keep".into(), Spanned::new(Value::ValBuiltin(Builtin(keep)), Span::EMPTY)),
-                ("map".into(), Spanned::new(Value::ValBuiltin(Builtin(map)), Span::EMPTY)),
-                ("filter".into(), Spanned::new(Value::ValBuiltin(Builtin(filter)), Span::EMPTY)),
-                ("mod".into(), Spanned::new(Value::ValBuiltin(Builtin(rem)), Span::EMPTY)),
-                ("max".into(), Spanned::new(Value::ValBuiltin(Builtin(max)), Span::EMPTY)),
-                ("min".into(), Spanned::new(Value::ValBuiltin(Builtin(min)), Span::EMPTY)),
-                ("fold".into(), Spanned::new(Value::ValBuiltin(Builtin(fold)), Span::EMPTY)),
-                ("reduce".into(), Spanned::new(Value::ValBuiltin(Builtin(reduce)), Span::EMPTY))
+                ("+".into(), Value::ValBuiltin(Builtin(add))),
+                ("-".into(), Value::ValBuiltin(Builtin(sub))),
+                ("*".into(), Value::ValBuiltin(Builtin(mul))),
+                ("/".into(), Value::ValBuiltin(Builtin(div))),
+                ("&".into(), Value::ValBuiltin(Builtin(and))),
+                ("|".into(), Value::ValBuiltin(Builtin(or))),
+                ("^".into(), Value::ValBuiltin(Builtin(xor))),
+                ("!".into(), Value::ValBuiltin(Builtin(not))),
+                (">".into(), Value::ValBuiltin(Builtin(greater))),
+                (">=".into(), Value::ValBuiltin(Builtin(greater_or_equal))),
+                ("<".into(), Value::ValBuiltin(Builtin(less))),
+                ("<=".into(), Value::ValBuiltin(Builtin(less_or_equal))),
+                ("=".into(), Value::ValBuiltin(Builtin(equal))),
+                ("!=".into(), Value::ValBuiltin(Builtin(not_equal))),
+                ("++".into(), Value::ValBuiltin(Builtin(concat))),
+                ("@".into(), Value::ValBuiltin(Builtin(read))),
+                ("$".into(), Value::ValBuiltin(Builtin(write))),
+                ("%".into(), Value::ValBuiltin(Builtin(execute))),
+                ("dup".into(), Value::ValBuiltin(Builtin(dup))),
+                ("drop".into(), Value::ValBuiltin(Builtin(drop))),
+                ("swap".into(), Value::ValBuiltin(Builtin(swap))),
+                ("over".into(), Value::ValBuiltin(Builtin(over))),
+                ("nip".into(), Value::ValBuiltin(Builtin(nip))),
+                ("when".into(), Value::ValBuiltin(Builtin(when))),
+                ("unless".into(), Value::ValBuiltin(Builtin(unless))),
+                ("if".into(), Value::ValBuiltin(Builtin(iff))),
+                ("clear".into(), Value::ValBuiltin(Builtin(clear))),
+                ("rot".into(), Value::ValBuiltin(Builtin(rot))),
+                ("dip".into(), Value::ValBuiltin(Builtin(dip))),
+                ("keep".into(), Value::ValBuiltin(Builtin(keep))),
+                ("map".into(), Value::ValBuiltin(Builtin(map))),
+                ("filter".into(), Value::ValBuiltin(Builtin(filter))),
+                ("mod".into(), Value::ValBuiltin(Builtin(rem))),
+                ("max".into(), Value::ValBuiltin(Builtin(max))),
+                ("min".into(), Value::ValBuiltin(Builtin(min))),
+                ("fold".into(), Value::ValBuiltin(Builtin(fold))),
+                ("reduce".into(), Value::ValBuiltin(Builtin(reduce)))
             ]),
         }
     }
 
-    fn run(mut self) -> Result<Vec<Spanned<Value>>, Vec<Spanned<RuntimeError>>> {
+    fn run(mut self) -> Result<Vec<Value>, Vec<Spanned<RuntimeError>>> {
         while let Some(word) = self.words.pop_front() {
             match word.value.execute(&mut self, &word.span) {
                 Ok(_) => {}
@@ -138,20 +139,20 @@ impl Interpreter {
         Ok(self.stack)
     }
 
-    pub fn push(&mut self, value: Spanned<Value>) {
+    pub fn push(&mut self, value: Value) {
         self.stack.push(value)
     }
 
-    pub fn pop(&mut self, span: &Span) -> Result<Spanned<Value>, Spanned<RuntimeError>> {
+    pub fn pop(&mut self, span: &Span) -> Result<Value, Spanned<RuntimeError>> {
         self.stack.pop().ok_or_else(|| Spanned::new(RuntimeError::EmptyStack, span.clone()))
     }
 
     pub fn unary_int_only_op(&mut self, f: impl Fn(i64) -> i64, span: &Span) -> RunResult {
-        let Spanned { value: top, span } = self.pop()?;
+        let top = self.pop(span)?;
 
         match top {
             Value::ValInt(top_val) => {
-                self.push(Spanned::new(Value::ValInt(f(top_val)), span));
+                self.push(Value::ValInt(f(top_val)));
                 Ok(())
             }
             Value::ValArray(mut array) => {
@@ -164,21 +165,21 @@ impl Interpreter {
                             Value::ValArray(inner_values) => {
                                 mutation_queue.push(inner_values)
                             }
-                            _ => return Err(Spanned::new(RuntimeError::UnsupportedArrayValue, span))
+                            _ => return Err(Spanned::new(RuntimeError::UnsupportedArrayValue, span.clone()))
                         }
                     }
                 }
 
-                self.push(Spanned::new(Value::ValArray(array), span));
+                self.push(Value::ValArray(array));
                 Ok(())
             }
-            _ => Err(Spanned::new(RuntimeError::UnsupportedOperands, span))
+            _ => Err(Spanned::new(RuntimeError::UnsupportedOperands, span.clone()))
         }
     }
 
     pub fn binary_number_and_char_op(&mut self, f_int: impl Fn(i64, i64) -> i64, f_float: impl Fn(f64, f64) -> f64, span: &Span) -> RunResult {
-        let Spanned { value: top, span: top_span } = self.pop()?;
-        let Spanned { value: snd, span: snd_span } = self.pop()?;
+        let top = self.pop(span)?;
+        let snd = self.pop(span)?;
 
         match (snd, top) {
             (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
@@ -209,7 +210,7 @@ impl Interpreter {
                             Value::ValArray(inner_array) => {
                                 array_mutation_queue.push(inner_array)
                             }
-                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                            _ => return Err(Spanned::new(RuntimeError::UnsupportedArrayValue, span.clone()))
                         }
                     }
                 }
@@ -228,7 +229,7 @@ impl Interpreter {
                             Value::ValArray(inner_array) => {
                                 array_mutation_queue.push(inner_array)
                             }
-                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                            _ => return Err(Spanned::new(RuntimeError::UnsupportedArrayValue, span.clone()))
                         }
                     }
                 }
@@ -236,13 +237,13 @@ impl Interpreter {
                 self.push(Value::ValArray(array));
                 Ok(())
             }
-            _ => Err(RuntimeError::UnsupportedOperands)
+            _ => Err(Spanned::new(RuntimeError::UnsupportedOperands, span.clone()))
         }
     }
 
     pub fn binary_number_only_op(&mut self, f_int: impl Fn(i64, i64) -> i64, f_float: impl Fn(f64, f64) -> f64, span: &Span) -> RunResult {
-        let top = self.pop()?;
-        let snd = self.pop()?;
+        let top = self.pop(span)?;
+        let snd = self.pop(span)?;
 
         match (snd, top) {
             (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
@@ -264,7 +265,7 @@ impl Interpreter {
                             Value::ValArray(inner_array) => {
                                 array_mutation_queue.push(inner_array)
                             }
-                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                            _ => return Err(Spanned::new(RuntimeError::UnsupportedArrayValue, span.clone()))
                         }
                     }
                 }
@@ -283,7 +284,7 @@ impl Interpreter {
                             Value::ValArray(inner_array) => {
                                 array_mutation_queue.push(inner_array)
                             }
-                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                            _ => return Err(Spanned::new(RuntimeError::UnsupportedArrayValue, span.clone()))
                         }
                     }
                 }
@@ -291,13 +292,13 @@ impl Interpreter {
                 self.push(Value::ValArray(array));
                 Ok(())
             }
-            _ => Err(RuntimeError::UnsupportedOperands)
+            _ => return Err(Spanned::new(RuntimeError::UnsupportedOperands, span.clone()))
         }
     }
 
     pub fn binary_int_only_op(&mut self, f_int: impl Fn(i64, i64) -> i64, span: &Span) -> RunResult {
-        let top = self.pop()?;
-        let snd = self.pop()?;
+        let top = self.pop(span)?;
+        let snd = self.pop(span)?;
 
         match (snd, top) {
             (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
@@ -315,7 +316,7 @@ impl Interpreter {
                             Value::ValArray(inner_array) => {
                                 array_mutation_queue.push(inner_array)
                             }
-                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                            _ => return Err(Spanned::new(RuntimeError::UnsupportedArrayValue, span.clone()))
                         }
                     }
                 }
@@ -323,13 +324,13 @@ impl Interpreter {
                 self.push(Value::ValArray(array));
                 Ok(())
             }
-            _ => Err(RuntimeError::UnsupportedOperands)
+            _ => return Err(Spanned::new(RuntimeError::UnsupportedOperands, span.clone()))
         }
     }
 
     pub fn binary_compare_op(&mut self, f_int: impl Fn(&i64, &i64) -> bool, f_float: impl Fn(&f64, &f64) -> bool, span: &Span) -> RunResult {
-        let top = self.pop()?;
-        let snd = self.pop()?;
+        let top = self.pop(span)?;
+        let snd = self.pop(span)?;
 
         match (snd, top) {
             (Value::ValInt(snd_val), Value::ValInt(top_val)) => {
@@ -355,7 +356,7 @@ impl Interpreter {
                             Value::ValArray(inner_array) => {
                                 array_mutation_queue.push(inner_array)
                             }
-                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                            _ => return Err(Spanned::new(RuntimeError::UnsupportedArrayValue, span.clone()))
                         }
                     }
                 }
@@ -374,7 +375,7 @@ impl Interpreter {
                             Value::ValArray(inner_array) => {
                                 array_mutation_queue.push(inner_array)
                             }
-                            _ => return Err(RuntimeError::UnsupportedArrayValue)
+                            _ => return Err(Spanned::new(RuntimeError::UnsupportedArrayValue, span.clone()))
                         }
                     }
                 }
@@ -382,11 +383,11 @@ impl Interpreter {
                 self.push(Value::ValArray(array));
                 Ok(())
             }
-            (snd, top) => Err(RuntimeError::UnsupportedOperands(snd.location().merge(top.location())))
+            _ => Err(Spanned::new(RuntimeError::UnsupportedOperands, span.clone()))
         }
     }
 
-    pub fn push_array(&mut self, words: &Vec<Spanned<Word>>, span: &Span) -> RunResult {
+    pub fn push_array(&mut self, words: &Vec<Spanned<Word>>) -> RunResult {
         let array_start_stack_idx = self.stack.len();
 
         for Spanned { value: word, span } in words {
@@ -394,23 +395,22 @@ impl Interpreter {
         }
 
         let elements = self.stack.drain(array_start_stack_idx..).collect();
-        self.push(Spanned::new(Value::ValArray(elements), span.clone()));
+        self.push(Value::ValArray(elements));
         Ok(())
     }
 
-    pub fn get_variable(&mut self, name: &String, span: &Span) -> Result<Spanned<Value>, Spanned<RuntimeError>> {
+    pub fn get_variable(&mut self, name: &String, span: &Span) -> Result<Value, Spanned<RuntimeError>> {
         match self.variables.get(name) {
             None => Err(Spanned::new(RuntimeError::UnknownWord(name.clone()), span.clone())),
             Some(value) => Ok(value.clone())
         }
     }
 
-    pub fn set_variable(&mut self, name: String, value: Value, span: Span) {
-        self.variables.insert(name, Spanned::new(value, span));
+    pub fn set_variable(&mut self, name: String, value: Value) {
+        self.variables.insert(name, value);
     }
 
-    pub fn execute(&mut self, spanned_value: Spanned<Value>) -> RunResult {
-        let Spanned { value, span } = spanned_value;
+    pub fn execute(&mut self, value: Value, span: &Span) -> RunResult {
         match value {
             Value::ValBlock(words) => {
                 for Spanned { value: word, span } in words {
@@ -420,16 +420,16 @@ impl Interpreter {
             Value::ValBuiltin(builtin) => builtin.execute(self, &span)?,
             Value::ValQuotedWord(name) => {
                 let value = self.get_variable(&name, &span)?;
-                self.execute(value)?
+                self.execute(value, span)?
             }
-            value => self.push(Spanned { value, span })
+            value => self.push(value)
         }
 
         Ok(())
     }
 }
 
-pub fn interpret(code: &str) -> Result<Vec<Spanned<Value>>, Vec<Spanned<RuntimeError>>> {
+pub fn interpret(code: &str) -> Result<Vec<Value>, Vec<Spanned<RuntimeError>>> {
     match parse(code) {
         Ok(words) => {
             let lowered = lower(words);
