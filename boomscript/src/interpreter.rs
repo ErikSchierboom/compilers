@@ -1,4 +1,5 @@
-use crate::builtin::{add, and, clear, concat, dip, div, drop, dup, equal, execute, filter, fold, greater, greater_or_equal, iff, keep, less, less_or_equal, map, max, min, mul, nip, not, not_equal, or, over, read, reduce, rem, rot, sub, swap, unless, when, write, xor, Builtin};
+use crate::builtin::Builtin;
+use crate::diagnostic::Diagnostic;
 use crate::interpreter::RuntimeError::Parse;
 use crate::location::{Span, Spanned};
 use crate::lowering::lower;
@@ -6,7 +7,6 @@ use crate::parser::{parse, ParseError, Word};
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use crate::diagnostic::Diagnostic;
 
 pub type RunResult = Result<(), Spanned<RuntimeError>>;
 
@@ -24,6 +24,41 @@ pub enum Value {
     ValBlock(Vec<Spanned<Word>>),
     ValArray(Vec<Value>),
     ValBuiltin(Builtin),
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Value::ValInt(int) => write!(f, "{int}"),
+            Value::ValFloat(float) => write!(f, "{float}"),
+            Value::ValChar(c) => write!(f, "#{c}"),
+            Value::ValString(str) => write!(f, "\"{str}\""),
+            Value::ValQuotedWord(word) => write!(f, "'{word}"),
+            Value::ValBlock(words) => {
+                write!(f, ")")?;
+                for (i, word) in words.iter().enumerate() {
+                    write!(f, "{}", word.value)?;
+
+                    if i < words.len() - 1 {
+                        write!(f, " ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            Value::ValArray(words) => {
+                write!(f, "[")?;
+                for (i, word) in words.iter().enumerate() {
+                    write!(f, "{}", word)?;
+
+                    if i < words.len() - 1 {
+                        write!(f, " ")?;
+                    }
+                }
+                write!(f, "]")
+            }
+            Value::ValBuiltin(word) => write!(f, "{word}")
+        }
+    }
 }
 
 impl From<Value> for bool {
@@ -106,44 +141,45 @@ impl Interpreter {
             words: words.into_iter().collect(),
             stack: Vec::new(),
             variables: HashMap::from([
-                // TODO: support ? for printing stack and . for pop and print top
-                ("+".into(), Value::ValBuiltin(Builtin(add))),
-                ("-".into(), Value::ValBuiltin(Builtin(sub))),
-                ("*".into(), Value::ValBuiltin(Builtin(mul))),
-                ("/".into(), Value::ValBuiltin(Builtin(div))),
-                ("&".into(), Value::ValBuiltin(Builtin(and))),
-                ("|".into(), Value::ValBuiltin(Builtin(or))),
-                ("^".into(), Value::ValBuiltin(Builtin(xor))),
-                ("!".into(), Value::ValBuiltin(Builtin(not))),
-                (">".into(), Value::ValBuiltin(Builtin(greater))),
-                (">=".into(), Value::ValBuiltin(Builtin(greater_or_equal))),
-                ("<".into(), Value::ValBuiltin(Builtin(less))),
-                ("<=".into(), Value::ValBuiltin(Builtin(less_or_equal))),
-                ("=".into(), Value::ValBuiltin(Builtin(equal))),
-                ("!=".into(), Value::ValBuiltin(Builtin(not_equal))),
-                ("++".into(), Value::ValBuiltin(Builtin(concat))),
-                ("@".into(), Value::ValBuiltin(Builtin(read))),
-                ("$".into(), Value::ValBuiltin(Builtin(write))),
-                ("%".into(), Value::ValBuiltin(Builtin(execute))),
-                ("dup".into(), Value::ValBuiltin(Builtin(dup))),
-                ("drop".into(), Value::ValBuiltin(Builtin(drop))),
-                ("swap".into(), Value::ValBuiltin(Builtin(swap))),
-                ("over".into(), Value::ValBuiltin(Builtin(over))),
-                ("nip".into(), Value::ValBuiltin(Builtin(nip))),
-                ("when".into(), Value::ValBuiltin(Builtin(when))),
-                ("unless".into(), Value::ValBuiltin(Builtin(unless))),
-                ("if".into(), Value::ValBuiltin(Builtin(iff))),
-                ("clear".into(), Value::ValBuiltin(Builtin(clear))),
-                ("rot".into(), Value::ValBuiltin(Builtin(rot))),
-                ("dip".into(), Value::ValBuiltin(Builtin(dip))),
-                ("keep".into(), Value::ValBuiltin(Builtin(keep))),
-                ("map".into(), Value::ValBuiltin(Builtin(map))),
-                ("filter".into(), Value::ValBuiltin(Builtin(filter))),
-                ("mod".into(), Value::ValBuiltin(Builtin(rem))),
-                ("max".into(), Value::ValBuiltin(Builtin(max))),
-                ("min".into(), Value::ValBuiltin(Builtin(min))),
-                ("fold".into(), Value::ValBuiltin(Builtin(fold))),
-                ("reduce".into(), Value::ValBuiltin(Builtin(reduce)))
+                ("+".into(), Value::ValBuiltin(Builtin::Add)),
+                ("-".into(), Value::ValBuiltin(Builtin::Sub)),
+                ("*".into(), Value::ValBuiltin(Builtin::Mul)),
+                ("/".into(), Value::ValBuiltin(Builtin::Div)),
+                ("&".into(), Value::ValBuiltin(Builtin::And)),
+                ("|".into(), Value::ValBuiltin(Builtin::Or)),
+                ("^".into(), Value::ValBuiltin(Builtin::Xor)),
+                ("!".into(), Value::ValBuiltin(Builtin::Not)),
+                (">".into(), Value::ValBuiltin(Builtin::Greater)),
+                (">=".into(), Value::ValBuiltin(Builtin::GreaterOrEqual)),
+                ("<".into(), Value::ValBuiltin(Builtin::Less)),
+                ("<=".into(), Value::ValBuiltin(Builtin::LessOrEqual)),
+                ("=".into(), Value::ValBuiltin(Builtin::Equal)),
+                ("!=".into(), Value::ValBuiltin(Builtin::NotEqual)),
+                ("++".into(), Value::ValBuiltin(Builtin::Concat)),
+                ("@".into(), Value::ValBuiltin(Builtin::Read)),
+                ("$".into(), Value::ValBuiltin(Builtin::Write)),
+                ("%".into(), Value::ValBuiltin(Builtin::Execute)),
+                (".".into(), Value::ValBuiltin(Builtin::Print)),
+                ("?".into(), Value::ValBuiltin(Builtin::Stack)),
+                ("dup".into(), Value::ValBuiltin(Builtin::Dup)),
+                ("drop".into(), Value::ValBuiltin(Builtin::Drop)),
+                ("swap".into(), Value::ValBuiltin(Builtin::Swap)),
+                ("over".into(), Value::ValBuiltin(Builtin::Over)),
+                ("nip".into(), Value::ValBuiltin(Builtin::Nip)),
+                ("when".into(), Value::ValBuiltin(Builtin::When)),
+                ("unless".into(), Value::ValBuiltin(Builtin::Unless)),
+                ("if".into(), Value::ValBuiltin(Builtin::If)),
+                ("clear".into(), Value::ValBuiltin(Builtin::Clear)),
+                ("rot".into(), Value::ValBuiltin(Builtin::Rot)),
+                ("dip".into(), Value::ValBuiltin(Builtin::Dip)),
+                ("keep".into(), Value::ValBuiltin(Builtin::Keep)),
+                ("map".into(), Value::ValBuiltin(Builtin::Map)),
+                ("filter".into(), Value::ValBuiltin(Builtin::Filter)),
+                ("mod".into(), Value::ValBuiltin(Builtin::Rem)),
+                ("max".into(), Value::ValBuiltin(Builtin::Max)),
+                ("min".into(), Value::ValBuiltin(Builtin::Min)),
+                ("fold".into(), Value::ValBuiltin(Builtin::Fold)),
+                ("reduce".into(), Value::ValBuiltin(Builtin::Reduce)),
             ]),
         }
     }

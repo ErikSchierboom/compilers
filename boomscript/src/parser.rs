@@ -43,6 +43,41 @@ pub enum Word {
     Array(Vec<Spanned<Word>>),
 }
 
+impl Display for Word {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Word::Int(i) => write!(f, "{i}"),
+            Word::Float(float) => write!(f, "{float}"),
+            Word::Char(c) => write!(f, "#{c}"),
+            Word::String(str) => write!(f, "\"{str}\""),
+            Word::QuotedWord(name) => write!(f, "'{name}"),
+            Word::Word(name) => write!(f, "{name}"),
+            Word::Block(words) => {
+                write!(f, "(")?;
+                for (i, word) in words.iter().enumerate() {
+                    write!(f, "{}", word.value)?;
+
+                    if i < words.len() - 1 {
+                        write!(f, " ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            Word::Array(words) => {
+                write!(f, "[")?;
+                for (i, word) in words.iter().enumerate() {
+                    write!(f, "{}", word.value)?;
+
+                    if i < words.len() - 1 {
+                        write!(f, " ")?;
+                    }
+                }
+                write!(f, "]")
+            }
+        }
+    }
+}
+
 struct Parser<'a, T: Iterator<Item=Spanned<Token>>> {
     code: &'a str,
     tokens: Peekable<T>,

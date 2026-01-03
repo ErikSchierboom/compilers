@@ -1,14 +1,101 @@
 use crate::interpreter::{Executable, Interpreter, RunResult, RuntimeError, Value};
 use crate::location::{Span, Spanned};
 use std::cmp::Ordering;
+use std::fmt::{Display, Formatter};
 use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Not, Sub};
 
 #[derive(Clone, Debug)]
-pub struct Builtin(pub fn(&mut Interpreter, span: &Span) -> RunResult);
+pub enum Builtin {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    And,
+    Or,
+    Xor,
+    Not,
+    Greater,
+    GreaterOrEqual,
+    Less,
+    LessOrEqual,
+    Equal,
+    NotEqual,
+    Concat,
+    Read,
+    Write,
+    Execute,
+    Print,
+    Stack,
+    Dup,
+    Drop,
+    Swap,
+    Over,
+    Nip,
+    When,
+    Unless,
+    If,
+    Clear,
+    Rot,
+    Dip,
+    Keep,
+    Map,
+    Filter,
+    Rem,
+    Max,
+    Min,
+    Fold,
+    Reduce,
+}
 
 impl Executable for Builtin {
     fn execute(&self, interpreter: &mut Interpreter, span: &Span) -> RunResult {
-        self.0(interpreter, span)
+        match self {
+            Builtin::Add => add(interpreter, span),
+            Builtin::Sub => sub(interpreter, span),
+            Builtin::Mul => mul(interpreter, span),
+            Builtin::Div => div(interpreter, span),
+            Builtin::And => and(interpreter, span),
+            Builtin::Or => or(interpreter, span),
+            Builtin::Xor => xor(interpreter, span),
+            Builtin::Not => not(interpreter, span),
+            Builtin::Greater => greater(interpreter, span),
+            Builtin::GreaterOrEqual => greater_or_equal(interpreter, span),
+            Builtin::Less => less(interpreter, span),
+            Builtin::LessOrEqual => less_or_equal(interpreter, span),
+            Builtin::Equal => equal(interpreter, span),
+            Builtin::NotEqual => not_equal(interpreter, span),
+            Builtin::Concat => concat(interpreter, span),
+            Builtin::Read => read(interpreter, span),
+            Builtin::Write => write(interpreter, span),
+            Builtin::Execute => execute(interpreter, span),
+            Builtin::Print => print(interpreter, span),
+            Builtin::Stack => stack(interpreter, span),
+            Builtin::Dup => dup(interpreter, span),
+            Builtin::Drop => drop(interpreter, span),
+            Builtin::Swap => swap(interpreter, span),
+            Builtin::Over => over(interpreter, span),
+            Builtin::Nip => nip(interpreter, span),
+            Builtin::When => when(interpreter, span),
+            Builtin::Unless => unless(interpreter, span),
+            Builtin::If => iff(interpreter, span),
+            Builtin::Clear => clear(interpreter, span),
+            Builtin::Rot => rot(interpreter, span),
+            Builtin::Dip => dip(interpreter, span),
+            Builtin::Keep => keep(interpreter, span),
+            Builtin::Map => map(interpreter, span),
+            Builtin::Filter => filter(interpreter, span),
+            Builtin::Rem => rem(interpreter, span),
+            Builtin::Max => max(interpreter, span),
+            Builtin::Min => min(interpreter, span),
+            Builtin::Fold => fold(interpreter, span),
+            Builtin::Reduce => reduce(interpreter, span),
+        }
+    }
+}
+
+impl Display for Builtin {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 
@@ -29,6 +116,19 @@ pub fn not_equal(interpreter: &mut Interpreter, span: &Span) -> RunResult { inte
 pub fn rem(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::rem_euclid, f64::rem_euclid, span) }
 pub fn max(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::max, f64::max, span) }
 pub fn min(interpreter: &mut Interpreter, span: &Span) -> RunResult { interpreter.binary_number_and_char_op(i64::min, f64::min, span) }
+
+pub fn print(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+    let value = interpreter.pop(&span)?;
+    println!("{value}");
+    Ok(())
+}
+
+pub fn stack(interpreter: &mut Interpreter, span: &Span) -> RunResult {
+    while let Ok(value) = interpreter.pop(span) {
+        println!("{value}")
+    }
+    Ok(())
+}
 
 pub fn read(interpreter: &mut Interpreter, span: &Span) -> RunResult {
     match interpreter.pop(span)? {
