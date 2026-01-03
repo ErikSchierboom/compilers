@@ -1,4 +1,6 @@
 use crate::location::Spanned;
+use std::fmt;
+use std::fmt::{Display, Formatter};
 use std::iter::{Enumerate, Peekable};
 
 #[derive(Debug)]
@@ -6,6 +8,16 @@ pub enum LexError {
     ExpectedCharacter,
     UnexpectedCharacter(char),
     InvalidEscape(char),
+}
+
+impl Display for LexError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            LexError::ExpectedCharacter => write!(f, "expected character"),
+            LexError::UnexpectedCharacter(c) => write!(f, "unexpected character '{c}'"),
+            LexError::InvalidEscape(c) => write!(f, "invalid escape '\\{c}'"),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

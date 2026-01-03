@@ -1,15 +1,26 @@
 use crate::lexer::{tokenize, LexError, Token};
 use crate::location::{Span, Spanned};
 use crate::parser::ParseError::Lex;
+use std::fmt;
+use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 
 #[derive(Debug)]
 pub enum ParseError {
     Lex(LexError),
-    UnexpectedToken(Token),
+    UnexpectedToken(String),
     UnexpectedEndOfFile,
 }
 
+impl Display for ParseError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Lex(lex_error) => write!(f, "{lex_error}"),
+            ParseError::UnexpectedToken(token) => write!(f, "unexpected token '{token}'"),
+            ParseError::UnexpectedEndOfFile => write!(f, "unexpected end of file")
+        }
+    }
+}
 
 impl From<LexError> for ParseError {
     fn from(value: LexError) -> Self {
@@ -112,7 +123,7 @@ impl<'a, T: Iterator<Item=Spanned<Token>>> Parser<'a, T> {
                 }
             }
             Token::CloseBracket |
-            Token::CloseParen => Some(Err(vec![Spanned::new(ParseError::UnexpectedToken(token), location)])),
+            Token::CloseParen => Some(Err(vec![Spanned::new(ParseError::UnexpectedToken(self.lexeme(&location).into()), location)])),
         }
     }
 

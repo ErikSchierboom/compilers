@@ -4,6 +4,9 @@ use crate::location::{Span, Spanned};
 use crate::lowering::lower;
 use crate::parser::{parse, ParseError, Word};
 use std::collections::{HashMap, VecDeque};
+use std::fmt;
+use std::fmt::{Display, Formatter};
+use crate::diagnostic::Diagnostic;
 
 pub type RunResult = Result<(), Spanned<RuntimeError>>;
 
@@ -60,11 +63,28 @@ pub enum RuntimeError {
     EmptyStack,
     UnknownWord(String),
     UnsupportedOperands,
-    ExpectedQuote,
+    ExpectedQuotedWord,
     WordHasNegativeStackEffect,
     WordDoesNotHavePositiveStackEffect,
-    ExpectedExecutableWord,
+    NonExecutableWord,
     EmptyArray,
+}
+
+impl Display for RuntimeError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Parse(parse_error) => write!(f, "{parse_error}"),
+            RuntimeError::UnsupportedArrayValue => write!(f, "unsupported array value"),
+            RuntimeError::EmptyStack => write!(f, "empty stack"),
+            RuntimeError::UnknownWord(word) => write!(f, "unknown word: '{word}'"),
+            RuntimeError::UnsupportedOperands => write!(f, "unsupported operand"),
+            RuntimeError::ExpectedQuotedWord => write!(f, "expected quoted word"),
+            RuntimeError::WordHasNegativeStackEffect => write!(f, "word has negative stack effect"),
+            RuntimeError::WordDoesNotHavePositiveStackEffect => write!(f, "word does not have positive stack effect"),
+            RuntimeError::NonExecutableWord => write!(f, "word cannot be executed"),
+            RuntimeError::EmptyArray => write!(f, "empty array"),
+        }
+    }
 }
 
 impl From<ParseError> for RuntimeError {
@@ -429,13 +449,15 @@ impl Interpreter {
     }
 }
 
-pub fn interpret(code: &str) -> Result<Vec<Value>, Vec<Spanned<RuntimeError>>> {
-    match parse(code) {
+pub fn interpret(code: &str) -> Result<Vec<Value>, Vec<Diagnostic>> {
+    let result = match parse(code) {
         Ok(words) => {
             let lowered = lower(words);
             let interpreter = Interpreter::new(lowered);
             interpreter.run()
         }
         Err(errors) => Err(errors.into_iter().map(|error| error.map(RuntimeError::from)).collect())
-    }
+    };
+
+    result.map_err(|errors| Diagnostic::from_errors(code, &errors))
 }

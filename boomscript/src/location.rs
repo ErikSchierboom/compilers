@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 #[derive(Clone, Debug)]
 pub struct Span {
     pub start: usize,
@@ -51,6 +53,12 @@ pub struct Position {
     pub column: u16,
 }
 
+impl Display for Position {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}:{})", self.line, self.column)
+    }
+}
+
 pub struct LineEndings {
     line_starts: Vec<usize>,
 }
@@ -63,7 +71,7 @@ impl LineEndings {
         Self { line_starts }
     }
 
-    pub fn location(&self, span: &Span) -> Position {
+    pub fn position(&self, span: &Span) -> Position {
         let line = self.line_starts
             .binary_search(&span.start)
             .unwrap_or_else(|next_line| next_line - 1) as u16

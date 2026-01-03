@@ -37,7 +37,7 @@ pub fn read(interpreter: &mut Interpreter, span: &Span) -> RunResult {
             interpreter.push(variable.clone());
             Ok(())
         }
-        _ => Err(Spanned::new(RuntimeError::ExpectedQuote, span.clone()))
+        _ => Err(Spanned::new(RuntimeError::ExpectedQuotedWord, span.clone()))
     }
 }
 
@@ -48,7 +48,7 @@ pub fn write(interpreter: &mut Interpreter, span: &Span) -> RunResult {
             interpreter.set_variable(name, value);
             Ok(())
         }
-        _ => Err(Spanned::new(RuntimeError::ExpectedQuote, span.clone()))
+        _ => Err(Spanned::new(RuntimeError::ExpectedQuotedWord, span.clone()))
     }
 }
 
@@ -57,7 +57,7 @@ pub fn execute(interpreter: &mut Interpreter, span: &Span) -> RunResult {
         Value::ValQuotedWord(name) => interpreter.get_variable(&name, &span)?,
         Value::ValBuiltin(builtin) => Value::ValBuiltin(builtin),
         Value::ValBlock(words) => Value::ValBlock(words),
-        _ => return Err(Spanned::new(RuntimeError::ExpectedExecutableWord, span.clone()))
+        _ => return Err(Spanned::new(RuntimeError::NonExecutableWord, span.clone()))
     };
     interpreter.execute(value, span)
 }
