@@ -13,7 +13,7 @@ use std::rc::Rc;
 pub type RunResult = Result<(), Spanned<RuntimeError>>;
 
 pub trait Executable {
-    fn execute(&self, interpreter: &mut Environment, span: &Span) -> RunResult;
+    fn execute(&self, environment: &mut Environment, span: &Span) -> RunResult;
 }
 
 #[derive(Clone, Debug)]
@@ -74,18 +74,18 @@ impl From<Value> for bool {
 }
 
 impl Executable for Word {
-    fn execute(&self, interpreter: &mut Environment, span: &Span) -> RunResult {
+    fn execute(&self, environment: &mut Environment, span: &Span) -> RunResult {
         match self {
-            Word::Int(value) => interpreter.push(Value::ValInt(value.clone())),
-            Word::Float(value) => interpreter.push(Value::ValFloat(value.clone())),
-            Word::Char(value) => interpreter.push(Value::ValChar(value.clone())),
-            Word::String(value) => interpreter.push(Value::ValString(value.clone())),
-            Word::QuotedWord(name) => interpreter.push(Value::ValQuotedWord(name.clone())),
-            Word::Block(words) => interpreter.push(Value::ValBlock(words.clone())),
-            Word::Array(words) => interpreter.push_array(words)?,
+            Word::Int(value) => environment.push(Value::ValInt(value.clone())),
+            Word::Float(value) => environment.push(Value::ValFloat(value.clone())),
+            Word::Char(value) => environment.push(Value::ValChar(value.clone())),
+            Word::String(value) => environment.push(Value::ValString(value.clone())),
+            Word::QuotedWord(name) => environment.push(Value::ValQuotedWord(name.clone())),
+            Word::Block(words) => environment.push(Value::ValBlock(words.clone())),
+            Word::Array(words) => environment.push_array(words)?,
             Word::Word(name) => {
-                let variable = interpreter.get_variable(name, span)?;
-                interpreter.execute(variable, span)?
+                let variable = environment.get_variable(name, span)?;
+                environment.execute(variable, span)?
             }
         }
 
@@ -501,9 +501,8 @@ impl Interpreter {
 
     fn run(mut self) -> Result<Vec<Value>, Vec<Spanned<RuntimeError>>> {
         while let Some(word) = self.words.pop_front() {
-            match word.value.execute(&mut self.environment, &word.span) {
-                Ok(_) => {}
-                Err(error) => return Err(vec![error])
+            if let Err(error) = word.value.execute(&mut self.environment, &word.span) {
+                return Err(vec![error]);
             }
         }
 
