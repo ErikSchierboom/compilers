@@ -487,8 +487,7 @@ impl Environment {
     }
 }
 
-// TODO: create frames for execution of blocks to allow for locals
-pub struct Interpreter {
+struct Interpreter {
     words: VecDeque<Spanned<Word>>,
     environment: Environment,
 }
