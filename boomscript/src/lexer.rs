@@ -143,7 +143,7 @@ impl<T: Iterator<Item=char>> Lexer<T> {
 }
 
 fn is_word_character(c: &char) -> bool {
-    matches!(c, 'a'..='z' | 'A'..='Z' | '0'..= '9' | '.' | '<' | '>' | '=' | '?' | '$' | '%' | '!' | '+' | '-' | '*' | '/' | '&' | '^')
+    matches!(c, 'a'..='z' | 'A'..='Z' | '0'..= '9' | '.' | '<' | '>' | '=' | '?' | '@' | '$' | '%' | '!' | '+' | '-' | '*' | '/' | '&' | '^')
 }
 
 pub fn tokenize(code: &str) -> Result<Vec<Spanned<Token>>, Vec<Spanned<LexError>>> {

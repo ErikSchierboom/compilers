@@ -13,7 +13,7 @@ fn main() {
     // let code = "2 #a +";
 
     // let code = "[2 3] 'dup map";
-    let code = "2 3 .";
+    let code = "(3 $a @a .) %";
     // let code = "#a #d <";
 
     // println!("{:?}", tokenize(code));
