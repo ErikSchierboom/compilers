@@ -168,6 +168,7 @@ impl Default for Environment {
                 ("%".into(), Value::ValBuiltin(Builtin::Execute)),
                 (".".into(), Value::ValBuiltin(Builtin::Print)),
                 ("?".into(), Value::ValBuiltin(Builtin::Stack)),
+                ("neg".into(), Value::ValBuiltin(Builtin::Neg)),
                 ("dup".into(), Value::ValBuiltin(Builtin::Dup)),
                 ("drop".into(), Value::ValBuiltin(Builtin::Drop)),
                 ("swap".into(), Value::ValBuiltin(Builtin::Swap)),

@@ -1,8 +1,7 @@
 use crate::interpreter::{Environment, Executable, RunResult, RuntimeError, Value};
 use crate::location::{Span, Spanned};
-use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
-use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Not, Sub};
+use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Neg, Not, Sub};
 
 #[derive(Clone, Debug)]
 pub enum Builtin {
@@ -45,6 +44,7 @@ pub enum Builtin {
     Min,
     Fold,
     Reduce,
+    Neg,
 }
 
 impl Executable for Builtin {
@@ -58,6 +58,7 @@ impl Executable for Builtin {
             Builtin::Or => or(environment, span),
             Builtin::Xor => xor(environment, span),
             Builtin::Not => not(environment, span),
+            Builtin::Neg => neg(environment, span),
             Builtin::Greater => greater(environment, span),
             Builtin::GreaterOrEqual => greater_or_equal(environment, span),
             Builtin::Less => less(environment, span),
@@ -107,6 +108,7 @@ pub fn and(environment: &mut Environment, span: &Span) -> RunResult { environmen
 pub fn or(environment: &mut Environment, span: &Span) -> RunResult { environment.binary_int_only_op(i64::bitor, span) }
 pub fn xor(environment: &mut Environment, span: &Span) -> RunResult { environment.binary_int_only_op(i64::bitxor, span) }
 pub fn not(environment: &mut Environment, span: &Span) -> RunResult { environment.unary_int_only_op(i64::not, span) }
+pub fn neg(environment: &mut Environment, span: &Span) -> RunResult { environment.unary_int_only_op(i64::neg, span) }
 pub fn greater(environment: &mut Environment, span: &Span) -> RunResult { environment.binary_compare_op(i64::gt, f64::gt, span) }
 pub fn greater_or_equal(environment: &mut Environment, span: &Span) -> RunResult { environment.binary_compare_op(i64::ge, f64::ge, span) }
 pub fn less(environment: &mut Environment, span: &Span) -> RunResult { environment.binary_compare_op(i64::lt, f64::lt, span) }
@@ -276,22 +278,11 @@ pub fn map(environment: &mut Environment, span: &Span) -> RunResult {
             let mut mapped_array = Vec::new();
 
             for element in array {
-                let stack_length_before = environment.stack.borrow().len();
-
                 environment.push(element);
                 environment.execute(top.clone(), span)?;
 
-                let stack_length_after = environment.stack.borrow().len();
-
-                if stack_length_after < stack_length_before {
-                    return Err(Spanned::new(RuntimeError::WordHasNegativeStackEffect, span.clone()));
-                }
-
-                match stack_length_after - stack_length_before {
-                    0 => return Err(Spanned::new(RuntimeError::WordDoesNotHavePositiveStackEffect, span.clone())),
-                    1 => mapped_array.push(environment.pop(span)?),
-                    _ => mapped_array.push(Value::ValArray(environment.stack.borrow_mut().drain(stack_length_before..).collect())),
-                }
+                let mapped_value = environment.pop(span)?;
+                mapped_array.push(mapped_value);
             }
 
             environment.push(Value::ValArray(mapped_array));
@@ -310,23 +301,11 @@ pub fn filter(environment: &mut Environment, span: &Span) -> RunResult {
             let mut filtered_array = Vec::new();
 
             for element in array {
-                let stack_length_before = environment.stack.borrow().len();
-
                 environment.push(element.clone());
                 environment.execute(top.clone(), span)?;
 
-                let stack_length_after = environment.stack.borrow().len();
-
-                match stack_length_after.cmp(&stack_length_before) {
-                    Ordering::Less => return Err(Spanned::new(RuntimeError::WordHasNegativeStackEffect, span.clone())),
-                    Ordering::Equal => return Err(Spanned::new(RuntimeError::WordDoesNotHavePositiveStackEffect, span.clone())),
-                    Ordering::Greater => {
-                        if stack_length_after == stack_length_before + 1 {
-                            if bool::from(environment.pop(span)?) {
-                                filtered_array.push(element)
-                            }
-                        }
-                    }
+                if bool::from(environment.pop(span)?) {
+                    filtered_array.push(element)
                 }
             }
 
