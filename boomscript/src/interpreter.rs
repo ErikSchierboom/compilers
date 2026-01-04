@@ -131,15 +131,21 @@ impl From<ParseError> for RuntimeError {
 }
 
 pub struct Environment {
-    pub parent: Option<Rc<RefCell<Environment>>>,
     pub stack: Rc<RefCell<Vec<Value>>>,
     pub variables: HashMap<String, Value>,
 }
 
-impl Environment {
+impl Clone for Environment {
+    fn clone(&self) -> Self {
+        let stack = Rc::clone(&self.stack);
+        let variables = self.variables.clone();
+        Self { stack, variables }
+    }
+}
+
+impl Default for Environment {
     fn default() -> Self {
         Self {
-            parent: None,
             stack: Rc::new(RefCell::new(Vec::new())),
             variables: HashMap::from([
                 ("+".into(), Value::ValBuiltin(Builtin::Add)),
@@ -184,16 +190,9 @@ impl Environment {
             ]),
         }
     }
+}
 
-    pub fn child(parent: Rc<RefCell<Environment>>) -> Rc<RefCell<Self>> {
-        let stack = Rc::clone(&parent.borrow().stack);
-        Rc::new(RefCell::new(Self {
-            stack,
-            variables: HashMap::new(),
-            parent: Some(parent),
-        }))
-    }
-
+impl Environment {
     pub fn push(&mut self, value: Value) {
         self.stack.borrow_mut().push(value)
     }
@@ -457,13 +456,7 @@ impl Environment {
     pub fn get_variable(&self, name: &String, span: &Span) -> Result<Value, Spanned<RuntimeError>> {
         match self.variables.get(name) {
             Some(value) => Ok(value.clone()),
-            None => {
-                if let Some(parent) = &self.parent {
-                    parent.borrow_mut().get_variable(name, span)
-                } else {
-                    Err(Spanned::new(RuntimeError::UnknownWord(name.clone()), span.clone()))
-                }
-            }
+            None => Err(Spanned::new(RuntimeError::UnknownWord(name.clone()), span.clone()))
         }
     }
 
@@ -474,8 +467,12 @@ impl Environment {
     pub fn execute(&mut self, value: Value, span: &Span) -> RunResult {
         match value {
             Value::ValBlock(words) => {
+                let stack = Rc::clone(&self.stack);
+                let variables = self.variables.clone();
+                let mut new_environment = Environment { stack, variables };
+
                 for Spanned { value: word, span } in words {
-                    word.execute(self, &span)?
+                    word.execute(&mut new_environment, &span)?
                 }
             }
             Value::ValBuiltin(builtin) => builtin.execute(self, &span)?,
@@ -500,7 +497,7 @@ impl Interpreter {
     fn new(words: Vec<Spanned<Word>>) -> Self {
         Self {
             words: words.into_iter().collect(),
-            environment: Environment::default(),
+            environment: Default::default(),
         }
     }
 
