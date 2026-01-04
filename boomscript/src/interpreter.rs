@@ -467,9 +467,7 @@ impl Environment {
     pub fn execute(&mut self, value: Value, span: &Span) -> RunResult {
         match value {
             Value::ValBlock(words) => {
-                let stack = Rc::clone(&self.stack);
-                let variables = self.variables.clone();
-                let mut new_environment = Environment { stack, variables };
+                let mut new_environment = self.clone();
 
                 for Spanned { value: word, span } in words {
                     word.execute(&mut new_environment, &span)?
