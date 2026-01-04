@@ -277,16 +277,17 @@ pub fn map(environment: &mut Environment, span: &Span) -> RunResult {
 
             for element in array {
                 let stack_length_before = environment.stack.borrow().len();
+
                 environment.push(element);
                 environment.execute(top.clone(), span)?;
 
-                let stack_len = environment.stack.borrow().len();
+                let stack_length_after = environment.stack.borrow().len();
 
-                if stack_len < stack_length_before {
+                if stack_length_after < stack_length_before {
                     return Err(Spanned::new(RuntimeError::WordHasNegativeStackEffect, span.clone()));
                 }
 
-                match stack_len - stack_length_before {
+                match stack_length_after - stack_length_before {
                     0 => return Err(Spanned::new(RuntimeError::WordDoesNotHavePositiveStackEffect, span.clone())),
                     1 => mapped_array.push(environment.pop(span)?),
                     _ => mapped_array.push(Value::ValArray(environment.stack.borrow_mut().drain(stack_length_before..).collect())),
@@ -310,16 +311,17 @@ pub fn filter(environment: &mut Environment, span: &Span) -> RunResult {
 
             for element in array {
                 let stack_length_before = environment.stack.borrow().len();
+
                 environment.push(element.clone());
                 environment.execute(top.clone(), span)?;
 
-                let stack_len = environment.stack.borrow().len();
+                let stack_length_after = environment.stack.borrow().len();
 
-                match stack_len.cmp(&stack_length_before) {
+                match stack_length_after.cmp(&stack_length_before) {
                     Ordering::Less => return Err(Spanned::new(RuntimeError::WordHasNegativeStackEffect, span.clone())),
                     Ordering::Equal => return Err(Spanned::new(RuntimeError::WordDoesNotHavePositiveStackEffect, span.clone())),
                     Ordering::Greater => {
-                        if environment.stack.borrow().len() == stack_length_before + 1 {
+                        if stack_length_after == stack_length_before + 1 {
                             if bool::from(environment.pop(span)?) {
                                 filtered_array.push(element)
                             }
