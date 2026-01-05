@@ -1,0 +1,20 @@
+[package]
+name = "firstlang"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
+description = "A simple interpreted programming language for learning"
+authors = ["Ehsan M. Kermani <ehsanmok@users.noreply.github.com>"]
+
+# Firstlang works with stable Rust - no LLVM dependency
+
+[dependencies]
+pest = "2.7"
+pest_derive = "2.7"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "firstlang"
+path = "src/main.rs"

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Read the Book
+    url: https://createlang.rs
+    about: Check the book for answers to common questions.
+  - name: GitHub Discussions
+    url: https://github.com/ehsanmok/create-your-own-lang-with-rust/discussions
+    about: Ask questions and share ideas with the community.

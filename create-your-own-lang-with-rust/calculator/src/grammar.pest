@@ -1,0 +1,18 @@
+Program = _{ SOI ~ Expr ~ EOF }
+
+Expr = { BinaryExpr | UnaryExpr | Term }
+
+Term = { Int | "(" ~ Expr ~ ")" }
+
+UnaryExpr = { Operator ~ Term }
+
+// Allow expressions to start with a unary expression (e.g., -1 + 2)
+BinaryExpr = { (UnaryExpr | Term) ~ (Operator ~ Term)+ }
+
+Operator = { "+" | "-" }
+
+Int = @{ ASCII_DIGIT+ }
+
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+
+EOF = _{ EOI | ";" }

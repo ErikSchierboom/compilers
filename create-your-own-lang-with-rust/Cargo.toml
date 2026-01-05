@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "firstlang",
+    "secondlang",
+    "thirdlang",
+    "calculator",
+    "calculator/examples/llvm",
+]
+resolver = "2"

@@ -1,0 +1,861 @@
+/* =============================================================================
+   Create Your Own Programming Language with Rust
+   Custom Theme - "Compiler Craft"
+   A clean, technical aesthetic inspired by terminal emulators and IDEs
+
+   NOTE: This book uses ONLY the Rust theme. All other themes are disabled.
+   ============================================================================= */
+
+/* Import a distinctive font for headings */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap');
+
+/* Better font rendering and scrolling (inspired by Modular theme) */
+html {
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  scroll-padding-top: 60px;
+  /* Account for sticky menu bar */
+  scroll-behavior: smooth;
+}
+
+/* =============================================================================
+   HIDE THEME PICKER - Only Rust theme allowed
+   ============================================================================= */
+
+/* Hide the entire theme picker button and popup */
+#theme-toggle,
+.theme-popup {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* =============================================================================
+   ROOT VARIABLES - Rust Theme Color Palette
+
+   Color Theory Applied:
+   - Primary: Rust Orange (#c45b29) - warm, energetic, technical
+   - Complementary: Cool blues for balance and contrast
+   - Analogous: Warm yellows/golds for harmony with orange
+   - Neutral: Warm grays to tie the palette together
+   ============================================================================= */
+
+:root,
+.rust {
+  /* Override mdbook defaults for wider content */
+  --content-max-width: 1400px;
+  --page-padding: 20px;
+
+  /* Primary Accent - Rust Orange Family */
+  --accent-color: #c45b29;
+  --accent-hover: #d96830;
+  --accent-light: #e8a87c;
+  --accent-subtle: rgba(196, 91, 41, 0.12);
+
+  /* Complementary - Deep Blues (opposite on color wheel) */
+  --complement-dark: #1e2530;
+  --complement-mid: #2d3748;
+
+  /* Code Block Colors - Warm Dark Theme */
+  --code-bg: #1e2127;
+  --code-bg-light: #282c34;
+  --code-border: #3a3f4a;
+  --code-text: #d4d4d8;
+
+  /* Semantic Colors - Harmonized with palette */
+  --success-color: #5a9a6e;
+  --warning-color: #d4a84b;
+  --error-color: #c45b5b;
+  --info-color: #5b8fc4;
+
+  /* Highlight - Golden (analogous to orange) */
+  --highlight-color: #ffeaa7;
+  --highlight-subtle: rgba(255, 234, 167, 0.15);
+
+  /* Text on Light Background */
+  --text-primary: #2d2d2d;
+  --text-secondary: #5a5a5a;
+  --text-muted: #8a8a8a;
+
+  /* Link styling */
+  --link-decoration: underline dotted;
+}
+
+/* =============================================================================
+   TYPOGRAPHY
+   ============================================================================= */
+
+/* Use Source Serif for body text - elegant and readable */
+.content,
+.rust .content {
+  font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif !important;
+  font-size: 20px !important;
+  line-height: 1.9 !important;
+  letter-spacing: 0.01em;
+}
+
+/* JetBrains Mono for all code - the programmer's choice */
+code,
+pre,
+.hljs,
+.rust code,
+.rust pre {
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, 'Courier New', monospace !important;
+  font-size: 19px !important;
+  font-feature-settings: "liga" 1, "calt" 1;
+  line-height: 1.75 !important;
+}
+
+/* Code blocks - comfortable reading size */
+pre,
+.rust pre {
+  font-size: 19px !important;
+  padding: 1.4em 1.6em !important;
+  line-height: 1.75 !important;
+  tab-size: 4;
+}
+
+pre code {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Headings with character */
+.content h1,
+.content h2,
+.content h3,
+.content h4 {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 2em;
+  position: relative;
+}
+
+/* H1 - Main chapter title */
+.content h1 {
+  font-size: 2.4em;
+  border-bottom: 3px solid var(--accent-color);
+  padding-bottom: 0.4em;
+  margin-bottom: 1em;
+}
+
+/* H2 - Section headers with accent marker */
+.content h2 {
+  font-size: 1.8em;
+  padding-left: 0.8em;
+  border-left: 4px solid var(--accent-color);
+  margin-left: -0.8em;
+}
+
+/* H3 - Subsection with subtle styling */
+.content h3 {
+  font-size: 1.5em;
+  color: inherit;
+  opacity: 0.9;
+}
+
+.content h3::before {
+  content: "// ";
+  opacity: 0.4;
+  font-weight: 400;
+}
+
+/* =============================================================================
+   INLINE CODE - Must stay inline, not block!
+   ============================================================================= */
+
+/* Inline code - consistent size */
+:not(pre)>code,
+.rust :not(pre)>code {
+  display: inline !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 18px !important;
+  padding: 0.2em 0.45em;
+  border-radius: 4px;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
+/* Rust theme inline code - warm tones matching accent */
+:not(pre)>code,
+.rust :not(pre)>code {
+  background: #faf7f4 !important;
+  border: 1px solid #e5ddd2;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.03);
+  color: #5c4a38;
+}
+
+/* =============================================================================
+   CODE BLOCKS
+   ============================================================================= */
+
+pre {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+  position: relative;
+  margin: 1.5em 0;
+}
+
+/* Add language label to code blocks */
+pre::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 0.2em 0.6em;
+  font-size: 0.7em;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 0 8px 0 4px;
+  opacity: 0.6;
+}
+
+/* Language labels - cohesive color palette */
+pre.language-rust::before {
+  content: "rust";
+  background: var(--accent-color);
+  color: #fff;
+}
+
+pre.language-python::before {
+  content: "python";
+  background: var(--info-color);
+  color: #fff;
+}
+
+pre.language-text::before {
+  content: "text";
+  background: var(--text-muted);
+  color: #fff;
+}
+
+pre.language-bash::before,
+pre.language-shell::before {
+  content: "bash";
+  background: var(--complement-mid);
+  color: #5fc9a8;
+}
+
+pre.language-pest::before {
+  content: "pest";
+  background: var(--accent-light);
+  color: var(--complement-dark);
+}
+
+pre.language-asm::before,
+pre.language-x86asm::before {
+  content: "asm";
+  background: #8b6bb5;
+  color: #fff;
+}
+
+pre.language-toml::before {
+  content: "toml";
+  background: var(--warning-color);
+  color: var(--complement-dark);
+}
+
+/* =============================================================================
+   FILENAME ANNOTATIONS
+   ============================================================================= */
+
+a.filename {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75em;
+  font-weight: 500;
+  color: #b45309 !important;
+  /* Warm amber - matches Rust theme */
+  background: #fef3c7;
+  padding: 0.3em 0.8em;
+  border-radius: 0 0 6px 6px;
+  margin-top: -0.5em;
+  margin-bottom: 1.5em;
+  text-decoration: none !important;
+  border-bottom: none !important;
+  transition: all 0.2s ease;
+  border: 1px solid #fcd34d;
+  border-top: none;
+  position: relative;
+  left: 1em;
+}
+
+a.filename::before {
+  content: "📄";
+}
+
+a.filename::after {
+  content: " ↗";
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+a.filename:hover {
+  background: #fde68a;
+  color: #92400e !important;
+  text-decoration: underline !important;
+}
+
+/* =============================================================================
+   TABLES
+   ============================================================================= */
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  margin: 1.5em 0;
+  font-size: 0.95em;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+table th {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.8em;
+  letter-spacing: 0.05em;
+  padding: 1em;
+  text-align: left;
+  background: linear-gradient(135deg, #c45b29 0%, #a04520 100%);
+  color: white;
+}
+
+table td {
+  padding: 0.8em 1em;
+  border-bottom: 1px solid #e8e0d5;
+}
+
+table tr:last-child td {
+  border-bottom: none;
+}
+
+table tr:nth-child(even) {
+  background: rgba(196, 91, 41, 0.05);
+}
+
+/* =============================================================================
+   BLOCKQUOTES
+   ============================================================================= */
+
+blockquote {
+  margin: 1.5em 0;
+  padding: 1em 1.5em;
+  border-left: 4px solid var(--accent-color);
+  background: linear-gradient(90deg, rgba(196, 91, 41, 0.08) 0%, transparent 100%);
+  border-radius: 0 8px 8px 0;
+  font-style: italic;
+}
+
+blockquote p {
+  margin: 0;
+}
+
+
+/* =============================================================================
+   LICENSE NOTICE
+   ============================================================================= */
+
+.license-notice {
+  text-align: center;
+  margin: 2em auto 3em auto;
+  padding: 1.5em 2em;
+  background: linear-gradient(135deg, rgba(196, 91, 41, 0.08) 0%, rgba(196, 91, 41, 0.03) 100%);
+  border: 1px solid rgba(196, 91, 41, 0.2);
+  border-radius: 12px;
+  max-width: 700px;
+}
+
+.license-notice p {
+  font-size: 1.25em !important;
+  font-weight: 500;
+  margin: 0 0 1.5em 0 !important;
+  color: var(--accent-color);
+}
+
+.license-notice img {
+  display: block;
+  margin: 0 auto;
+  max-width: 200px;
+  height: auto;
+}
+
+/* =============================================================================
+   LOGO THEME SWITCHING
+   Show correct logo based on mdbook theme, not OS prefers-color-scheme
+   ============================================================================= */
+
+.license-notice .logo-img {
+  max-width: 320px;
+  height: auto;
+}
+
+/* Default: show light mode logo (for Rust theme - light background) */
+.license-notice .logo-light {
+  display: block;
+}
+
+.license-notice .logo-dark {
+  display: none;
+}
+
+/* Dark themes: show dark mode logo (light text for dark backgrounds) */
+.coal .license-notice .logo-light,
+.navy .license-notice .logo-light,
+.ayu .license-notice .logo-light {
+  display: none;
+}
+
+.coal .license-notice .logo-dark,
+.navy .license-notice .logo-dark,
+.ayu .license-notice .logo-dark {
+  display: block;
+}
+
+/* =============================================================================
+   LINKS
+   ============================================================================= */
+
+.content a {
+  color: var(--accent-color);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--accent-color);
+  transition: all 0.2s ease;
+}
+
+.content a:hover {
+  color: var(--accent-hover);
+  border-bottom-style: solid;
+}
+
+/* =============================================================================
+   SIDEBAR ENHANCEMENTS
+   ============================================================================= */
+
+.sidebar {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85em;
+}
+
+.sidebar .chapter {
+  padding: 0.4em 0;
+}
+
+.sidebar .chapter.active>a {
+  font-weight: 700;
+  position: relative;
+}
+
+.rust .sidebar .chapter.active>a::before {
+  content: "▶";
+  position: absolute;
+  left: -1.2em;
+  color: var(--accent-color);
+}
+
+/* =============================================================================
+   NAVIGATION BUTTONS
+   ============================================================================= */
+
+.nav-chapters {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+  transition: all 0.2s ease;
+}
+
+.nav-chapters:hover {
+  color: var(--accent-color) !important;
+  transform: scale(1.1);
+}
+
+/* =============================================================================
+   TOP MENU BAR
+   ============================================================================= */
+
+.menu-bar {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.menu-bar .icon-button {
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.menu-bar .icon-button:hover {
+  transform: scale(1.15);
+  color: var(--accent-color) !important;
+}
+
+/* GitHub icon styling */
+.menu-bar .icon-button i.fa-github {
+  font-size: 1.3em;
+}
+
+/* =============================================================================
+   TITLE STYLING
+   ============================================================================= */
+
+.menu-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+/* =============================================================================
+   LISTS
+   ============================================================================= */
+
+.content ul,
+.content ol {
+  margin: 1em 0;
+  padding-left: 1.5em;
+}
+
+.content li {
+  margin: 0.5em 0;
+  line-height: 1.6;
+}
+
+.content ul li::marker {
+  color: var(--accent-color);
+}
+
+/* =============================================================================
+   SPECIAL HIGHLIGHTS
+   ============================================================================= */
+
+/* Highlight important terms on first use */
+.content strong {
+  color: inherit;
+  font-weight: 700;
+  background: linear-gradient(180deg, transparent 60%, var(--accent-subtle) 60%);
+}
+
+/* Emphasis with style */
+.content em {
+  font-style: italic;
+  color: inherit;
+  opacity: 0.9;
+}
+
+/* =============================================================================
+   ASCII ART / DIAGRAMS
+   ============================================================================= */
+
+pre:has(code:not([class])) {
+  background: linear-gradient(135deg, #faf8f5 0%, #f5f0ea 100%);
+  border: 1px solid #e5ddd2;
+}
+
+/* =============================================================================
+   DETAILS/SUMMARY - Collapsible sections
+   ============================================================================= */
+
+details {
+  margin: 1.5em 0;
+  border: 1px solid #e5ddd2;
+  border-radius: 8px;
+  padding: 0.5em 1em;
+  background: rgba(196, 91, 41, 0.03);
+}
+
+details summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.5em 0;
+  list-style: none;
+  position: relative;
+  padding-left: 1.5em;
+}
+
+details summary::before {
+  content: "▶";
+  position: absolute;
+  left: 0;
+  color: var(--accent-color);
+  transition: transform 0.2s ease;
+  font-size: 0.8em;
+}
+
+details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+details summary::-webkit-details-marker {
+  display: none;
+}
+
+/* =============================================================================
+   COPY BUTTON STYLING (for code blocks)
+   ============================================================================= */
+
+.clip-button {
+  background-color: var(--code-bg, #f1f1f1);
+  border: 1px solid var(--code-border, #ccc);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.75em;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+pre:hover .clip-button {
+  opacity: 0.8;
+}
+
+.clip-button:hover {
+  opacity: 1 !important;
+  background-color: var(--accent-color);
+  color: white;
+}
+
+/* =============================================================================
+   SELECTION STYLING
+   ============================================================================= */
+
+::selection {
+  background: rgba(196, 91, 41, 0.3);
+  color: inherit;
+}
+
+::-moz-selection {
+  background: rgba(196, 91, 41, 0.3);
+  color: inherit;
+}
+
+/* =============================================================================
+   PRINT STYLES
+   ============================================================================= */
+
+@media print {
+
+  .content h1,
+  .content h2,
+  .content h3 {
+    page-break-after: avoid;
+  }
+
+  pre,
+  blockquote,
+  table {
+    page-break-inside: avoid;
+  }
+
+  .sidebar,
+  .menu-bar,
+  .nav-chapters,
+  .clip-button {
+    display: none !important;
+  }
+
+  .content {
+    max-width: 100% !important;
+  }
+
+  a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+
+  a[href^="#"]::after,
+  a[href^="javascript:"]::after {
+    content: "";
+  }
+}
+
+/* =============================================================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================================================= */
+
+@media (max-width: 768px) {
+  .content {
+    font-size: 18px;
+  }
+
+  .content h1 {
+    font-size: 2em;
+  }
+
+  .content h2 {
+    font-size: 1.6em;
+  }
+
+  /* Keep code readable on mobile */
+  pre {
+    font-size: 15px !important;
+    padding: 1em;
+    line-height: 1.7;
+  }
+
+  :not(pre)>code {
+    font-size: 14px;
+  }
+}
+
+/* =============================================================================
+   SMOOTH SCROLLING & ANIMATIONS
+   ============================================================================= */
+
+.content {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Code block hover effect */
+pre:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease;
+}
+
+/* =============================================================================
+   CHECKPOINT BLOCKS - "At this point..." milestone markers
+   ============================================================================= */
+
+.checkpoint {
+  margin: 2em 0;
+  padding: 1.2em 1.5em 1.2em 3.5em;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 1px solid #86efac;
+  border-left: 5px solid #22c55e;
+  border-radius: 0 12px 12px 0;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.1);
+}
+
+.checkpoint::before {
+  content: "";
+  position: absolute;
+  left: 0.6em;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.2em;
+  height: 1.2em;
+  background: #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
+}
+
+.checkpoint strong {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #166534;
+  margin-bottom: 0.5em;
+  background: none !important;
+}
+
+.checkpoint ul {
+  margin: 0.5em 0 0 0;
+  padding-left: 1.2em;
+}
+
+.checkpoint li {
+  margin: 0.3em 0;
+  color: #15803d;
+}
+
+.checkpoint li::marker {
+  color: #22c55e;
+}
+
+.checkpoint p {
+  margin: 0;
+  color: #166534;
+}
+
+/* Inline checkpoints for exercises - simpler, compact style */
+.checkpoint-inline {
+  display: inline-block;
+  margin: 0.5em 0;
+  padding: 0.4em 0.8em 0.4em 2.2em;
+  background: linear-gradient(90deg, #dcfce7 0%, #f0fdf4 100%);
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  position: relative;
+  font-size: 0.95em;
+}
+
+.checkpoint-inline::before {
+  content: "";
+  position: absolute;
+  left: 0.6em;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0.8em;
+  height: 0.8em;
+  background: #22c55e;
+  border-radius: 50%;
+}
+
+.checkpoint-inline code {
+  background: rgba(255, 255, 255, 0.6) !important;
+  padding: 0.1em 0.3em;
+}
+
+/* =============================================================================
+   RELATED TOPICS BLOCKS - Cross-reference sections
+   ============================================================================= */
+
+.related-topics {
+  margin: 1.5em 0;
+  padding: 1em 1.5em;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1px solid #fbbf24;
+  border-left: 4px solid #f59e0b;
+  border-radius: 0 8px 8px 0;
+}
+
+.related-topics strong {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #92400e;
+  margin-bottom: 0.5em;
+  background: none !important;
+}
+
+.related-topics ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.related-topics li {
+  margin: 0.3em 0;
+  color: #78350f;
+}
+
+.related-topics a {
+  color: #b45309 !important;
+  font-weight: 500;
+}
+
+.related-topics a:hover {
+  color: #92400e !important;
+}
+
+/* =============================================================================
+   LAST CONTENT SPACING
+   ============================================================================= */
+
+.content> :last-child {
+  margin-bottom: 60px;
+}
