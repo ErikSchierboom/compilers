@@ -1,7 +1,7 @@
 use crate::compiler::vm::{make_op, OpCode};
 use crate::{Compile, Node, Operator};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 // ANCHOR: bytecode
 pub struct Bytecode {
     pub instructions: Vec<u8>,
@@ -64,6 +64,10 @@ impl Interpreter {
         match node {
             Node::Int(num) => {
                 let const_index = self.add_constant(Node::Int(num));
+                self.add_instruction(OpCode::OpConstant(const_index));
+            }
+            Node::Float(num) => {
+                let const_index = self.add_constant(Node::Float(num));
                 self.add_instruction(OpCode::OpConstant(const_index));
             }
             Node::UnaryExpr { op, child } => {

@@ -76,6 +76,10 @@ fn build_ast_from_term(pair: pest::iterators::Pair<Rule>) -> Node {
             let int: i32 = pair.as_str().parse().unwrap();
             Node::Int(int)
         }
+        Rule::Float => {
+            let float: f32 = pair.as_str().parse().unwrap();
+            Node::Float(float)
+        }
         Rule::Expr => build_ast_from_expr(pair),
         unknown => panic!("Unknown term: {:?}", unknown),
     }

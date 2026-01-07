@@ -5,10 +5,10 @@ use crate::{Compile, Node, Operator, Result};
 pub struct Interpreter;
 
 impl Compile for Interpreter {
-    type Output = Result<i32>;
+    type Output = Result<f32>;
 
     fn from_ast(ast: Vec<Node>) -> Self::Output {
-        let mut ret = 0i32;
+        let mut ret = 0f32;
         let evaluator = Eval::new();
         for node in ast {
             ret += evaluator.eval(&node);
@@ -26,9 +26,10 @@ impl Eval {
         Self
     }
     // ANCHOR: interpreter_eval
-    pub fn eval(&self, node: &Node) -> i32 {
+    pub fn eval(&self, node: &Node) -> f32 {
         match node {
-            Node::Int(n) => *n,
+            Node::Int(n) => *n as f32,
+            Node::Float(n) => *n,
             Node::UnaryExpr { op, child } => {
                 let child = self.eval(child);
                 match op {

@@ -2,7 +2,7 @@ Program = _{ SOI ~ Expr ~ EOF }
 
 Expr = { BinaryExpr | UnaryExpr | Term }
 
-Term = { Int | "(" ~ Expr ~ ")" }
+Term = { Float | Int | "(" ~ Expr ~ ")" }
 
 UnaryExpr = { Operator ~ Term }
 
@@ -10,8 +10,10 @@ UnaryExpr = { Operator ~ Term }
 BinaryExpr = { (UnaryExpr | Term) ~ (Operator ~ Term)+ }
 
 Operator = { "+" | "-" }
+// Operator = { "+" | "-" | "*" | "/" }
 
 Int = @{ ASCII_DIGIT+ }
+Float = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 
 WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
 
