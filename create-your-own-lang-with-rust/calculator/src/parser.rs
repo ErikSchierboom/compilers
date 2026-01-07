@@ -49,7 +49,16 @@ fn build_ast_from_expr(pair: pest::iterators::Pair<Rule>) -> Node {
             };
             let op = pair.next().unwrap();
             let rhspair = pair.next().unwrap();
-            let mut rhs = build_ast_from_term(rhspair);
+            let mut rhs = match rhspair.as_rule() {
+                Rule::UnaryExpr => {
+                    let mut inner = rhspair.into_inner();
+                    let op = inner.next().unwrap();
+                    let child = inner.next().unwrap();
+                    let child = build_ast_from_term(child);
+                    parse_unary_expr(op, child)
+                }
+                _ => build_ast_from_term(rhspair),
+            };
             let mut retval = parse_binary_expr(op, lhs, rhs);
             loop {
                 let pair_buf = pair.next();

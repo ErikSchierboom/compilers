@@ -7,7 +7,7 @@ Term = { Float | Int | "(" ~ Expr ~ ")" }
 UnaryExpr = { Operator ~ Term }
 
 // Allow expressions to start with a unary expression (e.g., -1 + 2)
-BinaryExpr = { (UnaryExpr | Term) ~ (Operator ~ Term)+ }
+BinaryExpr = { (UnaryExpr | Term) ~ (Operator ~ (UnaryExpr | Term))+ }
 
 Operator = { "+" | "-" }
 // Operator = { "+" | "-" | "*" | "/" }
