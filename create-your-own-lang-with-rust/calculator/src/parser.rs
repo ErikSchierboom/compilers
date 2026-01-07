@@ -1,8 +1,7 @@
 #![allow(clippy::upper_case_acronyms, clippy::result_large_err)]
 
-use pest::{self, Parser};
-use pest::iterators::Pair;
 use crate::ast::{Node, Operator};
+use pest::{self, Parser};
 
 // ANCHOR: parser
 #[derive(pest_derive::Parser)]
@@ -26,18 +25,7 @@ pub fn parse(source: &str) -> Result<Vec<Node>, pest::error::Error<Rule>> {
 fn parse_expr(pair: pest::iterators::Pair<Rule>) -> Node {
     match pair.as_rule() {
         Rule::Expr => parse_expr(pair.into_inner().next().unwrap()),
-        Rule::AdditiveExpr => {
-            let mut pairs = pair.into_inner();
-            let lhs = pairs.next().unwrap();
-            let lhs = parse_expr(lhs);
-            match pairs.next() {
-                None => lhs,
-                Some(op) => {
-                    let rhs = parse_expr(pairs.next().unwrap());
-                    parse_binary_expr(op, lhs, rhs)
-                }
-            }
-        }
+        Rule::AdditiveExpr |
         Rule::MultiplicativeExpr => {
             let mut pairs = pair.into_inner();
             let lhs = pairs.next().unwrap();
@@ -65,45 +53,6 @@ fn parse_expr(pair: pest::iterators::Pair<Rule>) -> Node {
         }
         Rule::Primary => parse_primary(pair),
         unknown => panic!("Unknown expr: {:?}", unknown),
-        // TODO
-        // Rule::BinaryExpr => {
-        //     let mut pair = pair.into_inner();
-        //     let lhspair = pair.next().unwrap();
-        //     // First element can be UnaryExpr or Term (Int/Expr)
-        //     let mut lhs = match lhspair.as_rule() {
-        //         Rule::UnaryExpr => {
-        //             let mut inner = lhspair.into_inner();
-        //             let op = inner.next().unwrap();
-        //             let child = inner.next().unwrap();
-        //             let child = build_ast_from_primary(child);
-        //             parse_unary_expr(op, child)
-        //         }
-        //         _ => build_ast_from_primary(lhspair),
-        //     };
-        //     let op = pair.next().unwrap();
-        //     let rhspair = pair.next().unwrap();
-        //     let mut rhs = match rhspair.as_rule() {
-        //         Rule::UnaryExpr => {
-        //             let mut inner = rhspair.into_inner();
-        //             let op = inner.next().unwrap();
-        //             let child = inner.next().unwrap();
-        //             let child = build_ast_from_primary(child);
-        //             parse_unary_expr(op, child)
-        //         }
-        //         _ => build_ast_from_primary(rhspair),
-        //     };
-        //     let mut retval = parse_binary_expr(op, lhs, rhs);
-        //     loop {
-        //         let pair_buf = pair.next();
-        //         if let Some(op) = pair_buf {
-        //             lhs = retval;
-        //             rhs = build_ast_from_primary(pair.next().unwrap());
-        //             retval = parse_binary_expr(op, lhs, rhs);
-        //         } else {
-        //             return retval;
-        //         }
-        //     }
-        // }
     }
 }
 
