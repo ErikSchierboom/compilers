@@ -11,7 +11,7 @@ struct CalcParser;
 // ANCHOR_END: parser
 
 // ANCHOR: parse_source
-pub fn parse(source: &str) -> std::result::Result<Vec<Node>, pest::error::Error<Rule>> {
+pub fn parse(source: &str) -> Result<Vec<Node>, pest::error::Error<Rule>> {
     let mut ast = vec![];
     let pairs = CalcParser::parse(Rule::Program, source)?;
     for pair in pairs {
@@ -26,58 +26,79 @@ pub fn parse(source: &str) -> std::result::Result<Vec<Node>, pest::error::Error<
 fn build_ast_from_expr(pair: pest::iterators::Pair<Rule>) -> Node {
     match pair.as_rule() {
         Rule::Expr => build_ast_from_expr(pair.into_inner().next().unwrap()),
-        Rule::UnaryExpr => {
-            let mut pair = pair.into_inner();
-            let op = pair.next().unwrap();
-            let child = pair.next().unwrap();
-            let child = build_ast_from_term(child);
-            parse_unary_expr(op, child)
+        Rule::AdditiveExpr => {
+            let mut pairs = pair.into_inner();
+            let lhs = pairs.next().unwrap();
+            let lhs = build_ast_from_expr(lhs);
+
+            todo!()
         }
-        Rule::BinaryExpr => {
-            let mut pair = pair.into_inner();
-            let lhspair = pair.next().unwrap();
-            // First element can be UnaryExpr or Term (Int/Expr)
-            let mut lhs = match lhspair.as_rule() {
-                Rule::UnaryExpr => {
-                    let mut inner = lhspair.into_inner();
-                    let op = inner.next().unwrap();
-                    let child = inner.next().unwrap();
-                    let child = build_ast_from_term(child);
+        Rule::MultiplicativeExpr => {
+            let mut pairs = pair.into_inner();
+            let lhs = pairs.next().unwrap();
+            let lhs = build_ast_from_expr(lhs);
+
+            todo!()
+        }
+        Rule::UnaryExpr => {
+            let mut pairs = pair.into_inner();
+            let op = pairs.next().unwrap();
+            match op.as_rule() {
+                Rule::UnaryOp => {
+                    let child = pairs.next().unwrap();
+                    let child = build_ast_from_primary(child);
                     parse_unary_expr(op, child)
                 }
-                _ => build_ast_from_term(lhspair),
-            };
-            let op = pair.next().unwrap();
-            let rhspair = pair.next().unwrap();
-            let mut rhs = match rhspair.as_rule() {
-                Rule::UnaryExpr => {
-                    let mut inner = rhspair.into_inner();
-                    let op = inner.next().unwrap();
-                    let child = inner.next().unwrap();
-                    let child = build_ast_from_term(child);
-                    parse_unary_expr(op, child)
-                }
-                _ => build_ast_from_term(rhspair),
-            };
-            let mut retval = parse_binary_expr(op, lhs, rhs);
-            loop {
-                let pair_buf = pair.next();
-                if let Some(op) = pair_buf {
-                    lhs = retval;
-                    rhs = build_ast_from_term(pair.next().unwrap());
-                    retval = parse_binary_expr(op, lhs, rhs);
-                } else {
-                    return retval;
-                }
+                Rule::Primary => build_ast_from_expr(op),
+                _ => unreachable!()
             }
         }
-        Rule::Term => build_ast_from_term(pair),
+        Rule::Primary => build_ast_from_primary(pair),
         unknown => panic!("Unknown expr: {:?}", unknown),
+        // TODO
+        // Rule::BinaryExpr => {
+        //     let mut pair = pair.into_inner();
+        //     let lhspair = pair.next().unwrap();
+        //     // First element can be UnaryExpr or Term (Int/Expr)
+        //     let mut lhs = match lhspair.as_rule() {
+        //         Rule::UnaryExpr => {
+        //             let mut inner = lhspair.into_inner();
+        //             let op = inner.next().unwrap();
+        //             let child = inner.next().unwrap();
+        //             let child = build_ast_from_primary(child);
+        //             parse_unary_expr(op, child)
+        //         }
+        //         _ => build_ast_from_primary(lhspair),
+        //     };
+        //     let op = pair.next().unwrap();
+        //     let rhspair = pair.next().unwrap();
+        //     let mut rhs = match rhspair.as_rule() {
+        //         Rule::UnaryExpr => {
+        //             let mut inner = rhspair.into_inner();
+        //             let op = inner.next().unwrap();
+        //             let child = inner.next().unwrap();
+        //             let child = build_ast_from_primary(child);
+        //             parse_unary_expr(op, child)
+        //         }
+        //         _ => build_ast_from_primary(rhspair),
+        //     };
+        //     let mut retval = parse_binary_expr(op, lhs, rhs);
+        //     loop {
+        //         let pair_buf = pair.next();
+        //         if let Some(op) = pair_buf {
+        //             lhs = retval;
+        //             rhs = build_ast_from_primary(pair.next().unwrap());
+        //             retval = parse_binary_expr(op, lhs, rhs);
+        //         } else {
+        //             return retval;
+        //         }
+        //     }
+        // }
     }
 }
 
-fn build_ast_from_term(pair: pest::iterators::Pair<Rule>) -> Node {
-    assert_eq!(pair.as_rule(), Rule::Term);
+fn build_ast_from_primary(pair: pest::iterators::Pair<Rule>) -> Node {
+    assert_eq!(pair.as_rule(), Rule::Primary);
 
     let pair = pair.into_inner().next().unwrap();
     match pair.as_rule() {
@@ -110,6 +131,8 @@ fn parse_binary_expr(pair: pest::iterators::Pair<Rule>, lhs: Node, rhs: Node) ->
         op: match pair.as_str() {
             "+" => Operator::Plus,
             "-" => Operator::Minus,
+            "/" => Operator::Divide,
+            "*" => Operator::Multiply,
             _ => unreachable!(),
         },
         lhs: Box::new(lhs),

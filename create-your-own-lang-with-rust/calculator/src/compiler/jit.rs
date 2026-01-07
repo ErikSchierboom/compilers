@@ -114,6 +114,7 @@ impl<'a> RecursiveBuilder<'a> {
                         BuildValue::Float(neg)
                     }
                     (Operator::Plus, _) => child,
+                    _ => unreachable!()
                 }
             }
             Node::BinaryExpr { op, lhs, rhs } => {
@@ -140,6 +141,26 @@ impl<'a> RecursiveBuilder<'a> {
                         BuildValue::Float(self
                             .builder
                             .build_float_sub(l, r, "minus_temp")
+                            .unwrap()),
+                    (BuildValue::Int(l), Operator::Multiply, BuildValue::Int(r)) =>
+                        BuildValue::Int(self
+                            .builder
+                            .build_int_mul(l, r, "mul_temp")
+                            .unwrap()),
+                    (BuildValue::Float(l), Operator::Multiply, BuildValue::Float(r)) =>
+                        BuildValue::Float(self
+                            .builder
+                            .build_float_mul(l, r, "mul_temp")
+                            .unwrap()),
+                    (BuildValue::Int(l), Operator::Divide, BuildValue::Int(r)) =>
+                        BuildValue::Int(self
+                            .builder
+                            .build_int_signed_div(l, r, "mul_temp")
+                            .unwrap()),
+                    (BuildValue::Float(l), Operator::Divide, BuildValue::Float(r)) =>
+                        BuildValue::Float(self
+                            .builder
+                            .build_float_div(l, r, "mul_temp")
                             .unwrap()),
                     _ => panic!("Unsupported operands")
                 }

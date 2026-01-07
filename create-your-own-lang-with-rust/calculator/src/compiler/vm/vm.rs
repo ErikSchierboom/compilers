@@ -64,6 +64,22 @@ impl VM {
                         _ => panic!("Unknown types to OpSub"),
                     }
                 }
+                0x05 => {
+                    // OpMul
+                    match (self.pop(), self.pop()) {
+                        (Node::Int(rhs), Node::Int(lhs)) => self.push(Node::Int(lhs * rhs)),
+                        (Node::Float(rhs), Node::Float(lhs)) => self.push(Node::Float(lhs * rhs)),
+                        _ => panic!("Unknown types to OpMul"),
+                    }
+                }
+                0x06 => {
+                    // OpDiv
+                    match (self.pop(), self.pop()) {
+                        (Node::Int(rhs), Node::Int(lhs)) => self.push(Node::Int(lhs / rhs)),
+                        (Node::Float(rhs), Node::Float(lhs)) => self.push(Node::Float(lhs / rhs)),
+                        _ => panic!("Unknown types to OpDiv"),
+                    }
+                }
                 0x0A => {
                     // OpPlus
                     match self.pop() {

@@ -42,6 +42,7 @@ impl Eval {
                     (Operator::Plus, _) => child,
                     (Operator::Minus, Value::Int(i)) => Value::Int(-i),
                     (Operator::Minus, Value::Float(i)) => Value::Float(-i),
+                    _ => unreachable!()
                 }
             }
             Node::BinaryExpr { op, lhs, rhs } => {
@@ -51,8 +52,12 @@ impl Eval {
                 match (lhs_ret, op, rhs_ret) {
                     (Value::Int(l), Operator::Plus, Value::Int(r)) => Value::Int(l + r),
                     (Value::Int(l), Operator::Minus, Value::Int(r)) => Value::Int(l - r),
+                    (Value::Int(l), Operator::Multiply, Value::Int(r)) => Value::Int(l * r),
+                    (Value::Int(l), Operator::Divide, Value::Int(r)) => Value::Int(l / r),
                     (Value::Float(l), Operator::Plus, Value::Float(r)) => Value::Float(l + r),
                     (Value::Float(l), Operator::Minus, Value::Float(r)) => Value::Float(l - r),
+                    (Value::Float(l), Operator::Multiply, Value::Float(r)) => Value::Float(l * r),
+                    (Value::Float(l), Operator::Divide, Value::Float(r)) => Value::Float(l / r),
                     _ => panic!("Unsupported operands")
                 }
             }

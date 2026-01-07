@@ -5,6 +5,8 @@ pub enum OpCode {
     OpPop,           // pop is needed for execution
     OpAdd,
     OpSub,
+    OpMul,
+    OpDiv,
     OpPlus,
     OpMinus,
 }
@@ -31,6 +33,8 @@ pub fn make_op(op: OpCode) -> Vec<u8> {
         OpCode::OpPop => vec![0x02],
         OpCode::OpAdd => vec![0x03],
         OpCode::OpSub => vec![0x04],
+        OpCode::OpMul => vec![0x05],
+        OpCode::OpDiv => vec![0x06],
         OpCode::OpPlus => vec![0x0A],
         OpCode::OpMinus => vec![0x0B],
         // ANCHOR_END: vm_make_op

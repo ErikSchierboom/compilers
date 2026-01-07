@@ -1,16 +1,17 @@
 Program = _{ SOI ~ Expr ~ EOF }
 
-Expr = { BinaryExpr | UnaryExpr | Term }
+Expr = { AdditiveExpr }
 
-Term = { Float | Int | "(" ~ Expr ~ ")" }
+AdditiveExpr = { MultiplicativeExpr ~ (AdditiveOp ~ MultiplicativeExpr)* }
+AdditiveOp = { "+" | "-" }
 
-UnaryExpr = { Operator ~ Term }
+MultiplicativeExpr = { UnaryExpr ~ (MultiplicativeOp ~ UnaryExpr)* }
+MultiplicativeOp = { "*" | "/" }
 
-// Allow expressions to start with a unary expression (e.g., -1 + 2)
-BinaryExpr = { (UnaryExpr | Term) ~ (Operator ~ (UnaryExpr | Term))+ }
+UnaryExpr = { UnaryOp? ~ Primary }
+UnaryOp = { "+" | "-" }
 
-Operator = { "+" | "-" }
-// Operator = { "+" | "-" | "*" | "/" }
+Primary = { Float | Int | "(" ~ Expr ~ ")" }
 
 Int = @{ ASCII_DIGIT+ }
 Float = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }

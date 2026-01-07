@@ -5,6 +5,8 @@ use std::fmt;
 pub enum Operator {
     Plus,
     Minus,
+    Multiply,
+    Divide,
 }
 // ANCHOR_END: operator
 
@@ -13,6 +15,8 @@ impl fmt::Display for Operator {
         match &self {
             Operator::Plus => write!(f, "+"),
             Operator::Minus => write!(f, "-"),
+            Operator::Multiply => write!(f, "*"),
+            Operator::Divide => write!(f, "/"),
         }
     }
 }
