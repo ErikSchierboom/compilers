@@ -42,11 +42,7 @@ fn parse_expr(pair: pest::iterators::Pair<Rule>) -> Node {
             let mut pairs = pair.into_inner();
             let op = pairs.next().unwrap();
             match op.as_rule() {
-                Rule::UnaryOp => {
-                    let child = pairs.next().unwrap();
-                    let child = parse_primary(child);
-                    parse_unary_expr(op, child)
-                }
+                Rule::UnaryOp => parse_unary_expr(op, parse_expr(pairs.next().unwrap())),
                 Rule::Primary => parse_expr(op),
                 _ => unreachable!()
             }
