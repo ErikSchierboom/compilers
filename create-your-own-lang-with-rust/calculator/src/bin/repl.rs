@@ -34,7 +34,7 @@ fn main() -> Result<()> {
                 cfg_if! {
                     if #[cfg(any(feature = "jit", feature = "interpreter"))] {
                         match Engine::from_source(line) {
-                            Ok(result) => println!("{}", result),
+                            Ok(result) => println!("{:?}", result),
                             Err(e) => eprintln!("{}", e),
                         };
                     }

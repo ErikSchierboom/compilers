@@ -1,17 +1,17 @@
 use inkwell::{
     builder::Builder, context::Context, execution_engine::JitFunction, types::IntType,
-    values::AnyValue, values::IntValue, OptimizationLevel,
+    values::AnyValue, values::IntValue, values::FloatValue, OptimizationLevel,
 };
-
+use inkwell::types::FloatType;
 use crate::{Compile, Node, Operator, Result};
 
-type JitFunc = unsafe extern "C" fn() -> i32;
+type JitFunc = unsafe extern "C" fn() -> f32;
 
 // ANCHOR: jit_ast
 pub struct Jit;
 
 impl Compile for Jit {
-    type Output = Result<i32>;
+    type Output = Result<f32>;
 
     fn from_ast(ast: Vec<Node>) -> Self::Output {
         let context = Context::create();
@@ -24,7 +24,8 @@ impl Compile for Jit {
             .unwrap();
 
         let i32_type = context.i32_type();
-        let fn_type = i32_type.fn_type(&[], false);
+        let f32_type = context.f32_type();
+        let fn_type = f32_type.fn_type(&[], false);
 
         let function = module.add_function("jit", fn_type, None);
         let basic_block = context.append_basic_block(function, "entry");
@@ -32,7 +33,7 @@ impl Compile for Jit {
         builder.position_at_end(basic_block);
 
         for node in ast {
-            let recursive_builder = RecursiveBuilder::new(i32_type, &builder);
+            let recursive_builder = RecursiveBuilder::new(i32_type, f32_type, &builder);
             let return_value = recursive_builder.build(&node);
             let _ = builder.build_return(Some(&return_value));
         }
@@ -53,16 +54,23 @@ impl Compile for Jit {
 // ANCHOR: jit_recursive_builder
 struct RecursiveBuilder<'a> {
     i32_type: IntType<'a>,
+    f32_type: FloatType<'a>,
     builder: &'a Builder<'a>,
 }
 
+pub enum BuildValue<'a> {
+    Int(FloatValue<'a>),
+    Float(FloatValue<'a>)
+}
+
 impl<'a> RecursiveBuilder<'a> {
-    pub fn new(i32_type: IntType<'a>, builder: &'a Builder) -> Self {
-        Self { i32_type, builder }
+    pub fn new(i32_type: IntType<'a>, f32_type: FloatType<'a>, builder: &'a Builder) -> Self {
+        Self { i32_type, f32_type, builder }
     }
-    pub fn build(&self, ast: &Node) -> IntValue<'a> {
+    pub fn build(&self, ast: &Node) -> BuildValue<'a> {
         match ast {
-            Node::Int(n) => self.i32_type.const_int(*n as u64, true),
+            Node::Int(n) => self.f32_type.const_int(*n as i64, true),
+            Node::Float(n) => self.f32_type.const_float(*n as f64),
             Node::UnaryExpr { op, child } => {
                 let child = self.build(child);
                 match op {
@@ -77,11 +85,11 @@ impl<'a> RecursiveBuilder<'a> {
                 match op {
                     Operator::Plus => self
                         .builder
-                        .build_int_add(left, right, "plus_temp")
+                        .build_float_add(left, right, "plus_temp")
                         .unwrap(),
                     Operator::Minus => self
                         .builder
-                        .build_int_sub(left, right, "minus_temp")
+                        .build_float_sub(left, right, "minus_temp")
                         .unwrap(),
                 }
             }
