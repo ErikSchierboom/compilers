@@ -28,12 +28,12 @@ pub fn make_op(op: OpCode) -> Vec<u8> {
     match op {
         // ANCHOR: vm_make_op
         OpCode::OpConstant(arg) => make_three_byte_op(0x01, arg),
-        OpCode::OpPop => vec![0x02],  // decimal repr is 2
-        OpCode::OpAdd => vec![0x03],  // decimal repr is 3
-        OpCode::OpSub => vec![0x04],  // decimal repr is 4
-        OpCode::OpPlus => vec![0x0A], // decimal repr is 10
-        OpCode::OpMinus => vec![0x0B], // decimal repr is 11
-                                       // ANCHOR_END: vm_make_op
+        OpCode::OpPop => vec![0x02],
+        OpCode::OpAdd => vec![0x03],
+        OpCode::OpSub => vec![0x04],
+        OpCode::OpPlus => vec![0x0A],
+        OpCode::OpMinus => vec![0x0B],
+        // ANCHOR_END: vm_make_op
     }
 }
 

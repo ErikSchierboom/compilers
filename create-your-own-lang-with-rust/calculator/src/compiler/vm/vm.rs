@@ -46,6 +46,7 @@ impl VM {
                     // OpAdd
                     match (self.pop(), self.pop()) {
                         (Node::Int(rhs), Node::Int(lhs)) => self.push(Node::Int(lhs + rhs)),
+                        (Node::Float(rhs), Node::Float(lhs)) => self.push(Node::Float(lhs + rhs)),
                         _ => panic!("Unknown types to OpAdd"),
                     }
                 }
@@ -53,6 +54,7 @@ impl VM {
                     // OpSub
                     match (self.pop(), self.pop()) {
                         (Node::Int(rhs), Node::Int(lhs)) => self.push(Node::Int(lhs - rhs)),
+                        (Node::Float(rhs), Node::Float(lhs)) => self.push(Node::Float(lhs - rhs)),
                         _ => panic!("Unknown types to OpSub"),
                     }
                 }
@@ -60,6 +62,7 @@ impl VM {
                     // OpPlus
                     match self.pop() {
                         Node::Int(num) => self.push(Node::Int(num)),
+                        Node::Float(num) => self.push(Node::Float(num)),
                         _ => panic!("Unknown arg type to OpPlus"),
                     }
                 }
@@ -67,6 +70,7 @@ impl VM {
                     // OpMinus
                     match self.pop() {
                         Node::Int(num) => self.push(Node::Int(-num)),
+                        Node::Float(num) => self.push(Node::Float(-num)),
                         _ => panic!("Unknown arg type to OpMinus"),
                     }
                 }
@@ -96,15 +100,16 @@ impl VM {
 }
 
 impl Compile for VM {
-    type Output = Result<i32>;
+    type Output = Result<f32>;
 
     fn from_ast(ast: Vec<Node>) -> Self::Output {
         let bytecode = BytecodeInterpreter::from_ast(ast);
         let mut vm = VM::new(bytecode);
         vm.run();
         match vm.pop_last() {
-            Node::Int(n) => Ok(*n),
-            _ => Err(anyhow::anyhow!("Expected integer result")),
+            Node::Int(n) => Ok(*n as f32),
+            Node::Float(n) => Ok(*n),
+            _ => Err(anyhow::anyhow!("Expected numeric result")),
         }
     }
 }
