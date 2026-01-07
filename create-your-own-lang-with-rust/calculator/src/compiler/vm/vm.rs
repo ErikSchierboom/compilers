@@ -3,6 +3,12 @@ use crate::compiler::vm::opcode::*;
 use crate::compiler::vm::Bytecode;
 use crate::{Compile, Node, Result};
 
+#[derive(Debug)]
+pub enum Value {
+    Int(i32),
+    Float(f32)
+}
+
 // ANCHOR: vm
 const STACK_SIZE: usize = 512;
 
@@ -100,15 +106,15 @@ impl VM {
 }
 
 impl Compile for VM {
-    type Output = Result<f32>;
+    type Output = Result<Value>;
 
     fn from_ast(ast: Vec<Node>) -> Self::Output {
         let bytecode = BytecodeInterpreter::from_ast(ast);
         let mut vm = VM::new(bytecode);
         vm.run();
         match vm.pop_last() {
-            Node::Int(n) => Ok(*n as f32),
-            Node::Float(n) => Ok(*n),
+            Node::Int(n) => Ok(Value::Int(*n)),
+            Node::Float(n) => Ok(Value::Float(*n)),
             _ => Err(anyhow::anyhow!("Expected numeric result")),
         }
     }
