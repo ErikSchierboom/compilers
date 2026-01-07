@@ -82,16 +82,16 @@ impl Compile for Jit {
 }
 // ANCHOR_END: jit_ast
 
+pub enum BuildValue<'a> {
+    Int(IntValue<'a>),
+    Float(FloatValue<'a>)
+}
+
 // ANCHOR: jit_recursive_builder
 struct RecursiveBuilder<'a> {
     i32_type: IntType<'a>,
     f32_type: FloatType<'a>,
     builder: &'a Builder<'a>,
-}
-
-pub enum BuildValue<'a> {
-    Int(IntValue<'a>),
-    Float(FloatValue<'a>)
 }
 
 impl<'a> RecursiveBuilder<'a> {
