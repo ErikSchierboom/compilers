@@ -69,7 +69,6 @@ impl Compile for CraneliftJit {
 
             let code_ptr = jit_module.get_finalized_function(id);
 
-
             // Cast the raw pointer to a typed function pointer. This is unsafe, because
             // this is the critical point where you have to trust that the generated code
             // is safe to be called.

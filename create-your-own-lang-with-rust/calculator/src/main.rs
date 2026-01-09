@@ -5,7 +5,7 @@ cfg_if! {
     if #[cfg(feature = "jit")] {
         use calculator::Jit as Engine;
     }
-    else if #[cfg(feature = "craneliftjit")] {
+    else if #[cfg(feature = "cranelift_jit")] {
         use calculator::CraneliftJit as Engine;
     }
     else if #[cfg(feature = "vm")] {
