@@ -22,7 +22,7 @@ impl Compile for CraneliftJit {
         let i32 = cranelift::prelude::types::I32;
         let f32 = cranelift::prelude::types::F32;
 
-        for node in ast {
+        for (node_index, node) in ast.into_iter().enumerate() {
             let jit_builder = JITBuilder::new(cranelift_module::default_libcall_names())?;
             let mut jit_module = JITModule::new(jit_builder);
             let mut ctx = jit_module.make_context();
@@ -33,8 +33,9 @@ impl Compile for CraneliftJit {
             function_builder.switch_to_block(entry_block);
             function_builder.seal_block(entry_block);
 
-            let mut recursive_builder = RecursiveBuilder::new(i32, f32, &mut function_builder, &mut jit_module);
-            match recursive_builder.build(&node) {
+            let result = RecursiveBuilder::build(i32, f32, &mut function_builder, &node);
+
+            match result {
                 BuildValue::Int(value) => {
                     function_builder.ins().return_(&[value]);
                     let sig = &mut function_builder.func.signature;
@@ -50,7 +51,7 @@ impl Compile for CraneliftJit {
             function_builder.finalize();
 
             let id = jit_module
-                .declare_function("jit_add", Linkage::Export, &ctx.func.signature)
+                .declare_function(&format!("jit_func_{}", node_index), Linkage::Export, &ctx.func.signature)
                 .map_err(|e| e.to_string())
                 .unwrap();
 
@@ -67,15 +68,24 @@ impl Compile for CraneliftJit {
             // Now that compilation is finished, we can clear out the context state.
             jit_module.clear_context(&mut ctx);
 
+            jit_module.finalize_definitions().unwrap();
+
             let code_ptr = jit_module.get_finalized_function(id);
 
             // Cast the raw pointer to a typed function pointer. This is unsafe, because
             // this is the critical point where you have to trust that the generated code
             // is safe to be called.
             unsafe {
-                let code_fn = mem::transmute::<_, fn() -> i32>(code_ptr);
-                // And now we can call it!
-                values.push(ReturnValue::Int(code_fn()))
+                match result {
+                    BuildValue::Int(_) => {
+                        let code_fn = mem::transmute::<_, fn() -> i32>(code_ptr);
+                        values.push(ReturnValue::Int(code_fn()))
+                    }
+                    BuildValue::Float(_) => {
+                        let code_fn = mem::transmute::<_, fn() -> f32>(code_ptr);
+                        values.push(ReturnValue::Float(code_fn()))
+                    }
+                }
             }
         }
 
@@ -88,80 +98,63 @@ pub enum BuildValue {
     Float(Value)
 }
 
-struct RecursiveBuilder<'a> {
-    i32_type: cranelift::prelude::Type,
-    f32_type: cranelift::prelude::Type,
-    builder: &'a mut FunctionBuilder<'a>,
-    module: &'a mut JITModule,
-}
+struct RecursiveBuilder;
 
-impl<'a> RecursiveBuilder<'a> {
-    pub fn new(i32_type: cranelift::prelude::Type, f32_type: cranelift::prelude::Type, builder: &'a mut FunctionBuilder<'a>, module: &'a mut JITModule,) -> Self {
-        Self { i32_type, f32_type, builder, module }
-    }
-
-    pub fn build(&mut self, ast: &Node) -> BuildValue {
+impl RecursiveBuilder {
+    pub fn build(i32_type: cranelift::prelude::Type, f32_type: cranelift::prelude::Type, builder: &mut FunctionBuilder, ast: &Node) -> BuildValue {
         match ast {
             Node::Int(n) => {
                 let n: Imm64 = (*n as i64).into();
-                BuildValue::Int(self.builder.ins().iconst(self.i32_type, n))
+                BuildValue::Int(builder.ins().iconst(i32_type, n))
             },
             Node::Float(n) => {
                 let n: Ieee32 = (*n).into();
-                BuildValue::Float(self.builder.ins().f32const(n))
+                BuildValue::Float(builder.ins().f32const(n))
             },
             Node::UnaryExpr { op, child } => {
-                let child = self.build(child);
+                let child = Self::build(i32_type, f32_type, builder, child);
                 match (op, &child) {
-                    (Operator::Minus, BuildValue::Int(v)) => BuildValue::Int(self.builder.ins().ineg(*v)),
-                    (Operator::Minus, BuildValue::Float(v)) => BuildValue::Float(self.builder.ins().fneg(*v)),
+                    (Operator::Minus, BuildValue::Int(v)) => BuildValue::Int(builder.ins().ineg(*v)),
+                    (Operator::Minus, BuildValue::Float(v)) => BuildValue::Float(builder.ins().fneg(*v)),
                     (Operator::Plus, _) => child,
                     _ => unreachable!()
                 }
             }
             Node::BinaryExpr { op, lhs, rhs } => {
-                let left = self.build(lhs);
-                let right = self.build(rhs);
+                let left = Self::build(i32_type, f32_type, builder, lhs);
+                let right = Self::build(i32_type, f32_type, builder, rhs);
 
                 match (left, op, right) {
                     (BuildValue::Int(l), Operator::Plus, BuildValue::Int(r)) =>
-                        BuildValue::Int(self
-                            .builder
+                        BuildValue::Int(builder
                             .ins()
                             .iadd(l, r)),
                     (BuildValue::Float(l), Operator::Plus, BuildValue::Float(r)) =>
-                        BuildValue::Float(self
-                            .builder
+                        BuildValue::Float(builder
                             .ins()
                             .fadd(l, r)),
                     (BuildValue::Int(l), Operator::Minus, BuildValue::Int(r)) =>
-                        BuildValue::Int(self
-                            .builder
+                        BuildValue::Int(builder
                             .ins()
                             .isub(l, r)),
                     (BuildValue::Float(l), Operator::Minus, BuildValue::Float(r)) =>
-                        BuildValue::Float(self
-                            .builder
+                        BuildValue::Float(builder
                             .ins()
                             .fsub(l, r)),
                     (BuildValue::Int(l), Operator::Multiply, BuildValue::Int(r)) =>
-                        BuildValue::Int(self
-                            .builder
+                        BuildValue::Int(builder
                             .ins()
                             .imul(l, r)),
                     (BuildValue::Float(l), Operator::Multiply, BuildValue::Float(r)) =>
-                        BuildValue::Float(self
-                            .builder
+                        BuildValue::Float(builder
                             .ins()
                             .fmul(l, r)),
                     (BuildValue::Int(l), Operator::Divide, BuildValue::Int(r)) =>
-                        BuildValue::Int(self
-                            .builder
+                        BuildValue::Int(builder
                             .ins()
                             .srem(l, r)),
                     (BuildValue::Float(l), Operator::Divide, BuildValue::Float(r)) =>
-                        BuildValue::Float(self
-                            .builder
+                        BuildValue::Float(builder
                             .ins()
                             .fdiv(l, r)),
                     _ => panic!("Unsupported operands")

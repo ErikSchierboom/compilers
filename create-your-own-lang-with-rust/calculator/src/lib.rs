@@ -6,6 +6,8 @@ pub use crate::ast::{Node, Operator};
 pub use crate::compiler::interpreter::Interpreter;
 #[cfg(feature = "jit")]
 pub use crate::compiler::jit::Jit;
+#[cfg(feature = "cranelift_jit")]
+pub use crate::compiler::cranelift_jit::CraneliftJit;
 pub use crate::compiler::vm::{self, vm::VM};
 
 pub type Result<T> = anyhow::Result<T>;
