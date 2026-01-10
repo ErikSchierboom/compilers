@@ -153,7 +153,9 @@ fn typecheck_expr(expr: &mut TypedExpr, env: &TypeEnv) -> Result<(), String> {
                 BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Mod => {
                     match (&left.ty, &right.ty) {
                         (Type::Int, Type::Int) => expr.ty = Type::Int,
-                        (Type::Float, Type::Float) => expr.ty = Type::Float,
+                        (Type::Float, Type::Float) |
+                        (Type::Int,   Type::Float) |
+                        (Type::Float, Type::Int) => expr.ty = Type::Float,
                         _ => return Err(format!(
                             "Arithmetic operation requires numeric operands, got {} and {}",
                             left.ty, right.ty
@@ -162,8 +164,10 @@ fn typecheck_expr(expr: &mut TypedExpr, env: &TypeEnv) -> Result<(), String> {
                 }
                 BinaryOp::Lt | BinaryOp::Gt | BinaryOp::Le | BinaryOp::Ge => {
                     match (&left.ty, &right.ty) {
-                        (Type::Int, Type::Int) |
-                        (Type::Float, Type::Float) => expr.ty = Type::Bool,
+                        (Type::Int,   Type::Int) |
+                        (Type::Float, Type::Float) |
+                        (Type::Float, Type::Int) |
+                        (Type::Int,   Type::Float)=> expr.ty = Type::Bool,
                         _ => return Err(format!(
                             "Comparison requires numeric operands, got {} and {}",
                             left.ty, right.ty

@@ -273,7 +273,13 @@ impl<'ctx> CodeGen<'ctx> {
                         if l.is_int_value() {
                             Ok(self.builder.build_int_add(l.into_int_value(), r.into_int_value(), "add").unwrap().into())
                         } else {
-                            Ok(self.builder.build_float_add(l.into_float_value(), r.into_float_value(), "fadd").unwrap().into())
+                            let r = if r.is_int_value() {
+                                self.builder.build_signed_int_to_float(r.into_int_value(), self.context.f64_type(), "main_cast").unwrap()
+                            } else {
+                                r.into_float_value()
+                            };
+
+                            Ok(self.builder.build_float_add(l.into_float_value(), r, "fadd").unwrap().into())
                         }
                     }
                     BinaryOp::Sub => {
