@@ -34,13 +34,16 @@ Print = { "print" ~ "(" ~ Expr ~ ")" }
 Assignment = { Identifier ~ "=" ~ Expr }
 
 // Expressions (ordered by precedence - lowest to highest)
-Expr = { Conditional | WhileLoop | Comparison }
+Expr = { Conditional | WhileLoop | ForLoop | Comparison }
 
 // if (cond) { ... } else { ... }
 Conditional = { "if" ~ "(" ~ Expr ~ ")" ~ Block ~ "else" ~ Block }
 
 // while (cond) { ... }
 WhileLoop = { "while" ~ "(" ~ Expr ~ ")" ~ Block }
+
+// for i in 0..10 { ... }
+ForLoop = { "for" ~ Identifier ~ "in" ~ Int ~ ".." ~ Int ~ Block }
 
 // Comparison operators
 Comparison = { Additive ~ (CompOp ~ Additive)* }

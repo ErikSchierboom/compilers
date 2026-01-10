@@ -53,6 +53,8 @@ pub enum Expr {
     },
     /// While loop: while (cond) { body }
     While { cond: Box<Expr>, body: Vec<Stmt> },
+    /// For loop: for i in 0..10 { body }
+    For { var: String, start: Box<Expr>, stop: Box<Expr>, body: Vec<Stmt> },
     /// Block expression (returns last expression's value)
     Block(Vec<Stmt>),
 }
@@ -119,6 +121,9 @@ impl fmt::Display for Expr {
                 write!(f, "while ({}) {{ ... }}", cond)
             }
             Expr::Block(_) => write!(f, "{{ ... }}"),
+            Expr::For { var, start, stop, .. } => {
+                write!(f, "for {var} in {start}..{stop} {{ ... }}")
+            }
         }
     }
 }

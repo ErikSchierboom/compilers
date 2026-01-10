@@ -103,6 +103,7 @@ fn parse_expr(pair: Pair<Rule>) -> Result<Expr, String> {
         }
         Rule::Conditional => parse_conditional(pair),
         Rule::WhileLoop => parse_while(pair),
+        Rule::ForLoop => parse_for(pair),
         Rule::Comparison => parse_binary(pair),
         Rule::Additive => parse_binary(pair),
         Rule::Multiplicative => parse_binary(pair),
@@ -137,6 +138,15 @@ fn parse_while(pair: Pair<Rule>) -> Result<Expr, String> {
     let cond = Box::new(parse_expr(inner.next().unwrap())?);
     let body = parse_block(inner.next().unwrap())?;
     Ok(Expr::While { cond, body })
+}
+
+fn parse_for(pair: Pair<Rule>) -> Result<Expr, String> {
+    let mut inner = pair.into_inner();
+    let var = inner.next().unwrap().as_str().to_string();
+    let start = Box::new(parse_expr(inner.next().unwrap())?);
+    let stop = Box::new(parse_expr(inner.next().unwrap())?);
+    let body = parse_block(inner.next().unwrap())?;
+    Ok(Expr::For { var, start, stop, body })
 }
 
 fn parse_binary(pair: Pair<Rule>) -> Result<Expr, String> {

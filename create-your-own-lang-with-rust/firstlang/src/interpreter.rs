@@ -254,6 +254,42 @@ impl Interpreter {
                 }
                 Ok(result)
             }
+
+            Expr::For { var, start, stop, body } => {
+                let start = self.eval_expr(start)?;
+                let stop = self.eval_expr(stop)?;
+
+                match (start, stop) {
+                    (Value::Int(start), Value::Int(stop)) => {
+                        for i in start..stop {
+                            // Create new frame for this call
+                            let mut frame = Frame::new();
+                        frame.locals.insert(var.clone(), Value::Int(i));
+
+                            // Push the new frame onto the call stack
+                            self.call_stack.push(frame);
+
+                            // Execute the loop body
+                            for stmt in body {
+                                match self.exec_stmt(stmt)? {
+                                    ControlFlow::Continue(_) => {},
+                                    ControlFlow::Return(v) => {
+                                        // Pop the frame before returning
+                                        self.call_stack.pop();
+                                        return Ok(v);
+                                    }
+                                }
+                            }
+
+                            // Pop the frame after normal completion
+                            self.call_stack.pop();
+                        }
+                    },
+                    _ => return Err("For loop range must be numeric".into())
+                }
+
+                Ok(Value::Unit)
+            }
         }
     }
 
