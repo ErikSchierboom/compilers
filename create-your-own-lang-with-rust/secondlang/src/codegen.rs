@@ -85,7 +85,7 @@ impl<'ctx> CodeGen<'ctx> {
     fn compile_main_wrapper(&mut self, expr: &TypedExpr) -> Result<(), String> {
         // Create __main function: fn() -> i64
         // Always return i64 from main for now
-        let ret_type = self.context.i64_type();
+        let ret_type = self.context.f64_type();
         let fn_type = ret_type.fn_type(&[], false);
         let function = self.module.add_function("__main", fn_type, None);
 
@@ -96,14 +96,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Compile the expression and return its value
         let value = self.compile_expr(expr)?;
-        if value.is_int_value() {
-            self.builder.build_return(Some(&value)).unwrap();
-        } else {
-            // TODO: allow multiple values
-            // If it's a float, we might need to cast it to i64 if we want to return i64
-            let cast = self.builder.build_float_to_signed_int(value.into_float_value(), self.context.i64_type(), "main_cast").unwrap();
-            self.builder.build_return(Some(&cast)).unwrap();
-        }
+        self.builder.build_return(Some(&value)).unwrap();
 
         Ok(())
     }
@@ -613,7 +606,7 @@ impl<'ctx> CodeGen<'ctx> {
 
 // ANCHOR: jit_run
 /// JIT compile and run a program
-pub fn jit_run(program: &Program) -> Result<i64, String> {
+pub fn jit_run(program: &Program) -> Result<f64, String> {
     let context = Context::create();
     let mut codegen = CodeGen::new(&context, "secondlang");
 
@@ -627,7 +620,7 @@ pub fn jit_run(program: &Program) -> Result<i64, String> {
 
     // Call the __main wrapper function which contains the top-level expression
     unsafe {
-        let func: inkwell::execution_engine::JitFunction<unsafe extern "C" fn() -> i64> =
+        let func: inkwell::execution_engine::JitFunction<unsafe extern "C" fn() -> f64> =
             engine.get_function("__main").map_err(|e| e.to_string())?;
         Ok(func.call())
     }
