@@ -35,6 +35,7 @@ fn parse_stmt(pair: Pair<Rule>) -> Result<Stmt, String> {
         Rule::Function => parse_function(inner),
         Rule::Return => parse_return(inner),
         Rule::Assignment => parse_assignment(inner),
+        Rule::Print => parse_print(inner),
         Rule::Expr => Ok(Stmt::Expr(parse_expr(inner)?)),
         // Handle direct expression rules that might appear
         Rule::Conditional | Rule::WhileLoop | Rule::Comparison => {
@@ -65,6 +66,11 @@ fn parse_function(pair: Pair<Rule>) -> Result<Stmt, String> {
     }
 
     Ok(Stmt::Function { name, params, body })
+}
+
+fn parse_print(pair: Pair<Rule>) -> Result<Stmt, String> {
+    let expr = pair.into_inner().next().unwrap();
+    Ok(Stmt::Print(parse_expr(expr)?))
 }
 
 fn parse_block(pair: Pair<Rule>) -> Result<Vec<Stmt>, String> {

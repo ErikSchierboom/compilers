@@ -5,7 +5,7 @@ WHITESPACE = _{ " " | "\t" | NEWLINE }
 COMMENT = _{ "#" ~ (!NEWLINE ~ ANY)* }
 
 // Keywords
-KEYWORD = @{ "def" | "if" | "else" | "while" | "true" | "false" | "return" }
+KEYWORD = @{ "def" | "if" | "else" | "while" | "true" | "false" | "return" | "print" }
 
 // Identifiers (variable/function names)
 Identifier = @{ !KEYWORD ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
@@ -15,7 +15,7 @@ Program = _{ SOI ~ Stmt* ~ EOI }
 
 // Statements
 Stmt = { Function | SimpleStmt }
-SimpleStmt = _{ (Return | Assignment | Expr) }
+SimpleStmt = _{ (Return | Print | Assignment | Expr) }
 
 // Function definition: def name(params) { body }
 Function = { "def" ~ Identifier ~ "(" ~ Params? ~ ")" ~ Block }
@@ -26,6 +26,9 @@ Block = { "{" ~ Stmt* ~ "}" }
 
 // Return statement
 Return = { "return" ~ Expr }
+
+// Print statement
+Print = { "print" ~ "(" ~ Expr ~ ")" }
 
 // Assignment: x = expr
 Assignment = { Identifier ~ "=" ~ Expr }

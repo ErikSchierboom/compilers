@@ -18,6 +18,8 @@ pub enum Stmt {
     },
     /// Return statement: return expr
     Return(Expr),
+    /// Print statement: prints expr
+    Print(Expr),
     /// Assignment: name = expr
     Assignment { name: String, value: Expr },
     /// Expression statement (for side effects or final value)
@@ -93,6 +95,7 @@ impl fmt::Display for Stmt {
             Stmt::Return(expr) => write!(f, "return {}", expr),
             Stmt::Assignment { name, value } => write!(f, "{} = {}", name, value),
             Stmt::Expr(expr) => write!(f, "{}", expr),
+            Stmt::Print(expr) => write!(f, "print({})", expr),
         }
     }
 }

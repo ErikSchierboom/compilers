@@ -116,6 +116,12 @@ impl Interpreter {
                 let value = self.eval_expr(expr)?;
                 Ok(ControlFlow::Continue(value))
             }
+
+            Stmt::Print(expr) => {
+                let value = self.eval_expr(expr)?;
+                println!("{value}");
+                Ok(ControlFlow::Continue(Value::Unit))
+            }
         }
     }
 
