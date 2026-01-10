@@ -80,6 +80,9 @@ pub enum BinaryOp {
     Ge,
     Eq,
     Ne,
+    // Logical
+    And,
+    Or,
 }
 
 // Display implementations for pretty printing
@@ -151,6 +154,8 @@ impl fmt::Display for BinaryOp {
             BinaryOp::Ge => write!(f, ">="),
             BinaryOp::Eq => write!(f, "=="),
             BinaryOp::Ne => write!(f, "!="),
+            BinaryOp::And => write!(f, "and"),
+            BinaryOp::Or => write!(f, "or"),
         }
     }
 }

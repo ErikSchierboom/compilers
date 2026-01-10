@@ -38,7 +38,7 @@ fn parse_stmt(pair: Pair<Rule>) -> Result<Stmt, String> {
         Rule::Print => parse_print(inner),
         Rule::Expr => Ok(Stmt::Expr(parse_expr(inner)?)),
         // Handle direct expression rules that might appear
-        Rule::Conditional | Rule::WhileLoop | Rule::Comparison => {
+        Rule::Conditional | Rule::WhileLoop | Rule::ForLoop | Rule::Logical => {
             Ok(Stmt::Expr(parse_expr(inner)?))
         }
         r => Err(format!("Unexpected statement rule: {:?}", r)),
@@ -104,6 +104,7 @@ fn parse_expr(pair: Pair<Rule>) -> Result<Expr, String> {
         Rule::Conditional => parse_conditional(pair),
         Rule::WhileLoop => parse_while(pair),
         Rule::ForLoop => parse_for(pair),
+        Rule::Logical => parse_binary(pair),
         Rule::Comparison => parse_binary(pair),
         Rule::Additive => parse_binary(pair),
         Rule::Multiplicative => parse_binary(pair),
@@ -166,6 +167,8 @@ fn parse_binary(pair: Pair<Rule>) -> Result<Expr, String> {
             ">=" => BinaryOp::Ge,
             "==" => BinaryOp::Eq,
             "!=" => BinaryOp::Ne,
+            "and" => BinaryOp::And,
+            "or" => BinaryOp::Or,
             s => return Err(format!("Unknown operator: {}", s)),
         };
         let right = parse_expr(inner.next().unwrap())?;

@@ -5,7 +5,7 @@ WHITESPACE = _{ " " | "\t" | NEWLINE }
 COMMENT = _{ "#" ~ (!NEWLINE ~ ANY)* }
 
 // Keywords
-KEYWORD = @{ "def" | "if" | "else" | "while" | "true" | "false" | "return" | "print" }
+KEYWORD = @{ "def" | "if" | "else" | "while" | "true" | "false" | "return" | "print"| "for" | "and" | "or" }
 
 // Identifiers (variable/function names)
 Identifier = @{ !KEYWORD ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
@@ -34,7 +34,7 @@ Print = { "print" ~ "(" ~ Expr ~ ")" }
 Assignment = { Identifier ~ "=" ~ Expr }
 
 // Expressions (ordered by precedence - lowest to highest)
-Expr = { Conditional | WhileLoop | ForLoop | Comparison }
+Expr = { Conditional | WhileLoop | ForLoop | Logical }
 
 // if (cond) { ... } else { ... }
 Conditional = { "if" ~ "(" ~ Expr ~ ")" ~ Block ~ "else" ~ Block }
@@ -44,6 +44,9 @@ WhileLoop = { "while" ~ "(" ~ Expr ~ ")" ~ Block }
 
 // for i in 0..10 { ... }
 ForLoop = { "for" ~ Identifier ~ "in" ~ Int ~ ".." ~ Int ~ Block }
+
+Logical = { Comparison ~ (LogicalOp ~ Comparison)* }
+LogicalOp = { "and" | "or" }
 
 // Comparison operators
 Comparison = { Additive ~ (CompOp ~ Additive)* }
@@ -66,8 +69,11 @@ Call = { Primary ~ CallArgs* }
 CallArgs = { "(" ~ Args? ~ ")" }
 Args = _{ Expr ~ ("," ~ Expr)* }
 
+
+
 // Primary expressions
 Primary = _{ Literal | Identifier | "(" ~ Expr ~ ")" }
+
 
 // Literals
 Literal = { Bool | Int }

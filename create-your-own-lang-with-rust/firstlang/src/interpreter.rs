@@ -144,9 +144,29 @@ impl Interpreter {
             }
 
             Expr::Binary { op, left, right } => {
-                let l = self.eval_expr(left)?;
-                let r = self.eval_expr(right)?;
-                self.eval_binary_op(*op, l, r)
+                match op {
+                    BinaryOp::And => {
+                        let l = self.eval_expr(left)?;
+                        match l {
+                            Value::Bool(false) => Ok(Value::Bool(false)),
+                            Value::Bool(true) => self.eval_expr(right),
+                            _ => Err(format!("Expected boolean left side, got {:?}", left)),
+                        }
+                    }
+                    BinaryOp::Or => {
+                        let l = self.eval_expr(left)?;
+                        match l {
+                            Value::Bool(true) => Ok(Value::Bool(true)),
+                            Value::Bool(false) => self.eval_expr(right),
+                            _ => Err(format!("Expected boolean left side, got {:?}", left)),
+                        }
+                    }
+                    _ => {
+                        let l = self.eval_expr(left)?;
+                        let r = self.eval_expr(right)?;
+                        self.eval_binary_op(*op, l, r)
+                    }
+                }
             }
 
             Expr::Call { name, args } => {

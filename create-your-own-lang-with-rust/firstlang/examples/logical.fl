@@ -1,0 +1,12 @@
+x = 2
+
+def crash() {
+    print(10)
+    return false
+}
+
+if (false and crash()) {
+    print(1)
+} else {
+    print(2)
+}
