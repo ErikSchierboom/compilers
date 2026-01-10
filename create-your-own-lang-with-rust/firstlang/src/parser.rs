@@ -237,6 +237,10 @@ fn parse_literal(pair: Pair<Rule>) -> Result<Expr, String> {
     match inner.as_rule() {
         Rule::Int => Ok(Expr::Int(inner.as_str().parse().unwrap())),
         Rule::Bool => Ok(Expr::Bool(inner.as_str() == "true")),
+        Rule::StringLit => {
+            let slice = inner.as_str();
+            Ok(Expr::String(slice[1..slice.len() - 1].into()))
+        },
         r => Err(format!("Unexpected literal rule: {:?}", r)),
     }
 }

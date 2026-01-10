@@ -69,14 +69,11 @@ Call = { Primary ~ CallArgs* }
 CallArgs = { "(" ~ Args? ~ ")" }
 Args = _{ Expr ~ ("," ~ Expr)* }
 
-
-
 // Primary expressions
 Primary = _{ Literal | Identifier | "(" ~ Expr ~ ")" }
 
-
 // Literals
-Literal = { Bool | Int }
+Literal = { Bool | Int | StringLit }
 Int = @{ ASCII_DIGIT+ }
 Bool = @{ "true" | "false" }
-
+StringLit = { "\"" ~ (!"\"" ~ ANY)* ~ "\"" }

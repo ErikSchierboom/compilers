@@ -15,6 +15,7 @@ use crate::ast::{BinaryOp, Expr, Program, Stmt, UnaryOp};
 pub enum Value {
     Int(i64),
     Bool(bool),
+    String(String),
     /// A function value stores its parameter names and body
     Function {
         params: Vec<String>,
@@ -29,6 +30,7 @@ impl std::fmt::Display for Value {
         match self {
             Value::Int(n) => write!(f, "{}", n),
             Value::Bool(b) => write!(f, "{}", b),
+            Value::String(str) => write!(f, "{}", str),
             Value::Function { params, .. } => write!(f, "<function({})>", params.join(", ")),
             Value::Unit => write!(f, "()"),
         }
@@ -131,6 +133,8 @@ impl Interpreter {
             Expr::Int(n) => Ok(Value::Int(*n)),
 
             Expr::Bool(b) => Ok(Value::Bool(*b)),
+
+            Expr::String(str) => Ok(Value::String(str.clone())),
 
             Expr::Var(name) => self.lookup_var(name),
 
@@ -347,6 +351,7 @@ impl Interpreter {
         match (op, &left, &right) {
             // Arithmetic operations (integers only)
             (BinaryOp::Add, Value::Int(a), Value::Int(b)) => Ok(Value::Int(a + b)),
+            (BinaryOp::Add, Value::String(a), Value::String(b)) => Ok(Value::String(format!("{a}{b}"))),
             (BinaryOp::Sub, Value::Int(a), Value::Int(b)) => Ok(Value::Int(a - b)),
             (BinaryOp::Mul, Value::Int(a), Value::Int(b)) => Ok(Value::Int(a * b)),
             (BinaryOp::Div, Value::Int(a), Value::Int(b)) => {

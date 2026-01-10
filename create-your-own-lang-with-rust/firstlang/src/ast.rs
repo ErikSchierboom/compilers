@@ -33,6 +33,7 @@ pub enum Expr {
     Int(i64),
     /// Boolean literal
     Bool(bool),
+    String(String),
     /// Variable reference
     Var(String),
     /// Unary operation: -x, !x
@@ -110,6 +111,7 @@ impl fmt::Display for Expr {
         match self {
             Expr::Int(n) => write!(f, "{}", n),
             Expr::Bool(b) => write!(f, "{}", b),
+            Expr::String(str) => write!(f, "\"{}\"", str),
             Expr::Var(name) => write!(f, "{}", name),
             Expr::Unary { op, expr } => write!(f, "({}{})", op, expr),
             Expr::Binary { op, left, right } => write!(f, "({} {} {})", left, op, right),
