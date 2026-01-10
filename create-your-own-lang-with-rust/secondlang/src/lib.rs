@@ -43,14 +43,15 @@ pub use parser::parse;
 pub use typeck::typecheck;
 pub use types::Type;
 pub use visitor::{AlgebraicSimplifier, ConstantFolder, ExprVisitor, PrettyPrinter};
+use crate::codegen::ReturnValue;
 
 /// Convenience function to compile and run source code
-pub fn run(source: &str) -> Result<f64, String> {
+pub fn run(source: &str) -> Result<ReturnValue, String> {
     run_with_opts(source, false)
 }
 
 /// Compile and run with optional optimizations
-pub fn run_with_opts(source: &str, optimize: bool) -> Result<f64, String> {
+pub fn run_with_opts(source: &str, optimize: bool) -> Result<ReturnValue, String> {
     let mut program = parse(source)?;
     typecheck(&mut program)?;
 

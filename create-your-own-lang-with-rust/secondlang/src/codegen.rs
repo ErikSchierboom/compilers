@@ -3,7 +3,7 @@
 //! This module generates LLVM IR from the typed AST using inkwell.
 
 use std::collections::HashMap;
-
+use std::fmt::{Display, Formatter};
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
@@ -46,7 +46,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     // ANCHOR: compile
     /// Compile a program and return the module
-    pub fn compile(&mut self, program: &Program) -> Result<(), String> {
+    pub fn compile(&mut self, program: &Program) -> Result<Type, String> {
         // First pass: declare all functions
         for stmt in program {
             if let Stmt::Function {
@@ -68,24 +68,26 @@ impl<'ctx> CodeGen<'ctx> {
         }
 
         // Third pass: create __main wrapper for top-level expression
-        if let Some(Stmt::Expr(expr)) = program.last() {
+        let ret_type = if let Some(Stmt::Expr(expr)) = program.last() {
             self.compile_main_wrapper(expr)?;
-        }
+            expr.ty.clone()
+        } else {
+            Type::Int
+        };
 
         // Verify module
         self.module
             .verify()
             .map_err(|e| format!("Module verification failed: {}", e.to_string()))?;
 
-        Ok(())
+        Ok(ret_type)
     }
     // ANCHOR_END: compile
 
     /// Create a __main wrapper function for top-level expression
     fn compile_main_wrapper(&mut self, expr: &TypedExpr) -> Result<(), String> {
-        // Create __main function: fn() -> i64
-        // Always return i64 from main for now
-        let ret_type = self.context.f64_type();
+        // Create __main function: fn() -> i64|f64
+        let ret_type: BasicTypeEnum = if expr.ty == Type::Float { self.context.f64_type().into() } else { self.context.i64_type().into() };
         let fn_type = ret_type.fn_type(&[], false);
         let function = self.module.add_function("__main", fn_type, None);
 
@@ -604,13 +606,27 @@ impl<'ctx> CodeGen<'ctx> {
     }
 }
 
+pub enum ReturnValue {
+    Int(i64),
+    Float(f64)
+}
+
+impl Display for ReturnValue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ReturnValue::Int(i) => write!(f, "{i}"),
+            ReturnValue::Float(float) => write!(f, "{float}")
+        }
+    }
+}
+
 // ANCHOR: jit_run
 /// JIT compile and run a program
-pub fn jit_run(program: &Program) -> Result<f64, String> {
+pub fn jit_run(program: &Program) -> Result<ReturnValue, String> {
     let context = Context::create();
     let mut codegen = CodeGen::new(&context, "secondlang");
 
-    codegen.compile(program)?;
+    let ret_type = codegen.compile(program)?;
 
     // Create execution engine
     let engine = codegen
@@ -620,9 +636,15 @@ pub fn jit_run(program: &Program) -> Result<f64, String> {
 
     // Call the __main wrapper function which contains the top-level expression
     unsafe {
-        let func: inkwell::execution_engine::JitFunction<unsafe extern "C" fn() -> f64> =
-            engine.get_function("__main").map_err(|e| e.to_string())?;
-        Ok(func.call())
+        if ret_type == Type::Float {
+            let func: inkwell::execution_engine::JitFunction<unsafe extern "C" fn() -> f64> =
+                engine.get_function("__main").map_err(|e| e.to_string())?;
+            Ok(ReturnValue::Float(func.call()))
+        } else {
+            let func: inkwell::execution_engine::JitFunction<unsafe extern "C" fn() -> i64> =
+                engine.get_function("__main").map_err(|e| e.to_string())?;
+            Ok(ReturnValue::Int(func.call()))
+        }
     }
 }
 // ANCHOR_END: jit_run
