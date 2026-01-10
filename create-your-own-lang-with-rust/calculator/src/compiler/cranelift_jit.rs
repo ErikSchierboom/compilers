@@ -17,77 +17,42 @@ impl Compile for CraneliftJit {
     type Output = Result<Vec<ReturnValue>>;
 
     fn from_ast(ast: Vec<Node>) -> Self::Output {
-        let mut values = Vec::new();
-
         let i32 = cranelift::prelude::types::I32;
         let f32 = cranelift::prelude::types::F32;
 
-        for (node_index, node) in ast.into_iter().enumerate() {
-            let jit_builder = JITBuilder::new(cranelift_module::default_libcall_names())?;
-            let mut jit_module = JITModule::new(jit_builder);
-            let mut ctx = jit_module.make_context();
-            let mut func_ctx = FunctionBuilderContext::new();
-            let mut function_builder = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
+        let jit_builder = JITBuilder::new(cranelift_module::default_libcall_names())?;
+        let mut jit_module = JITModule::new(jit_builder);
+        let mut ctx = jit_module.make_context();
+        let mut func_ctx = FunctionBuilderContext::new();
 
-            let entry_block = function_builder.create_block();
-            function_builder.switch_to_block(entry_block);
-            function_builder.seal_block(entry_block);
+        let values = ast.into_iter().enumerate().map(|(idx, node)| {
+            let mut builder = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
+            let entry_block = builder.create_block();
+            builder.switch_to_block(entry_block);
+            builder.seal_block(entry_block);
 
-            let result = RecursiveBuilder::build(i32, f32, &mut function_builder, &node);
+            let result = RecursiveBuilder::build(i32, f32, &mut builder, &node);
+            let is_int = matches!(result, BuildValue::Int(_));
+            let value = match result { BuildValue::Int(v) | BuildValue::Float(v) => v };
 
-            match result {
-                BuildValue::Int(value) => {
-                    function_builder.ins().return_(&[value]);
-                    let sig = &mut function_builder.func.signature;
-                    sig.returns.push(AbiParam::new(i32));
-                }
-                BuildValue::Float(value) => {
-                    function_builder.ins().return_(&[value]);
-                    let sig = &mut function_builder.func.signature;
-                    sig.returns.push(AbiParam::new(f32));
-                }
-            }
+            builder.ins().return_(&[value]);
+            builder.func.signature.returns.push(AbiParam::new(if is_int { i32 } else { f32 }));
+            builder.finalize();
 
-            function_builder.finalize();
-
-            let id = jit_module
-                .declare_function(&format!("jit_func_{}", node_index), Linkage::Export, &ctx.func.signature)
-                .map_err(|e| e.to_string())
-                .unwrap();
-
-            // Define the function to jit. This finishes compilation, although
-            // there may be outstanding relocations to perform. Currently, jit
-            // cannot finish relocations until all functions to be called are
-            // defined. For this toy demo for now, we'll just finalize the
-            // function below.
-            jit_module
-                .define_function(id, &mut ctx)
-                .map_err(|e| e.to_string())
-                .unwrap();
-
-            // Now that compilation is finished, we can clear out the context state.
+            let id = jit_module.declare_function(&format!("f{}", idx), Linkage::Export, &ctx.func.signature).unwrap();
+            jit_module.define_function(id, &mut ctx).unwrap();
             jit_module.clear_context(&mut ctx);
-
             jit_module.finalize_definitions().unwrap();
 
             let code_ptr = jit_module.get_finalized_function(id);
-
-            // Cast the raw pointer to a typed function pointer. This is unsafe, because
-            // this is the critical point where you have to trust that the generated code
-            // is safe to be called.
             unsafe {
-                match result {
-                    BuildValue::Int(_) => {
-                        let code_fn = mem::transmute::<_, fn() -> i32>(code_ptr);
-                        values.push(ReturnValue::Int(code_fn()))
-                    }
-                    BuildValue::Float(_) => {
-                        let code_fn = mem::transmute::<_, fn() -> f32>(code_ptr);
-                        values.push(ReturnValue::Float(code_fn()))
-                    }
+                if is_int {
+                    ReturnValue::Int(mem::transmute::<_, fn() -> i32>(code_ptr)())
+                } else {
+                    ReturnValue::Float(mem::transmute::<_, fn() -> f32>(code_ptr)())
                 }
             }
-        }
+        }).collect();
 
         Ok(values)
     }
