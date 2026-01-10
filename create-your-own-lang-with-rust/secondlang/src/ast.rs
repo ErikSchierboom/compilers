@@ -60,6 +60,8 @@ impl TypedExpr {
 pub enum Expr {
     /// Integer literal
     Int(i64),
+    /// Float literal
+    Float(f64),
     /// Boolean literal
     Bool(bool),
     /// Variable reference
@@ -163,6 +165,7 @@ impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Expr::Int(n) => write!(f, "{}", n),
+            Expr::Float(n) => write!(f, "{}", n),
             Expr::Bool(b) => write!(f, "{}", b),
             Expr::Var(name) => write!(f, "{}", name),
             Expr::Unary { op, expr } => write!(f, "({}{})", op, expr.expr),

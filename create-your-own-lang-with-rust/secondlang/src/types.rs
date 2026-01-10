@@ -11,6 +11,8 @@ use std::fmt;
 pub enum Type {
     /// Integer type (64-bit signed)
     Int,
+    /// Float type (64-bit signed)
+    Float,
     /// Boolean type
     Bool,
     /// Function type: (param_types) -> return_type
@@ -26,7 +28,7 @@ impl Type {
     /// Check if this type is fully resolved (no Unknown types)
     pub fn is_resolved(&self) -> bool {
         match self {
-            Type::Int | Type::Bool | Type::Unit => true,
+            Type::Int | Type::Float | Type::Bool | Type::Unit => true,
             Type::Unknown => false,
             Type::Function { params, ret } => {
                 params.iter().all(|t| t.is_resolved()) && ret.is_resolved()
@@ -41,6 +43,7 @@ impl Type {
         match (self, other) {
             // Same types unify
             (Type::Int, Type::Int) => Ok(Type::Int),
+            (Type::Float, Type::Float) => Ok(Type::Float),
             (Type::Bool, Type::Bool) => Ok(Type::Bool),
             (Type::Unit, Type::Unit) => Ok(Type::Unit),
 
@@ -81,6 +84,7 @@ impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Type::Int => write!(f, "int"),
+            Type::Float => write!(f, "float"),
             Type::Bool => write!(f, "bool"),
             Type::Unit => write!(f, "()"),
             Type::Unknown => write!(f, "?"),

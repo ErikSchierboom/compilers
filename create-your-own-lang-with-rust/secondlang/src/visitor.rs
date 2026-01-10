@@ -21,6 +21,7 @@ pub trait ExprVisitor {
     fn visit_expr(&mut self, expr: &TypedExpr) -> TypedExpr {
         let new_expr = match &expr.expr {
             Expr::Int(n) => self.visit_int(*n),
+            Expr::Float(n) => self.visit_float(*n),
             Expr::Bool(b) => self.visit_bool(*b),
             Expr::Var(name) => self.visit_var(name),
             Expr::Unary { op, expr: inner } => self.visit_unary(*op, inner),
@@ -42,6 +43,10 @@ pub trait ExprVisitor {
 
     fn visit_int(&mut self, n: i64) -> Expr {
         Expr::Int(n)
+    }
+
+    fn visit_float(&mut self, f: f64) -> Expr {
+        Expr::Float(f)
     }
 
     fn visit_bool(&mut self, b: bool) -> Expr {
@@ -228,6 +233,7 @@ impl PrettyPrinter {
     fn format_expr(&self, expr: &TypedExpr) -> String {
         match &expr.expr {
             Expr::Int(n) => n.to_string(),
+            Expr::Float(f) => f.to_string(),
             Expr::Bool(b) => b.to_string(),
             Expr::Var(name) => name.clone(),
             Expr::Unary { op, expr } => format!("{}{}", op, self.format_expr(expr)),

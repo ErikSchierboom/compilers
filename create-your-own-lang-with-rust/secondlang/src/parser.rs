@@ -84,6 +84,7 @@ fn parse_type(pair: Pair<Rule>) -> Result<Type, String> {
     match pair.as_rule() {
         Rule::Type => parse_type(pair.into_inner().next().unwrap()),
         Rule::IntType => Ok(Type::Int),
+        Rule::FloatType => Ok(Type::Float),
         Rule::BoolType => Ok(Type::Bool),
         r => Err(format!("Unexpected type rule: {:?}", r)),
     }
@@ -145,6 +146,7 @@ fn parse_expr(pair: Pair<Rule>) -> Result<TypedExpr, String> {
         Rule::Call => return parse_call(pair),
         Rule::Literal => parse_literal(pair)?,
         Rule::Int => Expr::Int(pair.as_str().parse().unwrap()),
+        Rule::Float => Expr::Float(pair.as_str().parse().unwrap()),
         Rule::Bool => Expr::Bool(pair.as_str() == "true"),
         Rule::Identifier => Expr::Var(pair.as_str().to_string()),
         Rule::Block => {
@@ -255,6 +257,7 @@ fn parse_literal(pair: Pair<Rule>) -> Result<Expr, String> {
     let inner = pair.into_inner().next().unwrap();
     match inner.as_rule() {
         Rule::Int => Ok(Expr::Int(inner.as_str().parse().unwrap())),
+        Rule::Float => Ok(Expr::Float(inner.as_str().parse().unwrap())),
         Rule::Bool => Ok(Expr::Bool(inner.as_str() == "true")),
         r => Err(format!("Unexpected literal rule: {:?}", r)),
     }

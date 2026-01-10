@@ -11,7 +11,8 @@ KEYWORD = @{ "def" | "if" | "else" | "while" | "true" | "false" | "return" | "in
 Identifier = @{ !KEYWORD ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
 // Types
-Type = { IntType | BoolType }
+Type = { FloatType | IntType | BoolType }
+FloatType = { "float" }
 IntType = { "int" }
 BoolType = { "bool" }
 
@@ -71,7 +72,8 @@ Args = _{ Expr ~ ("," ~ Expr)* }
 Primary = _{ Literal | Identifier | "(" ~ Expr ~ ")" }
 
 // Literals
-Literal = { Bool | Int }
+Literal = { Bool | Float | Int }
+Float = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 Int = @{ ASCII_DIGIT+ }
 Bool = @{ "true" | "false" }
 

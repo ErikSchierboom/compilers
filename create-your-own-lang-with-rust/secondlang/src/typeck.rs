@@ -111,6 +111,10 @@ fn typecheck_expr(expr: &mut TypedExpr, env: &TypeEnv) -> Result<(), String> {
             expr.ty = Type::Int;
         }
 
+        Expr::Float(_) => {
+            expr.ty = Type::Float;
+        }
+
         Expr::Bool(_) => {
             expr.ty = Type::Bool;
         }
