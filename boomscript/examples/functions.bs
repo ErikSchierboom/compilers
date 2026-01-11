@@ -1,0 +1,11 @@
+fn no_args() -> int {
+    42
+}
+
+fn one_arg(x: int) -> int {
+    x + 1
+}
+
+fn two_args(x: int, y: int) -> int {
+    x + y
+}

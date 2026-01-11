@@ -1,0 +1,10 @@
+fn fact (x: int) -> int {
+    fact(x, 1)
+}
+
+fn fact (x: int) (acc: int) -> int {
+    match x {
+        0 => acc,
+        _ => fact(x - 1, x * acc),
+    }
+}
