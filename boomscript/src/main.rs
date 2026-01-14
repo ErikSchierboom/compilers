@@ -3,6 +3,7 @@ use crate::lexer::tokenize;
 
 mod lexer;
 mod location;
+mod parser;
 
 fn main() {
 
