@@ -82,7 +82,13 @@ pub enum UntypedExpr {
     },
     Binary {
         left: Box<Self>,
+        op: BinaryOperator,
         right: Box<Self>,
+        span: Span
+    },
+    Unary {
+        value: Box<Self>,
+        op: UnaryOperator,
         span: Span
     }
 }
@@ -96,18 +102,28 @@ impl UntypedExpr {
             UntypedExpr::String { span, .. } |
             UntypedExpr::Var { span, .. } |
             UntypedExpr::Call { span, .. } |
-            UntypedExpr::Binary { span, .. } => span
+            UntypedExpr::Binary { span, .. } |
+            UntypedExpr::Unary { span, .. } => span
         }
     }
 }
 
 #[derive(Debug)]
 pub enum BinaryOperator {
-    // Math operators
+    // Numeric
     Add,
     Sub,
     Mul,
     Div
+}
+
+#[derive(Debug)]
+pub enum UnaryOperator {
+    // Logical
+    Not,
+    
+    // Numeric
+    Neg,
 }
 
 struct Parser<'a, T: Iterator<Item = Token>> {
