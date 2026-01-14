@@ -12,8 +12,8 @@ pub enum LexicalErrorKind {
 
 #[derive(Debug)]
 pub struct LexicalError {
-    kind: LexicalErrorKind,
-    span: Span
+    pub kind: LexicalErrorKind,
+    pub span: Span
 }
 
 impl LexicalError {
@@ -54,8 +54,8 @@ pub enum TokenKind {
 
 #[derive(Debug)]
 pub struct Token {
-    kind: TokenKind,
-    span: Span
+    pub kind: TokenKind,
+    pub span: Span
 }
 
 impl Token {
