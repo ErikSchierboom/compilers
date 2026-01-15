@@ -90,6 +90,10 @@ pub enum UntypedExpr {
         value: Box<Self>,
         op: UnaryOperator,
         span: Span
+    },
+    Grouping {
+        inner: Box<Self>,
+        span: Span
     }
 }
 
@@ -103,7 +107,8 @@ impl UntypedExpr {
             UntypedExpr::Var { span, .. } |
             UntypedExpr::Call { span, .. } |
             UntypedExpr::Binary { span, .. } |
-            UntypedExpr::Unary { span, .. } => span
+            UntypedExpr::Unary { span, .. } |
+            UntypedExpr::Grouping { span, .. }=> span
         }
     }
 }
