@@ -215,6 +215,10 @@ impl<'a, T: Iterator<Item = Token>> Parser<'a, T> {
                     .replace("\\\"", "\"");
                 Some(Ok(UntypedExpr::String { value, span }))
             }
+            TokenKind::Name => {
+                let name = self.lexeme(&span).into();
+                Some(Ok(UntypedExpr::Var { name, span }))
+            }
 
             _ => todo!("parse other expressions")
             // TODO: implement Pratt parser
