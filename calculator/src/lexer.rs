@@ -26,9 +26,8 @@ impl<'a> Lexer<'a> {
         Self { chars: code.chars().peekable() }
     }
 
-    fn tokenize(&mut self) -> Result<Vec<Token>, Vec<LexicalError>> {
+    fn tokenize(&mut self) -> Result<Vec<Token>, LexicalError> {
         let mut tokens = Vec::new();
-        let mut errors = Vec::new();
 
         while let Some(c) = self.chars.next() {
             match c {
@@ -48,19 +47,15 @@ impl<'a> Lexer<'a> {
 
                 tokens.push(Token::Number(number))
                 }
-                _ => errors.push(LexicalError::UnexpectedCharacter(c))
+                _ => return Err(LexicalError::UnexpectedCharacter(c))
             }
         }
 
-        if errors.is_empty() {
-            Ok(tokens)
-        } else {
-            Err(errors)
-        }
+        Ok(tokens)
     }
 }
 
-pub fn tokenize(code: &str) -> Result<Vec<Token>, Vec<LexicalError>> {
+pub fn tokenize(code: &str) -> Result<Vec<Token>, LexicalError> {
     let mut lexer = Lexer::new(code);
     lexer.tokenize()
 }
