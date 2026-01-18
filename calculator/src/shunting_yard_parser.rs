@@ -15,15 +15,20 @@ impl<I: Iterator<Item = Token>> ShuntingYardParser<I> {
     }
 
     pub fn parse(&mut self) -> Result<Expression, ParseError> {
-        let mut output = VecDeque::new();
+        let output = self.tokens_to_rpn()?;
+        Self::rpn_to_expression(output)?
+    }
+
+    fn tokens_to_rpn(&mut self) -> Result<Vec<Token>, ParseError> {
+        let mut output = Vec::new();
         let mut operators = Vec::new();
 
         while let Some(token) = self.tokens.next() {
             match &token {
-                Token::Number(_) => output.push_back(token),
+                Token::Number(_) => output.push(token),
                 Token::Plus | Token::Minus | Token::Star | Token::Slash => {
                     while let Some(operator) = operators.pop_if(|top| !matches!(top, Token::LParen) && top.precedence() > token.precedence()) {
-                        output.push_back(operator)
+                        output.push(operator)
                     }
 
                     operators.push(token)
@@ -31,7 +36,7 @@ impl<I: Iterator<Item = Token>> ShuntingYardParser<I> {
                 Token::LParen => operators.push(token),
                 Token::RParen => {
                     while let Some(operator) = operators.pop_if(|top| !matches!(top, Token::LParen)) {
-                        output.push_back(operator)
+                        output.push(operator)
                     }
 
                     if let None = operators.pop_if(|token| matches!(token, Token::LParen)) {
@@ -46,40 +51,31 @@ impl<I: Iterator<Item = Token>> ShuntingYardParser<I> {
                 return Err(ParseError::UnexpectedToken(operator))
             }
 
-            output.push_back(operator)
+            output.push(operator)
         }
 
+        Ok(output)
+    }
+
+    fn rpn_to_expression(output: Vec<Token>) -> Result<Result<Expression, ParseError>, ParseError> {
         let mut stack = Vec::new();
+        let mut output = VecDeque::from(output);
 
         while let Some(token) = output.pop_front() {
             match token {
                 Token::Number(i) => stack.push(Expression::Number(i)),
-                Token::Plus => {
+                Token::Plus | Token::Minus | Token::Star | Token::Slash => {
                     let right = stack.pop().ok_or_else(|| ParseError::MissingOperand)?;
                     let left = stack.pop().ok_or_else(|| ParseError::MissingOperand)?;
-                stack.push(Expression::Binary(Box::new(left), BinaryOperator::Add, Box::new(right)))
-                }
-                Token::Minus => {
-                    let right = stack.pop().ok_or_else(|| ParseError::MissingOperand)?;
-                    let left = stack.pop().ok_or_else(|| ParseError::MissingOperand)?;
-                    stack.push(Expression::Binary(Box::new(left), BinaryOperator::Sub, Box::new(right)))
-                }
-                Token::Star => {
-                    let right = stack.pop().ok_or_else(|| ParseError::MissingOperand)?;
-                    let left = stack.pop().ok_or_else(|| ParseError::MissingOperand)?;
-                    stack.push(Expression::Binary(Box::new(left), BinaryOperator::Mul, Box::new(right)))
-                }
-                Token::Slash => {
-                    let right = stack.pop().ok_or_else(|| ParseError::MissingOperand)?;
-                    let left = stack.pop().ok_or_else(|| ParseError::MissingOperand)?;
-                    stack.push(Expression::Binary(Box::new(left), BinaryOperator::Div, Box::new(right)))
+                    let operator: BinaryOperator = token.into();
+                    stack.push(Expression::Binary(Box::new(left), operator, Box::new(right)))
                 }
                 Token::LParen => todo!(),
                 Token::RParen => todo!(),
             }
         }
 
-        stack.pop().ok_or_else(|| ParseError::UnexpectedEndOfFile)
+        Ok(stack.pop().ok_or_else(|| ParseError::UnexpectedEndOfFile))
     }
 }
 
