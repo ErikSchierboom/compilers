@@ -4,17 +4,11 @@ use std::iter::Peekable;
 
 #[derive(Debug, PartialOrd, PartialEq)]
 enum Precedence {
-    PREC_NONE,
-    PREC_ASSIGNMENT,  // =
-    PREC_OR,          // or
-    PREC_AND,         // and
-    PREC_EQUALITY,    // == !=
-    PREC_COMPARISON,  // < > <= >=
-    PREC_TERM,        // + -
-    PREC_FACTOR,      // * /
-    PREC_UNARY,       // ! -
-    PREC_CALL,        // . ()
-    PREC_PRIMARY
+    None,
+    Term,
+    Factor,
+    Unary,
+    Call
 }
 
 struct PrattParser<I: Iterator<Item = Token>> {
@@ -32,9 +26,9 @@ impl<I: Iterator<Item = Token>> PrattParser<I> {
         token: &Token,
     ) -> Option<(for<'a> fn(&'a mut PrattParser<I>, Token) -> Result<Expression, ParseError>, Precedence)> {
         match token {
-            Token::Number(_) => Some((Self::parse_number, Precedence::PREC_NONE)),
-            Token::Plus | Token::Minus => Some((Self::parse_unary, Precedence::PREC_TERM)),
-            Token::LParen => Some((Self::parse_grouping, Precedence::PREC_CALL)),
+            Token::Number(_) => Some((Self::parse_number, Precedence::None)),
+            Token::Plus | Token::Minus => Some((Self::parse_unary, Precedence::Term)),
+            Token::LParen => Some((Self::parse_grouping, Precedence::Call)),
             Token::Star | Token::Slash | Token::RParen => None
         }
     }
@@ -43,14 +37,14 @@ impl<I: Iterator<Item = Token>> PrattParser<I> {
         token: &Token,
     ) -> Option<(for<'a> fn(&'a mut PrattParser<I>, Expression, Token, Precedence) -> Result<Expression, ParseError>, Precedence)> {
         match token {
-            Token::Plus | Token::Minus => Some((Self::parse_binary, Precedence::PREC_TERM)),
-            Token::Star | Token::Slash => Some((Self::parse_binary, Precedence::PREC_FACTOR)),
+            Token::Plus | Token::Minus => Some((Self::parse_binary, Precedence::Term)),
+            Token::Star | Token::Slash => Some((Self::parse_binary, Precedence::Factor)),
             Token::Number(_) | Token::LParen | Token::RParen => None
         }
     }
 
     pub fn parse(&mut self) -> Result<Expression, ParseError> {
-        self.parse_precedence(Precedence::PREC_NONE)
+        self.parse_precedence(Precedence::None)
     }
 
     pub fn parse_precedence(&mut self, precedence: Precedence) -> Result<Expression, ParseError> {
@@ -89,7 +83,7 @@ impl<I: Iterator<Item = Token>> PrattParser<I> {
     fn parse_unary(&mut self, token: Token) -> Result<Expression, ParseError> {
         let operator: UnaryOperator = token.into();
         // parse right-hand side with unary precedence
-        let right = self.parse_precedence(Precedence::PREC_UNARY)?;
+        let right = self.parse_precedence(Precedence::Unary)?;
         Ok(Expression::Unary(Box::new(right), operator))
     }
 
