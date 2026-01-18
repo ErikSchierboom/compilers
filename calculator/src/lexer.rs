@@ -3,7 +3,7 @@ pub enum LexicalError {
     UnexpectedCharacter(char)
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Token {
     Number(i64),
     Plus,

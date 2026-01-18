@@ -12,7 +12,7 @@ mod pratt_parser;
 mod interpreter;
 
 fn main() {
-    const CODE: &str = "(1 + 2) * 3";
+    const CODE: &str = "(-1 + 4) * 3 + 2";
 
     println!("{:?}", evaluate(CODE))
 }
