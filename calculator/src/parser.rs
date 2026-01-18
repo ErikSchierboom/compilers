@@ -6,7 +6,7 @@ pub enum ParseError {
     UnexpectedEndOfFile,
     ExpectedToken(Token),
     UnexpectedToken(Token),
-    MissingOperand,
+    ExpectedExpression,
 }
 
 #[derive(Debug)]
@@ -31,16 +31,6 @@ pub enum UnaryOperator {
     Neg,
 }
 
-impl Token {
-    pub fn precedence(&self) -> u8 {
-        match self {
-            Token::Plus | Token::Minus => 1,
-            Token::Star | Token::Slash => 2,
-            Token::Number(_) | Token::LParen | Token::RParen => 0
-        }
-    }
-}
-
 impl From<Token> for UnaryOperator {
     fn from(value: Token) -> Self {
         match value {
@@ -63,17 +53,14 @@ impl From<Token> for BinaryOperator {
     }
 }
 
-// TODO: implement Shunting Yard parser
-// TODO: implement Pratt parse
-
 pub fn parse(code: &str) -> Result<Expression, ParseError> {
     #[cfg(feature = "parser_recursive_descent")]
     {
         crate::recursive_descent_parser::recursive_descent_parse(code)
     }
 
-    #[cfg(feature = "parser_shunting_yard")]
+    #[cfg(feature = "parser_pratt")]
     {
-        crate::shunting_yard_parser::shunting_yard_parse(code)
+        crate::pratt_parser::pratt_parse(code)
     }
 }

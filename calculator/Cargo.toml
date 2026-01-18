@@ -6,8 +6,7 @@ edition = "2024"
 [dependencies]
 
 [features]
-default = ["parser_shunting_yard"]
+default = ["parser_pratt"]
 parser_recursive_descent = []
-parser_shunting_yard = []
 parser_pratt = []
 
