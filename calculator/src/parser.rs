@@ -1,5 +1,5 @@
 use crate::lexer::{tokenize, LexicalError, Token};
-use crate::recursive_descent_parser::RecursiveDescentParser;
+use crate::recursive_descent_parser::{recursive_descent_parse};
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -60,7 +60,7 @@ impl From<Token> for BinaryOperator {
 
 pub fn parse(code: &str) -> Result<Expression, ParseError> {
     match tokenize(code) {
-        Ok(tokens) => RecursiveDescentParser::new(tokens.into_iter()).parse(),
+        Ok(tokens) => recursive_descent_parse(tokens),
         Err(error) => Err(ParseError::Lexical(error)),
     }
 }

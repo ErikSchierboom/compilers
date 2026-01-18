@@ -2,12 +2,12 @@ use std::iter::Peekable;
 use crate::lexer::Token;
 use crate::parser::{BinaryOperator, Expression, ParseError, UnaryOperator};
 
-pub struct RecursiveDescentParser<T: Iterator<Item = Token>> {
-    tokens: Peekable<T>,
+struct RecursiveDescentParser<I: Iterator<Item = Token>> {
+    tokens: Peekable<I>,
 }
 
-impl<T: Iterator<Item = Token>> RecursiveDescentParser<T> {
-    pub fn new(tokens: T) -> Self {
+impl<I: Iterator<Item = Token>> RecursiveDescentParser<I> {
+    pub fn new(tokens: I) -> Self {
         Self {
             tokens: tokens.peekable(),
         }
@@ -67,7 +67,12 @@ impl<T: Iterator<Item = Token>> RecursiveDescentParser<T> {
                     Err(ParseError::ExpectedToken(Token::RParen))
                 }
             }
-            Some(token) => Err(ParseError::UnexpectedToken(token)) 
+            Some(token) => Err(ParseError::UnexpectedToken(token))
         }
     }
+}
+
+pub fn recursive_descent_parse(tokens: Vec<Token>) -> Result<Expression, ParseError> {
+    let mut parser = RecursiveDescentParser::new(tokens.into_iter());
+    parser.parse()
 }
