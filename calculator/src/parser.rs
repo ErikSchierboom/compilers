@@ -1,5 +1,5 @@
-use crate::lexer::{tokenize, LexicalError, Token};
-use crate::recursive_descent_parser::{recursive_descent_parse};
+use crate::lexer::{LexicalError, Token};
+use crate::recursive_descent_parser::recursive_descent_parse;
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -53,14 +53,10 @@ impl From<Token> for BinaryOperator {
     }
 }
 
-// TODO: add trait
-// TODO: implement recursive descent parser
 // TODO: implement Shunting Yard parser
-// TODO: implement Pratt parser
+// TODO: implement Pratt parse
 
 pub fn parse(code: &str) -> Result<Expression, ParseError> {
-    match tokenize(code) {
-        Ok(tokens) => recursive_descent_parse(tokens),
-        Err(error) => Err(ParseError::Lexical(error)),
-    }
+    #[cfg(feature = "parser_recursive_descent")]
+    recursive_descent_parse(code)
 }

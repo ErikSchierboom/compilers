@@ -1,5 +1,5 @@
 use std::iter::Peekable;
-use crate::lexer::Token;
+use crate::lexer::{tokenize, Token};
 use crate::parser::{BinaryOperator, Expression, ParseError, UnaryOperator};
 
 struct RecursiveDescentParser<I: Iterator<Item = Token>> {
@@ -72,7 +72,9 @@ impl<I: Iterator<Item = Token>> RecursiveDescentParser<I> {
     }
 }
 
-pub fn recursive_descent_parse(tokens: Vec<Token>) -> Result<Expression, ParseError> {
-    let mut parser = RecursiveDescentParser::new(tokens.into_iter());
-    parser.parse()
+pub fn recursive_descent_parse(code: &str) -> Result<Expression, ParseError> {
+    match tokenize(code) {
+        Ok(tokens) => RecursiveDescentParser::new(tokens.into_iter()).parse(),
+        Err(error) => Err(ParseError::Lexical(error)),
+    }
 }

@@ -4,3 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+
+[features]
+default = ["parser_recursive_descent"]
+parser_recursive_descent = []
+parser_shunting_yard = []
+parser_pratt = []
+
