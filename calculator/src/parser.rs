@@ -1,5 +1,4 @@
 use crate::lexer::{LexicalError, Token};
-use crate::recursive_descent_parser::recursive_descent_parse;
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -7,6 +6,7 @@ pub enum ParseError {
     UnexpectedEndOfFile,
     ExpectedToken(Token),
     UnexpectedToken(Token),
+    MissingOperand,
 }
 
 #[derive(Debug)]
@@ -29,6 +29,16 @@ pub enum BinaryOperator {
 pub enum UnaryOperator {
     Pos,
     Neg,
+}
+
+impl Token {
+    pub fn precedence(&self) -> u8 {
+        match self {
+            Token::Plus | Token::Minus => 1,
+            Token::Star | Token::Slash => 2,
+            Token::Number(_) | Token::LParen | Token::RParen => 0
+        }
+    }
 }
 
 impl From<Token> for UnaryOperator {
@@ -58,5 +68,12 @@ impl From<Token> for BinaryOperator {
 
 pub fn parse(code: &str) -> Result<Expression, ParseError> {
     #[cfg(feature = "parser_recursive_descent")]
-    recursive_descent_parse(code)
+    {
+        crate::recursive_descent_parser::recursive_descent_parse(code)
+    }
+
+    #[cfg(feature = "parser_shunting_yard")]
+    {
+        crate::shunting_yard_parser::shunting_yard_parse(code)
+    }
 }
