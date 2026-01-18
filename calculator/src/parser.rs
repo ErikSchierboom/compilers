@@ -1,4 +1,3 @@
-use std::iter::Peekable;
 use crate::lexer::{tokenize, LexicalError, Token};
 use crate::recursive_descent_parser::RecursiveDescentParser;
 
@@ -10,6 +9,7 @@ pub enum ParseError {
     UnexpectedToken(Token),
 }
 
+#[derive(Debug)]
 pub enum Expression {
     Number(i64),
     Unary(Box<Expression>, UnaryOperator),
@@ -57,8 +57,6 @@ impl From<Token> for BinaryOperator {
 // TODO: implement recursive descent parser
 // TODO: implement Shunting Yard parser
 // TODO: implement Pratt parser
-
-
 
 pub fn parse(code: &str) -> Result<Expression, ParseError> {
     match tokenize(code) {
