@@ -1,11 +1,11 @@
-use crate::lexer::{LexicalError, Token};
+use crate::lexer::{LexicalError, TokenKind};
 
 #[derive(Debug)]
 pub enum ParseError {
     Lexical(LexicalError),
     UnexpectedEndOfFile,
-    ExpectedToken(Token),
-    UnexpectedToken(Token),
+    ExpectedToken(TokenKind),
+    UnexpectedToken(TokenKind),
     ExpectedExpression,
 }
 
@@ -31,23 +31,23 @@ pub enum UnaryOperator {
     Neg,
 }
 
-impl From<Token> for UnaryOperator {
-    fn from(value: Token) -> Self {
+impl From<TokenKind> for UnaryOperator {
+    fn from(value: TokenKind) -> Self {
         match value {
-            Token::Plus => Self::Pos,
-            Token::Minus => Self::Neg,
+            TokenKind::Plus => Self::Pos,
+            TokenKind::Minus => Self::Neg,
             _ => panic!("cannot convert token to unary operator")
         }
     }
 }
 
-impl From<Token> for BinaryOperator {
-    fn from(value: Token) -> Self {
+impl From<TokenKind> for BinaryOperator {
+    fn from(value: TokenKind) -> Self {
         match value {
-            Token::Plus => Self::Add,
-            Token::Minus => Self::Sub,
-            Token::Star => Self::Mul,
-            Token::Slash => Self::Div,
+            TokenKind::Plus => Self::Add,
+            TokenKind::Minus => Self::Sub,
+            TokenKind::Star => Self::Mul,
+            TokenKind::Slash => Self::Div,
             _ => panic!("cannot convert token to binary operator")
         }
     }

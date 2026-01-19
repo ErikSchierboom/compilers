@@ -1,6 +1,5 @@
-use crate::lexer::{tokenize, Token};
+use crate::lexer::{tokenize, Token, TokenKind};
 use crate::parser::{Expression, ParseError};
-use std::collections::HashMap;
 use std::iter::Peekable;
 
 #[derive(Debug, PartialOrd, PartialEq, Clone, Copy)]
@@ -12,53 +11,24 @@ enum Precedence {
     Call,
 }
 
-type PrefixParseFn<I> = for<'a> fn(&'a mut PrattParser<I>, Token) -> Result<Expression, ParseError>;
-type InfixParseFn<I> = for<'a> fn(&'a mut PrattParser<I>, Expression, Token) -> Result<Expression, ParseError>;
-
-struct ParseRule<I: Iterator<Item = Token>> {
-    prefix: Option<PrefixParseFn<I>>,
-    infix: Option<InfixParseFn<I>>,
-    precedence: Precedence,
-}
-
-struct PrattParser<I: Iterator<Item = Token>> {
+struct PrattParser<'a, I: Iterator<Item =Token>> {
+    code: &'a str,
     tokens: Peekable<I>,
-    rules: HashMap<Token, ParseRule<I>>,
 }
 
-impl<I: Iterator<Item = Token>> PrattParser<I> {
-    pub fn new(tokens: I) -> Self {
-        let rules = HashMap::from([
-            (Token::Plus, ParseRule {
-                prefix: Some(Self::parse_unary),
-                infix: Some(Self::parse_binary),
-                precedence: Precedence::Term,
-            }),
-            (Token::Minus, ParseRule {
-                prefix: Some(Self::parse_unary),
-                infix: Some(Self::parse_binary),
-                precedence: Precedence::Term,
-            }),
-            (Token::Star, ParseRule {
-                prefix: None,
-                infix: Some(Self::parse_binary),
-                precedence: Precedence::Factor,
-            }),
-            (Token::Slash, ParseRule {
-                prefix: None,
-                infix: Some(Self::parse_binary),
-                precedence: Precedence::Factor,
-            }),
-            (Token::LParen, ParseRule {
-                prefix: Some(Self::parse_grouping),
-                infix: None,
-                precedence: Precedence::Call,
-            }),
-        ]);
-
+impl<'a, I: Iterator<Item = Token>> PrattParser<'a, I> {
+    pub fn new(code: &'a str, tokens: I) -> Self {
         Self {
+            code,
             tokens: tokens.peekable(),
-            rules,
+        }
+    }
+
+    fn get_precedence(kind: &TokenKind) -> Precedence {
+        match kind {
+            TokenKind::Plus | TokenKind::Minus => Precedence::Term,
+            TokenKind::Star | TokenKind::Slash => Precedence::Factor,
+            _ => Precedence::None,
         }
     }
 
@@ -69,51 +39,55 @@ impl<I: Iterator<Item = Token>> PrattParser<I> {
     pub fn parse_precedence(&mut self, precedence: Precedence) -> Result<Expression, ParseError> {
         let token = self.tokens.next().ok_or(ParseError::UnexpectedEndOfFile)?;
 
-        // TODO: fix this ugly hack
-        let prefix_fn = match &token {
-            Token::Number(_) => Self::parse_number,
-            _ => self.rules.get(&token)
-                .and_then(|r| r.prefix)
-                .ok_or(ParseError::ExpectedExpression)?,
-        };
+        let mut left = self.parse_unary(token);
 
-        let mut left = prefix_fn(self, token)?;
+        while let Some(next_token) = self.tokens.peek() {
+            let next_precedence = Self::get_precedence(&next_token.kind);
+            if precedence >= next_precedence {
+                break;
+            }
 
-        while let Some(next_token) = self.tokens.peek().cloned() {
-            let rule = match self.rules.get(&next_token) {
-                Some(r) if r.infix.is_some() && precedence < r.precedence => r,
+            let token = self.tokens.next().unwrap();
+            left = match token.kind {
+                TokenKind::Plus | TokenKind::Minus | TokenKind::Star | TokenKind::Slash => {
+                    self.parse_binary(left, token)?
+                }
                 _ => break,
             };
-
-
-            let infix_fn = rule.infix.unwrap();
-            let op = self.tokens.next().unwrap();
-            left = infix_fn(self, left, op)?;
         }
 
         Ok(left)
     }
 
+    fn parse_unary(&mut self, token: Token) -> Expression {
+        match token.kind {
+            TokenKind::Number => self.parse_number(token)?,
+            TokenKind::Plus | TokenKind::Minus => self.parse_unary(token)?,
+            TokenKind::LParen => self.parse_grouping(token)?,
+            _ => return Err(ParseError::ExpectedExpression),
+        }
+    }
+
     fn parse_unary(&mut self, token: Token) -> Result<Expression, ParseError> {
         let right = self.parse_precedence(Precedence::Unary)?;
-        Ok(Expression::Unary(Box::new(right), token.into()))
+        Ok(Expression::Unary(Box::new(right), token.kind.into()))
     }
 
     fn parse_binary(&mut self, left: Expression, token: Token) -> Result<Expression, ParseError> {
-        let infix_rule = self.rules.get(&token).unwrap();
-        let right = self.parse_precedence(infix_rule.precedence)?;
-        Ok(Expression::Binary(Box::new(left), token.into(), Box::new(right)))
+        let precedence = Self::get_precedence(&token.kind);
+        let right = self.parse_precedence(precedence)?;
+        Ok(Expression::Binary(Box::new(left), token.kind.into(), Box::new(right)))
     }
 
     fn parse_grouping(&mut self, _token: Token) -> Result<Expression, ParseError> {
         let expr = self.parse_precedence(Precedence::None)?;
-        self.tokens.next_if_eq(&Token::RParen).ok_or(ParseError::ExpectedToken(Token::RParen))?;
-        Ok(expr)
+        self.tokens.next_if(|token| token.kind == TokenKind::RParen).ok_or(ParseError::ExpectedToken(TokenKind::RParen))?;
+        Ok(Expression::Grouping(Box::new(expr)))
     }
 
     fn parse_number(&mut self, token: Token) -> Result<Expression, ParseError> {
-        match token {
-            Token::Number(i) => Ok(Expression::Number(i)),
+        match token.kind {
+            TokenKind::Number => Ok(Expression::Number(self.code[token.span.start..token.span.end].parse().unwrap())),
             _ => unreachable!(),
         }
     }
@@ -121,7 +95,7 @@ impl<I: Iterator<Item = Token>> PrattParser<I> {
 
 pub fn pratt_parse(code: &str) -> Result<Expression, ParseError> {
     match tokenize(code) {
-        Ok(tokens) => PrattParser::new(tokens.into_iter()).parse(),
+        Ok(tokens) => PrattParser::new(code, tokens.into_iter()).parse(),
         Err(error) => Err(ParseError::Lexical(error)),
     }
 }
