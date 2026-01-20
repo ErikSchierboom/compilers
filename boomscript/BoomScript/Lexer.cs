@@ -1,5 +1,7 @@
 ﻿namespace BoomScript;
 
-public class Class1
+
+
+public class Lexer
 {
 }
