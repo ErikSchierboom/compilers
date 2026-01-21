@@ -4,6 +4,7 @@ public class Parser
 {
     private readonly SyntaxTree _tree;
     private readonly SyntaxToken[] _tokens;
+    private int _position;
 
     public Diagnostics Diagnostics { get; } = new();
     public SyntaxTree Tree => _tree;
@@ -16,7 +17,41 @@ public class Parser
 
     public CompilationUnit ParseCompilationUnit()
     {
-        throw new NotImplementedException();
+        var statements = ParseStatements();
+        var endOfFileToken = MatchToken(SyntaxKind.EndOfFileToken);
+        return new CompilationUnit(statements, endOfFileToken, _tree, new TextSpan(0, endOfFileToken.Span.End));
+    }
+
+    private Statement[] ParseStatements()
+    {
+        // TODO: implement
+        return [];
+    }
+    
+    private SyntaxToken Current => Peek(0);
+    private SyntaxToken Lookahead => Peek(1);
+    
+    private SyntaxToken Peek(int offset)
+    {
+        if (_position + offset >= _tokens.Length)
+            return _tokens[+_tokens.Length - 1];
+        
+        return _tokens[_position + offset];
+    }
+
+    private SyntaxToken MatchToken(SyntaxKind expected)
+    {
+        if (Current.Kind == expected)
+            return NextToken();
+        
+        Diagnostics.ReportUnexpectedToken(Current.Location, Current.Kind, expected);
+        return new SyntaxToken(_tree, expected, Current.Span, Array.Empty<SyntaxTrivia>(), Array.Empty<SyntaxTrivia>());
+    }
+
+    private SyntaxToken NextToken()
+    {
+        _position++;
+        return _tokens[_position - 1];
     }
 
     private SyntaxToken[] LexTokens()

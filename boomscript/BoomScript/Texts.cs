@@ -6,7 +6,7 @@ namespace BoomScript;
 
 public sealed record SourceText(string Text)
 {   
-    public TextLocation GetLocation(TextSpan span) => new(Lines.GetPosition(span.Start), Lines.GetPosition(span.End));
+    public TextPosition GetPosition(int position) => Lines.GetPosition(position);
     
     private TextLines Lines => field ??= new(this);
 
@@ -64,9 +64,12 @@ public sealed class TextLines
 public sealed record TextSpan(int Start, int Length)
 {
     public int End => Start + Length;
-    
-    public bool Contains(int position) => Start <= position && position < End;
 }
 
-public sealed record TextLocation(TextPosition Start, TextPosition End);
+public sealed record TextLocation(SourceText Text, TextSpan Span)
+{
+    public TextPosition Start => field ??= Text.GetPosition(Span.Start);
+    public TextPosition End => field ??= Text.GetPosition(Span.End);
+}
+
 public sealed record TextPosition(int Line, int Column);

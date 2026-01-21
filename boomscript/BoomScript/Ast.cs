@@ -30,7 +30,14 @@ public enum SyntaxKind
     CompilationUnit
 }
 
-public abstract record SyntaxNode(SyntaxTree Tree, SyntaxKind Kind, TextSpan Span);
+public abstract record SyntaxElement(SyntaxTree Tree, SyntaxKind Kind, TextSpan Span)
+{
+    public TextLocation Location => field ??= new TextLocation(Tree.Text, Span);   
+}
+
+public sealed record SyntaxToken(SyntaxTree Tree, SyntaxKind Kind, TextSpan Span, SyntaxTrivia[] LeadingTrivia, SyntaxTrivia[] TrailingTrivia) : SyntaxElement(Tree, Kind, Span);
+public sealed record SyntaxTrivia(SyntaxTree Tree, SyntaxKind Kind, TextSpan Span) : SyntaxElement(Tree, Kind, Span);
+public abstract record SyntaxNode(SyntaxTree Tree, SyntaxKind Kind, TextSpan Span) : SyntaxElement(Tree, Kind, Span);
 
 public sealed record CompilationUnit(Statement[] Statements, SyntaxToken EndOfFileToken, SyntaxTree Tree, TextSpan Span) : SyntaxNode(Tree, SyntaxKind.CompilationUnit, Span);
 
@@ -41,7 +48,3 @@ public sealed record ParenthesizedExpression(SyntaxToken OpenParenthesisToken, E
 
 public abstract record Statement(SyntaxTree Tree, SyntaxKind Kind, TextSpan Span): SyntaxNode(Tree, Kind, Span);
 public sealed record ExpressionStatement(Expression Expression, SyntaxTree Tree, TextSpan Span) : Statement(Tree, SyntaxKind.ExpressionStatement, Span);
-
-public sealed record SyntaxToken(SyntaxTree Tree, SyntaxKind Kind, TextSpan Span, SyntaxTrivia[] LeadingTrivia, SyntaxTrivia[] TrailingTrivia);
-
-public sealed record SyntaxTrivia(SyntaxTree Tree, SyntaxKind Kind, TextSpan Span);
