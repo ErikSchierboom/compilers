@@ -11,7 +11,7 @@ public sealed record SourceText(string Text)
 
 public sealed class TextLines
 {
-    private int[] _lineStarts;
+    private readonly int[] _lineStarts;
     
     public TextLines(SourceText text)
     {
