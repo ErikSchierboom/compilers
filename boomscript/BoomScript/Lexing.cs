@@ -10,6 +10,7 @@ public class Lexer(SyntaxTree tree)
     private SyntaxKind _kind;
     
     public SyntaxTree Tree => tree;
+    public Diagnostics Diagnostics { get; } = new();
     
     public SyntaxToken Lex()
     {
