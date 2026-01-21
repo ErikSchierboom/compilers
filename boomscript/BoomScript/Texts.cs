@@ -1,3 +1,5 @@
+using System.Collections;
+
 namespace BoomScript;
 
 // TODO: consider storing source (file, REPL, whatever) with sourcetext
@@ -6,7 +8,7 @@ public sealed record SourceText(string Text)
 {   
     public TextLocation GetLocation(TextSpan span) => new(Lines.GetPosition(span.Start), Lines.GetPosition(span.End));
     
-    private TextLines Lines => field ??= new TextLines(this);
+    private TextLines Lines => field ??= new(this);
 }
 
 public sealed class TextLines
@@ -29,7 +31,7 @@ public sealed class TextLines
     public TextPosition GetPosition(int position)
     {
         var lineIndex = GetLineIndex(position);
-        return new TextPosition(lineIndex + 1, position - _lines[lineIndex] + 1);
+        return new(lineIndex + 1, position - _lines[lineIndex] + 1);
     }
 
     private int GetLineIndex(int position)
@@ -64,5 +66,3 @@ public sealed record TextSpan(int Start, int Length)
 
 public sealed record TextLocation(TextPosition Start, TextPosition End);
 public sealed record TextPosition(int Line, int Column);
-
-public sealed record Diagnostic(string Message, TextLocation Location);
