@@ -9,6 +9,10 @@ public sealed record SourceText(string Text)
     public TextLocation GetLocation(TextSpan span) => new(Lines.GetPosition(span.Start), Lines.GetPosition(span.End));
     
     private TextLines Lines => field ??= new(this);
+
+    public int Length => Text.Length;
+    
+    public char this[int index] => Text[index];
 }
 
 public sealed class TextLines
