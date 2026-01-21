@@ -81,6 +81,30 @@ public class Lexer(SyntaxTree tree)
             case '\0':
                 _kind = SyntaxKind.EndOfFileToken;
                 break;
+            case '+':
+                _kind = SyntaxKind.PlusToken;
+                _position++;
+                break;
+            case '-':
+                _kind = SyntaxKind.MinusToken;
+                _position++;
+                break;
+            case '*':
+                _kind = SyntaxKind.StarToken;
+                _position++;
+                break;
+            case '/':
+                _kind = SyntaxKind.SlashToken;
+                _position++;
+                break;
+            case '(':
+                _kind = SyntaxKind.OpenParenthesisToken;
+                _position++;
+                break;
+            case ')':
+                _kind = SyntaxKind.CloseParenthesisToken;
+                _position++;
+                break;
             case '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9':
                 while (char.IsDigit(Current))
                     _position++;
