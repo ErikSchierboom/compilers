@@ -1,13 +1,15 @@
 ﻿namespace BoomScript;
 
-public class Lexer(SyntaxTree syntaxTree)
+public class Lexer(SyntaxTree tree)
 {
-    private readonly SourceText _text = syntaxTree.Text;
+    private readonly SourceText _text = tree.Text;
     private readonly List<SyntaxTrivia> _trivia = new();
     
     private int _position;
     private int _start;
     private SyntaxKind _kind;
+    
+    public SyntaxTree Tree => tree;
     
     public SyntaxToken Lex()
     {
@@ -19,7 +21,7 @@ public class Lexer(SyntaxTree syntaxTree)
         
         var trailingTrivia = ReadTrivia(leading: false);
             
-        return new SyntaxToken(syntaxTree, _kind, new TextSpan(tokenStart, tokenLength), leadingTrivia, trailingTrivia);
+        return new SyntaxToken(tree, _kind, new TextSpan(tokenStart, tokenLength), leadingTrivia, trailingTrivia);
     }
 
     private SyntaxTrivia[] ReadTrivia(bool leading)
@@ -64,7 +66,7 @@ public class Lexer(SyntaxTree syntaxTree)
             if (_position == _start)
                 continue;
             
-            _trivia.Add(new SyntaxTrivia(syntaxTree, _kind, new TextSpan(_start, _position - _start)));
+            _trivia.Add(new SyntaxTrivia(tree, _kind, new TextSpan(_start, _position - _start)));
         }
 
         return _trivia.ToArray();
