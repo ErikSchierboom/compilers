@@ -24,10 +24,22 @@ public class Parser
 
     private Statement[] ParseStatements()
     {
+        var statements = new List<Statement>();
+
+        while (Current.Kind != SyntaxKind.EndOfFileToken)
+        {
+            statements.Add(ParseStatement());
+        }
+        
         // TODO: implement
-        return [];
+        return statements.ToArray();
     }
-    
+
+    private Statement ParseStatement()
+    {
+        throw new NotImplementedException();
+    }
+
     private SyntaxToken Current => Peek(0);
     private SyntaxToken Lookahead => Peek(1);
     
