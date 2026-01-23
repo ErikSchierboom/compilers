@@ -27,11 +27,8 @@ public class Parser
         var statements = new List<Statement>();
 
         while (Current.Kind != SyntaxKind.EndOfFileToken)
-        {
             statements.Add(ParseStatement());
-        }
         
-        // TODO: implement
         return statements.ToArray();
     }
 
@@ -57,7 +54,7 @@ public class Parser
             return NextToken();
         
         Diagnostics.ReportUnexpectedToken(Current.Location, Current.Kind, expected);
-        return new SyntaxToken(_tree, expected, Current.Span, Array.Empty<SyntaxTrivia>(), Array.Empty<SyntaxTrivia>());
+        return new SyntaxToken(_tree, expected, Current.Span);
     }
 
     private SyntaxToken NextToken()
@@ -69,44 +66,21 @@ public class Parser
     private SyntaxToken[] LexTokens()
     {
         var tokens = new List<SyntaxToken>();
-        var badTokens = new List<SyntaxToken>();
         var lexer = new Lexer(_tree);
 
-        SyntaxToken token;
-
-        do
+        while (true)
         {
-            token = lexer.Lex();
-            if (token.Kind == SyntaxKind.BadToken)
+            switch (lexer.Lex())
             {
-                badTokens.Add(token);
+                case { Kind: SyntaxKind.BadToken }:
+                    // Consider combining bad tokens into fake token in tree
+                    continue;
+                case { Kind: SyntaxKind.EndOfFileToken }:
+                    return tokens.ToArray();
+                case var token:
+                    tokens.Add(token);
+                    break;
             }
-            else
-            {
-                var leadingTrivia = token.LeadingTrivia.ToList();
-                var index = 0;
-                
-                if (badTokens.Count > 0)
-                {
-                    foreach (var badToken in badTokens)
-                    {
-                        foreach (var badTokenLeadingTrivia in badToken.LeadingTrivia)
-                            leadingTrivia.Insert(index++, badTokenLeadingTrivia);
-                        
-                        leadingTrivia.Insert(index++, new SyntaxTrivia(_tree, SyntaxKind.BadTextTrivia, badToken.Span));
-                        
-                        foreach (var badTokenTrailingTrivia in badToken.TrailingTrivia)
-                            leadingTrivia.Insert(index++, badTokenTrailingTrivia);
-                    }
-                    
-                    badTokens.Clear();
-                    token = token with { LeadingTrivia = leadingTrivia.ToArray() };
-                }
-
-                tokens.Add(token);
-            }
-        } while (token.Kind != SyntaxKind.EndOfFileToken);
-        
-        return tokens.ToArray();
+        }
     }
 }
