@@ -9,6 +9,7 @@ public class Lexer(SyntaxTree tree)
     public SyntaxTree Tree => tree;
     public Diagnostics Diagnostics { get; } = new();
     
+    // TODO: just return all tokens as we'll fetch them all anyway
     public SyntaxToken Lex()
     {
         while (char.IsWhiteSpace(Current))

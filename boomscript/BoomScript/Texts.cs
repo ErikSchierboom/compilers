@@ -64,6 +64,8 @@ public sealed class TextLines
 public sealed record TextSpan(int Start, int Length)
 {
     public int End => Start + Length;
+    
+    public TextSpan Combine(TextSpan other) => new(Start, other.End - Start);
 }
 
 public sealed record TextLocation(SourceText Text, TextSpan Span)
