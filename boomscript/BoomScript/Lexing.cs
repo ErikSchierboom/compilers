@@ -36,10 +36,10 @@ public class Lexer(SyntaxTree tree)
                 case '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9':
                     var start = position;
 
-                    while (char.IsDigit(SourceText[position]))
+                    while (position < SourceText.Length && char.IsDigit(SourceText[position]))
                         position++;
                     
-                    tokens.Add(new SyntaxToken(tree, SyntaxKind.CloseParenthesisToken, new TextSpan(start, position - start)));
+                    tokens.Add(new SyntaxToken(tree, SyntaxKind.NumberToken, new TextSpan(start, position - start)));
                     break;
                 default:
                     Diagnostics.ReportBadCharacter(new TextLocation(SourceText, new TextSpan(position, 1)), SourceText[position]);
