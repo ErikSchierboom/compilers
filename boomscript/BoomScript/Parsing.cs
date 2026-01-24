@@ -32,6 +32,7 @@ public class Parser
 
         _prefixParser[SyntaxKind.OpenParenthesisToken] = new(ParseParenthesizeExpression, Precedence.NONE);
         _prefixParser[SyntaxKind.NumberToken] = new(ParseNumberLiteral, Precedence.NONE);
+        _prefixParser[SyntaxKind.IdentifierToken] = new(ParseNameExpression, Precedence.NONE);
         _prefixParser[SyntaxKind.MinusToken] = new(ParseUnaryExpression, Precedence.PREFIX);
         _prefixParser[SyntaxKind.PlusToken] = new(ParseUnaryExpression, Precedence.PREFIX);
         
@@ -39,6 +40,7 @@ public class Parser
         _infixParser[SyntaxKind.MinusToken] = new(ParseBinaryExpression, Precedence.SUM);
         _infixParser[SyntaxKind.StarToken] = new(ParseBinaryExpression, Precedence.PRODUCT);
         _infixParser[SyntaxKind.SlashToken] = new(ParseBinaryExpression, Precedence.PRODUCT);
+        _infixParser[SyntaxKind.OpenParenthesisToken] = new(ParseCallExpression, Precedence.CALL);
     }
 
     public CompilationUnit ParseCompilationUnit()
@@ -60,13 +62,26 @@ public class Parser
 
     private Statement ParseStatement()
     {
+        if (Current.Kind == SyntaxKind.IdentifierToken && Lookahead.Kind == SyntaxKind.EqualsToken)
+            return ParseVariableDeclarationStatement();
+        
         return ParseExpressionStatement();
     }
 
     private Statement ParseExpressionStatement()
-    {
+    {   
         var expression = ParseExpression(Precedence.NONE);
+        MatchToken(SyntaxKind.NewlineToken);
         return new ExpressionStatement(expression, _tree, expression.Span);
+    }
+    
+    private Statement ParseVariableDeclarationStatement()
+    {
+        var identifier = MatchToken(SyntaxKind.IdentifierToken);
+        var equalsToken = MatchToken(SyntaxKind.EqualsToken);
+        var initializer = ParseExpression(Precedence.NONE);
+        MatchToken(SyntaxKind.NewlineToken);
+        return new VariableDeclarationStatement(identifier, equalsToken, initializer, _tree, initializer.Span);
     }
 
     private Expression ParseExpression(Precedence precedence)
@@ -74,7 +89,7 @@ public class Parser
         var prefix = _prefixParser[Current.Kind];
         var left = prefix.Function();
 
-        while (Current.Kind != SyntaxKind.EndOfFileToken)
+        while (Current.Kind is not (SyntaxKind.NewlineToken or SyntaxKind.EndOfFileToken))
         {
             var infix = _infixParser[Current.Kind];
             if (infix.Precedence < precedence)
@@ -100,6 +115,12 @@ public class Parser
         var value = int.Parse(token.Text);
         return new LiteralExpression(token, value, _tree, token.Span);
     }
+    
+    private Expression ParseNameExpression()
+    {
+        var token = MatchToken(SyntaxKind.IdentifierToken);
+        return new NameExpression(token, _tree, token.Span);
+    }
 
     private Expression ParseUnaryExpression()
     {
@@ -120,6 +141,23 @@ public class Parser
         var operatorToken = NextToken();
         var right = ParseExpression(_infixParser[operatorToken.Kind].Precedence);
         return new BinaryExpression(left, operatorToken, right, _tree, left.Span.Combine(right.Span));
+    }
+    
+    private Expression ParseCallExpression(Expression left)
+    {
+        var openParenthesisToken = MatchToken(SyntaxKind.OpenParenthesisToken);
+
+        // if (!parser.match(TokenType.RIGHT_PAREN)) {
+        //     do {
+        //         args.add(parser.parseExpression());
+        //     } while (parser.match(TokenType.COMMA));
+        //     parser.consume(TokenType.RIGHT_PAREN);
+        // }
+        
+        // var arguments = ParseArguments();
+        // var closeParenthesisToken = MatchToken(SyntaxKind.CloseParenthesisToken);
+        // return new CallExpressionSyntax(_syntaxTree, identifier, openParenthesisToken, arguments, closeParenthesisToken);
+        throw new NotImplementedException();
     }
 
     private SyntaxToken Current => Peek(0);

@@ -1,5 +1,16 @@
 namespace BoomScript;
 
+public record StackFrame(Dictionary<string, object> Variables, StackFrame? Parent = null)
+{
+    public object? this[string name]
+    {
+        get => Variables.TryGetValue(name, out var value) ? value : Parent?[name];
+        set => Variables[name] = value ?? throw new ArgumentNullException(nameof(value));
+    }
+
+    public StackFrame CreateChild() => new(new Dictionary<string, object>(), this);
+}
+
 public class Interpreter
 {
     public object? Run(string code)

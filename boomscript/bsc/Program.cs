@@ -2,6 +2,7 @@
 
 using BoomScript;
 
-const string Source = "1 + 3 * -2";
+const string Source = "x = 33\n" +
+                      "1 + 3 * -2";
 
 Console.WriteLine(new Interpreter().Run(Source));
