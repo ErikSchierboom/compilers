@@ -47,6 +47,8 @@ public class Lexer(SyntaxTree tree)
             }
         }
         
+        tokens.Add(new SyntaxToken(tree, SyntaxKind.EndOfFileToken, new TextSpan(SourceText.Length, 0)));
+        
         return tokens.ToArray();
     }
 

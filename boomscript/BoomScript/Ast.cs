@@ -13,7 +13,6 @@ public enum SyntaxKind
     StarToken,
     SlashToken,
     EndOfFileToken,
-    BadToken,
     OpenParenthesisToken,
     CloseParenthesisToken,
     
@@ -29,6 +28,8 @@ public abstract record SyntaxElement(SyntaxTree Tree, SyntaxKind Kind, TextSpan 
 {
     public TextLocation Location => field ??= new TextLocation(Tree.SourceText, Span);   
     public string Text => field ??= Tree.SourceText.Text.Substring(Span.Start, Span.Length);
+
+    public override string ToString() => Text;
 }
 
 public sealed record SyntaxToken(SyntaxTree Tree, SyntaxKind Kind, TextSpan Span) : SyntaxElement(Tree, Kind, Span);
