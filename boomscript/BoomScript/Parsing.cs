@@ -28,7 +28,7 @@ public class Parser
     public Parser(SyntaxTree tree)
     {
         _tree = tree;
-        _tokens = LexTokens();
+        _tokens = Lexer.Lex(tree);
 
         _prefixParser[SyntaxKind.OpenParenthesisToken] = new(ParseParenthesizeExpression, Precedence.NONE);
         _prefixParser[SyntaxKind.NumberToken] = new(ParseNumberLiteral, Precedence.NONE);
@@ -146,23 +146,5 @@ public class Parser
     {
         _position++;
         return _tokens[_position - 1];
-    }
-
-    private SyntaxToken[] LexTokens()
-    {
-        var tokens = new List<SyntaxToken>();
-        var lexer = new Lexer(_tree);
-
-        while (true)
-        {
-            var token = lexer.Lex();
-            if (token.Kind == SyntaxKind.BadToken)
-                continue;
-            
-            tokens.Add(token);
-            
-            if (token.Kind == SyntaxKind.EndOfFileToken)
-                return tokens.ToArray();
-        }
     }
 }

@@ -2,64 +2,53 @@
 
 public class Lexer(SyntaxTree tree)
 {
-    private int _position;
-    private int _start;
-    private SyntaxKind _kind;
-    
-    public SyntaxTree Tree => tree;
     public Diagnostics Diagnostics { get; } = new();
-    
-    // TODO: just return all tokens as we'll fetch them all anyway
-    public SyntaxToken Lex()
-    {
-        while (char.IsWhiteSpace(Current))
-            _position++;
-        
-        _start = _position;
-        
-        switch (Current)
-        {
-            case '+':
-                _kind = SyntaxKind.PlusToken;
-                _position++;
-                break;
-            case '-':
-                _kind = SyntaxKind.MinusToken;
-                _position++;
-                break;
-            case '*':
-                _kind = SyntaxKind.StarToken;
-                _position++;
-                break;
-            case '/':
-                _kind = SyntaxKind.SlashToken;
-                _position++;
-                break;
-            case '(':
-                _kind = SyntaxKind.OpenParenthesisToken;
-                _position++;
-                break;
-            case ')':
-                _kind = SyntaxKind.CloseParenthesisToken;
-                _position++;
-                break;
-            case '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9':
-                _kind = SyntaxKind.NumberToken;
-                while (char.IsDigit(Current))
-                    _position++;
-                break;
-            case '\0':
-                _kind = SyntaxKind.EndOfFileToken;
-                break;
-            default:
-                _kind = SyntaxKind.BadToken;
-                _position++;
-                Diagnostics.ReportBadCharacter(new TextLocation(tree.Text, new TextSpan(_start, _position)), Current);
-                break;
-        }
+    private SourceText SourceText => tree.SourceText;
 
-        return new SyntaxToken(tree, _kind, new TextSpan(_start, _position - _start));
+    private SyntaxToken[] Lex()
+    {
+        var tokens = new List<SyntaxToken>();
+
+        for (var position = 0; position < SourceText.Length; position++)
+        {
+            switch (SourceText[position])
+            {
+                case ' ' or '\t' or '\n' or 'r':
+                    continue;
+                case '+':
+                    tokens.Add(new SyntaxToken(tree, SyntaxKind.PlusToken, new TextSpan(position, 1)));
+                    break;
+                case '-':
+                    tokens.Add(new SyntaxToken(tree, SyntaxKind.MinusToken, new TextSpan(position, 1)));
+                    break;
+                case '*':
+                    tokens.Add(new SyntaxToken(tree, SyntaxKind.StarToken, new TextSpan(position, 1)));
+                    break;
+                case '/':
+                    tokens.Add(new SyntaxToken(tree, SyntaxKind.SlashToken, new TextSpan(position, 1)));
+                    break;
+                case '(':
+                    tokens.Add(new SyntaxToken(tree, SyntaxKind.OpenParenthesisToken, new TextSpan(position, 1)));
+                    break;
+                case ')':
+                    tokens.Add(new SyntaxToken(tree, SyntaxKind.CloseParenthesisToken, new TextSpan(position, 1)));
+                    break;
+                case '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9':
+                    var start = position;
+
+                    while (char.IsDigit(SourceText[position]))
+                        position++;
+                    
+                    tokens.Add(new SyntaxToken(tree, SyntaxKind.CloseParenthesisToken, new TextSpan(start, position - start)));
+                    break;
+                default:
+                    Diagnostics.ReportBadCharacter(new TextLocation(SourceText, new TextSpan(position, 1)), SourceText[position]);
+                    break;
+            }
+        }
+        
+        return tokens.ToArray();
     }
 
-    private char Current => _position < tree.Text.Length ? tree.Text[_position] : '\0';
+    public static SyntaxToken[] Lex(SyntaxTree syntaxTree) => new Lexer(syntaxTree).Lex();
 }

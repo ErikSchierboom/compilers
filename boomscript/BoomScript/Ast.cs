@@ -1,6 +1,6 @@
 namespace BoomScript;
 
-public record SyntaxTree(SourceText Text)
+public record SyntaxTree(SourceText SourceText)
 {
 }
 
@@ -27,8 +27,8 @@ public enum SyntaxKind
 
 public abstract record SyntaxElement(SyntaxTree Tree, SyntaxKind Kind, TextSpan Span)
 {
-    public TextLocation Location => field ??= new TextLocation(Tree.Text, Span);   
-    public string Text => field ??= Tree.Text.Text.Substring(Span.Start, Span.Length);
+    public TextLocation Location => field ??= new TextLocation(Tree.SourceText, Span);   
+    public string Text => field ??= Tree.SourceText.Text.Substring(Span.Start, Span.Length);
 }
 
 public sealed record SyntaxToken(SyntaxTree Tree, SyntaxKind Kind, TextSpan Span) : SyntaxElement(Tree, Kind, Span);
