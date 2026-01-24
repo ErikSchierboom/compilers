@@ -1,10 +1,26 @@
 namespace BoomScript;
+public enum Precedence {
+    NONE        = 0,
+    ASSIGNMENT  = 1,
+    CONDITIONAL = 2,
+    SUM         = 3,
+    PRODUCT     = 4,
+    EXPONENT    = 5,
+    PREFIX      = 6,
+    POSTFIX     = 7,
+    CALL        = 8,
+}
+
+public record PrefixParselet(Func<Expression> Function, Precedence Precedence);
+public record InfixParselet(Func<Expression, Expression> Function, Precedence Precedence);
 
 public class Parser
 {
     private readonly SyntaxTree _tree;
     private readonly SyntaxToken[] _tokens;
     private int _position;
+    private Dictionary<SyntaxKind, PrefixParselet> _prefixParser = new();
+    private Dictionary<SyntaxKind, InfixParselet> _infixParser = new();
 
     public Diagnostics Diagnostics { get; } = new();
     public SyntaxTree Tree => _tree;
@@ -13,6 +29,16 @@ public class Parser
     {
         _tree = tree;
         _tokens = LexTokens();
+
+        _prefixParser[SyntaxKind.OpenParenthesisToken] = new(ParseParenthesizeExpression, Precedence.NONE);
+        _prefixParser[SyntaxKind.NumberToken] = new(ParseNumberLiteral, Precedence.NONE);
+        _prefixParser[SyntaxKind.MinusToken] = new(ParseUnaryExpression, Precedence.PREFIX);
+        _prefixParser[SyntaxKind.PlusToken] = new(ParseUnaryExpression, Precedence.PREFIX);
+        
+        _infixParser[SyntaxKind.PlusToken] = new(ParseBinaryExpression, Precedence.SUM);
+        _infixParser[SyntaxKind.MinusToken] = new(ParseBinaryExpression, Precedence.SUM);
+        _infixParser[SyntaxKind.StarToken] = new(ParseBinaryExpression, Precedence.PRODUCT);
+        _infixParser[SyntaxKind.SlashToken] = new(ParseBinaryExpression, Precedence.PRODUCT);
     }
 
     public CompilationUnit ParseCompilationUnit()
@@ -39,32 +65,31 @@ public class Parser
 
     private Statement ParseExpressionStatement()
     {
-        var expression = ParseExpression();
+        var expression = ParseExpression(Precedence.NONE);
         return new ExpressionStatement(expression, _tree, expression.Span);
     }
 
-    private Expression ParseExpression()
+    private Expression ParseExpression(Precedence precedence)
     {
-        return ParseBinaryExpression();
-    }
+        var prefix = _prefixParser[Current.Kind];
+        var left = prefix.Function();
 
-    private Expression ParsePrimaryExpression()
-    {
-        switch (Current.Kind)
+        while (Current.Kind != SyntaxKind.EndOfFileToken)
         {
-            case SyntaxKind.NumberToken:
-                return ParseNumberLiteral();
-            case SyntaxKind.OpenParenthesisToken:
-                return ParseParenthesizeExpression();
-            default:
-                throw new ArgumentOutOfRangeException();
+            var infix = _infixParser[Current.Kind];
+            if (infix.Precedence < precedence)
+                return left;
+            
+            left = infix.Function(left);
         }
+
+        return left;
     }
 
     private Expression ParseParenthesizeExpression()
     {
         var openToken = MatchToken(SyntaxKind.OpenParenthesisToken);
-        var expression = ParseExpression();
+        var expression = ParseExpression(Precedence.NONE);
         var closeToken = MatchToken(SyntaxKind.CloseParenthesisToken);
         return new ParenthesizedExpression(openToken, expression, closeToken, _tree, new TextSpan(openToken.Span.Start, closeToken.Span.End - openToken.Span.Start));
     }
@@ -76,33 +101,25 @@ public class Parser
         return new LiteralExpression(token, value, _tree, token.Span);
     }
 
-    private Expression ParseBinaryExpression(int parentPrecedence = 0)
+    private Expression ParseUnaryExpression()
     {
-        Expression left;
-        var unaryOperatorPrecedence = Current.Kind.GetUnaryOperatorPrecedence();
-        if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence)
+        switch (Current.Kind)
         {
-            var operatorToken = NextToken();
-            var operand = ParseBinaryExpression(unaryOperatorPrecedence);
-            left = new UnaryExpression(operatorToken, operand, _tree, operatorToken.Span.Combine(operand.Span));
+            case SyntaxKind.PlusToken or SyntaxKind.MinusToken:
+                var token = MatchToken(Current.Kind);
+                var precedence = _prefixParser[token.Kind].Precedence;
+                var expr = ParseExpression(precedence);
+                return new UnaryExpression(token, expr, _tree, token.Span.Combine(expr.Span));
+            default:
+                throw new ArgumentOutOfRangeException();
         }
-        else
-        {
-            left = ParsePrimaryExpression();
-        }
+    }
 
-        while (true)
-        {
-            var precedence = Current.Kind.GetBinaryOperatorPrecedence();
-            if (precedence == 0 || precedence <= parentPrecedence)
-                break;
-
-            var operatorToken = NextToken();
-            var right = ParseBinaryExpression(precedence);
-            left = new BinaryExpression(left, operatorToken, right, _tree, left.Span.Combine(right.Span));
-        }
-
-        return left;
+    private Expression ParseBinaryExpression(Expression left)
+    {
+        var operatorToken = NextToken();
+        var right = ParseExpression(_infixParser[operatorToken.Kind].Precedence);
+        return new BinaryExpression(left, operatorToken, right, _tree, left.Span.Combine(right.Span));
     }
 
     private SyntaxToken Current => Peek(0);
