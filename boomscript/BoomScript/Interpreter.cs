@@ -13,18 +13,15 @@ public record StackFrame(Dictionary<string, object?> Variables, StackFrame? Pare
 
 public class Interpreter
 {
-    private readonly Stack<StackFrame> _stackFrames = new([new StackFrame(new Dictionary<string, object>())]);
+    private readonly Stack<StackFrame> _stackFrames = new([new StackFrame(new Dictionary<string, object?>())]);
     private StackFrame CurrentStackFrame => _stackFrames.Peek();
     
     public object? Run(string code)
     {
-        var sourceText = new SourceText(code);
-        var syntaxTree = new SyntaxTree(sourceText);
-        var parser = new Parser(syntaxTree);
-        var compilationUnit = parser.ParseCompilationUnit();
-        
+        var syntaxTree = SyntaxTree.Parse(code);
+
         // TODO: create visitor
-        return Evaluate(compilationUnit);
+        return Evaluate(syntaxTree.Root);
     }
 
     private object? Evaluate(CompilationUnit compilationUnit)
@@ -65,6 +62,7 @@ public class Interpreter
 
     private object? Evaluate(BinaryExpression expression)
     {
+        // TODO: handle invalid types
         var left = (int)Evaluate(expression.Left);
         var right = (int)Evaluate(expression.Right);
         
@@ -92,6 +90,7 @@ public class Interpreter
     {
         return expression.OperatorToken.Kind switch
         {
+            // TODO: handle invalid types
             SyntaxKind.PlusToken => (int)Evaluate(expression.Operand),
             SyntaxKind.MinusToken => -(int)Evaluate(expression.Operand),
             _ => throw new ArgumentOutOfRangeException()

@@ -23,7 +23,6 @@ public class Parser
     private Dictionary<SyntaxKind, InfixParselet> _infixParser = new();
 
     public Diagnostics Diagnostics { get; } = new();
-    public SyntaxTree Tree => _tree;
 
     public Parser(SyntaxTree tree)
     {
@@ -47,7 +46,7 @@ public class Parser
     {
         var statements = ParseStatements();
         var endOfFileToken = MatchToken(SyntaxKind.EndOfFileToken);
-        return new CompilationUnit(statements, endOfFileToken, _tree, new TextSpan(0, endOfFileToken.Span.End));
+        return new CompilationUnit(statements, _tree, new TextSpan(0, endOfFileToken.Span.End));
     }
 
     private Statement[] ParseStatements()
@@ -81,7 +80,7 @@ public class Parser
         var equalsToken = MatchToken(SyntaxKind.EqualsToken);
         var initializer = ParseExpression(Precedence.NONE);
         MatchToken(SyntaxKind.NewlineToken);
-        return new VariableDeclarationStatement(identifier, equalsToken, initializer, _tree, initializer.Span);
+        return new VariableDeclarationStatement(identifier, initializer, _tree, initializer.Span);
     }
 
     private Expression ParseExpression(Precedence precedence)
@@ -106,7 +105,7 @@ public class Parser
         var openToken = MatchToken(SyntaxKind.OpenParenthesisToken);
         var expression = ParseExpression(Precedence.NONE);
         var closeToken = MatchToken(SyntaxKind.CloseParenthesisToken);
-        return new ParenthesizedExpression(openToken, expression, closeToken, _tree, new TextSpan(openToken.Span.Start, closeToken.Span.End - openToken.Span.Start));
+        return new ParenthesizedExpression(expression, _tree, new TextSpan(openToken.Span.Start, closeToken.Span.End - openToken.Span.Start));
     }
 
     private Expression ParseNumberLiteral()
@@ -157,7 +156,7 @@ public class Parser
         }
 
         var closeParenthesisToken = MatchToken(SyntaxKind.CloseParenthesisToken);
-        return new CallExpression(left, openParenthesisToken, args.ToArray(), closeParenthesisToken, _tree, left.Span.Combine(closeParenthesisToken.Span));
+        return new CallExpression(left, args.ToArray(), _tree, left.Span.Combine(closeParenthesisToken.Span));
     }
 
     private SyntaxToken Current => Peek(0);
