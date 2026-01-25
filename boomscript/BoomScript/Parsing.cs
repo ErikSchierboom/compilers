@@ -80,7 +80,7 @@ public class Parser
     private Statement ParseVariableDeclarationStatement()
     {
         var identifier = MatchToken(SyntaxKind.IdentifierToken);
-        var equalsToken = MatchToken(SyntaxKind.EqualsToken);
+        MatchToken(SyntaxKind.EqualsToken);
         var initializer = ParseExpression(Precedence.None);
         MatchToken(SyntaxKind.NewlineToken);
         return new VariableDeclarationStatement(identifier, initializer, _tree, initializer.Span);
@@ -147,7 +147,7 @@ public class Parser
     
     private Expression ParseCallExpression(Expression left)
     {
-        var openParenthesisToken = MatchToken(SyntaxKind.OpenParenthesisToken);
+        MatchToken(SyntaxKind.OpenParenthesisToken);
         var args = new List<Expression>();
 
         if (Current.Kind != SyntaxKind.CloseParenthesisToken)
