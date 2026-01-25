@@ -1,14 +1,16 @@
 namespace BoomScript;
-public enum Precedence {
-    NONE        = 0,
-    ASSIGNMENT  = 1,
-    CONDITIONAL = 2,
-    SUM         = 3,
-    PRODUCT     = 4,
-    EXPONENT    = 5,
-    PREFIX      = 6,
-    POSTFIX     = 7,
-    CALL        = 8,
+
+public enum Precedence
+{
+    None,
+    Assignment,
+    Conditional,
+    Sum,
+    Product,
+    Exponent,
+    Prefix,
+    Postfix,
+    Call,
 }
 
 public record PrefixParselet(Func<Expression> Function, Precedence Precedence);
@@ -29,17 +31,17 @@ public class Parser
         _tree = tree;
         _tokens = Lexer.Lex(tree);
 
-        _prefixParser[SyntaxKind.OpenParenthesisToken] = new(ParseParenthesizeExpression, Precedence.NONE);
-        _prefixParser[SyntaxKind.NumberToken] = new(ParseNumberLiteral, Precedence.NONE);
-        _prefixParser[SyntaxKind.IdentifierToken] = new(ParseNameExpression, Precedence.NONE);
-        _prefixParser[SyntaxKind.MinusToken] = new(ParseUnaryExpression, Precedence.PREFIX);
-        _prefixParser[SyntaxKind.PlusToken] = new(ParseUnaryExpression, Precedence.PREFIX);
+        _prefixParser[SyntaxKind.OpenParenthesisToken] = new(ParseParenthesizeExpression, Precedence.None);
+        _prefixParser[SyntaxKind.NumberToken] = new(ParseNumberLiteral, Precedence.None);
+        _prefixParser[SyntaxKind.IdentifierToken] = new(ParseNameExpression, Precedence.None);
+        _prefixParser[SyntaxKind.MinusToken] = new(ParseUnaryExpression, Precedence.Prefix);
+        _prefixParser[SyntaxKind.PlusToken] = new(ParseUnaryExpression, Precedence.Prefix);
         
-        _infixParser[SyntaxKind.PlusToken] = new(ParseBinaryExpression, Precedence.SUM);
-        _infixParser[SyntaxKind.MinusToken] = new(ParseBinaryExpression, Precedence.SUM);
-        _infixParser[SyntaxKind.StarToken] = new(ParseBinaryExpression, Precedence.PRODUCT);
-        _infixParser[SyntaxKind.SlashToken] = new(ParseBinaryExpression, Precedence.PRODUCT);
-        _infixParser[SyntaxKind.OpenParenthesisToken] = new(ParseCallExpression, Precedence.CALL);
+        _infixParser[SyntaxKind.PlusToken] = new(ParseBinaryExpression, Precedence.Sum);
+        _infixParser[SyntaxKind.MinusToken] = new(ParseBinaryExpression, Precedence.Sum);
+        _infixParser[SyntaxKind.StarToken] = new(ParseBinaryExpression, Precedence.Product);
+        _infixParser[SyntaxKind.SlashToken] = new(ParseBinaryExpression, Precedence.Product);
+        _infixParser[SyntaxKind.OpenParenthesisToken] = new(ParseCallExpression, Precedence.Call);
     }
 
     public CompilationUnit ParseCompilationUnit()
@@ -69,7 +71,7 @@ public class Parser
 
     private Statement ParseExpressionStatement()
     {   
-        var expression = ParseExpression(Precedence.NONE);
+        var expression = ParseExpression(Precedence.None);
         MatchToken(SyntaxKind.NewlineToken);
         return new ExpressionStatement(expression, _tree, expression.Span);
     }
@@ -78,7 +80,7 @@ public class Parser
     {
         var identifier = MatchToken(SyntaxKind.IdentifierToken);
         var equalsToken = MatchToken(SyntaxKind.EqualsToken);
-        var initializer = ParseExpression(Precedence.NONE);
+        var initializer = ParseExpression(Precedence.None);
         MatchToken(SyntaxKind.NewlineToken);
         return new VariableDeclarationStatement(identifier, initializer, _tree, initializer.Span);
     }
@@ -103,7 +105,7 @@ public class Parser
     private Expression ParseParenthesizeExpression()
     {
         var openToken = MatchToken(SyntaxKind.OpenParenthesisToken);
-        var expression = ParseExpression(Precedence.NONE);
+        var expression = ParseExpression(Precedence.None);
         var closeToken = MatchToken(SyntaxKind.CloseParenthesisToken);
         return new ParenthesizedExpression(expression, _tree, new TextSpan(openToken.Span.Start, closeToken.Span.End - openToken.Span.Start));
     }
@@ -151,7 +153,7 @@ public class Parser
         {
             do
             {
-                args.Add(ParseExpression(Precedence.NONE));
+                args.Add(ParseExpression(Precedence.None));
             } while (Current.Kind == SyntaxKind.CommaToken);
         }
 
