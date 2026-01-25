@@ -41,6 +41,10 @@ public class Lexer(SyntaxTree tree)
                     tokens.Add(new SyntaxToken(tree, SyntaxKind.EqualsToken, new TextSpan(position, 1)));
                     position++;
                     break;
+                case ',':
+                    tokens.Add(new SyntaxToken(tree, SyntaxKind.CommaToken, new TextSpan(position, 1)));
+                    position++;
+                    break;
                 case '(':
                     tokens.Add(new SyntaxToken(tree, SyntaxKind.OpenParenthesisToken, new TextSpan(position, 1)));
                     position++;

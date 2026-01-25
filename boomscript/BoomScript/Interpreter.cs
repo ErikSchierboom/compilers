@@ -1,6 +1,6 @@
 namespace BoomScript;
 
-public record StackFrame(Dictionary<string, object> Variables, StackFrame? Parent = null)
+public record StackFrame(Dictionary<string, object?> Variables, StackFrame? Parent = null)
 {
     public object? this[string name]
     {
@@ -8,11 +8,14 @@ public record StackFrame(Dictionary<string, object> Variables, StackFrame? Paren
         set => Variables[name] = value ?? throw new ArgumentNullException(nameof(value));
     }
 
-    public StackFrame CreateChild() => new(new Dictionary<string, object>(), this);
+    public StackFrame CreateChild() => new(new Dictionary<string, object?>(), this);
 }
 
 public class Interpreter
 {
+    private readonly Stack<StackFrame> _stackFrames = new([new StackFrame(new Dictionary<string, object>())]);
+    private StackFrame CurrentStackFrame => _stackFrames.Peek();
+    
     public object? Run(string code)
     {
         var sourceText = new SourceText(code);
@@ -37,9 +40,16 @@ public class Interpreter
     private object? Evaluate(Statement expression) =>
         expression switch
         {
-            ExpressionStatement expressionStatement => Evaluate(expressionStatement.Expression),
+            ExpressionStatement expressionStatement => Evaluate(expressionStatement),
+            VariableDeclarationStatement variableDeclarationStatement => Evaluate(variableDeclarationStatement),
             _ => throw new ArgumentOutOfRangeException(nameof(expression))
         };
+    
+    private object? Evaluate(VariableDeclarationStatement variableDeclarationStatement) =>
+        CurrentStackFrame.Variables[variableDeclarationStatement.Identifier.Text] = Evaluate(variableDeclarationStatement.Initializer);
+
+    private object? Evaluate(ExpressionStatement expressionStatement) =>
+        Evaluate(expressionStatement.Expression);
 
     private object? Evaluate(Expression expression) =>
         expression switch
@@ -48,6 +58,8 @@ public class Interpreter
             LiteralExpression literalExpression => Evaluate(literalExpression),
             ParenthesizedExpression parenthesizedExpression => Evaluate(parenthesizedExpression),
             UnaryExpression unaryExpression => Evaluate(unaryExpression),
+            NameExpression nameExpression => Evaluate(nameExpression),
+            CallExpression callExpression => Evaluate(callExpression),
             _ => throw new ArgumentOutOfRangeException(nameof(expression))
         };
 
@@ -85,4 +97,10 @@ public class Interpreter
             _ => throw new ArgumentOutOfRangeException()
         };
     }
+
+    private object? Evaluate(NameExpression expression) =>
+        CurrentStackFrame[expression.IdentifierToken.Text];
+    
+    private object? Evaluate(CallExpression expression) =>
+        throw new NotImplementedException();
 }

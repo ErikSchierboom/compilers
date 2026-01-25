@@ -12,6 +12,7 @@ public enum SyntaxKind
     StarToken,
     SlashToken,
     EqualsToken,
+    CommaToken,
     OpenParenthesisToken,
     CloseParenthesisToken,
     NewlineToken,
@@ -49,7 +50,7 @@ public sealed record BinaryExpression(Expression Left, SyntaxToken OperatorToken
 public sealed record LiteralExpression(SyntaxToken LiteralToken, object? Value, SyntaxTree Tree, TextSpan Span) : Expression(Tree, SyntaxKind.LiteralExpression, Span);
 public sealed record ParenthesizedExpression(SyntaxToken OpenParenthesisToken, Expression Expression, SyntaxToken ClosesParenthesisToken, SyntaxTree Tree, TextSpan Span) : Expression(Tree, SyntaxKind.ParenthesizedExpression, Span);
 public sealed record NameExpression(SyntaxToken IdentifierToken, SyntaxTree Tree, TextSpan Span) : Expression(Tree, SyntaxKind.ParenthesizedExpression, Span);
-public sealed record CallExpression(Expression Name, SyntaxToken OperParenthesisToken, SyntaxToken ClosesParenthesisToken, SyntaxTree Tree, TextSpan Span) : Expression(Tree, SyntaxKind.ParenthesizedExpression, Span);
+public sealed record CallExpression(Expression Name, SyntaxToken OperParenthesisToken, Expression[] Arguments, SyntaxToken ClosesParenthesisToken, SyntaxTree Tree, TextSpan Span) : Expression(Tree, SyntaxKind.ParenthesizedExpression, Span);
 
 public abstract record Statement(SyntaxTree Tree, SyntaxKind Kind, TextSpan Span): SyntaxNode(Tree, Kind, Span);
 public sealed record ExpressionStatement(Expression Expression, SyntaxTree Tree, TextSpan Span) : Statement(Tree, SyntaxKind.ExpressionStatement, Span);

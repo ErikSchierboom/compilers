@@ -146,18 +146,18 @@ public class Parser
     private Expression ParseCallExpression(Expression left)
     {
         var openParenthesisToken = MatchToken(SyntaxKind.OpenParenthesisToken);
+        var args = new List<Expression>();
 
-        // if (!parser.match(TokenType.RIGHT_PAREN)) {
-        //     do {
-        //         args.add(parser.parseExpression());
-        //     } while (parser.match(TokenType.COMMA));
-        //     parser.consume(TokenType.RIGHT_PAREN);
-        // }
-        
-        // var arguments = ParseArguments();
-        // var closeParenthesisToken = MatchToken(SyntaxKind.CloseParenthesisToken);
-        // return new CallExpressionSyntax(_syntaxTree, identifier, openParenthesisToken, arguments, closeParenthesisToken);
-        throw new NotImplementedException();
+        if (Current.Kind != SyntaxKind.CloseParenthesisToken)
+        {
+            do
+            {
+                args.Add(ParseExpression(Precedence.NONE));
+            } while (Current.Kind == SyntaxKind.CommaToken);
+        }
+
+        var closeParenthesisToken = MatchToken(SyntaxKind.CloseParenthesisToken);
+        return new CallExpression(left, openParenthesisToken, args.ToArray(), closeParenthesisToken, _tree, left.Span.Combine(closeParenthesisToken.Span));
     }
 
     private SyntaxToken Current => Peek(0);
