@@ -11,7 +11,7 @@ public record StackFrame(Dictionary<string, object?> Variables, StackFrame? Pare
     public StackFrame CreateChild() => new(new Dictionary<string, object?>(), this);
 }
 
-public class Interpreter
+public class Interpreter : SyntaxVisitor<object?>
 {
     private readonly Stack<StackFrame> _stackFrames = new([new StackFrame(new Dictionary<string, object?>())]);
     private StackFrame CurrentStackFrame => _stackFrames.Peek();
@@ -19,54 +19,32 @@ public class Interpreter
     public object? Run(string code)
     {
         var syntaxTree = SyntaxTree.Parse(code);
-
-        // TODO: create visitor
-        return Evaluate(syntaxTree.Root);
+        return Visit(syntaxTree.Root);
     }
 
-    private object? Evaluate(CompilationUnit compilationUnit)
+    public override object? VisitCompilationUnit(CompilationUnit node)
     {
         object? result = null;
-
-        foreach (var statement in compilationUnit.Statements)
-            result = Evaluate(statement);
+    
+        foreach (var statement in node.Statements)
+            result = Visit(statement);
         
         return result;
     }
 
-    private object? Evaluate(Statement expression) =>
-        expression switch
-        {
-            ExpressionStatement expressionStatement => Evaluate(expressionStatement),
-            VariableDeclarationStatement variableDeclarationStatement => Evaluate(variableDeclarationStatement),
-            _ => throw new ArgumentOutOfRangeException(nameof(expression))
-        };
-    
-    private object? Evaluate(VariableDeclarationStatement variableDeclarationStatement) =>
-        CurrentStackFrame.Variables[variableDeclarationStatement.Identifier.Text] = Evaluate(variableDeclarationStatement.Initializer);
+    public override object? VisitVariableDeclarationStatement(VariableDeclarationStatement node) =>
+        CurrentStackFrame.Variables[node.Identifier.Text] = Visit(node.Initializer);
 
-    private object? Evaluate(ExpressionStatement expressionStatement) =>
-        Evaluate(expressionStatement.Expression);
+    public override object? VisitExpressionStatement(ExpressionStatement node) =>
+        Visit(node.Expression);
 
-    private object? Evaluate(Expression expression) =>
-        expression switch
-        {
-            BinaryExpression binaryExpression => Evaluate(binaryExpression),
-            LiteralExpression literalExpression => Evaluate(literalExpression),
-            ParenthesizedExpression parenthesizedExpression => Evaluate(parenthesizedExpression),
-            UnaryExpression unaryExpression => Evaluate(unaryExpression),
-            NameExpression nameExpression => Evaluate(nameExpression),
-            CallExpression callExpression => Evaluate(callExpression),
-            _ => throw new ArgumentOutOfRangeException(nameof(expression))
-        };
-
-    private object? Evaluate(BinaryExpression expression)
+    public override object? VisitBinaryExpression(BinaryExpression node)
     {
         // TODO: handle invalid types
-        var left = (int)Evaluate(expression.Left);
-        var right = (int)Evaluate(expression.Right);
+        var left = (int)Visit(node.Left);
+        var right = (int)Visit(node.Right);
         
-        return expression.OperatorToken.Kind switch
+        return node.OperatorToken.Kind switch
         {
             SyntaxKind.PlusToken => left + right,
             SyntaxKind.MinusToken => left - right,
@@ -75,31 +53,30 @@ public class Interpreter
             _ => throw new ArgumentOutOfRangeException()
         };
     }
-    
-    private object? Evaluate(LiteralExpression expression) =>
-        expression.LiteralToken.Kind switch
+
+    public override object? VisitLiteralExpression(LiteralExpression node) =>
+        node.LiteralToken.Kind switch
         {
-            SyntaxKind.NumberToken => expression.Value,
+            SyntaxKind.NumberToken => node.Value,
             _ => throw new ArgumentOutOfRangeException()
         };
 
-    private object? Evaluate(ParenthesizedExpression expression) =>
-        Evaluate(expression.Expression);
-    
-    private object? Evaluate(UnaryExpression expression)
+
+    public override object? VisitParenthesizedExpression(ParenthesizedExpression node) => Visit(node.Expression);
+
+    public override object? VisitUnaryExpression(UnaryExpression node)
     {
-        return expression.OperatorToken.Kind switch
+        return node.OperatorToken.Kind switch
         {
             // TODO: handle invalid types
-            SyntaxKind.PlusToken => (int)Evaluate(expression.Operand),
-            SyntaxKind.MinusToken => -(int)Evaluate(expression.Operand),
+            SyntaxKind.PlusToken => (int)Visit(node.Operand),
+            SyntaxKind.MinusToken => -(int)Visit(node.Operand),
             _ => throw new ArgumentOutOfRangeException()
         };
     }
 
-    private object? Evaluate(NameExpression expression) =>
-        CurrentStackFrame[expression.IdentifierToken.Text];
-    
-    private object? Evaluate(CallExpression expression) =>
-        throw new NotImplementedException();
+    public override object? VisitNameExpression(NameExpression node) =>
+        CurrentStackFrame[node.IdentifierToken.Text];
+
+    public override object? VisitCallExpression(CallExpression node) => throw new NotImplementedException();
 }

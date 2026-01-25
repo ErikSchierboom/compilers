@@ -20,9 +20,10 @@ public class Parser
 {
     private readonly SyntaxTree _tree;
     private readonly SyntaxToken[] _tokens;
+    private readonly Dictionary<SyntaxKind, PrefixParselet> _prefixParser = new();
+    private readonly Dictionary<SyntaxKind, InfixParselet> _infixParser = new();
+    
     private int _position;
-    private Dictionary<SyntaxKind, PrefixParselet> _prefixParser = new();
-    private Dictionary<SyntaxKind, InfixParselet> _infixParser = new();
 
     public Diagnostics Diagnostics { get; } = new();
 
