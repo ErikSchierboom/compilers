@@ -2,7 +2,7 @@
 
 using BoomScript;
 
-const string Source = "x = 33\n" +
-                      "(1 + x) * -2";
+const string Source = "x = 2\n" +
+                      "(1 + x) * (3 + 2)";
 
 Console.WriteLine(new Interpreter().Run(Source));

@@ -91,14 +91,9 @@ public class Parser
         var prefix = _prefixParser[Current.Kind];
         var left = prefix.Function();
 
-        while (Current.Kind is not (SyntaxKind.NewlineToken or SyntaxKind.EndOfFileToken))
-        {
-            var infix = _infixParser[Current.Kind];
-            if (infix.Precedence < precedence)
-                return left;
-            
+        while (Current.Kind is not (SyntaxKind.NewlineToken or SyntaxKind.EndOfFileToken) &&
+               _infixParser.TryGetValue(Current.Kind, out var infix) && infix.Precedence >= precedence)
             left = infix.Function(left);
-        }
 
         return left;
     }
