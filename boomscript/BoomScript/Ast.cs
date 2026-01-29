@@ -7,14 +7,21 @@ public enum SyntaxKind
     IdentifierToken,
     PlusToken,
     MinusToken,
+    MinusGreaterThanToken,
     StarToken,
     SlashToken,
     EqualsToken,
     CommaToken,
+    ColonToken,
     OpenParenthesisToken,
     CloseParenthesisToken,
+    OpenBraceToken,
+    CloseBraceToken,
     NewlineToken,
     EndOfFileToken,
+    
+    // Keywords
+    FnKeyword,
     
     // Nodes
     CompilationUnit,
@@ -26,13 +33,19 @@ public enum SyntaxKind
     
     // Statements
     ExpressionStatement,
+    FunctionDeclarationStatement,
+    BlockStatement,
     VariableDeclarationStatement,
+    
+    // Syntax
+    ParameterSyntax,
+    TypeClauseSyntax,
 }
 
 public class SyntaxTree
 {
     public SourceText SourceText { get; }
-    public CompilationUnit Root { get; }
+    public CompilationUnitSyntax Root { get; }
     
     private SyntaxTree(SourceText sourceText)
     {
@@ -58,9 +71,9 @@ public abstract record SyntaxNode(SyntaxTree Tree, SyntaxKind Kind, TextSpan Spa
     public abstract TResult Accept<TResult>(SyntaxVisitor<TResult> visitor);
 }
 
-public sealed record CompilationUnit(Statement[] Statements, SyntaxTree Tree, TextSpan Span) : SyntaxNode(Tree, SyntaxKind.CompilationUnit, Span)
+public sealed record CompilationUnitSyntax(Statement[] Statements, SyntaxTree Tree, TextSpan Span) : SyntaxNode(Tree, SyntaxKind.CompilationUnit, Span)
 {
-    public override TResult Accept<TResult>(SyntaxVisitor<TResult> visitor) => visitor.VisitCompilationUnit(this);
+    public override TResult Accept<TResult>(SyntaxVisitor<TResult> visitor) => visitor.VisitCompilationUnitSyntax(this);
 }
 
 public abstract record Expression(SyntaxTree Tree, SyntaxKind Kind, TextSpan Span): SyntaxNode(Tree, Kind, Span);
@@ -95,6 +108,7 @@ public sealed record CallExpression(Expression Name, Expression[] Arguments, Syn
 }
 
 public abstract record Statement(SyntaxTree Tree, SyntaxKind Kind, TextSpan Span): SyntaxNode(Tree, Kind, Span);
+
 public sealed record ExpressionStatement(Expression Expression, SyntaxTree Tree, TextSpan Span) : Statement(Tree, SyntaxKind.ExpressionStatement, Span)
 {
     public override TResult Accept<TResult>(SyntaxVisitor<TResult> visitor) => visitor.VisitExpressionStatement(this);
@@ -105,11 +119,41 @@ public sealed record VariableDeclarationStatement(SyntaxToken Identifier, Expres
     public override TResult Accept<TResult>(SyntaxVisitor<TResult> visitor) => visitor.VisitVariableDeclarationStatement(this);
 }
 
+public sealed record BlockStatement(Statement[] Statements, SyntaxTree Tree, TextSpan Span) : Statement(Tree, SyntaxKind.BlockStatement, Span)
+{
+    public override TResult Accept<TResult>(SyntaxVisitor<TResult> visitor) => visitor.VisitBlockStatement(this);
+}
+
+public sealed record FunctionDeclarationStatement(
+    SyntaxToken Identifier,
+    ParameterSyntax[] Parameters,
+    TypeClauseSyntax ReturnType,
+    BlockStatement Body,
+    SyntaxTree Tree,
+    TextSpan Span) : Statement(Tree, SyntaxKind.FunctionDeclarationStatement, Span)
+{
+    public override TResult Accept<TResult>(SyntaxVisitor<TResult> visitor) => visitor.VisitFunctionDeclarationStatement(this);
+}
+
+public sealed record ParameterSyntax(SyntaxToken Name, TypeClauseSyntax Type, SyntaxTree Tree, TextSpan Span)
+    : SyntaxNode(Tree, SyntaxKind.ParameterSyntax, Span)
+{
+    public override TResult Accept<TResult>(SyntaxVisitor<TResult> visitor) => visitor.VisitParameterSyntax(this);
+}
+
+public sealed record TypeClauseSyntax(SyntaxToken Type, SyntaxTree Tree, TextSpan Span)
+    : SyntaxNode(Tree, SyntaxKind.TypeClauseSyntax, Span)
+{
+    public override TResult Accept<TResult>(SyntaxVisitor<TResult> visitor) => visitor.VisitTypeClauseSyntax(this);
+}
+
 public abstract class SyntaxVisitor<TResult>
 {
     public TResult Visit(SyntaxNode element) => element.Accept(this);
 
-    public virtual TResult VisitCompilationUnit(CompilationUnit node) => Visit(node);
+    public virtual TResult VisitCompilationUnitSyntax(CompilationUnitSyntax node) => Visit(node);
+    public virtual TResult VisitTypeClauseSyntax(TypeClauseSyntax node) => Visit(node);
+    public virtual TResult VisitParameterSyntax(ParameterSyntax node) => Visit(node);
 
     public virtual TResult VisitUnaryExpression(UnaryExpression node) => Visit(node);
     public virtual TResult VisitBinaryExpression(BinaryExpression node) => Visit(node);
@@ -120,4 +164,6 @@ public abstract class SyntaxVisitor<TResult>
 
     public virtual TResult VisitExpressionStatement(ExpressionStatement node) => Visit(node);
     public virtual TResult VisitVariableDeclarationStatement(VariableDeclarationStatement node) => Visit(node);
+    public virtual TResult VisitFunctionDeclarationStatement(FunctionDeclarationStatement node) => Visit(node);
+    public virtual TResult VisitBlockStatement(BlockStatement node) => Visit(node);
 }

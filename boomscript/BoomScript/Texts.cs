@@ -1,5 +1,3 @@
-using System.Collections;
-
 namespace BoomScript;
 
 // TODO: consider storing source (file, REPL, whatever) with sourcetext
@@ -13,6 +11,7 @@ public sealed record SourceText(string Text)
     public int Length => Text.Length;
     
     public char this[int index] => Text[index];
+    public string this[Range index] => Text[index];
 }
 
 public sealed class TextLines

@@ -26,8 +26,16 @@ public class Lexer(SyntaxTree tree)
                     position++;
                     break;
                 case '-':
-                    tokens.Add(new SyntaxToken(tree, SyntaxKind.MinusToken, new TextSpan(position, 1)));
-                    position++;
+                    if (position < SourceText.Length - 1 && SourceText[position + 1] == '>')
+                    {
+                        tokens.Add(new SyntaxToken(tree, SyntaxKind.MinusGreaterThanToken, new TextSpan(position, 2)));
+                        position += 2;
+                    }
+                    else
+                    {
+                        tokens.Add(new SyntaxToken(tree, SyntaxKind.MinusToken, new TextSpan(position, 1)));
+                        position++;
+                    }
                     break;
                 case '*':
                     tokens.Add(new SyntaxToken(tree, SyntaxKind.StarToken, new TextSpan(position, 1)));
@@ -45,12 +53,24 @@ public class Lexer(SyntaxTree tree)
                     tokens.Add(new SyntaxToken(tree, SyntaxKind.CommaToken, new TextSpan(position, 1)));
                     position++;
                     break;
+                case ':':
+                    tokens.Add(new SyntaxToken(tree, SyntaxKind.ColonToken, new TextSpan(position, 1)));
+                    position++;
+                    break;
                 case '(':
                     tokens.Add(new SyntaxToken(tree, SyntaxKind.OpenParenthesisToken, new TextSpan(position, 1)));
                     position++;
                     break;
                 case ')':
                     tokens.Add(new SyntaxToken(tree, SyntaxKind.CloseParenthesisToken, new TextSpan(position, 1)));
+                    position++;
+                    break;
+                case '{':
+                    tokens.Add(new SyntaxToken(tree, SyntaxKind.OpenBraceToken, new TextSpan(position, 1)));
+                    position++;
+                    break;
+                case '}':
+                    tokens.Add(new SyntaxToken(tree, SyntaxKind.CloseBraceToken, new TextSpan(position, 1)));
                     position++;
                     break;
                 case var c when char.IsDigit(c):
@@ -67,7 +87,10 @@ public class Lexer(SyntaxTree tree)
                     while (position < SourceText.Length && char.IsAsciiLetterOrDigit(SourceText[position]))
                         position++;
                     
-                    tokens.Add(new SyntaxToken(tree, SyntaxKind.IdentifierToken, new TextSpan(identifierStartPosition, position - identifierStartPosition)));
+                    if (SourceText[identifierStartPosition..position] == "fn")
+                        tokens.Add(new SyntaxToken(tree, SyntaxKind.FnKeyword, new TextSpan(identifierStartPosition, position - identifierStartPosition)));
+                    else
+                        tokens.Add(new SyntaxToken(tree, SyntaxKind.IdentifierToken, new TextSpan(identifierStartPosition, position - identifierStartPosition)));
                     break;
                 default:
                     Diagnostics.ReportBadCharacter(new TextLocation(SourceText, new TextSpan(position, 1)), SourceText[position]);

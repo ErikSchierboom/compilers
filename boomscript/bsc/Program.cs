@@ -2,7 +2,12 @@
 
 using BoomScript;
 
-const string Source = "x = 2\n" +
-                      "(1 + x) * (3 + 2)";
+const string Source = """
+                      fn add (x: int, y: int) -> int {
+                        z = x + 2
+                        z + y
+                      }
+                      add(1, 2)
+                      """;
 
 Console.WriteLine(new Interpreter().Run(Source));

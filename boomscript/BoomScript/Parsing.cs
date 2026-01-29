@@ -45,11 +45,11 @@ public class Parser
         _infixParser[SyntaxKind.OpenParenthesisToken] = new(ParseCallExpression, Precedence.Call);
     }
 
-    public CompilationUnit ParseCompilationUnit()
+    public CompilationUnitSyntax ParseCompilationUnit()
     {
         var statements = ParseStatements();
         var endOfFileToken = MatchToken(SyntaxKind.EndOfFileToken);
-        return new CompilationUnit(statements, _tree, new TextSpan(0, endOfFileToken.Span.End));
+        return new CompilationUnitSyntax(statements, _tree, new TextSpan(0, endOfFileToken.Span.End));
     }
 
     private Statement[] ParseStatements()
@@ -62,22 +62,72 @@ public class Parser
         return statements.ToArray();
     }
 
-    private Statement ParseStatement()
+    private Statement ParseStatement() =>
+        Current.Kind switch
+        {
+            SyntaxKind.IdentifierToken when Lookahead.Kind == SyntaxKind.EqualsToken => ParseVariableDeclarationStatement(),
+            SyntaxKind.OpenBraceToken => ParseBlockStatement(),
+            SyntaxKind.FnKeyword => ParseFunctionDeclarationStatement(),
+            _ => ParseExpressionStatement()
+        };
+
+    private FunctionDeclarationStatement ParseFunctionDeclarationStatement()
     {
-        if (Current.Kind == SyntaxKind.IdentifierToken && Lookahead.Kind == SyntaxKind.EqualsToken)
-            return ParseVariableDeclarationStatement();
+        var fnKeyword = MatchToken(SyntaxKind.FnKeyword);
+        var name = MatchToken(SyntaxKind.IdentifierToken);
+        MatchToken(SyntaxKind.OpenParenthesisToken);
         
-        return ParseExpressionStatement();
+        var parameters = new List<ParameterSyntax>();
+        while (Current.Kind != SyntaxKind.CloseParenthesisToken && Current.Kind != SyntaxKind.EndOfFileToken)
+        {
+            parameters.Add(ParseParameter());
+            if (Current.Kind == SyntaxKind.CommaToken)
+                MatchToken(SyntaxKind.CommaToken);
+        }
+        
+        MatchToken(SyntaxKind.CloseParenthesisToken);
+        MatchToken(SyntaxKind.MinusGreaterThanToken);
+        var returnType = ParseTypeClause();
+        var body = ParseBlockStatement();
+        return new FunctionDeclarationStatement(name, parameters.ToArray(), returnType, body, _tree, fnKeyword.Span.Combine(body.Span));
     }
 
-    private Statement ParseExpressionStatement()
+    private ParameterSyntax ParseParameter()
+    {
+        var name = MatchToken(SyntaxKind.IdentifierToken);
+        MatchToken(SyntaxKind.ColonToken);
+        var type = ParseTypeClause();
+        return new ParameterSyntax(name, type, _tree, name.Span.Combine(type.Span));
+    }
+
+    private TypeClauseSyntax ParseTypeClause()
+    {
+        var identifier = MatchToken(SyntaxKind.IdentifierToken);
+        return new TypeClauseSyntax(identifier, _tree, identifier.Span);
+    }
+
+    private BlockStatement ParseBlockStatement()
+    {
+        var openBraceToken = MatchToken(SyntaxKind.OpenBraceToken);
+        MatchToken(SyntaxKind.NewlineToken);
+
+        var statements = new List<Statement>();
+        while (Current.Kind != SyntaxKind.CloseBraceToken && Current.Kind != SyntaxKind.EndOfFileToken)
+            statements.Add(ParseStatement());
+
+        var closeBraceToken = MatchToken(SyntaxKind.CloseBraceToken);
+        MatchToken(SyntaxKind.NewlineToken);
+        return new BlockStatement(statements.ToArray(), _tree, openBraceToken.Span.Combine(closeBraceToken.Span));
+    }
+
+    private ExpressionStatement ParseExpressionStatement()
     {   
         var expression = ParseExpression(Precedence.None);
         MatchToken(SyntaxKind.NewlineToken);
         return new ExpressionStatement(expression, _tree, expression.Span);
     }
     
-    private Statement ParseVariableDeclarationStatement()
+    private VariableDeclarationStatement ParseVariableDeclarationStatement()
     {
         var identifier = MatchToken(SyntaxKind.IdentifierToken);
         MatchToken(SyntaxKind.EqualsToken);
@@ -88,6 +138,7 @@ public class Parser
 
     private Expression ParseExpression(Precedence precedence)
     {
+        // TODO: error handling for unknown token
         var prefix = _prefixParser[Current.Kind];
         var left = prefix.Function();
 
@@ -98,7 +149,7 @@ public class Parser
         return left;
     }
 
-    private Expression ParseParenthesizeExpression()
+    private ParenthesizedExpression ParseParenthesizeExpression()
     {
         var openToken = MatchToken(SyntaxKind.OpenParenthesisToken);
         var expression = ParseExpression(Precedence.None);
@@ -106,20 +157,20 @@ public class Parser
         return new ParenthesizedExpression(expression, _tree, new TextSpan(openToken.Span.Start, closeToken.Span.End - openToken.Span.Start));
     }
 
-    private Expression ParseNumberLiteral()
+    private LiteralExpression ParseNumberLiteral()
     {
         var token = MatchToken(SyntaxKind.NumberToken);
         var value = int.Parse(token.Text);
         return new LiteralExpression(token, value, _tree, token.Span);
     }
     
-    private Expression ParseNameExpression()
+    private NameExpression ParseNameExpression()
     {
         var token = MatchToken(SyntaxKind.IdentifierToken);
         return new NameExpression(token, _tree, token.Span);
     }
 
-    private Expression ParseUnaryExpression()
+    private UnaryExpression ParseUnaryExpression()
     {
         switch (Current.Kind)
         {
@@ -133,24 +184,29 @@ public class Parser
         }
     }
 
-    private Expression ParseBinaryExpression(Expression left)
+    private BinaryExpression ParseBinaryExpression(Expression left)
     {
         var operatorToken = NextToken();
         var right = ParseExpression(_infixParser[operatorToken.Kind].Precedence);
         return new BinaryExpression(left, operatorToken, right, _tree, left.Span.Combine(right.Span));
     }
     
-    private Expression ParseCallExpression(Expression left)
+    private CallExpression ParseCallExpression(Expression left)
     {
         MatchToken(SyntaxKind.OpenParenthesisToken);
         var args = new List<Expression>();
 
         if (Current.Kind != SyntaxKind.CloseParenthesisToken)
         {
-            do
+            while(true)
             {
                 args.Add(ParseExpression(Precedence.None));
-            } while (Current.Kind == SyntaxKind.CommaToken);
+
+                if (Current.Kind != SyntaxKind.CommaToken)
+                    break;
+                
+                MatchToken(SyntaxKind.CommaToken);
+            } 
         }
 
         var closeParenthesisToken = MatchToken(SyntaxKind.CloseParenthesisToken);

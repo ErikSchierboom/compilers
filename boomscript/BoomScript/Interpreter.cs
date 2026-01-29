@@ -11,6 +11,8 @@ public record StackFrame(Dictionary<string, object?> Variables, StackFrame? Pare
     public StackFrame CreateChild() => new(new Dictionary<string, object?>(), this);
 }
 
+public record Function(string[] Parameters, BlockStatement Body);
+
 public class Interpreter : SyntaxVisitor<object?>
 {
     private readonly Stack<StackFrame> _stackFrames = new([new StackFrame(new Dictionary<string, object?>())]);
@@ -22,7 +24,7 @@ public class Interpreter : SyntaxVisitor<object?>
         return Visit(syntaxTree.Root);
     }
 
-    public override object? VisitCompilationUnit(CompilationUnit node)
+    public override object? VisitCompilationUnitSyntax(CompilationUnitSyntax node)
     {
         object? result = null;
     
@@ -61,7 +63,6 @@ public class Interpreter : SyntaxVisitor<object?>
             _ => throw new ArgumentOutOfRangeException()
         };
 
-
     public override object? VisitParenthesizedExpression(ParenthesizedExpression node) => Visit(node.Expression);
 
     public override object? VisitUnaryExpression(UnaryExpression node)
@@ -78,5 +79,35 @@ public class Interpreter : SyntaxVisitor<object?>
     public override object? VisitNameExpression(NameExpression node) =>
         CurrentStackFrame[node.IdentifierToken.Text];
 
-    public override object? VisitCallExpression(CallExpression node) => throw new NotImplementedException();
+    public override object? VisitCallExpression(CallExpression node)
+    {
+        // TODO: add tail-call recursion
+        if (CurrentStackFrame[node.Name.Text] is not Function function)
+            throw new InvalidOperationException($"Function '{node.Name.Text}' is not a function."); // TODO: proper error handling
+
+        var functionFrame = CurrentStackFrame.CreateChild();
+        // TODO: check number of arguments
+
+        foreach (var (name, value) in function.Parameters.Zip(node.Arguments, (name, arg) => (name, arg)))
+            functionFrame[name] = Visit(value);
+        
+        _stackFrames.Push(functionFrame);
+        var visit = Visit(function.Body);
+        _stackFrames.Pop();
+        
+        return visit;
+    }
+
+    public override object? VisitFunctionDeclarationStatement(FunctionDeclarationStatement node) => 
+        CurrentStackFrame[node.Identifier.Text] = new Function(node.Parameters.Select(param => param.Name.Text).ToArray(), node.Body);
+
+    public override object? VisitBlockStatement(BlockStatement node)
+    {
+        object? result = null;
+    
+        foreach (var statement in node.Statements)
+            result = Visit(statement);
+        
+        return result;
+    }
 }
