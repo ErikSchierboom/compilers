@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="BoomScript.Tests/BoomScript.Tests.csproj" />
+  <Project Path="BoomScript/BoomScript.csproj" />
+  <Project Path="bsc/bsc.csproj" />
+  <Project Path="bsi/bsi.csproj" />
+</Solution>
