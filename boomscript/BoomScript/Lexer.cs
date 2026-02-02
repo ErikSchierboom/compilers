@@ -1,6 +1,6 @@
 namespace BoomScript;
 
-public enum SyntaxTokenKind
+public enum TokenKind
 {
     // Literals
     Number,
@@ -14,13 +14,13 @@ public enum SyntaxTokenKind
     EndOfFile,
 }
 
-public record SyntaxToken(SyntaxTokenKind Kind, TextSpan Span);
+public sealed record Token(TokenKind Kind, TextSpan Span);
 
-public class Lexer(SourceText sourceText)
+public sealed class Lexer(SourceText sourceText)
 {
-    private SyntaxToken[] Lex()
+    private Token[] Lex()
     {
-        var tokens = new List<SyntaxToken>();
+        var tokens = new List<Token>();
         var position = 0;
 
         while (position < sourceText.Length)
@@ -31,11 +31,11 @@ public class Lexer(SourceText sourceText)
                     position++;
                     break;
                 case '+':
-                    tokens.Add(new SyntaxToken(SyntaxTokenKind.Plus, new TextSpan(position, 1)));
+                    tokens.Add(new Token(TokenKind.Plus, new TextSpan(position, 1)));
                     position++;
                     break;
                 case '=':
-                    tokens.Add(new SyntaxToken(SyntaxTokenKind.Equals, new TextSpan(position, 1)));
+                    tokens.Add(new Token(TokenKind.Equals, new TextSpan(position, 1)));
                     position++;
                     break;
                 case var c when char.IsDigit(c):
@@ -44,7 +44,7 @@ public class Lexer(SourceText sourceText)
                     while (position < sourceText.Length && char.IsDigit(sourceText[position]))
                         position++;
                     
-                    tokens.Add(new SyntaxToken(SyntaxTokenKind.Number, new TextSpan(digitStartPosition, position - digitStartPosition)));
+                    tokens.Add(new Token(TokenKind.Number, new TextSpan(digitStartPosition, position - digitStartPosition)));
                     break;
                 case var c when char.IsAsciiLetter(c):
                     var identifierStartPosition = position;
@@ -52,7 +52,7 @@ public class Lexer(SourceText sourceText)
                     while (position < sourceText.Length && char.IsAsciiLetterOrDigit(sourceText[position]))
                         position++;
                  
-                    tokens.Add(new SyntaxToken(SyntaxTokenKind.Identifier, new TextSpan(identifierStartPosition, position - identifierStartPosition)));
+                    tokens.Add(new Token(TokenKind.Identifier, new TextSpan(identifierStartPosition, position - identifierStartPosition)));
                     break;
                 default:
                     // TODO: add error handling
@@ -60,10 +60,10 @@ public class Lexer(SourceText sourceText)
             }
         }
         
-        tokens.Add(new SyntaxToken(SyntaxTokenKind.EndOfFile, new TextSpan(sourceText.Length, 0)));
-        
+        tokens.Add(new Token(TokenKind.EndOfFile, new TextSpan(sourceText.Length, 0)));
+
         return tokens.ToArray();
     }
 
-    public static SyntaxToken[] Lex(SourceText sourceText) => new Lexer(sourceText).Lex();
+    public static Token[] Lex(SourceText sourceText) => new Lexer(sourceText).Lex();
 }
