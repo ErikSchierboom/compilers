@@ -4,6 +4,8 @@ public abstract record Expression(TextSpan Span);
 
 public sealed record IntegerExpression(int Value, TextSpan Span) : Expression(Span);
 
+public sealed record NameExpression(string Identifier, TextSpan Span) : Expression(Span);
+
 public sealed record BinaryExpression(Expression Left, BinaryOperatorKind Operator, Expression Right, TextSpan Span) : Expression(Span);
 
 public sealed record AssignmentExpression(string Identifier, Expression Value, TextSpan Span) : Expression(Span);
@@ -21,7 +23,9 @@ public sealed class Parser
         Sum
     }
     
-    private record ParseRule(Func<Expression>? ParseUnary, Func<Expression, Expression>? ParseBinary, Precedence Precedence);
+    private delegate Expression? UnaryParser();
+    private delegate Expression BinaryParser(Expression left);
+    private record ParseRule(UnaryParser? ParseUnary, BinaryParser? ParseBinary, Precedence Precedence);
     
     private readonly SourceText _sourceText;
     private readonly Dictionary<TokenKind, ParseRule> _parseRules;
@@ -31,7 +35,8 @@ public sealed class Parser
         _sourceText = sourceText;
         _parseRules = new Dictionary<TokenKind, ParseRule>
         {
-            [TokenKind.Number] = new(ParseIntegerExpression, null, Precedence.None)
+            [TokenKind.Number] = new(ParseIntegerExpression, null, Precedence.None),
+            [TokenKind.Identifier] = new(ParseNameExpression, null, Precedence.None)
         };
     }
     
@@ -44,6 +49,12 @@ public sealed class Parser
     public static Expression[] Parse(SourceText sourceText) => new Parser(sourceText).Parse();
     
     private Expression ParseIntegerExpression()
+    {
+        // TODO: use token
+        throw new NotImplementedException();
+    }
+    
+    private Expression ParseNameExpression()
     {
         // TODO: use token
         throw new NotImplementedException();
