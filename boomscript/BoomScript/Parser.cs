@@ -29,7 +29,7 @@ public sealed class Parser
     private Token[] _tokens;
     private int _position;
 
-    public Parser(SourceText sourceText)
+    private Parser(SourceText sourceText)
     {
         _sourceText = sourceText;
         _parseRules = new Dictionary<TokenKind, ParseRule>

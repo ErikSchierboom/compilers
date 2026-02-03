@@ -17,16 +17,20 @@ public enum TokenKind
 
 public sealed record Token(TokenKind Kind, TextSpan Span);
 
-public sealed class Lexer(SourceText sourceText)
+public sealed class Lexer
 {
+    private readonly SourceText _sourceText;
+
+    private Lexer(SourceText sourceText) => _sourceText = sourceText;
+
     private Token[] Lex()
     {
         var tokens = new List<Token>();
         var position = 0;
 
-        while (position < sourceText.Length)
+        while (position < _sourceText.Length)
         {
-            switch (sourceText[position])
+            switch (_sourceText[position])
             {
                 case var c when char.IsWhiteSpace(c):
                     position++;
@@ -46,7 +50,7 @@ public sealed class Lexer(SourceText sourceText)
                 case var c when char.IsDigit(c):
                     var digitStartPosition = position;
 
-                    while (position < sourceText.Length && char.IsDigit(sourceText[position]))
+                    while (position < _sourceText.Length && char.IsDigit(_sourceText[position]))
                         position++;
                     
                     tokens.Add(new Token(TokenKind.Number, new TextSpan(digitStartPosition, position - digitStartPosition)));
@@ -54,7 +58,7 @@ public sealed class Lexer(SourceText sourceText)
                 case var c when char.IsAsciiLetter(c):
                     var identifierStartPosition = position;
 
-                    while (position < sourceText.Length && char.IsAsciiLetterOrDigit(sourceText[position]))
+                    while (position < _sourceText.Length && char.IsAsciiLetterOrDigit(_sourceText[position]))
                         position++;
                  
                     tokens.Add(new Token(TokenKind.Identifier, new TextSpan(identifierStartPosition, position - identifierStartPosition)));
@@ -65,7 +69,7 @@ public sealed class Lexer(SourceText sourceText)
             }
         }
         
-        tokens.Add(new Token(TokenKind.EndOfFile, new TextSpan(sourceText.Length, 0)));
+        tokens.Add(new Token(TokenKind.EndOfFile, new TextSpan(_sourceText.Length, 0)));
 
         return tokens.ToArray();
     }
