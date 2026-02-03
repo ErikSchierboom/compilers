@@ -34,6 +34,7 @@ public sealed class Parser
         _sourceText = sourceText;
         _parseRules = new Dictionary<TokenKind, ParseRule>
         {
+            [TokenKind.EndOfFile] = new(null, null, Precedence.None),
             [TokenKind.Number] = new(ParseIntegerExpression, null, Precedence.None),
             [TokenKind.Identifier] = new(ParseNameExpression, null, Precedence.None),
             [TokenKind.Equals] = new(null, ParseAssignmentExpression, Precedence.Assignment),
@@ -70,13 +71,7 @@ public sealed class Parser
         return expression;
     }
 
-    private ParseRule GetParseRule(Token token) 
-    {
-        if (_parseRules.TryGetValue(token.Kind, out var rule))
-            return rule;
-            
-        return new ParseRule(null, null, Precedence.None);
-    }
+    private ParseRule GetParseRule(Token token) => _parseRules[token.Kind];
 
     private Expression ParseIntegerExpression()
     {
