@@ -1,4 +1,5 @@
 ﻿using BoomScript;
 
-Console.WriteLine(Lexer.Lex(new SourceText("x = 1 + 23")));
+foreach (var expression in Parser.Parse(new SourceText("x = y = 1 + 2 * 3")))
+    Console.WriteLine(expression);
 

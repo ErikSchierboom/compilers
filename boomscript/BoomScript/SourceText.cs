@@ -3,6 +3,8 @@ namespace BoomScript;
 public record TextSpan(int Start, int Length)
 {
      public int End => Start + Length;
+     
+     public TextSpan Merge(TextSpan other) => new(Start, other.End - Start);
 }
 
 public record SourceText(string Text)

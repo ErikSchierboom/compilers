@@ -8,6 +8,7 @@ public enum TokenKind
     
     // Operators
     Plus,
+    Star,
     Equals,
     
     // Punctuation
@@ -32,6 +33,10 @@ public sealed class Lexer(SourceText sourceText)
                     break;
                 case '+':
                     tokens.Add(new Token(TokenKind.Plus, new TextSpan(position, 1)));
+                    position++;
+                    break;
+                case '*':
+                    tokens.Add(new Token(TokenKind.Star, new TextSpan(position, 1)));
                     position++;
                     break;
                 case '=':
