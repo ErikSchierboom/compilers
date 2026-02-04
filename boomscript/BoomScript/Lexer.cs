@@ -10,6 +10,8 @@ public enum TokenKind
     Plus,
     Star,
     Equals,
+    Greater,
+    Less,
     
     // Punctuation
     EndOfFile,
@@ -45,6 +47,14 @@ public sealed class Lexer
                     break;
                 case '=':
                     tokens.Add(new Token(TokenKind.Equals, new TextSpan(position, 1)));
+                    position++;
+                    break;
+                case '>':
+                    tokens.Add(new Token(TokenKind.Greater, new TextSpan(position, 1)));
+                    position++;
+                    break;
+                case '<':
+                    tokens.Add(new Token(TokenKind.Less, new TextSpan(position, 1)));
                     position++;
                     break;
                 case var c when char.IsDigit(c):

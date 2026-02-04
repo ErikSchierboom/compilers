@@ -2,7 +2,7 @@ namespace BoomScript;
 
 public abstract record Expression(TextSpan Span);
 
-public sealed record IntegerExpression(int Value, TextSpan Span) : Expression(Span);
+public sealed record LiteralExpression(object Value, TextSpan Span) : Expression(Span);
 
 public sealed record NameExpression(string Identifier, TextSpan Span) : Expression(Span);
 
@@ -16,8 +16,9 @@ public sealed class Parser
     {
         None,
         Assignment,
-        Sum,
-        Product
+        Comparison,
+        Term,
+        Factor
     }
     
     private delegate Expression ParsePrefix();
@@ -26,20 +27,23 @@ public sealed class Parser
     
     private readonly SourceText _sourceText;
     private readonly Dictionary<TokenKind, ParseRule> _parseRules;
-    private Token[] _tokens;
+    private readonly Token[] _tokens;
     private int _position;
 
     private Parser(SourceText sourceText)
     {
         _sourceText = sourceText;
+        _tokens = Lexer.Lex(_sourceText);
         _parseRules = new Dictionary<TokenKind, ParseRule>
         {
             [TokenKind.EndOfFile] = new(null, null, Precedence.None),
-            [TokenKind.Number] = new(ParseIntegerExpression, null, Precedence.None),
+            [TokenKind.Number] = new(ParseLiteralExpression, null, Precedence.None),
             [TokenKind.Identifier] = new(ParseNameExpression, null, Precedence.None),
             [TokenKind.Equals] = new(null, ParseAssignmentExpression, Precedence.Assignment),
-            [TokenKind.Plus] = new(null, ParseBinaryExpression, Precedence.Sum),
-            [TokenKind.Star] = new(null, ParseBinaryExpression, Precedence.Product),
+            [TokenKind.Greater] = new(null, ParseBinaryExpression, Precedence.Comparison),
+            [TokenKind.Less] = new(null, ParseBinaryExpression, Precedence.Comparison),
+            [TokenKind.Plus] = new(null, ParseBinaryExpression, Precedence.Term),
+            [TokenKind.Star] = new(null, ParseBinaryExpression, Precedence.Factor),
         };
     }
     
@@ -47,8 +51,6 @@ public sealed class Parser
     
     private Expression[] Parse()
     {
-        _tokens = Lexer.Lex(_sourceText);
-
         var expressions = new List<Expression>();
         
         while (Current.Kind != TokenKind.EndOfFile)
@@ -73,10 +75,10 @@ public sealed class Parser
 
     private ParseRule GetParseRule(Token token) => _parseRules[token.Kind];
 
-    private Expression ParseIntegerExpression()
+    private Expression ParseLiteralExpression()
     {
         var token = Expect(TokenKind.Number);
-        return new IntegerExpression(int.Parse(_sourceText[token.Span]), token.Span);
+        return new LiteralExpression(int.Parse(_sourceText[token.Span]), token.Span);
     }
     
     private Expression ParseNameExpression()
