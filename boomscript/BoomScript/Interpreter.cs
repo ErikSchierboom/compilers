@@ -2,17 +2,12 @@ namespace BoomScript;
 
 public sealed class Interpreter
 {
-    private readonly SourceText _sourceText;
-    private readonly Expression[] _expressions;
+    private readonly BoundProgram _program;
 
-    private Interpreter(SourceText sourceText)
-    {
-        _sourceText = sourceText;
-        _expressions = Parser.Parse(_sourceText);
-    }
+    private Interpreter(BoundProgram program) => _program = program;
 
-    public static object? Evaluate(SourceText sourceText) => 
-        new Interpreter(sourceText).Evaluate();
+    public static object? Evaluate(BoundProgram program) => 
+        new Interpreter(program).Evaluate();
     
     private object? Evaluate()
     {   
@@ -20,51 +15,34 @@ public sealed class Interpreter
         
         object? returnValue = null;
 
-        foreach (var expression in _expressions)
+        foreach (var expression in _program.Expressions)
             returnValue = Evaluate(expression, environment);
 
         return returnValue;
     }
 
-    private object Evaluate(Expression expression, Environment environment)
+    private object Evaluate(BoundExpression expression, Environment environment)
     {
         switch (expression)
         {
-            case AssignmentExpression assignmentExpression:
+            case BoundAssignmentExpression assignmentExpression:
                 var value = Evaluate(assignmentExpression.Value, environment);
                 environment[assignmentExpression.Identifier] = value;
                 return value;
-            case BinaryExpression binaryExpression:
+            case BoundBinaryExpression binaryExpression:
                 var left = Evaluate(binaryExpression.Left, environment);
                 var right = Evaluate(binaryExpression.Right, environment);
-                switch (binaryExpression.Operator.Kind)
+                return binaryExpression.Operator switch
                 {
-                    case TokenKind.Plus:
-                        if (left is int plusLeftOperand && right is int plusRightOperand)
-                            return plusLeftOperand + plusRightOperand;
-                        
-                        throw new InvalidOperationException("Operands must be integers.");
-                    case TokenKind.Star:
-                        if (left is int multiplyLeftOperand && right is int multiplyRightOperand)
-                            return multiplyLeftOperand + multiplyRightOperand;
-                        
-                        throw new InvalidOperationException("Operands must be integers.");
-                    case TokenKind.Greater:
-                        if (left is int greaterLeftOperand && right is int greaterRightOperand)
-                            return greaterLeftOperand > greaterRightOperand;
-                        
-                        throw new InvalidOperationException("Operands must be integers.");
-                    case TokenKind.Less:
-                        if (left is int lessLeftOperand && right is int lessRightOperand)
-                            return lessLeftOperand < lessRightOperand;
-                        
-                        throw new InvalidOperationException("Operands must be integers.");
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
-            case LiteralExpression literalExpression:
+                    { Kind: BoundBinaryOperatorKind.Add, LeftType: Type.Int, RightType: Type.Int } => (int)left + (int)right,
+                    { Kind: BoundBinaryOperatorKind.Mul, LeftType: Type.Int, RightType: Type.Int } => (int)left * (int)right,
+                    { Kind: BoundBinaryOperatorKind.Greater, LeftType: Type.Int, RightType: Type.Int } => (int)left > (int)right,
+                    { Kind: BoundBinaryOperatorKind.Less, LeftType: Type.Int, RightType: Type.Int } => (int)left < (int)right,
+                    _ => throw new ArgumentOutOfRangeException()
+                };
+            case BoundLiteralExpression literalExpression:
                 return literalExpression.Value;
-            case VariableExpression nameExpression:
+            case BoundVariableExpression nameExpression:
                 return environment[nameExpression.Identifier];
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
