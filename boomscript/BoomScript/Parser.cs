@@ -4,7 +4,7 @@ public abstract record Expression(TextSpan Span);
 
 public sealed record LiteralExpression(object Value, TextSpan Span) : Expression(Span);
 
-public sealed record NameExpression(string Identifier, TextSpan Span) : Expression(Span);
+public sealed record VariableExpression(string Identifier, TextSpan Span) : Expression(Span);
 
 public sealed record BinaryExpression(Expression Left, Token Operator, Expression Right, TextSpan Span) : Expression(Span);
 
@@ -38,7 +38,7 @@ public sealed class Parser
         {
             [TokenKind.EndOfFile] = new(null, null, Precedence.None),
             [TokenKind.Number] = new(ParseLiteralExpression, null, Precedence.None),
-            [TokenKind.Identifier] = new(ParseNameExpression, null, Precedence.None),
+            [TokenKind.Identifier] = new(ParseVariableExpression, null, Precedence.None),
             [TokenKind.Equals] = new(null, ParseAssignmentExpression, Precedence.Assignment),
             [TokenKind.Greater] = new(null, ParseBinaryExpression, Precedence.Comparison),
             [TokenKind.Less] = new(null, ParseBinaryExpression, Precedence.Comparison),
@@ -81,10 +81,10 @@ public sealed class Parser
         return new LiteralExpression(int.Parse(_sourceText[token.Span]), token.Span);
     }
     
-    private Expression ParseNameExpression()
+    private Expression ParseVariableExpression()
     {
         var token = Expect(TokenKind.Identifier);
-        return new NameExpression(_sourceText[token.Span], token.Span);
+        return new VariableExpression(_sourceText[token.Span], token.Span);
     }
     
     private Expression ParseBinaryExpression(Expression left)
@@ -98,7 +98,7 @@ public sealed class Parser
     
     private Expression ParseAssignmentExpression(Expression left)
     {
-        if (left is not NameExpression name)
+        if (left is not VariableExpression name)
             throw new InvalidOperationException("Expect identifier.");
             
         var identifier = name.Identifier;

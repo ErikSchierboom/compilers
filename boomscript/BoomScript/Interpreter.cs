@@ -64,7 +64,7 @@ public sealed class Interpreter
                 }
             case LiteralExpression literalExpression:
                 return literalExpression.Value;
-            case NameExpression nameExpression:
+            case VariableExpression nameExpression:
                 return environment[nameExpression.Identifier];
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
