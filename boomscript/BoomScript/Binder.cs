@@ -2,8 +2,9 @@ namespace BoomScript;
 
 public enum Type
 {
+    Unit,
     Int,
-    Bool
+    Bool,
 }
 
 public enum BoundBinaryOperatorKind
@@ -15,37 +16,88 @@ public enum BoundBinaryOperatorKind
 }
 
 public record BoundBinaryOperator(
-    TokenKind TokenKind,
     BoundBinaryOperatorKind Kind,
     Type LeftType,
     Type RightType,
-    Type ResultType)
+    Type ResultType);
+
+public abstract record BoundExpression(Type Type);
+
+public sealed record BoundLiteralExpression(object Value, Type Type) : BoundExpression(Type);
+
+public sealed record BoundBinaryExpression(BoundExpression Left, BoundBinaryOperator Operator, BoundExpression Right) : BoundExpression(Operator.ResultType);
+
+public sealed record BoundVariableExpression(string Identifier, Type Type) : BoundExpression(Type);
+
+public sealed record BoundAssignmentExpression(string Identifier, BoundExpression Value) : BoundExpression(Value.Type);
+
+public sealed record BoundProgram(BoundExpression[] Expressions, Type Type): BoundExpression(Type);
+
+public sealed class Binder
 {
-    public BoundBinaryOperator Bind(TokenKind tokenKind, Type leftType, Type rightType) =>
-        _binaryOperators.FirstOrDefault(op =>
-            op.TokenKind == tokenKind && op.LeftType == leftType && op.RightType == rightType) ??
-        throw new InvalidOperationException("No binary operator matches given arguments.");
+    private readonly Expression[] _expressions;
+    private readonly Dictionary<string, Type> _variables = new();
 
-    private static readonly List<BoundBinaryOperator> _binaryOperators =
-    [
-        new(TokenKind.Plus, BoundBinaryOperatorKind.Add, Type.Int, Type.Int, Type.Int),
-        new(TokenKind.Star, BoundBinaryOperatorKind.Mul, Type.Int, Type.Int, Type.Int),
-        new(TokenKind.Greater, BoundBinaryOperatorKind.Greater, Type.Int, Type.Int, Type.Bool),
-        new(TokenKind.Less, BoundBinaryOperatorKind.Less, Type.Int, Type.Int, Type.Bool)
-    ];
-}
+    private static readonly Dictionary<TokenKind, BoundBinaryOperator[]> _binaryOperators = new()
+    {
+        [TokenKind.Plus] = [new(BoundBinaryOperatorKind.Add, Type.Int, Type.Int, Type.Int)],
+        [TokenKind.Star] = [new(BoundBinaryOperatorKind.Mul, Type.Int, Type.Int, Type.Int)],
+        [TokenKind.Greater] = [new(BoundBinaryOperatorKind.Greater, Type.Int, Type.Int, Type.Bool)],
+        [TokenKind.Less] = [new(BoundBinaryOperatorKind.Less, Type.Int, Type.Int, Type.Bool)],
+    };
 
-public abstract record BoundExpression(Type Type, Expression Expression);
+    private Binder(Expression[] expressions) => _expressions = expressions;
 
-public sealed record BoundLiteralExpression(object Value, Type Type, Expression Expression) : BoundExpression(Type, Expression);
+    public static BoundProgram Bind(Expression[] expressions) => new Binder(expressions).BindProgram();
 
-public sealed record BoundVariableExpression(string Identifier, Type Type, Expression Expression) : BoundExpression(Type, Expression);
+    private BoundProgram BindProgram()
+    {
+        var boundExpressions = _expressions.Select(BindExpression).ToArray();
+        return new BoundProgram(boundExpressions, boundExpressions.LastOrDefault()?.Type ?? Type.Unit);
+    }
 
-public sealed record BoundBinaryExpression(BoundExpression Left, BoundBinaryOperator Operator, BoundExpression Right, Expression Expression) : BoundExpression(Operator.ResultType, Expression);
+    private BoundExpression BindExpression(Expression expression) =>
+        expression switch
+        {
+            AssignmentExpression assignmentExpression => BindAssignmentExpression(assignmentExpression),
+            BinaryExpression binaryExpression => BindBinaryExpression(binaryExpression),
+            LiteralExpression literalExpression => BindLiteralExpression(literalExpression),
+            VariableExpression variableExpression => BindVariableExpression(variableExpression),
+            _ => throw new ArgumentOutOfRangeException(nameof(expression))
+        };
 
-public sealed record BoundAssignmentExpression(string Identifier, BoundExpression Value, Expression Expression) : BoundExpression(Value.Type, Expression);
+    private BoundAssignmentExpression BindAssignmentExpression(AssignmentExpression assignmentExpression)
+    {
+        var boundExpression = BindExpression(assignmentExpression.Value);
+        _variables[assignmentExpression.Identifier] = boundExpression.Type;
+        return new BoundAssignmentExpression(assignmentExpression.Identifier, boundExpression);
+    }
 
-public class Binder
-{
-    
+    private BoundBinaryExpression BindBinaryExpression(BinaryExpression binaryExpression)
+    {
+        var boundLeft = BindExpression(binaryExpression.Left);
+        var boundRight = BindExpression(binaryExpression.Right);
+
+        var boundBinaryOperator = _binaryOperators[binaryExpression.Operator.Kind]
+            .FirstOrDefault(op => op.LeftType == boundLeft.Type && op.RightType == boundRight.Type) ??
+                                  throw new InvalidOperationException("No binary operator matches given arguments.");
+        
+        return new BoundBinaryExpression(boundLeft, boundBinaryOperator, boundRight);
+    }
+
+    private BoundLiteralExpression BindLiteralExpression(LiteralExpression literalExpression) =>
+        literalExpression.Value switch
+        {
+            int i => new BoundLiteralExpression(i, Type.Int),
+            bool b => new BoundLiteralExpression(b, Type.Bool),
+            _ => throw new ArgumentOutOfRangeException(nameof(literalExpression.Value), literalExpression.Value, null)
+        };
+
+    private BoundVariableExpression BindVariableExpression(VariableExpression variableExpression)
+    {
+        if (_variables.TryGetValue(variableExpression.Identifier, out var type))
+            return new BoundVariableExpression(variableExpression.Identifier, type);
+        
+        throw new InvalidOperationException($"Unbound variable '{variableExpression.Identifier}'.");
+    }
 }
