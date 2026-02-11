@@ -1,17 +1,14 @@
 ﻿using BoomScript;
 
-var sourceText = new SourceText("x = 1 + 2 * 3\ny = x > 4");
+// var sourceText = new SourceText("x = 1 + 2 * 9\ny = x + 7");
+var sourceText = new SourceText("x = 1 + 2 * 3\ny = x + 4\ny");
 
 var expressions = Parser.Parse(sourceText);
 var boundProgram = Binder.Bind(expressions);
 Console.WriteLine(boundProgram);
 
-var value = Interpreter.Evaluate(boundProgram);
-Console.WriteLine(value);
+var interpreterResult = Interpreter.Evaluate(boundProgram);
+Console.WriteLine($"Interpreter result: {interpreterResult}");
 
-var compiledProgram = Compiler.Run(boundProgram);
-
-object[] args2={"Hello."};
-object myObject = Activator.CreateInstance(compiledProgram,null,null);
-var myMethodInfo = compiledProgram.GetMethod("MyMethod");
-myMethodInfo.Invoke(myObject,args2);
+var compilerResult = Compiler.Run(boundProgram);
+Console.WriteLine($"Compiler result: {compilerResult}");

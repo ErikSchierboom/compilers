@@ -34,10 +34,10 @@ public sealed class Interpreter
                 var right = Evaluate(binaryExpression.Right, environment);
                 return binaryExpression.Operator switch
                 {
-                    { Kind: BoundBinaryOperatorKind.Add, LeftType: Type.Int, RightType: Type.Int } => (int)left + (int)right,
-                    { Kind: BoundBinaryOperatorKind.Mul, LeftType: Type.Int, RightType: Type.Int } => (int)left * (int)right,
-                    { Kind: BoundBinaryOperatorKind.Greater, LeftType: Type.Int, RightType: Type.Int } => (int)left > (int)right,
-                    { Kind: BoundBinaryOperatorKind.Less, LeftType: Type.Int, RightType: Type.Int } => (int)left < (int)right,
+                    { Kind: BoundBinaryOperatorKind.Add, LeftType: BoundType.Int, RightType: BoundType.Int } => (int)left + (int)right,
+                    { Kind: BoundBinaryOperatorKind.Mul, LeftType: BoundType.Int, RightType: BoundType.Int } => (int)left * (int)right,
+                    { Kind: BoundBinaryOperatorKind.Greater, LeftType: BoundType.Int, RightType: BoundType.Int } => (int)left > (int)right,
+                    { Kind: BoundBinaryOperatorKind.Less, LeftType: BoundType.Int, RightType: BoundType.Int } => (int)left < (int)right,
                     _ => throw new ArgumentOutOfRangeException()
                 };
             case BoundLiteralExpression literalExpression:
@@ -49,9 +49,9 @@ public sealed class Interpreter
         }
     }
 
-    private record Environment(Dictionary<string, object> Variables, Environment? Parent)
+    private record Environment(Dictionary<string, object> Variables)
     {
-        public static Environment Default() => new(new(), null);
+        public static Environment Default() => new(new Dictionary<string, object>());
 
         public object this[string index]
         {
