@@ -9,7 +9,10 @@ type State = {
     Words: Map<string, State -> State>
 }
 
-let private binaryOperator (op: int -> int -> int) (state: State): State =
+let private stateOperation (op: int list -> int list) (state: State): State =
+    { state with Stack = op state.Stack }
+
+let private binaryMathOperation (op: int -> int -> int) (state: State): State =
     match state.Stack with
     | right :: left :: tail -> { state with Stack = op left right :: tail }
     | _ -> failwith "Invalid stack"
@@ -17,11 +20,15 @@ let private binaryOperator (op: int -> int -> int) (state: State): State =
 let private initialState = {
     Stack = []
     Words = Map.ofList [
-        "+", binaryOperator (+)
-        "-", binaryOperator (-)
-        "*", binaryOperator (*)
-        "/", binaryOperator (/)
-        "mod", binaryOperator (%)
+        "+",    binaryMathOperation (+)
+        "-",    binaryMathOperation (-)
+        "*",    binaryMathOperation (*)
+        "/",    binaryMathOperation (/)
+        "mod",  binaryMathOperation (%)
+        "swap", stateOperation (function | x :: y :: tail -> y :: x :: tail | _ -> failwith "Invalid stack")
+        "over", stateOperation (function | x :: y :: tail -> y :: x :: y :: tail | _ -> failwith "Invalid stack")
+        "rot",  stateOperation (function | x :: y :: z :: tail -> y :: z :: x :: tail | _ -> failwith "Invalid stack")
+        "drop", stateOperation List.tail
     ]
 }
 
@@ -47,5 +54,5 @@ let evaluate (input: string): State =
                 
     inner 0 initialState
                 
-let tokens = evaluate "1 2 + 3 *"
+let tokens = evaluate "1 2 + 3 * 4 swap 7 rot"
 printfn $"%A{tokens}"
