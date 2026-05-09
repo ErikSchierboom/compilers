@@ -5,8 +5,8 @@
                     z + 1;
                     """;
 
-var lexer = new Lexer();
-var tokens = lexer.Lex(code);
+var lexer = new Lexer(code);
+var tokens = lexer.Lex();
 
 var parser = new Parser(tokens);
 var statements = parser.Parse();
@@ -38,9 +38,9 @@ public enum TokenKind
 
 public record Token(TokenKind Kind, string Text);
 
-public class Lexer
+public class Lexer(string source)
 {
-    public List<Token> Lex(string source)
+    public List<Token> Lex()
     {
         var tokens = new List<Token>();
         var current = 0;
