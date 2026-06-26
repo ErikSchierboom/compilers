@@ -1,11 +1,9 @@
 ﻿using Gleamy;
 
 const string code = """
-                    pub fn factorial(x: Int) -> Int {
-                      match x {
-                        case 1 => 1,
-                        case _ => x * factorial(x - 1),
-                      }
+                    pub fn cube(x: Int) -> Int {
+                        let y = x * x
+                        y * x
                     }
                     """;
 

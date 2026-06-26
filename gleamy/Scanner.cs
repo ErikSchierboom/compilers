@@ -4,6 +4,7 @@ internal sealed class Scanner(string source)
 {
     private static readonly Dictionary<string, TokenType> Keywords = new()
     {
+        ["let"] = TokenType.LetKeyword,
         ["pub"] = TokenType.PubKeyword,
         ["fn"] = TokenType.FnKeyword,
         ["match"] = TokenType.MatchKeyword,
@@ -20,7 +21,11 @@ internal sealed class Scanner(string source)
         {
             switch (source[position])
             {
-                case ' ' or '\t' or '\n' or '\r':
+                case ' ' or '\t' or '\r':
+                    position++;
+                    break;
+                case '\n':
+                    tokens.Add(new Token(TokenType.Newline, "\n"));
                     position++;
                     break;
                 case '+':
@@ -64,11 +69,16 @@ internal sealed class Scanner(string source)
                     position++;
                     break;
                 case '=':
-                    if (position >= source.Length || source[position + 1] != '>')
-                        throw new InvalidOperationException("Expected '>' token");
-                    
-                    tokens.Add(new Token(TokenType.EqualGreaterThan, "=>"));
-                    position += 2;
+                    if (position < source.Length - 1 || source[position + 1] == '>')
+                    {
+                        tokens.Add(new Token(TokenType.EqualGreaterThan, "=>"));
+                        position += 2;
+                    }
+                    else
+                    {
+                        tokens.Add(new Token(TokenType.Equal, "="));
+                        position++;
+                    }
                     break;
                 case '-':
                     if (position < source.Length - 1 || source[position + 1] == '>')
@@ -105,6 +115,8 @@ internal sealed class Scanner(string source)
             }
         }
         
+        tokens.Add(new Token(TokenType.Eof, ""));
+        
         return tokens;
     }
 }
@@ -120,19 +132,24 @@ internal enum TokenType
     CloseParen,
     OpenBracket,
     CloseBracket,
+    Equal,
     EqualGreaterThan,
+    Minus,
     MinusGreaterThan,
     Colon,
     Comma,
     Underscore,
     Plus,
     Star,
-    Minus,
     Slash,
     
+    LetKeyword,
     PubKeyword,
     FnKeyword,
     MatchKeyword,
     CaseKeyword,
     IntKeyword,
+    
+    Newline,
+    Eof,
 }
