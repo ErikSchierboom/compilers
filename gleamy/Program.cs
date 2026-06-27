@@ -1,8 +1,13 @@
 ﻿using Gleamy;
 
 const string code = """
+                    fn square (x: Int) -> Int {
+                        let squared = x * x;
+                        squared
+                    }
+                    
                     fn cube (x: Int) -> Int {
-                        let y = x * x;
+                        let y = square(x);
                         y * x
                     }
                     """;

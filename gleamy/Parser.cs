@@ -128,17 +128,35 @@ internal class Parser(List<Token> tokens)
     {
         if (Match(TokenType.Number))
             return new NumericLiteralExpressionSyntax(Previous);
-        
+
         if (Match(TokenType.Identifier))
-            return new IdentifierNameExpressionSyntax(Previous);
+        {
+            var identifier = Previous;
+
+            if (!Match(TokenType.OpenParen))
+                return new IdentifierNameExpressionSyntax(identifier);
+            
+            var arguments = new List<ExpressionSyntax>();
+            while (!Check(TokenType.CloseParen))
+            {
+                do
+                {
+                    arguments.Add(ParseExpression());
+                } while (Match(TokenType.Comma));
+            }
+            
+            Consume(TokenType.CloseParen);
+                
+            return new InvocationExpressionSyntax(identifier, arguments);
+        }
         
         throw new InvalidOperationException($"Unexpected token {Previous}");
     }
 
     private bool IsEndOfFile => Current.Type == TokenType.Eof; 
     
-    private Token Current => tokens[_position];
     private Token Previous => tokens[_position - 1];
+    private Token Current  => tokens[_position];
 
     private bool Match(TokenType expected)
     {
@@ -156,6 +174,11 @@ internal class Parser(List<Token> tokens)
         
         _position++;
     }
+
+    private bool Check(TokenType expected)
+    {
+        return Current.Type == expected;
+    }
 }
 
 internal record SyntaxTree(List<StatementSyntax> Statements);
@@ -172,4 +195,5 @@ internal sealed record ParameterSyntax(Token Identifier, TypeSyntax Type);
 internal abstract record ExpressionSyntax;
 internal sealed record NumericLiteralExpressionSyntax(Token Value) : ExpressionSyntax;
 internal sealed record IdentifierNameExpressionSyntax(Token Identifier) : ExpressionSyntax;
+internal sealed record InvocationExpressionSyntax(Token Identifier, List<ExpressionSyntax> Arguments) : ExpressionSyntax;
 internal sealed record BinaryExpressionSyntax(ExpressionSyntax Left, Token Operator, ExpressionSyntax Right) : ExpressionSyntax;
