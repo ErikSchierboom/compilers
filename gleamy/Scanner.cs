@@ -2,6 +2,8 @@
 
 internal sealed class Scanner(string source)
 {
+    private int _position;
+
     private static readonly Dictionary<string, TokenType> Keywords = new()
     {
         ["let"] = TokenType.LetKeyword,
@@ -15,102 +17,101 @@ internal sealed class Scanner(string source)
     {
         var tokens = new List<Token>();
         
-        var position = 0;
-        while (position < source.Length)
+        while (!IsEndOfFile)
         {
-            switch (source[position])
+            switch (Current)
             {
-                case ' ' or '\t' or '\r':
-                    position++;
-                    break;
-                case '\n':
-                    tokens.Add(new Token(TokenType.Newline, "\n"));
-                    position++;
+                case ' ' or '\n' or '\r' or '\t':
+                    _position++;
                     break;
                 case '+':
                     tokens.Add(new Token(TokenType.Plus, "+"));
-                    position++;
+                    _position++;
                     break;
                 case '*':
                     tokens.Add(new Token(TokenType.Star, "*"));
-                    position++;
+                    _position++;
                     break;
                 case '/':
                     tokens.Add(new Token(TokenType.Slash, "/"));
-                    position++;
+                    _position++;
                     break;
                 case ',':
                     tokens.Add(new Token(TokenType.Comma, ","));
-                    position++;
+                    _position++;
                     break;
                 case ':':
                     tokens.Add(new Token(TokenType.Colon, ":"));
-                    position++;
+                    _position++;
+                    break;
+                case ';':
+                    tokens.Add(new Token(TokenType.Semicolon, ";"));
+                    _position++;
                     break;
                 case '_':
                     tokens.Add(new Token(TokenType.Underscore, "_"));
-                    position++;
+                    _position++;
                     break;
                 case '(':
                     tokens.Add(new Token(TokenType.OpenParen, "("));
-                    position++;
+                    _position++;
                     break;
                 case ')':
                     tokens.Add(new Token(TokenType.CloseParen, ")"));
-                    position++;
+                    _position++;
                     break;
                 case '{':
                     tokens.Add(new Token(TokenType.OpenBracket, "{"));
-                    position++;
+                    _position++;
                     break;
                 case '}':
                     tokens.Add(new Token(TokenType.CloseBracket, "}"));
-                    position++;
+                    _position++;
                     break;
                 case '=':
-                    if (position < source.Length - 1 || source[position + 1] == '>')
+                    if (Next == '>')
                     {
                         tokens.Add(new Token(TokenType.EqualGreaterThan, "=>"));
-                        position += 2;
+                        _position += 2;
                     }
                     else
                     {
                         tokens.Add(new Token(TokenType.Equal, "="));
-                        position++;
+                        _position++;
                     }
                     break;
                 case '-':
-                    if (position < source.Length - 1 || source[position + 1] == '>')
+                    if (Next == '>')
                     {
                         tokens.Add(new Token(TokenType.MinusGreaterThan, "->"));
-                        position += 2;
+                        _position += 2;
                     }
                     else
                     {
                         tokens.Add(new Token(TokenType.Minus, "-"));
-                        position++;
+                        _position++;
                     }
                     break;
                 case >= '0' and <= '9':
-                    var numberStartPosition = position;
-                    while (position < source.Length && source[position] is >= '0' and <= '9')
-                        position++;
+                    var numberStartPosition = _position;
+                    while (_position < source.Length && source[_position] is >= '0' and <= '9')
+                        _position++;
                     
-                    tokens.Add(new Token(TokenType.Number, source[numberStartPosition..position]));
+                    tokens.Add(new Token(TokenType.Number, source[numberStartPosition.._position]));
                     break;
                 case >= 'a' and <= 'z' or >= 'A' and <= 'Z':
-                    var identifierStartPosition = position;
-                    while (position < source.Length && source[position] is >= 'a' and <= 'z' or >= 'A' and <= 'Z')
-                        position++;
+                    var identifierStartPosition = _position;
+                    while (_position < source.Length && source[_position] is >= 'a' and <= 'z' or >= 'A' and <= 'Z')
+                        _position++;
 
-                    var text = source[identifierStartPosition..position];
+                    var text = source[identifierStartPosition.._position];
                     if (Keywords.TryGetValue(text, out var tokenType))
                         tokens.Add(new Token(tokenType, text));    
                     else
                         tokens.Add(new Token(TokenType.Identifier, text));
                     break;
                 default:
-                    throw new InvalidOperationException($"Unknown character: '{source[position]}'");
+                    throw new InvalidOperationException($"Unknown character: '{source[_position]}'");
             }
         }
         
@@ -118,6 +119,11 @@ internal sealed class Scanner(string source)
         
         return tokens;
     }
+
+    private bool IsEndOfFile => _position >= source.Length;
+    
+    private char Current => source[_position];
+    private char Next => _position < source.Length - 1 ? source[_position + 1] : '\0';
 }
 
 internal sealed record Token(TokenType Type, string Text);
@@ -136,6 +142,7 @@ internal enum TokenType
     Minus,
     MinusGreaterThan,
     Colon,
+    Semicolon,
     Comma,
     Underscore,
     Plus,
@@ -147,7 +154,6 @@ internal enum TokenType
     MatchKeyword,
     CaseKeyword,
     IntKeyword,
-    
-    Newline,
+
     Eof,
 }
