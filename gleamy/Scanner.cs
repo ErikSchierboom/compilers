@@ -5,7 +5,6 @@ internal sealed class Scanner(string source)
     private static readonly Dictionary<string, TokenType> Keywords = new()
     {
         ["let"] = TokenType.LetKeyword,
-        ["pub"] = TokenType.PubKeyword,
         ["fn"] = TokenType.FnKeyword,
         ["match"] = TokenType.MatchKeyword,
         ["case"] = TokenType.CaseKeyword,
@@ -144,7 +143,6 @@ internal enum TokenType
     Slash,
     
     LetKeyword,
-    PubKeyword,
     FnKeyword,
     MatchKeyword,
     CaseKeyword,
