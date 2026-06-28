@@ -6,7 +6,7 @@ internal class Parser(List<Token> tokens)
     
     public SyntaxTree Parse()
     {
-        var statements = new List<StatementSyntax>();
+        var statements = new List<Statement>();
 
         while (!IsEndOfFile)
             statements.Add(ParseStatement());
@@ -14,7 +14,7 @@ internal class Parser(List<Token> tokens)
         return new SyntaxTree(statements);
     }
 
-    private StatementSyntax ParseStatement()
+    private Statement ParseStatement()
     {
         if (Match(TokenType.LetKeyword))
             return ParseBindingDeclarationStatement();
@@ -25,22 +25,22 @@ internal class Parser(List<Token> tokens)
         return ParseExpressionStatement();
     }
 
-    private BindingDeclarationStatementSyntax ParseBindingDeclarationStatement()
+    private BindingDeclarationStatement ParseBindingDeclarationStatement()
     {
         Consume(TokenType.Identifier);
         var identifier = Previous;
         Consume(TokenType.Equal);
         var expression = ParseExpression();
-        return new BindingDeclarationStatementSyntax(identifier, expression);
+        return new BindingDeclarationStatement(identifier, expression);
     }
 
-    private FunctionDeclarationStatementSyntax ParseFunctionDeclarationStatement()
+    private FunctionDeclarationStatement ParseFunctionDeclarationStatement()
     {
         Consume(TokenType.Identifier);
         var identifier = Previous;
 
         Consume(TokenType.OpenParen);
-        var parameters = new List<ParameterSyntax>();
+        var parameters = new List<Parameter>();
         while (true)
         {
             parameters.Add(ParseParameter());
@@ -55,14 +55,14 @@ internal class Parser(List<Token> tokens)
         
         var body = ParseBlockStatement();
         
-        return new FunctionDeclarationStatementSyntax(identifier, parameters, returnType, body);
+        return new FunctionDeclarationStatement(identifier, [..parameters], returnType, body);
     }
 
-    private BlockStatementSyntax ParseBlockStatement()
+    private BlockStatement ParseBlockStatement()
     {
         Consume(TokenType.OpenBracket);
         
-        var statements = new List<StatementSyntax>();
+        var statements = new List<Statement>();
         while (true)
         {
             statements.Add(ParseStatement());
@@ -73,70 +73,70 @@ internal class Parser(List<Token> tokens)
          
         Consume(TokenType.CloseBracket);
         
-        return new BlockStatementSyntax(statements);
+        return new BlockStatement([..statements]);
     }
 
-    private TypeSyntax ParseType()
+    private IdentifierType ParseType()
     {
         if (Match(TokenType.IntKeyword))
-            return new TypeSyntax(Previous);
+            return new IdentifierType(Previous);
         
         throw new InvalidOperationException($"Expected type but got {Current.Type}");
     }
 
-    private ParameterSyntax ParseParameter()
+    private Parameter ParseParameter()
     {
         Consume(TokenType.Identifier);
         var identifier = Previous;
         Consume(TokenType.Colon);
         var type = ParseType();
-        return new ParameterSyntax(identifier, type);
+        return new Parameter(identifier, type);
     }
 
-    private ExpressionStatementSyntax ParseExpressionStatement()
+    private ExpressionStatement ParseExpressionStatement()
     {
         var expression = ParseExpression();
-        return new ExpressionStatementSyntax(expression);
+        return new ExpressionStatement(expression);
     }
 
-    private ExpressionSyntax ParseExpression()
+    private Expression ParseExpression()
     {
         return ParseTermExpression();
     }
 
-    private ExpressionSyntax ParseTermExpression()
+    private Expression ParseTermExpression()
     {
         var left = ParseFactorExpression();
         
         while (Match(TokenType.Plus) || Match(TokenType.Minus))
-            left = new BinaryExpressionSyntax(left,  Previous, ParseFactorExpression());
+            left = new BinaryExpression(left,  Previous, ParseFactorExpression());
 
         return left;
     }
 
-    private ExpressionSyntax ParseFactorExpression()
+    private Expression ParseFactorExpression()
     {
         var left = ParsePrimaryExpression();
         
         while (Match(TokenType.Star) || Match(TokenType.Slash))
-            left = new BinaryExpressionSyntax(left,  Previous, ParsePrimaryExpression());
+            left = new BinaryExpression(left,  Previous, ParsePrimaryExpression());
 
         return left;
     }
 
-    private ExpressionSyntax ParsePrimaryExpression()
+    private Expression ParsePrimaryExpression()
     {
         if (Match(TokenType.Number))
-            return new NumericLiteralExpressionSyntax(Previous);
+            return new LiteralExpression(Previous);
 
         if (Match(TokenType.Identifier))
         {
             var identifier = Previous;
 
             if (!Match(TokenType.OpenParen))
-                return new IdentifierNameExpressionSyntax(identifier);
+                return new NameExpression(identifier);
             
-            var arguments = new List<ExpressionSyntax>();
+            var arguments = new List<Expression>();
             while (!Check(TokenType.CloseParen))
             {
                 do
@@ -147,7 +147,7 @@ internal class Parser(List<Token> tokens)
             
             Consume(TokenType.CloseParen);
                 
-            return new InvocationExpressionSyntax(identifier, arguments);
+            return new CallExpression(identifier, [..arguments]);
         }
         
         throw new InvalidOperationException($"Unexpected token {Previous}");
@@ -181,19 +181,19 @@ internal class Parser(List<Token> tokens)
     }
 }
 
-internal record SyntaxTree(List<StatementSyntax> Statements);
+internal record SyntaxTree(List<Statement> Statements);
 
-internal abstract record StatementSyntax;
-internal sealed record FunctionDeclarationStatementSyntax(Token Identifier, List<ParameterSyntax> Parameters, TypeSyntax ReturnValue, BlockStatementSyntax Body) : StatementSyntax;
-internal sealed record ExpressionStatementSyntax(ExpressionSyntax Value) : StatementSyntax;
-internal sealed record BindingDeclarationStatementSyntax(Token Identifier, ExpressionSyntax Value) : StatementSyntax;
-internal sealed record BlockStatementSyntax(List<StatementSyntax> Statements) : StatementSyntax;
+internal abstract record Statement;
+internal sealed record FunctionDeclarationStatement(Token Identifier, Parameter[] Parameters, IdentifierType ReturnValue, BlockStatement Body) : Statement;
+internal sealed record ExpressionStatement(Expression Value) : Statement;
+internal sealed record BindingDeclarationStatement(Token Identifier, Expression Value) : Statement;
+internal sealed record BlockStatement(Statement[] Statements) : Statement;
 
-internal sealed record TypeSyntax(Token Identifier);
-internal sealed record ParameterSyntax(Token Identifier, TypeSyntax Type);
+internal sealed record IdentifierType(Token Identifier);
+internal sealed record Parameter(Token Identifier, IdentifierType IdentifierType);
 
-internal abstract record ExpressionSyntax;
-internal sealed record NumericLiteralExpressionSyntax(Token Value) : ExpressionSyntax;
-internal sealed record IdentifierNameExpressionSyntax(Token Identifier) : ExpressionSyntax;
-internal sealed record InvocationExpressionSyntax(Token Identifier, List<ExpressionSyntax> Arguments) : ExpressionSyntax;
-internal sealed record BinaryExpressionSyntax(ExpressionSyntax Left, Token Operator, ExpressionSyntax Right) : ExpressionSyntax;
+internal abstract record Expression;
+internal sealed record LiteralExpression(Token Value) : Expression;
+internal sealed record NameExpression(Token Identifier) : Expression;
+internal sealed record CallExpression(Token Identifier, Expression[] Arguments) : Expression;
+internal sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;

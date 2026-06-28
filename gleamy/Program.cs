@@ -6,18 +6,17 @@ const string code = """
                         squared
                     }
                     
-                    fn cube (x: Int) -> Int {
-                        let y = square(x);
-                        y * x
-                    }
+                    square(3)
                     """;
 
 var tokens = new Scanner(code).Scan();
 var tree = new Parser(tokens).Parse();
+var program = new Binder(tree).Bind();
 
-foreach (var statement in tree.Statements)
-{
-    Console.WriteLine(statement);
-}
+Console.WriteLine(program);
+// foreach (var statement in tree.program)
+// {
+//     Console.WriteLine(statement);
+// }
 
 
