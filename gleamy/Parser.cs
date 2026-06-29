@@ -185,7 +185,7 @@ internal record SyntaxTree(List<Statement> Statements);
 
 internal abstract record Statement;
 internal sealed record FunctionDeclarationStatement(Token Identifier, Parameter[] Parameters, IdentifierType ReturnValue, BlockStatement Body) : Statement;
-internal sealed record ExpressionStatement(Expression Value) : Statement;
+internal sealed record ExpressionStatement(Expression Expression) : Statement;
 internal sealed record BindingDeclarationStatement(Token Identifier, Expression Value) : Statement;
 internal sealed record BlockStatement(Statement[] Statements) : Statement;
 
