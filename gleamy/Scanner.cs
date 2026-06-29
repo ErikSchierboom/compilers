@@ -6,11 +6,11 @@ internal sealed class Scanner(string source)
 
     private static readonly Dictionary<string, TokenType> Keywords = new()
     {
-        ["let"] = TokenType.LetKeyword,
-        ["fn"] = TokenType.FnKeyword,
+        ["let"]   = TokenType.LetKeyword,
+        ["fn"]    = TokenType.FnKeyword,
         ["match"] = TokenType.MatchKeyword,
-        ["case"] = TokenType.CaseKeyword,
-        ["Int"] = TokenType.IntKeyword,
+        ["case"]  = TokenType.CaseKeyword,
+        ["Int"]   = TokenType.IntKeyword,
     };
     
     public List<Token> Scan()
@@ -69,39 +69,29 @@ internal sealed class Scanner(string source)
                     _position++;
                     break;
                 case '=':
-                    if (Next == '>')
-                    {
+                    if (Match('>'))
                         tokens.Add(new Token(TokenType.EqualGreaterThan, "=>"));
-                        _position += 2;
-                    }
                     else
-                    {
                         tokens.Add(new Token(TokenType.Equal, "="));
-                        _position++;
-                    }
+                    _position++;
                     break;
                 case '-':
-                    if (Next == '>')
-                    {
+                    if (Match('>'))
                         tokens.Add(new Token(TokenType.MinusGreaterThan, "->"));
-                        _position += 2;
-                    }
                     else
-                    {
                         tokens.Add(new Token(TokenType.Minus, "-"));
-                        _position++;
-                    }
+                    _position++;
                     break;
                 case >= '0' and <= '9':
                     var numberStartPosition = _position;
-                    while (_position < source.Length && source[_position] is >= '0' and <= '9')
+                    while (Current is >= '0' and <= '9')
                         _position++;
                     
                     tokens.Add(new Token(TokenType.Number, source[numberStartPosition.._position]));
                     break;
                 case >= 'a' and <= 'z' or >= 'A' and <= 'Z':
                     var identifierStartPosition = _position;
-                    while (_position < source.Length && source[_position] is >= 'a' and <= 'z' or >= 'A' and <= 'Z')
+                    while (Current is >= 'a' and <= 'z' or >= 'A' and <= 'Z')
                         _position++;
 
                     var text = source[identifierStartPosition.._position];
@@ -120,9 +110,18 @@ internal sealed class Scanner(string source)
         return tokens;
     }
 
+    private bool Match(char expected)
+    {
+        if (Next != expected)
+            return false;
+        
+        _position++;
+        return true;
+    }
+
     private bool IsEndOfFile => _position >= source.Length;
     
-    private char Current => source[_position];
+    private char Current => _position < source.Length ? source[_position] : '\0';
     private char Next => _position < source.Length - 1 ? source[_position + 1] : '\0';
 }
 
