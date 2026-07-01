@@ -72,6 +72,8 @@ internal class Interpreter(SyntaxTree tree)
                 return Evaluate(literalExpression);
             case NameExpression nameExpression:
                 return Evaluate(nameExpression);
+            case MatchExpression matchExpression:
+                return Evaluate(matchExpression);
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }
@@ -114,6 +116,51 @@ internal class Interpreter(SyntaxTree tree)
             TokenType.Slash => (int)left / (int)right,
             _ => throw new ArgumentOutOfRangeException(nameof(binaryExpression.Operator))
         };
+    }
+
+    private object? Evaluate(MatchExpression matchExpression)
+    {
+        var input = Evaluate(matchExpression.Input);
+
+        foreach (var matchCase in matchExpression.Cases)
+        {
+            switch (matchCase.Pattern)
+            {
+                case BindingMatchPattern bindingMatchPattern:
+                    var oldEnvironment = Environment;
+                    try
+                    {
+                        Environment = new Environment(Environment);
+                        Environment.Set(bindingMatchPattern.Identifier.Text, input);
+            
+                        return Evaluate(matchCase.ReturnValue);
+                    }
+                    finally
+                    {
+                        Environment = oldEnvironment;    
+                    }
+                case ConstantMatchPattern constantMatchPattern:
+                    switch (constantMatchPattern.Value.Type)
+                    {
+                        case TokenType.Number:
+                            if (input is null)
+                                return null;
+                            
+                            var matchValue = int.Parse(constantMatchPattern.Value.Text);
+                            if (matchValue.Equals(input))
+                                return Evaluate(matchCase.ReturnValue);
+
+                            break;
+                    }
+                    break;
+                case DiscardPattern _:
+                    return Evaluate(matchCase.ReturnValue);
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        return null;
     }
 }
 

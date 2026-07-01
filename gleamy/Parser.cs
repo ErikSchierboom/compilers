@@ -101,7 +101,52 @@ internal class Parser(List<Token> tokens)
 
     private Expression ParseExpression()
     {
+        if (Match(TokenType.MatchKeyword))
+            return ParseMatchExpression();
+        
         return ParseTermExpression();
+    }
+
+    private MatchExpression ParseMatchExpression()
+    {
+        var input = ParseTermExpression();
+        Consume(TokenType.OpenBracket);
+        
+        var cases = new List<MatchCase>();
+        
+        while (!Check(TokenType.CloseBracket))
+        {
+            do
+            {
+                cases.Add(ParseMatchCase());
+            } while (Match(TokenType.Comma));
+        }
+            
+        Consume(TokenType.CloseBracket);
+        
+        return new MatchExpression(input, [..cases]);
+    }
+
+    private MatchCase ParseMatchCase()
+    {
+        var pattern = ParseMatchPattern();
+        Consume(TokenType.EqualGreaterThan);
+        var returnValue = ParseTermExpression();
+        return new MatchCase(pattern, returnValue);
+    }
+
+    private MatchPattern ParseMatchPattern()
+    {
+        if (Match(TokenType.Underscore))
+            return new DiscardPattern();
+        
+        if (Match(TokenType.Identifier))
+            return new BindingMatchPattern(Previous);
+        
+        if (Match(TokenType.Number))
+            return new ConstantMatchPattern(Previous);
+        
+        throw new InvalidOperationException($"Unexpected token {Previous}");
     }
 
     private Expression ParseTermExpression()
@@ -197,3 +242,10 @@ internal sealed record LiteralExpression(Token Value) : Expression;
 internal sealed record NameExpression(Token Identifier) : Expression;
 internal sealed record CallExpression(Token Identifier, Expression[] Arguments) : Expression;
 internal sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
+
+internal sealed record MatchExpression(Expression Input, MatchCase[] Cases) : Expression;
+internal sealed record MatchCase(MatchPattern Pattern, Expression ReturnValue);
+internal abstract record MatchPattern;
+internal sealed record ConstantMatchPattern(Token Value) : MatchPattern;
+internal sealed record BindingMatchPattern(Token Identifier) :  MatchPattern;
+internal sealed record DiscardPattern :  MatchPattern;

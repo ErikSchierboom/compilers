@@ -6,7 +6,14 @@ const string code = """
                         squared
                     }
                     
-                    square(3)
+                    fn factorial (x: Int) -> Int {
+                        match x {
+                            1 => 1,
+                            _ => x * factorial(x - 1)
+                        }
+                    }
+                    
+                    factorial(3)
                     """;
 
 var tokens = new Scanner(code).Scan();
