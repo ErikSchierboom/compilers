@@ -1,19 +1,14 @@
 ﻿using Gleamy;
 
 const string code = """
-                    fn square (x: Int) -> Int {
-                        let squared = x * x;
-                        squared
-                    }
-                                        
-                    fn factorial (x: Int) -> Int {
-                        match x {
-                            > 1 => x * factorial(x - 1),
-                            _ => 1 
+                    fn is_even (x: Int) -> Bool {
+                        match x % 2 {
+                            0 => true,
+                            _ => false
                         }
                     }
                     
-                    factorial(5)
+                    is_even(6)
                     """;
 
 var tokens = new Scanner(code).Scan();

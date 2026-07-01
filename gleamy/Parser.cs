@@ -78,7 +78,7 @@ internal class Parser(List<Token> tokens)
 
     private IdentifierType ParseType()
     {
-        if (Match(TokenType.IntKeyword))
+        if (Match(TokenType.IntKeyword) || Match(TokenType.BoolKeyword))
             return new IdentifierType(Previous);
         
         throw new InvalidOperationException($"Expected type but got {Current.Type}");
@@ -129,7 +129,7 @@ internal class Parser(List<Token> tokens)
     {
         if (Match(TokenType.MatchKeyword))
         {
-            var input = ParseTermExpression();
+            var input = ParseAdditiveExpression();
             Consume(TokenType.OpenBracket);
         
             var cases = new List<MatchCase>();
@@ -147,14 +147,14 @@ internal class Parser(List<Token> tokens)
             return new MatchExpression(input, [..cases]);
         }
         
-        return ParseTermExpression();
+        return ParseAdditiveExpression();
     }
 
     private MatchCase ParseMatchCase()
     {
         var pattern = ParseMatchPattern();
         Consume(TokenType.EqualGreater);
-        var returnValue = ParseTermExpression();
+        var returnValue = ParseAdditiveExpression();
         return new MatchCase(pattern, returnValue);
     }
 
@@ -183,21 +183,21 @@ internal class Parser(List<Token> tokens)
         throw new InvalidOperationException($"Unexpected token {Previous}");
     }
 
-    private Expression ParseTermExpression()
+    private Expression ParseAdditiveExpression()
     {
-        var left = ParseFactorExpression();
+        var left = ParseMultiplicativeExpression();
         
         while (Match(TokenType.Plus) || Match(TokenType.Minus))
-            left = new BinaryExpression(left,  Previous, ParseFactorExpression());
+            left = new BinaryExpression(left,  Previous, ParseMultiplicativeExpression());
 
         return left;
     }
 
-    private Expression ParseFactorExpression()
+    private Expression ParseMultiplicativeExpression()
     {
         var left = ParseUnaryExpression();
         
-        while (Match(TokenType.Star) || Match(TokenType.Slash))
+        while (Match(TokenType.Star) || Match(TokenType.Slash) || Match(TokenType.Percent))
             left = new BinaryExpression(left,  Previous, ParseUnaryExpression());
 
         return left;

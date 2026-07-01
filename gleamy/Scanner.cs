@@ -127,7 +127,7 @@ internal sealed class Scanner(string source)
                     break;
                 case >= 'a' and <= 'z' or >= 'A' and <= 'Z':
                     var identifierStartPosition = _position;
-                    while (Current is >= 'a' and <= 'z' or >= 'A' and <= 'Z')
+                    while (Current is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '_')
                         _position++;
 
                     var text = source[identifierStartPosition.._position];
