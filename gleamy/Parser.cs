@@ -174,7 +174,10 @@ internal class Parser(List<Token> tokens)
         {
             var operatorToken = Previous; 
             var compareValue = ParseUnaryExpression();
-            return new ComparisonMatchPattern(operatorToken, compareValue);
+            if (compareValue is not LiteralExpression literal)
+                throw new InvalidOperationException($"Unexpected token {compareValue}");
+
+            return new ComparisonMatchPattern(operatorToken, literal.Value);
         }
         
         throw new InvalidOperationException($"Unexpected token {Previous}");
@@ -296,7 +299,7 @@ internal sealed record ParenthesizedExpression(Expression Expression) : Expressi
 internal sealed record MatchExpression(Expression Input, MatchCase[] Cases) : Expression;
 internal sealed record MatchCase(MatchPattern Pattern, Expression ReturnValue);
 internal abstract record MatchPattern;
-internal sealed record ConstantMatchPattern(Token Value) : MatchPattern;
+internal sealed record ConstantMatchPattern(object Value) : MatchPattern;
 internal sealed record BindingMatchPattern(Token Identifier) :  MatchPattern;
-internal sealed record ComparisonMatchPattern(Token Operator, Expression CompareValue) :  MatchPattern;
+internal sealed record ComparisonMatchPattern(Token Operator, object Value) :  MatchPattern;
 internal sealed record DiscardPattern :  MatchPattern;

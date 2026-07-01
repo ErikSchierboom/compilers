@@ -8,12 +8,12 @@ const string code = """
                                         
                     fn factorial (x: Int) -> Int {
                         match x {
-                            1 => 1,
-                            _ => x * factorial(x - 1)
+                            > 1 => x * factorial(x - 1),
+                            _ => 1 
                         }
                     }
                     
-                    factorial(5) != 120
+                    factorial(5)
                     """;
 
 var tokens = new Scanner(code).Scan();

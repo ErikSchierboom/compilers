@@ -119,12 +119,15 @@ internal class Interpreter(SyntaxTree tree)
             (TokenType.Minus, int l, int r) => l - r,
             (TokenType.Star, int l, int r) => l * r,
             (TokenType.Slash, int l, int r) => l / r,
+            (TokenType.Percent, int l, int r) => l % r,
             (TokenType.Less, int l, int r) => l < r,
             (TokenType.LessEqual, int l, int r) => l <= r,
             (TokenType.Greater, int l, int r) => l > r,
             (TokenType.GreaterEqual, int l, int r) => l >= r,
             (TokenType.EqualEqual, int l, int r) => l == r,
+            (TokenType.EqualEqual, bool l, bool r) => l == r,
             (TokenType.BangEqual, int l, int r) => l != r,
+            (TokenType.BangEqual, bool l, bool r) => l != r,
             _ => throw new ArgumentOutOfRangeException(nameof(binaryExpression.Operator))
         };
     }
@@ -164,46 +167,28 @@ internal class Interpreter(SyntaxTree tree)
                         Environment = oldEnvironment;    
                     }
                 case ConstantMatchPattern constantMatchPattern:
-                    switch (constantMatchPattern.Value.Type)
+                    switch (constantMatchPattern.Value, input)
                     {
-                        case TokenType.Number:
-                            if (input is null)
-                                break;
-                            
-                            var matchValue = int.Parse(constantMatchPattern.Value.Text);
-                            if (matchValue.Equals(input))
-                                return Evaluate(matchCase.ReturnValue);
-
-                            break;
+                        case (int intMatch, int intInput) when intInput == intMatch:
+                        case (bool boolMatch, bool boolInput) when boolInput == boolMatch:
+                            return Evaluate(matchCase.ReturnValue);
                     }
                     break;
                 case ComparisonMatchPattern comparisonMatchPattern:
-                    throw new NotImplementedException();
-                    // var compareValue = Evaluate(comparisonMatchPattern.CompareValue) ?? throw new InvalidOperationException("Cannot apply comparison operation to null");
-                    //
-                    // switch (comparisonMatchPattern.Operator.Type)
-                    // {
-                    //     case TokenType.Greater:
-                    //         if (input is null)
-                    //             break;
-                    //         
-                    //         var matchValue = int.Parse(comparisonMatchPattern.CompareValue.Text);
-                    //         if (matchValue > (int)input)
-                    //             return Evaluate(matchCase.ReturnValue);
-                    //
-                    //         break;
-                    //     case (TokenType.GreaterEqual, TokenType.Number):
-                    //         if (input is null)
-                    //             break;
-                    //         
-                    //         var matchValue = int.Parse(comparisonMatchPattern.CompareValue.Text);
-                    //         if (matchValue.Equals(input))
-                    //             return Evaluate(matchCase.ReturnValue);
-                    //
-                    //         break;
-                    // }
-                    // break;
-                case DiscardPattern _:
+                    switch (comparisonMatchPattern.Operator.Type, comparisonMatchPattern.Value, input)
+                    {
+                        case (TokenType.Greater, int comparison1, int input1) when input1 > comparison1:
+                        case (TokenType.GreaterEqual, int comparison2, int input2) when input2 > comparison2:
+                        case (TokenType.Less, int comparison3, int input3) when input3 < comparison3:
+                        case (TokenType.LessEqual, int comparison4, int input4) when input4 <= comparison4:
+                        case (TokenType.EqualEqual, int comparison5, int input5) when input5 == comparison5:
+                        case (TokenType.EqualEqual, bool comparison6, bool input6) when input6 == comparison6:
+                        case (TokenType.BangEqual, int comparison7, int input7) when input7 == comparison7:
+                        case (TokenType.BangEqual, bool comparison8, bool input8) when input8 != comparison8:
+                            return Evaluate(matchCase.ReturnValue);
+                    }
+                    break;
+                case DiscardPattern:
                     return Evaluate(matchCase.ReturnValue);
                 default:
                     throw new ArgumentOutOfRangeException();
