@@ -50,7 +50,7 @@ internal class Parser(List<Token> tokens)
         }
         Consume(TokenType.CloseParen);
         
-        Consume(TokenType.MinusGreaterThan);
+        Consume(TokenType.MinusGreater);
         var returnType = ParseType();
         
         var body = ParseBlockStatement();
@@ -100,37 +100,60 @@ internal class Parser(List<Token> tokens)
     }
 
     private Expression ParseExpression()
+    {   
+        return ParseEqualityExpression();
+    }
+    
+    private Expression ParseEqualityExpression()
     {
-        if (Match(TokenType.MatchKeyword))
-            return ParseMatchExpression();
+        Expression left = ParseComparisonExpression();
         
-        return ParseTermExpression();
+        while (Match(TokenType.Equal) || Match(TokenType.BangEqual))
+            left = new BinaryExpression(left,  Previous, ParseComparisonExpression());
+
+        return left;
+    }
+    
+    private Expression ParseComparisonExpression()
+    {
+        Expression left = ParseMatchExpression();
+        
+        while (Match(TokenType.Greater) || Match(TokenType.GreaterEqual) ||
+               Match(TokenType.Less) || Match(TokenType.LessEqual))
+            left = new BinaryExpression(left,  Previous, ParseMatchExpression());
+
+        return left;
     }
 
-    private MatchExpression ParseMatchExpression()
+    private Expression ParseMatchExpression()
     {
-        var input = ParseTermExpression();
-        Consume(TokenType.OpenBracket);
-        
-        var cases = new List<MatchCase>();
-        
-        while (!Check(TokenType.CloseBracket))
+        if (Match(TokenType.MatchKeyword))
         {
-            do
-            {
-                cases.Add(ParseMatchCase());
-            } while (Match(TokenType.Comma));
-        }
-            
-        Consume(TokenType.CloseBracket);
+            var input = ParseTermExpression();
+            Consume(TokenType.OpenBracket);
         
-        return new MatchExpression(input, [..cases]);
+            var cases = new List<MatchCase>();
+        
+            while (!Check(TokenType.CloseBracket))
+            {
+                do
+                {
+                    cases.Add(ParseMatchCase());
+                } while (Match(TokenType.Comma));
+            }
+            
+            Consume(TokenType.CloseBracket);
+        
+            return new MatchExpression(input, [..cases]);
+        }
+        
+        return ParseTermExpression();
     }
 
     private MatchCase ParseMatchCase()
     {
         var pattern = ParseMatchPattern();
-        Consume(TokenType.EqualGreaterThan);
+        Consume(TokenType.EqualGreater);
         var returnValue = ParseTermExpression();
         return new MatchCase(pattern, returnValue);
     }
@@ -146,8 +169,8 @@ internal class Parser(List<Token> tokens)
         if (Match(TokenType.Number))
             return new ConstantMatchPattern(Previous);
 
-        if (Match(TokenType.GreaterThan) || Match(TokenType.GreaterThanEqual) ||
-            Match(TokenType.LessThan) || Match(TokenType.LessThanEqual))
+        if (Match(TokenType.Greater) || Match(TokenType.GreaterEqual) ||
+            Match(TokenType.Less) || Match(TokenType.LessEqual))
         {
             var operatorToken = Previous; 
             var compareValue = ParseUnaryExpression();

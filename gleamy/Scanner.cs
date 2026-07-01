@@ -77,32 +77,39 @@ internal sealed class Scanner(string source)
                     break;
                 case '=':
                     if (Match('>'))
-                        tokens.Add(new Token(TokenType.EqualGreaterThan, "=>"));
+                        tokens.Add(new Token(TokenType.EqualGreater, "=>"));
                     else if (Match('='))
                         tokens.Add(new Token(TokenType.EqualEqual, "=="));
                     else
                         tokens.Add(new Token(TokenType.Equal, "="));
                     _position++;
                     break;
+                case '!':
+                    if (Match('='))
+                        tokens.Add(new Token(TokenType.BangEqual, "!="));
+                    else
+                        tokens.Add(new Token(TokenType.Bang, "!"));
+                    _position++;
+                    break;
                 case '-':
                     if (Match('>'))
-                        tokens.Add(new Token(TokenType.MinusGreaterThan, "->"));
+                        tokens.Add(new Token(TokenType.MinusGreater, "->"));
                     else
                         tokens.Add(new Token(TokenType.Minus, "-"));
                     _position++;
                     break;
                 case '>':
                     if (Match('='))
-                        tokens.Add(new Token(TokenType.GreaterThanEqual, ">="));
+                        tokens.Add(new Token(TokenType.GreaterEqual, ">="));
                     else
-                        tokens.Add(new Token(TokenType.GreaterThan, ">"));
+                        tokens.Add(new Token(TokenType.Greater, ">"));
                     _position++;
                     break;
                 case '<':
                     if (Match('='))
-                        tokens.Add(new Token(TokenType.LessThanEqual, "<="));
+                        tokens.Add(new Token(TokenType.LessEqual, "<="));
                     else
-                        tokens.Add(new Token(TokenType.LessThan, "<"));
+                        tokens.Add(new Token(TokenType.Less, "<"));
                     _position++;
                     break;
                 case >= '0' and <= '9':
@@ -160,15 +167,17 @@ internal enum TokenType
     CloseParen,
     OpenBracket,
     CloseBracket,
-    LessThan,
-    LessThanEqual,
-    GreaterThan,
-    GreaterThanEqual,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
     Equal,
     EqualEqual,
-    EqualGreaterThan,
+    EqualGreater,
     Minus,
-    MinusGreaterThan,
+    MinusGreater,
+    Bang,
+    BangEqual,
     Colon,
     Semicolon,
     Comma,

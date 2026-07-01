@@ -106,12 +106,18 @@ internal class Interpreter(SyntaxTree tree)
         var left =  Evaluate(binaryExpression.Left) ?? throw new InvalidOperationException("Cannot apply binary operation to null");
         var right = Evaluate(binaryExpression.Right) ?? throw new InvalidOperationException("Cannot apply binary operation to null");;
 
-        return binaryExpression.Operator.Type switch
+        return (binaryExpression.Operator.Type, left, right) switch
         {
-            TokenType.Plus  => (int)left + (int)right,
-            TokenType.Minus => (int)left - (int)right,
-            TokenType.Star  => (int)left * (int)right,
-            TokenType.Slash => (int)left / (int)right,
+            (TokenType.Plus, int l, int r) => l + r,
+            (TokenType.Minus, int l, int r) => l - r,
+            (TokenType.Star, int l, int r) => l * r,
+            (TokenType.Slash, int l, int r) => l / r,
+            (TokenType.Less, int l, int r) => l < r,
+            (TokenType.LessEqual, int l, int r) => l <= r,
+            (TokenType.Greater, int l, int r) => l > r,
+            (TokenType.GreaterEqual, int l, int r) => l >= r,
+            (TokenType.EqualEqual, int l, int r) => l == r,
+            (TokenType.BangEqual, int l, int r) => l != r,
             _ => throw new ArgumentOutOfRangeException(nameof(binaryExpression.Operator))
         };
     }
@@ -120,10 +126,11 @@ internal class Interpreter(SyntaxTree tree)
     {
         var value =  Evaluate(unaryExpression.Value) ?? throw new InvalidOperationException("Cannot apply unary operation to null");
 
-        return unaryExpression.Operator.Type switch
+        return (unaryExpression.Operator.Type, value) switch
         {
-            TokenType.Plus  => value,
-            TokenType.Minus => -1 * (int)value,
+            (TokenType.Plus, int i) => i,
+            (TokenType.Minus, int i) => -i,
+            (TokenType.Bang, bool b) => !b,
             _ => throw new ArgumentOutOfRangeException(nameof(unaryExpression.Operator))
         };
     }
@@ -169,7 +176,7 @@ internal class Interpreter(SyntaxTree tree)
                     //
                     // switch (comparisonMatchPattern.Operator.Type)
                     // {
-                    //     case TokenType.GreaterThan:
+                    //     case TokenType.Greater:
                     //         if (input is null)
                     //             break;
                     //         
@@ -178,7 +185,7 @@ internal class Interpreter(SyntaxTree tree)
                     //             return Evaluate(matchCase.ReturnValue);
                     //
                     //         break;
-                    //     case (TokenType.GreaterThanEqual, TokenType.Number):
+                    //     case (TokenType.GreaterEqual, TokenType.Number):
                     //         if (input is null)
                     //             break;
                     //         
