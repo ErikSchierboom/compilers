@@ -161,12 +161,20 @@ internal class Parser(List<Token> tokens)
 
     private Expression ParseFactorExpression()
     {
-        var left = ParsePrimaryExpression();
+        var left = ParseUnaryExpression();
         
         while (Match(TokenType.Star) || Match(TokenType.Slash))
-            left = new BinaryExpression(left,  Previous, ParsePrimaryExpression());
+            left = new BinaryExpression(left,  Previous, ParseUnaryExpression());
 
         return left;
+    }
+
+    private Expression ParseUnaryExpression()
+    {
+        if (Match(TokenType.Minus) || Match(TokenType.Plus))
+            return new UnaryExpression(Previous, ParseUnaryExpression());
+
+        return ParsePrimaryExpression();
     }
 
     private Expression ParsePrimaryExpression()
@@ -241,6 +249,7 @@ internal abstract record Expression;
 internal sealed record LiteralExpression(Token Value) : Expression;
 internal sealed record NameExpression(Token Identifier) : Expression;
 internal sealed record CallExpression(Token Identifier, Expression[] Arguments) : Expression;
+internal sealed record UnaryExpression(Token Operator, Expression Value) : Expression;
 internal sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
 
 internal sealed record MatchExpression(Expression Input, MatchCase[] Cases) : Expression;

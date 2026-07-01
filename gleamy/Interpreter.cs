@@ -64,6 +64,8 @@ internal class Interpreter(SyntaxTree tree)
     {
         switch (expression)
         {
+            case UnaryExpression unaryExpression:
+                return Evaluate(unaryExpression);
             case BinaryExpression binaryExpression:
                 return Evaluate(binaryExpression);
             case CallExpression callExpression:
@@ -115,6 +117,18 @@ internal class Interpreter(SyntaxTree tree)
             TokenType.Star  => (int)left * (int)right,
             TokenType.Slash => (int)left / (int)right,
             _ => throw new ArgumentOutOfRangeException(nameof(binaryExpression.Operator))
+        };
+    }
+
+    private object? Evaluate(UnaryExpression unaryExpression)
+    {
+        var value =  Evaluate(unaryExpression.Value) ?? throw new InvalidOperationException("Cannot apply unary operation to null");
+
+        return unaryExpression.Operator.Type switch
+        {
+            TokenType.Plus  => value,
+            TokenType.Minus => -1 * (int)value,
+            _ => throw new ArgumentOutOfRangeException(nameof(unaryExpression.Operator))
         };
     }
 
