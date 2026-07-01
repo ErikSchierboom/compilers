@@ -202,7 +202,7 @@ internal class Parser(List<Token> tokens)
 
     private Expression ParseUnaryExpression()
     {
-        if (Match(TokenType.Minus) || Match(TokenType.Plus))
+        if (Match(TokenType.Minus) || Match(TokenType.Plus) | Match(TokenType.Bang))
             return new UnaryExpression(Previous, ParseUnaryExpression());
 
         return ParsePrimaryExpression();
@@ -215,6 +215,12 @@ internal class Parser(List<Token> tokens)
         
         if (Match(TokenType.TrueKeyword) || Match(TokenType.FalseKeyword))
             return new LiteralExpression(Previous.Literal!);
+        
+        if (Match(TokenType.OpenParen)) {
+            var expr = ParseExpression();
+            Consume(TokenType.CloseParen);
+            return new ParenthesizedExpression(expr);
+        }
 
         if (Match(TokenType.Identifier))
         {
@@ -285,6 +291,7 @@ internal sealed record NameExpression(Token Identifier) : Expression;
 internal sealed record CallExpression(Token Identifier, Expression[] Arguments) : Expression;
 internal sealed record UnaryExpression(Token Operator, Expression Value) : Expression;
 internal sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
+internal sealed record ParenthesizedExpression(Expression Expression) : Expression;
 
 internal sealed record MatchExpression(Expression Input, MatchCase[] Cases) : Expression;
 internal sealed record MatchCase(MatchPattern Pattern, Expression ReturnValue);

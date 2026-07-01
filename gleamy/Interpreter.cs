@@ -76,6 +76,8 @@ internal class Interpreter(SyntaxTree tree)
                 return Evaluate(nameExpression);
             case MatchExpression matchExpression:
                 return Evaluate(matchExpression);
+            case ParenthesizedExpression parenthesizedExpression:
+                return Evaluate(parenthesizedExpression);
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }
@@ -99,6 +101,11 @@ internal class Interpreter(SyntaxTree tree)
     private object Evaluate(LiteralExpression literalExpression)
     {
         return literalExpression.Value;
+    }
+
+    private object? Evaluate(ParenthesizedExpression parenthesizedExpression)
+    {
+        return Evaluate(parenthesizedExpression.Expression);
     }
 
     private object? Evaluate(BinaryExpression binaryExpression)

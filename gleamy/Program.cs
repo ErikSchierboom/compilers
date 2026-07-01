@@ -5,7 +5,7 @@ const string code = """
                         let squared = x * x;
                         squared
                     }
-                    
+                                        
                     fn factorial (x: Int) -> Int {
                         match x {
                             1 => 1,
@@ -13,7 +13,7 @@ const string code = """
                         }
                     }
                     
-                    factorial(5) == 120
+                    factorial(5) != 120
                     """;
 
 var tokens = new Scanner(code).Scan();
