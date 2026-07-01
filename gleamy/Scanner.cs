@@ -4,16 +4,16 @@ internal sealed class Scanner(string source)
 {
     private int _position;
 
-    private static readonly Dictionary<string, TokenType> Keywords = new()
+    private static readonly Dictionary<string, (TokenType TokenType, object? Literal)> Keywords = new()
     {
-        ["let"]   = TokenType.LetKeyword,
-        ["fn"]    = TokenType.FnKeyword,
-        ["match"] = TokenType.MatchKeyword,
-        ["case"]  = TokenType.CaseKeyword,
-        ["true"]  = TokenType.TrueKeyword,
-        ["false"] = TokenType.FalseKeyword,
-        ["Bool"]  = TokenType.BoolKeyword,
-        ["Int"]   = TokenType.IntKeyword,
+        ["let"]   = (TokenType.LetKeyword, null),
+        ["fn"]    = (TokenType.FnKeyword, null),
+        ["match"] = (TokenType.MatchKeyword, null),
+        ["case"]  = (TokenType.CaseKeyword, null),
+        ["true"]  = (TokenType.TrueKeyword, true),
+        ["false"] = (TokenType.FalseKeyword, false),
+        ["Bool"]  = (TokenType.BoolKeyword, null),
+        ["Int"]   = (TokenType.IntKeyword, null),
     };
     
     public List<Token> Scan()
@@ -109,8 +109,9 @@ internal sealed class Scanner(string source)
                     var numberStartPosition = _position;
                     while (Current is >= '0' and <= '9')
                         _position++;
-                    
-                    tokens.Add(new Token(TokenType.Number, source[numberStartPosition.._position]));
+
+                    var numberString = source[numberStartPosition.._position];
+                    tokens.Add(new Token(TokenType.Number, numberString, int.Parse(numberString)));
                     break;
                 case >= 'a' and <= 'z' or >= 'A' and <= 'Z':
                     var identifierStartPosition = _position;
@@ -118,8 +119,8 @@ internal sealed class Scanner(string source)
                         _position++;
 
                     var text = source[identifierStartPosition.._position];
-                    if (Keywords.TryGetValue(text, out var tokenType))
-                        tokens.Add(new Token(tokenType, text));    
+                    if (Keywords.TryGetValue(text, out var tokenTypeAndLiteral))
+                        tokens.Add(new Token(tokenTypeAndLiteral.TokenType, text, tokenTypeAndLiteral.Literal));    
                     else
                         tokens.Add(new Token(TokenType.Identifier, text));
                     break;
@@ -148,7 +149,7 @@ internal sealed class Scanner(string source)
     private char Next => _position < source.Length - 1 ? source[_position + 1] : '\0';
 }
 
-internal sealed record Token(TokenType Type, string Text);
+internal sealed record Token(TokenType Type, string Text, object? Literal = null);
 
 internal enum TokenType
 {

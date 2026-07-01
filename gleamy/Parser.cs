@@ -188,7 +188,10 @@ internal class Parser(List<Token> tokens)
     private Expression ParsePrimaryExpression()
     {
         if (Match(TokenType.Number))
-            return new LiteralExpression(Previous);
+            return new LiteralExpression(Previous.Literal!);
+        
+        if (Match(TokenType.TrueKeyword) || Match(TokenType.FalseKeyword))
+            return new LiteralExpression(Previous.Literal!);
 
         if (Match(TokenType.Identifier))
         {
@@ -254,7 +257,7 @@ internal sealed record IdentifierType(Token Identifier);
 internal sealed record Parameter(Token Identifier, IdentifierType IdentifierType);
 
 internal abstract record Expression;
-internal sealed record LiteralExpression(Token Value) : Expression;
+internal sealed record LiteralExpression(object Value) : Expression;
 internal sealed record NameExpression(Token Identifier) : Expression;
 internal sealed record CallExpression(Token Identifier, Expression[] Arguments) : Expression;
 internal sealed record UnaryExpression(Token Operator, Expression Value) : Expression;

@@ -1,20 +1,8 @@
 ﻿using Gleamy;
 
 const string code = """
-                    fn square (x: Int) -> Int {
-                        let squared = x * x;
-                        squared
-                    }
-                    
-                    fn factorial (x: Int) -> Int {
-                        match x {
-                            1 => 1,
-                            _ => x * factorial(x - 1)
-                        }
-                    }
-                    
                     match 3 {
-                        > 1 => true,
+                        1 => true,
                         _ => false
                     }
                     """;

@@ -96,13 +96,9 @@ internal class Interpreter(SyntaxTree tree)
         return Environment.Get(nameExpression.Identifier.Text);
     }
 
-    private object? Evaluate(LiteralExpression literalExpression)
+    private object Evaluate(LiteralExpression literalExpression)
     {
-        return literalExpression.Value.Type switch
-        {
-            TokenType.Number => int.Parse(literalExpression.Value.Text),
-            _ => throw new ArgumentOutOfRangeException(nameof(literalExpression.Value))
-        };
+        return literalExpression.Value;
     }
 
     private object? Evaluate(BinaryExpression binaryExpression)
