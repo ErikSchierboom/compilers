@@ -214,10 +214,10 @@ internal class Parser(List<Token> tokens)
     private Expression ParsePrimaryExpression()
     {
         if (Match(TokenType.Number))
-            return new LiteralExpression(Previous.Literal!);
+            return new LiteralExpression(Previous);
         
         if (Match(TokenType.TrueKeyword) || Match(TokenType.FalseKeyword))
-            return new LiteralExpression(Previous.Literal!);
+            return new LiteralExpression(Previous);
         
         if (Match(TokenType.OpenParen)) {
             var expr = ParseExpression();
@@ -289,7 +289,7 @@ internal sealed record IdentifierType(Token Identifier);
 internal sealed record Parameter(Token Identifier, IdentifierType IdentifierType);
 
 internal abstract record Expression;
-internal sealed record LiteralExpression(object Value) : Expression;
+internal sealed record LiteralExpression(Token Value) : Expression;
 internal sealed record NameExpression(Token Identifier) : Expression;
 internal sealed record CallExpression(Token Identifier, Expression[] Arguments) : Expression;
 internal sealed record UnaryExpression(Token Operator, Expression Value) : Expression;
@@ -299,7 +299,7 @@ internal sealed record ParenthesizedExpression(Expression Expression) : Expressi
 internal sealed record MatchExpression(Expression Input, MatchCase[] Cases) : Expression;
 internal sealed record MatchCase(MatchPattern Pattern, Expression ReturnValue);
 internal abstract record MatchPattern;
-internal sealed record ConstantMatchPattern(object Value) : MatchPattern;
+internal sealed record ConstantMatchPattern(Token Value) : MatchPattern;
 internal sealed record BindingMatchPattern(Token Identifier) :  MatchPattern;
-internal sealed record ComparisonMatchPattern(Token Operator, object Value) :  MatchPattern;
+internal sealed record ComparisonMatchPattern(Token Operator, Token CompareValue) :  MatchPattern;
 internal sealed record DiscardPattern :  MatchPattern;

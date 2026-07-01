@@ -100,7 +100,7 @@ internal class Interpreter(SyntaxTree tree)
 
     private object Evaluate(LiteralExpression literalExpression)
     {
-        return literalExpression.Value;
+        return literalExpression.Value.Literal!;
     }
 
     private object? Evaluate(ParenthesizedExpression parenthesizedExpression)
@@ -167,7 +167,7 @@ internal class Interpreter(SyntaxTree tree)
                         Environment = oldEnvironment;    
                     }
                 case ConstantMatchPattern constantMatchPattern:
-                    switch (constantMatchPattern.Value, input)
+                    switch (constantMatchPattern.Value.Literal, input)
                     {
                         case (int intMatch, int intInput) when intInput == intMatch:
                         case (bool boolMatch, bool boolInput) when boolInput == boolMatch:
@@ -175,7 +175,7 @@ internal class Interpreter(SyntaxTree tree)
                     }
                     break;
                 case ComparisonMatchPattern comparisonMatchPattern:
-                    switch (comparisonMatchPattern.Operator.Type, comparisonMatchPattern.Value, input)
+                    switch (comparisonMatchPattern.Operator.Type, comparisonMatchPattern.CompareValue.Literal, input)
                     {
                         case (TokenType.Greater, int comparison1, int input1) when input1 > comparison1:
                         case (TokenType.GreaterEqual, int comparison2, int input2) when input2 > comparison2:
