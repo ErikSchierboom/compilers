@@ -108,7 +108,7 @@ internal class Parser(List<Token> tokens)
     {
         Expression left = ParseComparisonExpression();
         
-        while (Match(TokenType.Equal) || Match(TokenType.BangEqual))
+        while (Match(TokenType.EqualEqual) || Match(TokenType.BangEqual))
             left = new BinaryExpression(left,  Previous, ParseComparisonExpression());
 
         return left;
