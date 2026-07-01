@@ -51,6 +51,10 @@ internal sealed class Scanner(string source)
                     tokens.Add(new Token(TokenType.Semicolon, ";"));
                     _position++;
                     break;
+                case '%':
+                    tokens.Add(new Token(TokenType.Percent, "%"));
+                    _position++;
+                    break;
                 case '_':
                     tokens.Add(new Token(TokenType.Underscore, "_"));
                     _position++;
@@ -165,6 +169,7 @@ internal enum TokenType
     Semicolon,
     Comma,
     Underscore,
+    Percent,
     Plus,
     Star,
     Slash,
