@@ -13,7 +13,10 @@ const string code = """
                         }
                     }
                     
-                    factorial(3)
+                    match 3 {
+                        > 1 => true,
+                        _ => false
+                    }
                     """;
 
 var tokens = new Scanner(code).Scan();

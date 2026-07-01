@@ -78,6 +78,8 @@ internal sealed class Scanner(string source)
                 case '=':
                     if (Match('>'))
                         tokens.Add(new Token(TokenType.EqualGreaterThan, "=>"));
+                    else if (Match('='))
+                        tokens.Add(new Token(TokenType.EqualEqual, "=="));
                     else
                         tokens.Add(new Token(TokenType.Equal, "="));
                     _position++;
@@ -162,6 +164,7 @@ internal enum TokenType
     GreaterThan,
     GreaterThanEqual,
     Equal,
+    EqualEqual,
     EqualGreaterThan,
     Minus,
     MinusGreaterThan,

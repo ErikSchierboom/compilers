@@ -158,7 +158,7 @@ internal class Interpreter(SyntaxTree tree)
                     {
                         case TokenType.Number:
                             if (input is null)
-                                return null;
+                                break;
                             
                             var matchValue = int.Parse(constantMatchPattern.Value.Text);
                             if (matchValue.Equals(input))
@@ -167,6 +167,32 @@ internal class Interpreter(SyntaxTree tree)
                             break;
                     }
                     break;
+                case ComparisonMatchPattern comparisonMatchPattern:
+                    throw new NotImplementedException();
+                    // var compareValue = Evaluate(comparisonMatchPattern.CompareValue) ?? throw new InvalidOperationException("Cannot apply comparison operation to null");
+                    //
+                    // switch (comparisonMatchPattern.Operator.Type)
+                    // {
+                    //     case TokenType.GreaterThan:
+                    //         if (input is null)
+                    //             break;
+                    //         
+                    //         var matchValue = int.Parse(comparisonMatchPattern.CompareValue.Text);
+                    //         if (matchValue > (int)input)
+                    //             return Evaluate(matchCase.ReturnValue);
+                    //
+                    //         break;
+                    //     case (TokenType.GreaterThanEqual, TokenType.Number):
+                    //         if (input is null)
+                    //             break;
+                    //         
+                    //         var matchValue = int.Parse(comparisonMatchPattern.CompareValue.Text);
+                    //         if (matchValue.Equals(input))
+                    //             return Evaluate(matchCase.ReturnValue);
+                    //
+                    //         break;
+                    // }
+                    // break;
                 case DiscardPattern _:
                     return Evaluate(matchCase.ReturnValue);
                 default:

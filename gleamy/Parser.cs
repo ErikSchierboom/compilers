@@ -145,6 +145,14 @@ internal class Parser(List<Token> tokens)
         
         if (Match(TokenType.Number))
             return new ConstantMatchPattern(Previous);
+
+        if (Match(TokenType.GreaterThan) || Match(TokenType.GreaterThanEqual) ||
+            Match(TokenType.LessThan) || Match(TokenType.LessThanEqual))
+        {
+            var operatorToken = Previous; 
+            var compareValue = ParseUnaryExpression();
+            return new ComparisonMatchPattern(operatorToken, compareValue);
+        }
         
         throw new InvalidOperationException($"Unexpected token {Previous}");
     }
@@ -257,4 +265,5 @@ internal sealed record MatchCase(MatchPattern Pattern, Expression ReturnValue);
 internal abstract record MatchPattern;
 internal sealed record ConstantMatchPattern(Token Value) : MatchPattern;
 internal sealed record BindingMatchPattern(Token Identifier) :  MatchPattern;
+internal sealed record ComparisonMatchPattern(Token Operator, Expression CompareValue) :  MatchPattern;
 internal sealed record DiscardPattern :  MatchPattern;
