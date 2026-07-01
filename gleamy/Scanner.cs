@@ -82,6 +82,7 @@ internal sealed class Scanner(string source)
                         tokens.Add(new Token(TokenType.EqualEqual, "=="));
                     else
                         tokens.Add(new Token(TokenType.Equal, "="));
+
                     _position++;
                     break;
                 case '!':
@@ -89,6 +90,7 @@ internal sealed class Scanner(string source)
                         tokens.Add(new Token(TokenType.BangEqual, "!="));
                     else
                         tokens.Add(new Token(TokenType.Bang, "!"));
+
                     _position++;
                     break;
                 case '-':
@@ -96,6 +98,7 @@ internal sealed class Scanner(string source)
                         tokens.Add(new Token(TokenType.MinusGreater, "->"));
                     else
                         tokens.Add(new Token(TokenType.Minus, "-"));
+
                     _position++;
                     break;
                 case '>':
@@ -103,6 +106,7 @@ internal sealed class Scanner(string source)
                         tokens.Add(new Token(TokenType.GreaterEqual, ">="));
                     else
                         tokens.Add(new Token(TokenType.Greater, ">"));
+
                     _position++;
                     break;
                 case '<':
@@ -110,6 +114,7 @@ internal sealed class Scanner(string source)
                         tokens.Add(new Token(TokenType.LessEqual, "<="));
                     else
                         tokens.Add(new Token(TokenType.Less, "<"));
+
                     _position++;
                     break;
                 case >= '0' and <= '9':
