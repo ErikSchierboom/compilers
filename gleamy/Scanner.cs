@@ -10,6 +10,9 @@ internal sealed class Scanner(string source)
         ["fn"]    = TokenType.FnKeyword,
         ["match"] = TokenType.MatchKeyword,
         ["case"]  = TokenType.CaseKeyword,
+        ["true"]  = TokenType.TrueKeyword,
+        ["false"] = TokenType.FalseKeyword,
+        ["Bool"]  = TokenType.BoolKeyword,
         ["Int"]   = TokenType.IntKeyword,
     };
     
@@ -82,6 +85,20 @@ internal sealed class Scanner(string source)
                         tokens.Add(new Token(TokenType.Minus, "-"));
                     _position++;
                     break;
+                case '>':
+                    if (Match('='))
+                        tokens.Add(new Token(TokenType.GreaterThanEqual, ">="));
+                    else
+                        tokens.Add(new Token(TokenType.GreaterThan, ">"));
+                    _position++;
+                    break;
+                case '<':
+                    if (Match('='))
+                        tokens.Add(new Token(TokenType.LessThanEqual, "<="));
+                    else
+                        tokens.Add(new Token(TokenType.LessThan, "<"));
+                    _position++;
+                    break;
                 case >= '0' and <= '9':
                     var numberStartPosition = _position;
                     while (Current is >= '0' and <= '9')
@@ -136,6 +153,10 @@ internal enum TokenType
     CloseParen,
     OpenBracket,
     CloseBracket,
+    LessThan,
+    LessThanEqual,
+    GreaterThan,
+    GreaterThanEqual,
     Equal,
     EqualGreaterThan,
     Minus,
@@ -153,6 +174,9 @@ internal enum TokenType
     MatchKeyword,
     CaseKeyword,
     IntKeyword,
+    BoolKeyword,
+    TrueKeyword,
+    FalseKeyword,
 
     Eof,
 }
