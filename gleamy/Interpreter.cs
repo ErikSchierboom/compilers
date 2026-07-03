@@ -78,9 +78,9 @@ internal class Interpreter(SyntaxTree tree)
                 return Evaluate(matchExpression);
             case ParenthesizedExpression parenthesizedExpression:
                 return Evaluate(parenthesizedExpression);
-            case AndExpression andExpression:
+            case LogicalAndExpression andExpression:
                 return Evaluate(andExpression);
-            case OrExpression orExpression:
+            case LogicalOrExpression orExpression:
                 return Evaluate(orExpression);
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
@@ -112,32 +112,32 @@ internal class Interpreter(SyntaxTree tree)
         return Evaluate(parenthesizedExpression.Expression);
     }
 
-    private object? Evaluate(AndExpression andExpression)
+    private object? Evaluate(LogicalAndExpression logicalAndExpression)
     {
-        var left =  Evaluate(andExpression.Left) ?? throw new InvalidOperationException("Cannot apply && to null");
+        var left =  Evaluate(logicalAndExpression.Left) ?? throw new InvalidOperationException("Cannot apply && to null");
         if (left is not bool leftBool)
             throw new InvalidOperationException("Cannot apply && to non-boolean");
 
         if (!leftBool)
             return false;
         
-        var right = Evaluate(andExpression.Right) ?? throw new InvalidOperationException("Cannot apply && to null");;
+        var right = Evaluate(logicalAndExpression.Right) ?? throw new InvalidOperationException("Cannot apply && to null");;
         if (right is not bool rightBool)
             throw new InvalidOperationException("Cannot apply && to non-boolean");
 
         return rightBool;
     }
 
-    private object? Evaluate(OrExpression orExpression)
+    private object? Evaluate(LogicalOrExpression logicalOrExpression)
     {
-        var left =  Evaluate(orExpression.Left) ?? throw new InvalidOperationException("Cannot apply && to null");
+        var left =  Evaluate(logicalOrExpression.Left) ?? throw new InvalidOperationException("Cannot apply && to null");
         if (left is not bool leftBool)
             throw new InvalidOperationException("Cannot apply && to non-boolean");
 
         if (leftBool)
             return true;
         
-        var right = Evaluate(orExpression.Right) ?? throw new InvalidOperationException("Cannot apply && to null");;
+        var right = Evaluate(logicalOrExpression.Right) ?? throw new InvalidOperationException("Cannot apply && to null");;
         if (right is not bool rightBool)
             throw new InvalidOperationException("Cannot apply && to non-boolean");
 
@@ -156,6 +156,8 @@ internal class Interpreter(SyntaxTree tree)
             (TokenType.Star, int l, int r) => l * r,
             (TokenType.Slash, int l, int r) => l / r,
             (TokenType.Percent, int l, int r) => l % r,
+            (TokenType.Ampersand, int l, int r) => l & r,
+            (TokenType.Bang, int l, int r) => l | r,
             (TokenType.Less, int l, int r) => l < r,
             (TokenType.LessEqual, int l, int r) => l <= r,
             (TokenType.Greater, int l, int r) => l > r,

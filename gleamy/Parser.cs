@@ -101,25 +101,45 @@ internal class Parser(List<Token> tokens)
 
     private Expression ParseExpression()
     {   
-        return ParseOrExpression();
+        return ParseLogicalOrExpression();
     }
     
-    private Expression ParseOrExpression()
+    private Expression ParseLogicalOrExpression()
     {
-        var left = ParseAndExpression();
+        var left = ParseLogicalAndExpression();
         
         while (Match(TokenType.PipePipe))
-            left = new OrExpression(left, ParseAndExpression());
+            left = new LogicalOrExpression(left, ParseLogicalAndExpression());
 
         return left;
     }
     
-    private Expression ParseAndExpression()
+    private Expression ParseLogicalAndExpression()
+    {
+        var left = ParseBitwiseOrExpression();
+        
+        while (Match(TokenType.AmpersandAmpersand))
+            left = new LogicalAndExpression(left, ParseBitwiseOrExpression());
+
+        return left;
+    }
+    
+    private Expression ParseBitwiseOrExpression()
+    {
+        var left = ParseBitwiseAndExpression();
+        
+        while (Match(TokenType.Pipe))
+            left = new BinaryExpression(left, Previous, ParseBitwiseAndExpression());
+
+        return left;
+    }
+    
+    private Expression ParseBitwiseAndExpression()
     {
         var left = ParseEqualityExpression();
         
-        while (Match(TokenType.AmpersandAmpersand))
-            left = new AndExpression(left, ParseEqualityExpression());
+        while (Match(TokenType.Ampersand))
+            left = new BinaryExpression(left, Previous, ParseEqualityExpression());
 
         return left;
     }
@@ -315,8 +335,8 @@ internal sealed record CallExpression(Token Identifier, Expression[] Arguments) 
 internal sealed record UnaryExpression(Token Operator, Expression Value) : Expression;
 internal sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
 internal sealed record ParenthesizedExpression(Expression Expression) : Expression;
-internal sealed record AndExpression(Expression Left, Expression Right) : Expression;
-internal sealed record OrExpression(Expression Left, Expression Right) : Expression;
+internal sealed record LogicalAndExpression(Expression Left, Expression Right) : Expression;
+internal sealed record LogicalOrExpression(Expression Left, Expression Right) : Expression;
 
 internal sealed record MatchExpression(Expression Input, MatchCase[] Cases) : Expression;
 internal sealed record MatchCase(MatchPattern Pattern, Expression ReturnValue);
