@@ -78,6 +78,10 @@ internal class Interpreter(SyntaxTree tree)
                 return Evaluate(matchExpression);
             case ParenthesizedExpression parenthesizedExpression:
                 return Evaluate(parenthesizedExpression);
+            case AndExpression andExpression:
+                return Evaluate(andExpression);
+            case OrExpression orExpression:
+                return Evaluate(orExpression);
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }
@@ -106,6 +110,38 @@ internal class Interpreter(SyntaxTree tree)
     private object? Evaluate(ParenthesizedExpression parenthesizedExpression)
     {
         return Evaluate(parenthesizedExpression.Expression);
+    }
+
+    private object? Evaluate(AndExpression andExpression)
+    {
+        var left =  Evaluate(andExpression.Left) ?? throw new InvalidOperationException("Cannot apply && to null");
+        if (left is not bool leftBool)
+            throw new InvalidOperationException("Cannot apply && to non-boolean");
+
+        if (!leftBool)
+            return false;
+        
+        var right = Evaluate(andExpression.Right) ?? throw new InvalidOperationException("Cannot apply && to null");;
+        if (right is not bool rightBool)
+            throw new InvalidOperationException("Cannot apply && to non-boolean");
+
+        return rightBool;
+    }
+
+    private object? Evaluate(OrExpression orExpression)
+    {
+        var left =  Evaluate(orExpression.Left) ?? throw new InvalidOperationException("Cannot apply && to null");
+        if (left is not bool leftBool)
+            throw new InvalidOperationException("Cannot apply && to non-boolean");
+
+        if (leftBool)
+            return true;
+        
+        var right = Evaluate(orExpression.Right) ?? throw new InvalidOperationException("Cannot apply && to null");;
+        if (right is not bool rightBool)
+            throw new InvalidOperationException("Cannot apply && to non-boolean");
+
+        return rightBool;
     }
 
     private object? Evaluate(BinaryExpression binaryExpression)

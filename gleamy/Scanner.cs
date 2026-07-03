@@ -75,6 +75,22 @@ internal sealed class Scanner(string source)
                     tokens.Add(new Token(TokenType.CloseBracket, "}"));
                     _position++;
                     break;
+                case '&':
+                    if (Match('&'))
+                        tokens.Add(new Token(TokenType.AmpersandAmpersand, "&&"));
+                    else
+                        tokens.Add(new Token(TokenType.Ampersand, "&"));
+
+                    _position++;
+                    break;
+                case '|':
+                    if (Match('|'))
+                        tokens.Add(new Token(TokenType.PipePipe, "||"));
+                    else
+                        tokens.Add(new Token(TokenType.Pipe, "|"));
+
+                    _position++;
+                    break;
                 case '=':
                     if (Match('>'))
                         tokens.Add(new Token(TokenType.EqualGreater, "=>"));
@@ -191,6 +207,10 @@ internal enum TokenType
     Plus,
     Star,
     Slash,
+    Ampersand,
+    AmpersandAmpersand,
+    Pipe,
+    PipePipe,
     
     LetKeyword,
     FnKeyword,
@@ -202,4 +222,5 @@ internal enum TokenType
     FalseKeyword,
 
     Eof,
+    
 }

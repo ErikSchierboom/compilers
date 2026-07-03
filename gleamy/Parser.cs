@@ -101,7 +101,27 @@ internal class Parser(List<Token> tokens)
 
     private Expression ParseExpression()
     {   
-        return ParseEqualityExpression();
+        return ParseOrExpression();
+    }
+    
+    private Expression ParseOrExpression()
+    {
+        var left = ParseAndExpression();
+        
+        while (Match(TokenType.PipePipe))
+            left = new OrExpression(left, ParseAndExpression());
+
+        return left;
+    }
+    
+    private Expression ParseAndExpression()
+    {
+        var left = ParseEqualityExpression();
+        
+        while (Match(TokenType.AmpersandAmpersand))
+            left = new AndExpression(left, ParseEqualityExpression());
+
+        return left;
     }
     
     private Expression ParseEqualityExpression()
@@ -295,6 +315,8 @@ internal sealed record CallExpression(Token Identifier, Expression[] Arguments) 
 internal sealed record UnaryExpression(Token Operator, Expression Value) : Expression;
 internal sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
 internal sealed record ParenthesizedExpression(Expression Expression) : Expression;
+internal sealed record AndExpression(Expression Left, Expression Right) : Expression;
+internal sealed record OrExpression(Expression Left, Expression Right) : Expression;
 
 internal sealed record MatchExpression(Expression Input, MatchCase[] Cases) : Expression;
 internal sealed record MatchCase(MatchPattern Pattern, Expression ReturnValue);

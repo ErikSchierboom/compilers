@@ -1,14 +1,7 @@
 ﻿using Gleamy;
 
 const string code = """
-                    fn is_even (x: Int) -> Bool {
-                        match x % 2 {
-                            0 => true,
-                            _ => false
-                        }
-                    }
-                    
-                    is_even(6)
+                    true || false
                     """;
 
 var tokens = new Scanner(code).Scan();
