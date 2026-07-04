@@ -1,7 +1,7 @@
 ﻿using Gleamy;
 
 const string code = """
-                    1 | 2
+                    1 & 2
                     """;
 
 var tokens = new Scanner(code).Scan();
