@@ -4,7 +4,13 @@ internal class Parser(List<Token> tokens)
 {
     private int _position = 0;
     
-    public SyntaxTree Parse()
+    public static SyntaxTree Parse(string source)
+    {
+        var tokens = Scanner.Scan(source);
+        return new Parser(tokens).Parse();
+    }
+
+    private SyntaxTree Parse()
     {
         var statements = new List<Statement>();
 

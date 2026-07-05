@@ -15,8 +15,11 @@ internal sealed class Scanner(string source)
         ["Bool"]  = (TokenType.BoolKeyword, null),
         ["Int"]   = (TokenType.IntKeyword, null),
     };
-    
-    public List<Token> Scan()
+
+    public static List<Token> Scan(string source) =>
+        new Scanner(source).Scan();
+
+    private List<Token> Scan()
     {
         var tokens = new List<Token>();
         
