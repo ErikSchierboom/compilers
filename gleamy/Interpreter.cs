@@ -102,7 +102,7 @@ internal class Interpreter(SyntaxTree tree)
         if (callable.Parameters.Length != callExpression.Arguments.Length)
             throw new ArgumentException("Invalid number of arguments");
 
-        var callableFrame = frame.Clone();
+        var callableFrame = frame.CreateChild();
 
         foreach (var (argument, parameter) in callExpression.Arguments.Zip(callable.Parameters))
         {
@@ -211,7 +211,7 @@ internal class Interpreter(SyntaxTree tree)
             switch (matchCase.Pattern)
             {
                 case BindingMatchPattern bindingMatchPattern:
-                    var bindingMatchFrame = frame.Clone();
+                    var bindingMatchFrame = frame.CreateChild();
                     bindingMatchFrame.Set(bindingMatchPattern.Identifier.Text, input);
             
                     return Evaluate(matchCase.ReturnValue, bindingMatchFrame);
@@ -260,7 +260,7 @@ internal class Frame(Frame? parent = null)
 {
     private readonly Dictionary<string, object?> _locals = new();
 
-    public Frame Clone() => new(this);
+    public Frame CreateChild() => new(this);
         
     public object? Get(string key)
     {
