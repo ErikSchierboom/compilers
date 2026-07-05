@@ -4,8 +4,10 @@ internal class Interpreter(SyntaxTree tree)
 {   
     public static object? Evaluate(string source)
     {
-        var frame = new Frame();
-        frame.Set("abs", new BuiltinFunction((args) => Math.Abs((int)args[0]), [typeof(int)]));
+        var frame = new Frame
+        {
+            ["abs"] = new BuiltinFunction((args) => Math.Abs((int)args[0]!), [typeof(int)])
+        };
 
         var tree = Parser.Parse(source);
         return new Interpreter(tree).Evaluate(frame);
@@ -41,14 +43,14 @@ internal class Interpreter(SyntaxTree tree)
     private object? Evaluate(BindingDeclarationStatement bindingDeclarationStatement, Frame frame)
     {
         var value = Evaluate(bindingDeclarationStatement.Value, frame);
-        frame.Set(bindingDeclarationStatement.Identifier.Text, value);
+        frame[bindingDeclarationStatement.Identifier.Text] = value;
         return null;
     }
 
     private object? Evaluate(FunctionDeclarationStatement functionDeclarationStatement, Frame frame)
     {
         var userDefinedFunction = new UserDefinedFunction(functionDeclarationStatement, frame.CreateChild());
-        frame.Set(functionDeclarationStatement.Identifier.Text, userDefinedFunction);
+        frame[functionDeclarationStatement.Identifier.Text] = userDefinedFunction;
         return null;
     }
     
@@ -96,7 +98,7 @@ internal class Interpreter(SyntaxTree tree)
     
     private object? Evaluate(CallExpression callExpression, Frame frame)
     {
-        var binding = frame.Get(callExpression.Identifier.Text);
+        var binding = frame[callExpression.Identifier.Text];
         if (binding is null)
             throw new InvalidOperationException("Could not find function");
         
@@ -122,7 +124,7 @@ internal class Interpreter(SyntaxTree tree)
 
     private object? Evaluate(NameExpression nameExpression, Frame frame)
     {
-        return frame.Get(nameExpression.Identifier.Text);
+        return frame[nameExpression.Identifier.Text];
     }
 
     private object Evaluate(LiteralExpression literalExpression, Frame frame)
@@ -216,7 +218,7 @@ internal class Interpreter(SyntaxTree tree)
             {
                 case BindingMatchPattern bindingMatchPattern:
                     var bindingMatchFrame = frame.CreateChild();
-                    bindingMatchFrame.Set(bindingMatchPattern.Identifier.Text, input);
+                    bindingMatchFrame[bindingMatchPattern.Identifier.Text] = input;
             
                     return Evaluate(matchCase.ReturnValue, bindingMatchFrame);
                 case ConstantMatchPattern constantMatchPattern:
@@ -260,7 +262,7 @@ internal class Interpreter(SyntaxTree tree)
             var frame = closure.CreateChild();
             
             foreach (var (argument, parameter) in args.Zip(declaration.Parameters))
-                frame.Set(parameter.Identifier.Text, argument);
+                frame[parameter.Identifier.Text] = argument;
             
             return interpreter.Evaluate(declaration.Body, frame);
         }
@@ -281,18 +283,20 @@ internal class Frame(Frame? parent = null)
 
     public Frame CreateChild() => new(this);
         
-    public object? Get(string key)
+    public object? this[string key]
     {
-        if (_locals.TryGetValue(key, out var result))
-            return result;
+        get
+        {
+            if (_locals.TryGetValue(key, out var result))
+                return result;
             
-        return parent?.Get(key);
-    }
-
-    public void Set(string key, object? value)
-    {
-        if (!_locals.TryAdd(key, value))
-            throw new InvalidOperationException("Cannot redeclare local");
+            return parent?[key];
+        }
+        set
+        {
+            if (!_locals.TryAdd(key, value))
+                throw new InvalidOperationException("Cannot redeclare local");;
+        }
     }
 }
 
