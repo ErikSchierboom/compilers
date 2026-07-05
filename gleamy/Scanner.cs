@@ -181,9 +181,11 @@ internal sealed record Token(TokenType Type, string Text, object? Literal = null
 
 internal enum TokenType
 {
+    // Literals
     Number,
     Identifier,
     
+    // Symbols
     OpenParen,
     CloseParen,
     OpenBracket,
@@ -212,6 +214,7 @@ internal enum TokenType
     Pipe,
     PipePipe,
     
+    // Keywords
     LetKeyword,
     FnKeyword,
     MatchKeyword,
@@ -221,6 +224,6 @@ internal enum TokenType
     TrueKeyword,
     FalseKeyword,
 
+    // Synthetic
     Eof,
-    
 }
