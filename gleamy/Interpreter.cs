@@ -276,8 +276,22 @@ internal class UserDefinedFunction(FunctionDeclarationStatement declaration) : C
             interpreter.Environment = new Environment(interpreter.Environment);
             
             foreach (var (parameter, arg) in declaration.Parameters.Zip(args))
+            {
+                switch (parameter.IdentifierType.Identifier.Type)
+                {
+                    case TokenType.IntKeyword:
+                        if (arg is not int)
+                            throw new InvalidOperationException("Cannot apply parameter int");
+                        break;
+                    case TokenType.BoolKeyword:
+                        if (arg is not bool)
+                            throw new InvalidOperationException("Cannot apply parameter int");
+                        break;
+                }
+                
                 interpreter.Environment.Set(parameter.Identifier.Text, arg);
-            
+            }
+
             return interpreter.Evaluate(declaration.Body);
         }
         finally
