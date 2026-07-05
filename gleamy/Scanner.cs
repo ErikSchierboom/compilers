@@ -4,7 +4,7 @@ internal sealed class Scanner(string source)
 {
     private int _position;
 
-    private static readonly Dictionary<string, (TokenType TokenType, object? Literal)> Keywords = new()
+    private static readonly Dictionary<string, (TokenType TokenType, object? Literal)> _keywords = new()
     {
         ["let"]   = (TokenType.LetKeyword, null),
         ["fn"]    = (TokenType.FnKeyword, null),
@@ -147,7 +147,7 @@ internal sealed class Scanner(string source)
                         _position++;
 
                     var text = source[identifierStartPosition.._position];
-                    if (Keywords.TryGetValue(text, out var tokenTypeAndLiteral))
+                    if (_keywords.TryGetValue(text, out var tokenTypeAndLiteral))
                         tokens.Add(new Token(tokenTypeAndLiteral.TokenType, text, tokenTypeAndLiteral.Literal));    
                     else
                         tokens.Add(new Token(TokenType.Identifier, text));
