@@ -331,7 +331,16 @@ internal sealed record ExpressionStatement(Expression Expression) : Statement;
 internal sealed record BindingDeclarationStatement(Token Identifier, Expression Value) : Statement;
 internal sealed record BlockStatement(Statement[] Statements) : Statement;
 
-internal sealed record IdentifierType(Token Identifier);
+internal sealed record IdentifierType(Token Identifier)
+{
+    public Type RuntimeType => Identifier.Type switch
+    {
+        TokenType.IntKeyword => typeof(int),
+        TokenType.BoolKeyword => typeof(bool),
+        _ => throw new InvalidOperationException($"Unexpected token {Identifier}")
+    };
+}
+
 internal sealed record Parameter(Token Identifier, IdentifierType IdentifierType);
 
 internal abstract record Expression;
