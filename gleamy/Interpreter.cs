@@ -1,13 +1,16 @@
 namespace Gleamy;
 
 internal class Interpreter(SyntaxTree tree)
-{
-    private static readonly Frame _defaultFrame = new(); 
-    
+{   
     public static object? Evaluate(string source)
     {
+        var frame = new Frame();
+        frame.Set("abs", new BuiltinFunction(
+            (_, frame) => Math.Abs((int)frame.Get("i")), 
+            [new Parameter(new Token(TokenType.Identifier, "i"), new IdentifierType(new Token(TokenType.IntKeyword, "")))]));
+
         var tree = Parser.Parse(source);
-        return new Interpreter(tree).Evaluate(_defaultFrame);
+        return new Interpreter(tree).Evaluate(frame);
     }
 
     private object? Evaluate(Frame frame)
@@ -96,6 +99,9 @@ internal class Interpreter(SyntaxTree tree)
     private object? Evaluate(CallExpression callExpression, Frame frame)
     {
         var binding = frame.Get(callExpression.Identifier.Text);
+        if (binding is null)
+            throw new InvalidOperationException("Could not find function");
+        
         if (binding is not ICallable callable)
             throw new InvalidOperationException("Not callable");
 
@@ -253,6 +259,14 @@ internal class Interpreter(SyntaxTree tree)
         
         public object? Invoke(Interpreter interpreter, Frame frame) =>
             interpreter.Evaluate(declaration.Body, frame);
+    }
+
+    private class BuiltinFunction(Func<Interpreter, Frame, object?> invoke, Parameter[] parameters) : ICallable
+    {
+        public Parameter[] Parameters => parameters;
+        
+        public object? Invoke(Interpreter interpreter, Frame frame) =>
+            invoke(interpreter, frame);
     }
 }
 
