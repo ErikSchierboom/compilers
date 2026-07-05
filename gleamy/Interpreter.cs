@@ -23,22 +23,15 @@ internal class Interpreter(SyntaxTree tree)
         return result;
     }
 
-    private static object? Evaluate(Statement statement, Frame frame)
-    {
-        switch (statement)
+    private static object? Evaluate(Statement statement, Frame frame) =>
+        statement switch
         {
-            case BindingDeclarationStatement bindingDeclarationStatement:
-                return Evaluate(bindingDeclarationStatement, frame);
-            case BlockStatement blockStatement:
-                return Evaluate(blockStatement, frame);
-            case ExpressionStatement expressionStatement:
-                return Evaluate(expressionStatement, frame);
-            case FunctionDeclarationStatement functionDeclarationStatement:
-                return Evaluate(functionDeclarationStatement, frame);
-            default:
-                throw new ArgumentOutOfRangeException(nameof(statement));
-        }
-    }
+            BindingDeclarationStatement bindingDeclarationStatement => Evaluate(bindingDeclarationStatement, frame),
+            BlockStatement blockStatement => Evaluate(blockStatement, frame),
+            ExpressionStatement expressionStatement => Evaluate(expressionStatement, frame),
+            FunctionDeclarationStatement functionDeclarationStatement => Evaluate(functionDeclarationStatement, frame),
+            _ => throw new ArgumentOutOfRangeException(nameof(statement))
+        };
 
     private static object? Evaluate(BindingDeclarationStatement bindingDeclarationStatement, Frame frame)
     {
@@ -64,38 +57,24 @@ internal class Interpreter(SyntaxTree tree)
         return result;
     }
     
-    private static object? Evaluate(ExpressionStatement expressionStatement, Frame frame)
-    {
-        return Evaluate(expressionStatement.Expression, frame);
-    }
+    private static object? Evaluate(ExpressionStatement expressionStatement, Frame frame) =>
+        Evaluate(expressionStatement.Expression, frame);
 
-    private static object? Evaluate(Expression expression, Frame frame)
-    {
-        switch (expression)
+    private static object? Evaluate(Expression expression, Frame frame) =>
+        expression switch
         {
-            case UnaryExpression unaryExpression:
-                return Evaluate(unaryExpression, frame);
-            case BinaryExpression binaryExpression:
-                return Evaluate(binaryExpression, frame);
-            case CallExpression callExpression:
-                return Evaluate(callExpression, frame);
-            case LiteralExpression literalExpression:
-                return Evaluate(literalExpression, frame);
-            case NameExpression nameExpression:
-                return Evaluate(nameExpression, frame);
-            case MatchExpression matchExpression:
-                return Evaluate(matchExpression, frame);
-            case ParenthesizedExpression parenthesizedExpression:
-                return Evaluate(parenthesizedExpression, frame);
-            case LogicalAndExpression andExpression:
-                return Evaluate(andExpression, frame);
-            case LogicalOrExpression orExpression:
-                return Evaluate(orExpression, frame);
-            default:
-                throw new ArgumentOutOfRangeException(nameof(expression));
-        }
-    }
-    
+            UnaryExpression unaryExpression => Evaluate(unaryExpression, frame),
+            BinaryExpression binaryExpression => Evaluate(binaryExpression, frame),
+            CallExpression callExpression => Evaluate(callExpression, frame),
+            LiteralExpression literalExpression => Evaluate(literalExpression, frame),
+            NameExpression nameExpression => Evaluate(nameExpression, frame),
+            MatchExpression matchExpression => Evaluate(matchExpression, frame),
+            ParenthesizedExpression parenthesizedExpression => Evaluate(parenthesizedExpression, frame),
+            LogicalAndExpression andExpression => Evaluate(andExpression, frame),
+            LogicalOrExpression orExpression => Evaluate(orExpression, frame),
+            _ => throw new ArgumentOutOfRangeException(nameof(expression))
+        };
+
     private object? Evaluate(CallExpression callExpression, Frame frame)
     {
         var binding = frame[callExpression.Identifier.Text];
@@ -122,20 +101,14 @@ internal class Interpreter(SyntaxTree tree)
         return callable.Invoke(this, [..arguments]);
     }
 
-    private static object? Evaluate(NameExpression nameExpression, Frame frame)
-    {
-        return frame[nameExpression.Identifier.Text];
-    }
+    private static object? Evaluate(NameExpression nameExpression, Frame frame) =>
+        frame[nameExpression.Identifier.Text];
 
-    private static object Evaluate(LiteralExpression literalExpression, Frame frame)
-    {
-        return literalExpression.Value.Literal!;
-    }
+    private static object Evaluate(LiteralExpression literalExpression, Frame frame) =>
+        literalExpression.Value.Literal!;
 
-    private static object? Evaluate(ParenthesizedExpression parenthesizedExpression, Frame frame)
-    {
-        return Evaluate(parenthesizedExpression.Expression, frame);
-    }
+    private static object? Evaluate(ParenthesizedExpression parenthesizedExpression, Frame frame) => 
+        Evaluate(parenthesizedExpression.Expression, frame);
 
     private static object? Evaluate(LogicalAndExpression logicalAndExpression, Frame frame)
     {
