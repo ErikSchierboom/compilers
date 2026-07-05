@@ -2,178 +2,171 @@ namespace Gleamy;
 
 internal class Interpreter(SyntaxTree tree)
 {
-    private Frame _frame = new();
+    private static readonly Frame _defaultFrame = new(); 
     
     public static object? Evaluate(string source)
     {
         var tree = Parser.Parse(source);
-        return new Interpreter(tree).Evaluate();
+        return new Interpreter(tree).Evaluate(_defaultFrame);
     }
 
-    private object? Evaluate()
+    private object? Evaluate(Frame frame)
     {
         object? result = null;   
         
         foreach (var statement in tree.Statements)
-            result = Evaluate(statement);
+            result = Evaluate(statement, frame);
 
         return result;
     }
 
-    private object? Evaluate(Statement statement)
+    private object? Evaluate(Statement statement, Frame frame)
     {
         switch (statement)
         {
             case BindingDeclarationStatement bindingDeclarationStatement:
-                return Evaluate(bindingDeclarationStatement);
+                return Evaluate(bindingDeclarationStatement, frame);
             case BlockStatement blockStatement:
-                return Evaluate(blockStatement);
+                return Evaluate(blockStatement, frame);
             case ExpressionStatement expressionStatement:
-                return Evaluate(expressionStatement);
+                return Evaluate(expressionStatement, frame);
             case FunctionDeclarationStatement functionDeclarationStatement:
-                return Evaluate(functionDeclarationStatement);
+                return Evaluate(functionDeclarationStatement, frame);
             default:
                 throw new ArgumentOutOfRangeException(nameof(statement));
         }
     }
 
-    private object? Evaluate(BindingDeclarationStatement bindingDeclarationStatement)
+    private object? Evaluate(BindingDeclarationStatement bindingDeclarationStatement, Frame frame)
     {
-        var value = Evaluate(bindingDeclarationStatement.Value);
-        _frame.Set(bindingDeclarationStatement.Identifier.Text, value);
+        var value = Evaluate(bindingDeclarationStatement.Value, frame);
+        frame.Set(bindingDeclarationStatement.Identifier.Text, value);
         return null;
     }
 
-    private object? Evaluate(FunctionDeclarationStatement functionDeclarationStatement)
+    private object? Evaluate(FunctionDeclarationStatement functionDeclarationStatement, Frame frame)
     {
         var userDefinedFunction = new UserDefinedFunction(functionDeclarationStatement);
-        _frame.Set(functionDeclarationStatement.Identifier.Text, userDefinedFunction);
+        frame.Set(functionDeclarationStatement.Identifier.Text, userDefinedFunction);
         return null;
     }
     
-    private object? Evaluate(BlockStatement blockStatement)
+    private object? Evaluate(BlockStatement blockStatement, Frame frame)
     {
         object? result = null;
         
         foreach (var statement in blockStatement.Statements)
-            result = Evaluate(statement);
+            result = Evaluate(statement, frame);
 
         return result;
     }
     
-    private object? Evaluate(ExpressionStatement expressionStatement)
+    private object? Evaluate(ExpressionStatement expressionStatement, Frame frame)
     {
-        return Evaluate(expressionStatement.Expression);
+        return Evaluate(expressionStatement.Expression, frame);
     }
 
-    private object? Evaluate(Expression expression)
+    private object? Evaluate(Expression expression, Frame frame)
     {
         switch (expression)
         {
             case UnaryExpression unaryExpression:
-                return Evaluate(unaryExpression);
+                return Evaluate(unaryExpression, frame);
             case BinaryExpression binaryExpression:
-                return Evaluate(binaryExpression);
+                return Evaluate(binaryExpression, frame);
             case CallExpression callExpression:
-                return Evaluate(callExpression);
+                return Evaluate(callExpression, frame);
             case LiteralExpression literalExpression:
-                return Evaluate(literalExpression);
+                return Evaluate(literalExpression, frame);
             case NameExpression nameExpression:
-                return Evaluate(nameExpression);
+                return Evaluate(nameExpression, frame);
             case MatchExpression matchExpression:
-                return Evaluate(matchExpression);
+                return Evaluate(matchExpression, frame);
             case ParenthesizedExpression parenthesizedExpression:
-                return Evaluate(parenthesizedExpression);
+                return Evaluate(parenthesizedExpression, frame);
             case LogicalAndExpression andExpression:
-                return Evaluate(andExpression);
+                return Evaluate(andExpression, frame);
             case LogicalOrExpression orExpression:
-                return Evaluate(orExpression);
+                return Evaluate(orExpression, frame);
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }
     }
     
-    private object? Evaluate(CallExpression callExpression)
+    private object? Evaluate(CallExpression callExpression, Frame frame)
     {
-        var binding = _frame.Get(callExpression.Identifier.Text);
+        var binding = frame.Get(callExpression.Identifier.Text);
         if (binding is not ICallable callable)
             throw new InvalidOperationException("Not callable");
 
         if (callable.Parameters.Length != callExpression.Arguments.Length)
             throw new ArgumentException("Invalid number of arguments");
 
-        _frame = new Frame(_frame);
+        var callableFrame = frame.Clone();
 
-        try
+        foreach (var (argument, parameter) in callExpression.Arguments.Zip(callable.Parameters))
         {
-            foreach (var (argument, parameter) in callExpression.Arguments.Zip(callable.Parameters))
-            {
-                var argumentValue = Evaluate(argument);
-                if (parameter.IdentifierType.RuntimeType != argumentValue?.GetType())
-                    throw new InvalidOperationException("Cannot apply parameter int");
-            
-                _frame.Set(parameter.Identifier.Text, argumentValue);
-            }
+            var argumentValue = Evaluate(argument, frame);
+            if (parameter.IdentifierType.RuntimeType != argumentValue?.GetType())
+                throw new InvalidOperationException("Cannot apply parameter int");
         
-            return callable.Invoke(this);
+            callableFrame.Set(parameter.Identifier.Text, argumentValue);
         }
-        finally
-        {
-            _frame = _frame.Parent!;
-        }
+    
+        return callable.Invoke(this, callableFrame);
     }
 
-    private object? Evaluate(NameExpression nameExpression)
+    private object? Evaluate(NameExpression nameExpression, Frame frame)
     {
-        return _frame.Get(nameExpression.Identifier.Text);
+        return frame.Get(nameExpression.Identifier.Text);
     }
 
-    private object Evaluate(LiteralExpression literalExpression)
+    private object Evaluate(LiteralExpression literalExpression, Frame frame)
     {
         return literalExpression.Value.Literal!;
     }
 
-    private object? Evaluate(ParenthesizedExpression parenthesizedExpression)
+    private object? Evaluate(ParenthesizedExpression parenthesizedExpression, Frame frame)
     {
-        return Evaluate(parenthesizedExpression.Expression);
+        return Evaluate(parenthesizedExpression.Expression, frame);
     }
 
-    private object? Evaluate(LogicalAndExpression logicalAndExpression)
+    private object? Evaluate(LogicalAndExpression logicalAndExpression, Frame frame)
     {
-        var left =  Evaluate(logicalAndExpression.Left) ?? throw new InvalidOperationException("Cannot apply && to null");
+        var left =  Evaluate(logicalAndExpression.Left, frame) ?? throw new InvalidOperationException("Cannot apply && to null");
         if (left is not bool leftBool)
             throw new InvalidOperationException("Cannot apply && to non-boolean");
 
         if (!leftBool)
             return false;
         
-        var right = Evaluate(logicalAndExpression.Right) ?? throw new InvalidOperationException("Cannot apply && to null");;
+        var right = Evaluate(logicalAndExpression.Right, frame) ?? throw new InvalidOperationException("Cannot apply && to null");;
         if (right is not bool rightBool)
             throw new InvalidOperationException("Cannot apply && to non-boolean");
 
         return rightBool;
     }
 
-    private object? Evaluate(LogicalOrExpression logicalOrExpression)
+    private object? Evaluate(LogicalOrExpression logicalOrExpression, Frame frame)
     {
-        var left =  Evaluate(logicalOrExpression.Left) ?? throw new InvalidOperationException("Cannot apply && to null");
+        var left =  Evaluate(logicalOrExpression.Left, frame) ?? throw new InvalidOperationException("Cannot apply && to null");
         if (left is not bool leftBool)
             throw new InvalidOperationException("Cannot apply && to non-boolean");
 
         if (leftBool)
             return true;
         
-        var right = Evaluate(logicalOrExpression.Right) ?? throw new InvalidOperationException("Cannot apply && to null");;
+        var right = Evaluate(logicalOrExpression.Right, frame) ?? throw new InvalidOperationException("Cannot apply && to null");;
         if (right is not bool rightBool)
             throw new InvalidOperationException("Cannot apply && to non-boolean");
 
         return rightBool;
     }
 
-    private object? Evaluate(BinaryExpression binaryExpression)
+    private object? Evaluate(BinaryExpression binaryExpression, Frame frame)
     {
-        var left =  Evaluate(binaryExpression.Left) ?? throw new InvalidOperationException("Cannot apply binary operation to null");
-        var right = Evaluate(binaryExpression.Right) ?? throw new InvalidOperationException("Cannot apply binary operation to null");;
+        var left =  Evaluate(binaryExpression.Left, frame) ?? throw new InvalidOperationException("Cannot apply binary operation to null");
+        var right = Evaluate(binaryExpression.Right, frame) ?? throw new InvalidOperationException("Cannot apply binary operation to null");;
 
         return (binaryExpression.Operator.Type, left, right) switch
         {
@@ -196,9 +189,9 @@ internal class Interpreter(SyntaxTree tree)
         };
     }
 
-    private object? Evaluate(UnaryExpression unaryExpression)
+    private object? Evaluate(UnaryExpression unaryExpression, Frame frame)
     {
-        var value =  Evaluate(unaryExpression.Value) ?? throw new InvalidOperationException("Cannot apply unary operation to null");
+        var value =  Evaluate(unaryExpression.Value, frame) ?? throw new InvalidOperationException("Cannot apply unary operation to null");
 
         return (unaryExpression.Operator.Type, value) switch
         {
@@ -209,33 +202,25 @@ internal class Interpreter(SyntaxTree tree)
         };
     }
 
-    private object? Evaluate(MatchExpression matchExpression)
+    private object? Evaluate(MatchExpression matchExpression, Frame frame)
     {
-        var input = Evaluate(matchExpression.Input);
+        var input = Evaluate(matchExpression.Input, frame);
 
         foreach (var matchCase in matchExpression.Cases)
         {
             switch (matchCase.Pattern)
             {
                 case BindingMatchPattern bindingMatchPattern:
-                    var oldEnvironment = _frame;
-                    try
-                    {
-                        _frame = new Frame(_frame);
-                        _frame.Set(bindingMatchPattern.Identifier.Text, input);
+                    var bindingMatchFrame = frame.Clone();
+                    bindingMatchFrame.Set(bindingMatchPattern.Identifier.Text, input);
             
-                        return Evaluate(matchCase.ReturnValue);
-                    }
-                    finally
-                    {
-                        _frame = oldEnvironment;    
-                    }
+                    return Evaluate(matchCase.ReturnValue, bindingMatchFrame);
                 case ConstantMatchPattern constantMatchPattern:
                     switch (constantMatchPattern.Value.Literal, input)
                     {
                         case (int intMatch, int intInput) when intInput == intMatch:
                         case (bool boolMatch, bool boolInput) when boolInput == boolMatch:
-                            return Evaluate(matchCase.ReturnValue);
+                            return Evaluate(matchCase.ReturnValue, frame);
                     }
                     break;
                 case ComparisonMatchPattern comparisonMatchPattern:
@@ -249,11 +234,11 @@ internal class Interpreter(SyntaxTree tree)
                         case (TokenType.EqualEqual, bool comparison6, bool input6) when input6 == comparison6:
                         case (TokenType.BangEqual, int comparison7, int input7) when input7 == comparison7:
                         case (TokenType.BangEqual, bool comparison8, bool input8) when input8 != comparison8:
-                            return Evaluate(matchCase.ReturnValue);
+                            return Evaluate(matchCase.ReturnValue, frame);
                     }
                     break;
                 case DiscardPattern:
-                    return Evaluate(matchCase.ReturnValue);
+                    return Evaluate(matchCase.ReturnValue, frame);
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -266,8 +251,8 @@ internal class Interpreter(SyntaxTree tree)
     {
         public Parameter[] Parameters => declaration.Parameters;
         
-        public object? Invoke(Interpreter interpreter) =>
-            interpreter.Evaluate(declaration.Body);
+        public object? Invoke(Interpreter interpreter, Frame frame) =>
+            interpreter.Evaluate(declaration.Body, frame);
     }
 }
 
@@ -275,7 +260,7 @@ internal class Frame(Frame? parent = null)
 {
     private readonly Dictionary<string, object?> _locals = new();
 
-    public Frame? Parent => parent;
+    public Frame Clone() => new(this);
         
     public object? Get(string key)
     {
@@ -296,5 +281,5 @@ internal interface ICallable
 {
     Parameter[] Parameters { get; }
 
-    object? Invoke(Interpreter interpreter);
+    object? Invoke(Interpreter interpreter, Frame frame);
 }
