@@ -5,9 +5,7 @@ internal class Interpreter(SyntaxTree tree)
     public static object? Evaluate(string source)
     {
         var frame = new Frame();
-        frame.Set("abs", new BuiltinFunction(
-            (_, frame) => Math.Abs((int)frame.Get("i")), 
-            [new Parameter(new Token(TokenType.Identifier, "i"), new IdentifierType(new Token(TokenType.IntKeyword, "")))]));
+        frame.Set("abs", new BuiltinFunction((args) => Math.Abs((int)args[0]), [typeof(int)]));
 
         var tree = Parser.Parse(source);
         return new Interpreter(tree).Evaluate(frame);
@@ -49,7 +47,7 @@ internal class Interpreter(SyntaxTree tree)
 
     private object? Evaluate(FunctionDeclarationStatement functionDeclarationStatement, Frame frame)
     {
-        var userDefinedFunction = new UserDefinedFunction(functionDeclarationStatement);
+        var userDefinedFunction = new UserDefinedFunction(functionDeclarationStatement, frame.CreateChild());
         frame.Set(functionDeclarationStatement.Identifier.Text, userDefinedFunction);
         return null;
     }
@@ -105,21 +103,21 @@ internal class Interpreter(SyntaxTree tree)
         if (binding is not ICallable callable)
             throw new InvalidOperationException("Not callable");
 
-        if (callable.Parameters.Length != callExpression.Arguments.Length)
+        if (callable.Signature.Length != callExpression.Arguments.Length)
             throw new ArgumentException("Invalid number of arguments");
 
-        var callableFrame = frame.CreateChild();
+        var arguments = new List<object?>(capacity: callExpression.Arguments.Length);
 
-        foreach (var (argument, parameter) in callExpression.Arguments.Zip(callable.Parameters))
+        foreach (var (argument, parameterType) in callExpression.Arguments.Zip(callable.Signature))
         {
             var argumentValue = Evaluate(argument, frame);
-            if (parameter.IdentifierType.RuntimeType != argumentValue?.GetType())
-                throw new InvalidOperationException("Cannot apply parameter int");
-        
-            callableFrame.Set(parameter.Identifier.Text, argumentValue);
+            if (parameterType != argumentValue?.GetType())
+                throw new InvalidOperationException("Invalid type of argument");
+            
+            arguments.Add(argumentValue);
         }
     
-        return callable.Invoke(this, callableFrame);
+        return callable.Invoke(this, [..arguments]);
     }
 
     private object? Evaluate(NameExpression nameExpression, Frame frame)
@@ -253,20 +251,27 @@ internal class Interpreter(SyntaxTree tree)
         return null;
     }
 
-    private class UserDefinedFunction(FunctionDeclarationStatement declaration) : ICallable
+    private class UserDefinedFunction(FunctionDeclarationStatement declaration, Frame closure) : ICallable
     {
-        public Parameter[] Parameters => declaration.Parameters;
+        public Type[] Signature { get; } = [..declaration.Parameters.Select(parameter => parameter.IdentifierType.RuntimeType)];
         
-        public object? Invoke(Interpreter interpreter, Frame frame) =>
-            interpreter.Evaluate(declaration.Body, frame);
+        public object? Invoke(Interpreter interpreter, object?[] args)
+        {
+            var frame = closure.CreateChild();
+            
+            foreach (var (argument, parameter) in args.Zip(declaration.Parameters))
+                frame.Set(parameter.Identifier.Text, argument);
+            
+            return interpreter.Evaluate(declaration.Body, frame);
+        }
     }
 
-    private class BuiltinFunction(Func<Interpreter, Frame, object?> invoke, Parameter[] parameters) : ICallable
+    private class BuiltinFunction(Func<object?[], object?> invoke, Type[] parameters) : ICallable
     {
-        public Parameter[] Parameters => parameters;
+        public Type[] Signature => parameters;
         
-        public object? Invoke(Interpreter interpreter, Frame frame) =>
-            invoke(interpreter, frame);
+        public object? Invoke(Interpreter interpreter, object?[] args) =>
+            invoke(args);
     }
 }
 
@@ -293,7 +298,7 @@ internal class Frame(Frame? parent = null)
 
 internal interface ICallable
 {
-    Parameter[] Parameters { get; }
+    Type[] Signature { get; }
 
-    object? Invoke(Interpreter interpreter, Frame frame);
+    object? Invoke(Interpreter interpreter, object?[] args);
 }
