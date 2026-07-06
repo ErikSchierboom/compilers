@@ -23,7 +23,7 @@ internal class Interpreter(SyntaxTree tree)
         return result;
     }
 
-    private static object? Evaluate(Statement statement, Frame frame) =>
+    private object? Evaluate(Statement statement, Frame frame) =>
         statement switch
         {
             BindingDeclarationStatement bindingDeclarationStatement => Evaluate(bindingDeclarationStatement, frame),
@@ -33,14 +33,14 @@ internal class Interpreter(SyntaxTree tree)
             _ => throw new ArgumentOutOfRangeException(nameof(statement))
         };
 
-    private static object? Evaluate(BindingDeclarationStatement bindingDeclarationStatement, Frame frame)
+    private object? Evaluate(BindingDeclarationStatement bindingDeclarationStatement, Frame frame)
     {
         var value = Evaluate(bindingDeclarationStatement.Value, frame);
         frame[bindingDeclarationStatement.Identifier.Text] = value;
         return null;
     }
 
-    private static object? Evaluate(FunctionDeclarationStatement functionDeclarationStatement, Frame frame)
+    private object? Evaluate(FunctionDeclarationStatement functionDeclarationStatement, Frame frame)
     {
         var userDefinedFunction = new UserDefinedFunction(functionDeclarationStatement, frame.CreateChild());
         frame[functionDeclarationStatement.Identifier.Text] = userDefinedFunction;
@@ -57,10 +57,10 @@ internal class Interpreter(SyntaxTree tree)
         return result;
     }
     
-    private static object? Evaluate(ExpressionStatement expressionStatement, Frame frame) =>
+    private object? Evaluate(ExpressionStatement expressionStatement, Frame frame) =>
         Evaluate(expressionStatement.Expression, frame);
 
-    private static object? Evaluate(Expression expression, Frame frame) =>
+    private object? Evaluate(Expression expression, Frame frame) =>
         expression switch
         {
             UnaryExpression unaryExpression => Evaluate(unaryExpression, frame),
@@ -101,18 +101,18 @@ internal class Interpreter(SyntaxTree tree)
         return callable.Invoke(this, [..arguments]);
     }
 
-    private static object? Evaluate(NameExpression nameExpression, Frame frame) =>
+    private object? Evaluate(NameExpression nameExpression, Frame frame) =>
         frame[nameExpression.Identifier.Text];
 
-    private static object Evaluate(LiteralExpression literalExpression, Frame frame) =>
+    private object Evaluate(LiteralExpression literalExpression, Frame frame) =>
         literalExpression.Value.Literal!;
 
-    private static object? Evaluate(ParenthesizedExpression parenthesizedExpression, Frame frame) => 
+    private object? Evaluate(ParenthesizedExpression parenthesizedExpression, Frame frame) => 
         Evaluate(parenthesizedExpression.Expression, frame);
 
-    private static object? Evaluate(LogicalAndExpression logicalAndExpression, Frame frame)
+    private object? Evaluate(LogicalAndExpression logicalAndExpression, Frame frame)
     {
-        var left =  Evaluate(logicalAndExpression.Left, frame) ?? throw new InvalidOperationException("Cannot apply && to null");
+        var left = Evaluate(logicalAndExpression.Left, frame) ?? throw new InvalidOperationException("Cannot apply && to null");
         if (left is not bool leftBool)
             throw new InvalidOperationException("Cannot apply && to non-boolean");
 
@@ -126,9 +126,9 @@ internal class Interpreter(SyntaxTree tree)
         return rightBool;
     }
 
-    private static object? Evaluate(LogicalOrExpression logicalOrExpression, Frame frame)
+    private object? Evaluate(LogicalOrExpression logicalOrExpression, Frame frame)
     {
-        var left =  Evaluate(logicalOrExpression.Left, frame) ?? throw new InvalidOperationException("Cannot apply && to null");
+        var left = Evaluate(logicalOrExpression.Left, frame) ?? throw new InvalidOperationException("Cannot apply && to null");
         if (left is not bool leftBool)
             throw new InvalidOperationException("Cannot apply && to non-boolean");
 
@@ -142,7 +142,7 @@ internal class Interpreter(SyntaxTree tree)
         return rightBool;
     }
 
-    private static object? Evaluate(BinaryExpression binaryExpression, Frame frame)
+    private object? Evaluate(BinaryExpression binaryExpression, Frame frame)
     {
         var left =  Evaluate(binaryExpression.Left, frame) ?? throw new InvalidOperationException("Cannot apply binary operation to null");
         var right = Evaluate(binaryExpression.Right, frame) ?? throw new InvalidOperationException("Cannot apply binary operation to null");;
@@ -168,7 +168,7 @@ internal class Interpreter(SyntaxTree tree)
         };
     }
 
-    private static object? Evaluate(UnaryExpression unaryExpression, Frame frame)
+    private object? Evaluate(UnaryExpression unaryExpression, Frame frame)
     {
         var value = Evaluate(unaryExpression.Value, frame) ?? throw new InvalidOperationException("Cannot apply unary operation to null");
 
@@ -181,7 +181,7 @@ internal class Interpreter(SyntaxTree tree)
         };
     }
 
-    private static object? Evaluate(MatchExpression matchExpression, Frame frame)
+    private object? Evaluate(MatchExpression matchExpression, Frame frame)
     {
         var input = Evaluate(matchExpression.Input, frame);
 
