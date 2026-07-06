@@ -1,10 +1,10 @@
 ﻿using Gleamy;
 
 const string code = """
-                    fn square (x: Int) -> Int {
-                        x * x
+                    fn inc (x: Int) -> Int {
+                        x + 1
                     }
-                    abs(square(-3))
+                    abs(inc(-3)) + 2 * 3 - 1
                     """;
 
 var result = Interpreter.Evaluate(code);
