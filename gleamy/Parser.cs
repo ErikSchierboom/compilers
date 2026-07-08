@@ -6,10 +6,13 @@ internal enum Precedence
     PREC_ASSIGNMENT,  // =
     PREC_OR,          // or
     PREC_AND,         // and
+    PREC_BITWISE_OR,  // |
+    PREC_BITWISE_AND, // &
     PREC_EQUALITY,    // == !=
     PREC_COMPARISON,  // < > <= >=
     PREC_ADDITION,    // + -
     PREC_PRODUCT,     // * /
+    PREC_MATCH,       // match
     PREC_UNARY,       // ! -
     PREC_CALL,        // ()
     PREC_PRIMARY
@@ -20,15 +23,40 @@ internal delegate Expression ParseInfixFn(Expression left);
 
 internal record ParseRule(ParsePrefixFn? Prefix, ParseInfixFn? Infix, Precedence Precedence);
 
-internal class Parser(List<Token> tokens)
+internal class Parser
 {
     private int _position = 0;
 
-    private static readonly Dictionary<TokenType, ParseRule> _rules = new()
+    private readonly Dictionary<TokenType, ParseRule> _rules;
+
+    private readonly List<Token> _tokens;
+
+    public Parser(List<Token> tokens)
     {
-        [TokenType.Eof] = new(null, null, Precedence.PREC_NONE)
-    };
-    
+        _tokens = tokens;
+        
+        _rules = new()
+        {
+            [TokenType.Eof] = new(null, null, Precedence.PREC_NONE),
+            [TokenType.Ampersand] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_AND),
+            [TokenType.Pipe] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_OR),
+            [TokenType.EqualEqual] = new(null, ParseBinaryExpression, Precedence.PREC_COMPARISON),
+            [TokenType.BangEqual] = new(null, ParseBinaryExpression, Precedence.PREC_COMPARISON),
+            [TokenType.Plus] = new(null, ParseBinaryExpression, Precedence.PREC_ADDITION),
+            [TokenType.Minus] = new(null, ParseBinaryExpression, Precedence.PREC_ADDITION),
+            [TokenType.Star] = new(null, ParseBinaryExpression, Precedence.PREC_PRODUCT),
+            [TokenType.Slash] = new(null, ParseBinaryExpression, Precedence.PREC_PRODUCT),
+            [TokenType.AmpersandAmpersand] = new(null, ParseLogicalAndExpression, Precedence.PREC_AND),
+            [TokenType.PipePipe] = new(null, ParseLogicalOrExpression, Precedence.PREC_OR),
+            [TokenType.Number] = new(ParseNumber, null, Precedence.PREC_PRIMARY),
+            [TokenType.Identifier] = new(ParseName, null, Precedence.PREC_PRIMARY),
+            [TokenType.TrueKeyword] = new(ParseBoolean, null, Precedence.PREC_PRIMARY),
+            [TokenType.FalseKeyword] = new(ParseBoolean, null, Precedence.PREC_PRIMARY),
+            [TokenType.MatchKeyword] = new(ParseMatchExpression, null, Precedence.PREC_MATCH),
+            [TokenType.OpenParen] = new(ParseParenthesized, ParseCall, Precedence.PREC_CALL),
+        };
+    }
+
     public static SyntaxTree Parse(string source)
     {
         var tokens = Scanner.Scan(source);
@@ -140,7 +168,8 @@ internal class Parser(List<Token> tokens)
 
         var left = parsePrefix();
         
-        while (precedence <= _rules[Current.Type].Precedence)
+        // Check if we can have this stop at EOF
+        while (!IsEndOfFile && precedence <= _rules[Current.Type].Precedence)
         {
             Advance();
             var parseInfix = _rules[Previous.Type].Infix;
@@ -155,20 +184,20 @@ internal class Parser(List<Token> tokens)
     
     private Expression ParseLogicalOrExpression(Expression left)
     {   
-        while (Match(TokenType.PipePipe))
-            left = new LogicalOrExpression(left, ParseLogicalAndExpression());
-
-        return left;
+        var operatorToken = Previous;
+        var rule = _rules[operatorToken.Type];
+        
+        var right = ParseExpression(rule.Precedence + 1);
+        return new LogicalOrExpression(left, right);
     }
     
-    private Expression ParseLogicalAndExpression()
+    private Expression ParseLogicalAndExpression(Expression left)
     {
-        var left = ParseBitwiseOrExpression();
+        var operatorToken = Previous;
+        var rule = _rules[operatorToken.Type];
         
-        while (Match(TokenType.AmpersandAmpersand))
-            left = new LogicalAndExpression(left, ParseBitwiseOrExpression());
-
-        return left;
+        var right = ParseExpression(rule.Precedence + 1);
+        return new LogicalAndExpression(left, right);
     }
     
     private Expression ParseBinaryExpression(Expression left)
@@ -179,68 +208,32 @@ internal class Parser(List<Token> tokens)
 
         return new BinaryExpression(left, operatorToken, right);
     }
-    
-    private Expression ParseBitwiseAndExpression()
-    {
-        var left = ParseEqualityExpression();
-        
-        while (Match(TokenType.Ampersand))
-            left = new BinaryExpression(left, Previous, ParseEqualityExpression());
-
-        return left;
-    }
-    
-    private Expression ParseEqualityExpression()
-    {
-        Expression left = ParseComparisonExpression();
-        
-        while (Match(TokenType.EqualEqual) || Match(TokenType.BangEqual))
-            left = new BinaryExpression(left,  Previous, ParseComparisonExpression());
-
-        return left;
-    }
-    
-    private Expression ParseComparisonExpression()
-    {
-        Expression left = ParseMatchExpression();
-        
-        while (Match(TokenType.Greater) || Match(TokenType.GreaterEqual) ||
-               Match(TokenType.Less) || Match(TokenType.LessEqual))
-            left = new BinaryExpression(left,  Previous, ParseMatchExpression());
-
-        return left;
-    }
 
     private Expression ParseMatchExpression()
     {
-        if (Match(TokenType.MatchKeyword))
+        var input = ParseExpression(Precedence.PREC_MATCH + 1);
+        Consume(TokenType.OpenBracket);
+    
+        var cases = new List<MatchCase>();
+    
+        while (!Check(TokenType.CloseBracket))
         {
-            var input = ParseAdditiveExpression();
-            Consume(TokenType.OpenBracket);
-        
-            var cases = new List<MatchCase>();
-        
-            while (!Check(TokenType.CloseBracket))
+            do
             {
-                do
-                {
-                    cases.Add(ParseMatchCase());
-                } while (Match(TokenType.Comma));
-            }
-            
-            Consume(TokenType.CloseBracket);
-        
-            return new MatchExpression(input, [..cases]);
+                cases.Add(ParseMatchCase());
+            } while (Match(TokenType.Comma));
         }
         
-        return ParseAdditiveExpression();
+        Consume(TokenType.CloseBracket);
+    
+        return new MatchExpression(input, [..cases]);
     }
 
     private MatchCase ParseMatchCase()
     {
         var pattern = ParseMatchPattern();
         Consume(TokenType.EqualGreater);
-        var returnValue = ParseAdditiveExpression();
+        var returnValue = ParseExpression(Precedence.PREC_MATCH + 1);
         return new MatchCase(pattern, returnValue);
     }
 
@@ -265,6 +258,8 @@ internal class Parser(List<Token> tokens)
 
             return new ComparisonMatchPattern(operatorToken, literal.Value);
         }
+
+        throw new InvalidOperationException("Expected pattern");
     }
 
     private Expression ParseUnaryExpression() => new UnaryExpression(Previous, ParseExpression());
@@ -297,8 +292,8 @@ internal class Parser(List<Token> tokens)
 
     private bool IsEndOfFile => Current.Type == TokenType.Eof; 
     
-    private Token Previous => tokens[_position - 1];
-    private Token Current  => tokens[_position];
+    private Token Previous => _tokens[_position - 1];
+    private Token Current  => _tokens[_position];
 
     private void Advance()
     {
