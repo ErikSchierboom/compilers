@@ -160,11 +160,8 @@ internal class Parser
 
     private Expression ParseExpression(Precedence precedence = Precedence.PREC_NONE)
     {
-        var parsePrefix = _rules[Current.Type].Prefix;
         Advance();
-
-        if (parsePrefix is null)
-            throw new InvalidOperationException("Expect prefix");
+        var parsePrefix = _rules[Previous.Type].Prefix ?? throw new InvalidOperationException("Expect prefix");
 
         var left = parsePrefix();
         
@@ -172,10 +169,7 @@ internal class Parser
         while (!IsEndOfFile && precedence <= _rules[Current.Type].Precedence)
         {
             Advance();
-            var parseInfix = _rules[Previous.Type].Infix;
-            if (parseInfix is null)
-                throw new InvalidOperationException("Expect infix");
-                
+            var parseInfix = _rules[Previous.Type].Infix ?? throw new InvalidOperationException("Expect infix");
             left = parseInfix(left);
         }
 
