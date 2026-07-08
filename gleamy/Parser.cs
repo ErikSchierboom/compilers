@@ -38,15 +38,15 @@ internal class Parser
         _rules = new()
         {
             [TokenType.Eof] = new(null, null, Precedence.PREC_NONE),
-            [TokenType.Ampersand] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_AND),
-            [TokenType.Pipe] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_OR),
             [TokenType.EqualEqual] = new(null, ParseBinaryExpression, Precedence.PREC_COMPARISON),
             [TokenType.BangEqual] = new(null, ParseBinaryExpression, Precedence.PREC_COMPARISON),
             [TokenType.Plus] = new(null, ParseBinaryExpression, Precedence.PREC_ADDITION),
             [TokenType.Minus] = new(null, ParseBinaryExpression, Precedence.PREC_ADDITION),
             [TokenType.Star] = new(null, ParseBinaryExpression, Precedence.PREC_PRODUCT),
             [TokenType.Slash] = new(null, ParseBinaryExpression, Precedence.PREC_PRODUCT),
+            [TokenType.Ampersand] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_AND),
             [TokenType.AmpersandAmpersand] = new(null, ParseLogicalAndExpression, Precedence.PREC_AND),
+            [TokenType.Pipe] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_OR),
             [TokenType.PipePipe] = new(null, ParseLogicalOrExpression, Precedence.PREC_OR),
             [TokenType.Number] = new(ParseNumber, null, Precedence.PREC_PRIMARY),
             [TokenType.Identifier] = new(ParseName, null, Precedence.PREC_PRIMARY),
