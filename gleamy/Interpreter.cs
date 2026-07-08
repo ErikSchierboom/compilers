@@ -77,7 +77,7 @@ internal class Interpreter(SyntaxTree tree)
 
     private object? Evaluate(CallExpression callExpression, Frame frame)
     {
-        var binding = frame[callExpression.Identifier.Text];
+        var binding = Evaluate(callExpression.Function, frame);
         if (binding is null)
             throw new InvalidOperationException("Could not find function");
         

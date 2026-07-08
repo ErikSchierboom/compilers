@@ -1,8 +1,33 @@
 namespace Gleamy;
 
+internal enum Precedence
+{
+    PREC_NONE,
+    PREC_ASSIGNMENT,  // =
+    PREC_OR,          // or
+    PREC_AND,         // and
+    PREC_EQUALITY,    // == !=
+    PREC_COMPARISON,  // < > <= >=
+    PREC_ADDITION,    // + -
+    PREC_PRODUCT,     // * /
+    PREC_UNARY,       // ! -
+    PREC_CALL,        // ()
+    PREC_PRIMARY
+}
+
+internal delegate Expression ParsePrefixFn();
+internal delegate Expression ParseInfixFn(Expression left);
+
+internal record ParseRule(ParsePrefixFn? Prefix, ParseInfixFn? Infix, Precedence Precedence);
+
 internal class Parser(List<Token> tokens)
 {
     private int _position = 0;
+
+    private static readonly Dictionary<TokenType, ParseRule> _rules = new()
+    {
+        [TokenType.Eof] = new(null, null, Precedence.PREC_NONE)
+    };
     
     public static SyntaxTree Parse(string source)
     {
@@ -105,15 +130,31 @@ internal class Parser(List<Token> tokens)
         return new ExpressionStatement(expression);
     }
 
-    private Expression ParseExpression()
-    {   
-        return ParseLogicalOrExpression();
+    private Expression ParseExpression(Precedence precedence = Precedence.PREC_NONE)
+    {
+        var parsePrefix = _rules[Current.Type].Prefix;
+        Advance();
+
+        if (parsePrefix is null)
+            throw new InvalidOperationException("Expect prefix");
+
+        var left = parsePrefix();
+        
+        while (precedence <= _rules[Current.Type].Precedence)
+        {
+            Advance();
+            var parseInfix = _rules[Previous.Type].Infix;
+            if (parseInfix is null)
+                throw new InvalidOperationException("Expect infix");
+                
+            left = parseInfix(left);
+        }
+
+        return left;
     }
     
-    private Expression ParseLogicalOrExpression()
-    {
-        var left = ParseLogicalAndExpression();
-        
+    private Expression ParseLogicalOrExpression(Expression left)
+    {   
         while (Match(TokenType.PipePipe))
             left = new LogicalOrExpression(left, ParseLogicalAndExpression());
 
@@ -130,14 +171,13 @@ internal class Parser(List<Token> tokens)
         return left;
     }
     
-    private Expression ParseBitwiseOrExpression()
+    private Expression ParseBinaryExpression(Expression left)
     {
-        var left = ParseBitwiseAndExpression();
-        
-        while (Match(TokenType.Pipe))
-            left = new BinaryExpression(left, Previous, ParseBitwiseAndExpression());
+        var operatorToken = Previous;
+        var rule = _rules[operatorToken.Type];
+        var right = ParseExpression(rule.Precedence + 1);
 
-        return left;
+        return new BinaryExpression(left, operatorToken, right);
     }
     
     private Expression ParseBitwiseAndExpression()
@@ -208,97 +248,62 @@ internal class Parser(List<Token> tokens)
     {
         if (Match(TokenType.Underscore))
             return new DiscardPattern();
-        
+
         if (Match(TokenType.Identifier))
             return new BindingMatchPattern(Previous);
-        
+
         if (Match(TokenType.Number))
             return new ConstantMatchPattern(Previous);
 
         if (Match(TokenType.Greater) || Match(TokenType.GreaterEqual) ||
             Match(TokenType.Less) || Match(TokenType.LessEqual))
         {
-            var operatorToken = Previous; 
+            var operatorToken = Previous;
             var compareValue = ParseUnaryExpression();
             if (compareValue is not LiteralExpression literal)
                 throw new InvalidOperationException($"Unexpected token {compareValue}");
 
             return new ComparisonMatchPattern(operatorToken, literal.Value);
         }
-        
-        throw new InvalidOperationException($"Unexpected token {Previous}");
     }
 
-    private Expression ParseAdditiveExpression()
-    {
-        var left = ParseMultiplicativeExpression();
-        
-        while (Match(TokenType.Plus) || Match(TokenType.Minus))
-            left = new BinaryExpression(left,  Previous, ParseMultiplicativeExpression());
+    private Expression ParseUnaryExpression() => new UnaryExpression(Previous, ParseExpression());
 
-        return left;
+    private Expression ParseNumber() => new LiteralExpression(Previous);
+    private Expression ParseBoolean() => new LiteralExpression(Previous);
+    private Expression ParseName() => new LiteralExpression(Previous);
+    private Expression ParseParenthesized()
+    {
+        var expr = ParseExpression();
+        Consume(TokenType.CloseParen);
+        return new ParenthesizedExpression(expr);
     }
 
-    private Expression ParseMultiplicativeExpression()
+    private Expression ParseCall(Expression left)
     {
-        var left = ParseUnaryExpression();
-        
-        while (Match(TokenType.Star) || Match(TokenType.Slash) || Match(TokenType.Percent))
-            left = new BinaryExpression(left,  Previous, ParseUnaryExpression());
-
-        return left;
-    }
-
-    private Expression ParseUnaryExpression()
-    {
-        if (Match(TokenType.Minus) || Match(TokenType.Plus) | Match(TokenType.Bang))
-            return new UnaryExpression(Previous, ParseUnaryExpression());
-
-        return ParsePrimaryExpression();
-    }
-
-    private Expression ParsePrimaryExpression()
-    {
-        if (Match(TokenType.Number))
-            return new LiteralExpression(Previous);
-        
-        if (Match(TokenType.TrueKeyword) || Match(TokenType.FalseKeyword))
-            return new LiteralExpression(Previous);
-        
-        if (Match(TokenType.OpenParen)) {
-            var expr = ParseExpression();
-            Consume(TokenType.CloseParen);
-            return new ParenthesizedExpression(expr);
-        }
-
-        if (Match(TokenType.Identifier))
+        var arguments = new List<Expression>();
+        while (!Check(TokenType.CloseParen))
         {
-            var identifier = Previous;
-
-            if (!Match(TokenType.OpenParen))
-                return new NameExpression(identifier);
-            
-            var arguments = new List<Expression>();
-            while (!Check(TokenType.CloseParen))
+            do
             {
-                do
-                {
-                    arguments.Add(ParseExpression());
-                } while (Match(TokenType.Comma));
-            }
-            
-            Consume(TokenType.CloseParen);
-                
-            return new CallExpression(identifier, [..arguments]);
+                arguments.Add(ParseExpression());
+            } while (Match(TokenType.Comma));
         }
-        
-        throw new InvalidOperationException($"Unexpected token {Previous}");
+            
+        Consume(TokenType.CloseParen);
+                
+        return new CallExpression(left, [..arguments]);
     }
 
     private bool IsEndOfFile => Current.Type == TokenType.Eof; 
     
     private Token Previous => tokens[_position - 1];
     private Token Current  => tokens[_position];
+
+    private void Advance()
+    {
+        _position++;
+    }
 
     private bool Match(TokenType expected)
     {
@@ -346,7 +351,7 @@ internal sealed record Parameter(Token Identifier, IdentifierType IdentifierType
 internal abstract record Expression;
 internal sealed record LiteralExpression(Token Value) : Expression;
 internal sealed record NameExpression(Token Identifier) : Expression;
-internal sealed record CallExpression(Token Identifier, Expression[] Arguments) : Expression;
+internal sealed record CallExpression(Expression Function, Expression[] Arguments) : Expression;
 internal sealed record UnaryExpression(Token Operator, Expression Value) : Expression;
 internal sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
 internal sealed record ParenthesizedExpression(Expression Expression) : Expression;
