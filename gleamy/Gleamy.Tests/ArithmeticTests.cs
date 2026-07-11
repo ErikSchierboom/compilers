@@ -12,4 +12,12 @@ public sealed class ArithmeticTests
         var result = Interpreter.Evaluate(code);
         Assert.Equal(expected, result);
     }
+    
+    [Theory]
+    [InlineData("2 * (3 + 1)", 8)]
+    public void Parenthesized(string code, int expected)
+    {
+        var result = Interpreter.Evaluate(code);
+        Assert.Equal(expected, result);
+    }
 }

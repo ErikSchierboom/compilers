@@ -18,10 +18,10 @@ internal enum Precedence
     PREC_PRIMARY
 }
 
-internal delegate Expression ParsePrefixFn();
-internal delegate Expression ParseInfixFn(Expression left);
+internal delegate Expression ParsePrefix();
+internal delegate Expression ParseInfix(Expression left);
 
-internal record ParseRule(ParsePrefixFn? Prefix, ParseInfixFn? Infix, Precedence Precedence);
+internal record ParseRule(ParsePrefix? Prefix, ParseInfix? Infix, Precedence Precedence);
 
 internal class Parser
 {
@@ -157,16 +157,24 @@ internal class Parser
 
     private Expression ParseExpression(Precedence precedence = Precedence.PREC_NONE)
     {
-        Advance();
-        var parsePrefix = _rules[Previous.Type].Prefix ?? throw new InvalidOperationException("Expect prefix");
+        var token = Advance();
+        if (!_rules.TryGetValue(token.Type, out var prefixParseRule))
+            throw new InvalidOperationException($"No parse rule for token type {token.Type}");
+
+        var parsePrefix = prefixParseRule.Prefix ?? throw new InvalidOperationException("Expect prefix");
 
         var left = parsePrefix();
         
         // Check if we can have this stop at EOF
-        while (!IsEndOfFile && precedence <= _rules[Current.Type].Precedence)
+        while (precedence < (_rules.TryGetValue(Current.Type, out var infixParseRule) ? infixParseRule?.Precedence ?? Precedence.PREC_NONE : Precedence.PREC_NONE))
         {
             Advance();
-            var parseInfix = _rules[Previous.Type].Infix ?? throw new InvalidOperationException("Expect infix");
+            
+            if (infixParseRule is null)
+                throw new InvalidOperationException("Expect infix");
+
+            var parseInfix = infixParseRule.Infix ?? throw new InvalidOperationException("Expected infix");
+            
             left = parseInfix(left);
         }
 
@@ -286,9 +294,10 @@ internal class Parser
     private Token Previous => _tokens[_position - 1];
     private Token Current  => _tokens[_position];
 
-    private void Advance()
+    private Token Advance()
     {
         _position++;
+        return Previous;
     }
 
     private bool Match(TokenType expected)
