@@ -1,8 +1,11 @@
 ﻿namespace Gleamy;
 
-internal sealed class Scanner(string source)
+internal sealed class Scanner
 {
+    private readonly string _source;
     private int _position;
+
+    private Scanner(string source) => _source = source;
 
     private static readonly Dictionary<string, (TokenType TokenType, object? Literal)> _keywords = new()
     {
@@ -141,7 +144,7 @@ internal sealed class Scanner(string source)
                     while (Current is >= '0' and <= '9')
                         _position++;
 
-                    var numberString = source[numberStartPosition.._position];
+                    var numberString = _source[numberStartPosition.._position];
                     tokens.Add(new Token(TokenType.Number, numberString, int.Parse(numberString)));
                     break;
                 case >= 'a' and <= 'z' or >= 'A' and <= 'Z':
@@ -149,14 +152,14 @@ internal sealed class Scanner(string source)
                     while (Current is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '_')
                         _position++;
 
-                    var text = source[identifierStartPosition.._position];
+                    var text = _source[identifierStartPosition.._position];
                     if (_keywords.TryGetValue(text, out var tokenTypeAndLiteral))
                         tokens.Add(new Token(tokenTypeAndLiteral.TokenType, text, tokenTypeAndLiteral.Literal));    
                     else
                         tokens.Add(new Token(TokenType.Identifier, text));
                     break;
                 default:
-                    throw new InvalidOperationException($"Unknown character: '{source[_position]}'");
+                    throw new InvalidOperationException($"Unknown character: '{_source[_position]}'");
             }
         }
         
@@ -174,10 +177,10 @@ internal sealed class Scanner(string source)
         return true;
     }
 
-    private bool IsEndOfFile => _position >= source.Length;
+    private bool IsEndOfFile => _position >= _source.Length;
     
-    private char Current => _position < source.Length ? source[_position] : '\0';
-    private char Next => _position < source.Length - 1 ? source[_position + 1] : '\0';
+    private char Current => _position < _source.Length ? _source[_position] : '\0';
+    private char Next => _position < _source.Length - 1 ? _source[_position + 1] : '\0';
 }
 
 internal sealed record Token(TokenType Type, string Text, object? Literal = null);

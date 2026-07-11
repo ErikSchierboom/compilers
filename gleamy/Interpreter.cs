@@ -1,7 +1,11 @@
 namespace Gleamy;
 
-internal class Interpreter(SyntaxTree tree)
-{   
+internal class Interpreter
+{
+    private readonly SyntaxTree _tree;
+
+    private Interpreter(SyntaxTree tree) => _tree = tree;
+
     private static readonly Frame _defaultFrame = new()
     {
         ["abs"] = new BuiltinFunction((args) => Math.Abs((int)args[0]!), [typeof(int)])
@@ -17,7 +21,7 @@ internal class Interpreter(SyntaxTree tree)
     {
         object? result = null;   
         
-        foreach (var statement in tree.Statements)
+        foreach (var statement in _tree.Statements)
             result = Evaluate(statement, frame);
 
         return result;

@@ -25,16 +25,13 @@ internal record ParseRule(ParsePrefixFn? Prefix, ParseInfixFn? Infix, Precedence
 
 internal class Parser
 {
-    private int _position = 0;
-
     private readonly Dictionary<TokenType, ParseRule> _rules;
-
     private readonly List<Token> _tokens;
+    private int _position;
 
-    public Parser(List<Token> tokens)
+    private Parser(List<Token> tokens)
     {
         _tokens = tokens;
-        
         _rules = new()
         {
             [TokenType.Eof] = new(null, null, Precedence.PREC_NONE),
