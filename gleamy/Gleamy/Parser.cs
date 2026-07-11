@@ -255,7 +255,7 @@ internal class Parser
 
     private Expression ParseNumber() => new LiteralExpression(Previous);
     private Expression ParseBoolean() => new LiteralExpression(Previous);
-    private Expression ParseName() => new LiteralExpression(Previous);
+    private Expression ParseName() => new NameExpression(Previous);
     private Expression ParseParenthesized()
     {
         var expr = ParseExpression();
