@@ -215,7 +215,7 @@ internal class Parser
     
         var cases = new List<MatchCase>();
     
-        while (!Check(TokenType.CloseBracket))
+        while (!(Current.Type == TokenType.CloseBracket))
         {
             do
             {
@@ -276,7 +276,7 @@ internal class Parser
     private Expression ParseCall(Expression left)
     {
         var arguments = new List<Expression>();
-        while (!Check(TokenType.CloseParen))
+        while (!(Current.Type == TokenType.CloseParen))
         {
             do
             {
@@ -315,11 +315,6 @@ internal class Parser
             throw new InvalidOperationException($"Expected {expected} but got {Current.Type}");
         
         _position++;
-    }
-
-    private bool Check(TokenType expected)
-    {
-        return Current.Type == expected;
     }
 }
 
