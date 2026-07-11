@@ -157,30 +157,20 @@ internal class Parser
 
     private Expression ParseExpression(Precedence precedence = Precedence.PREC_NONE)
     {
-        var token = Advance();
-        if (!_rules.TryGetValue(token.Type, out var prefixParseRule))
-            throw new InvalidOperationException($"No parse rule for token type {token.Type}");
-
-        var parsePrefix = prefixParseRule.Prefix ?? throw new InvalidOperationException("Expect prefix");
-
-        var left = parsePrefix();
+        var parsePrefixFn = CurrentParseRule.Prefix ?? throw new InvalidOperationException("Expected prefix");
+        Advance();
+        var left = parsePrefixFn();
         
-        // Check if we can have this stop at EOF
-        while (precedence < (_rules.TryGetValue(Current.Type, out var infixParseRule) ? infixParseRule?.Precedence ?? Precedence.PREC_NONE : Precedence.PREC_NONE))
+        while (precedence < CurrentPrecedence)
         {
+            var parseInfixFn = CurrentParseRule.Infix ?? throw new InvalidOperationException("Expected infix");
             Advance();
-            
-            if (infixParseRule is null)
-                throw new InvalidOperationException("Expect infix");
-
-            var parseInfix = infixParseRule.Infix ?? throw new InvalidOperationException("Expected infix");
-            
-            left = parseInfix(left);
+            left = parseInfixFn(left);
         }
 
         return left;
     }
-    
+
     private Expression ParseLogicalOrExpression(Expression left)
     {   
         var operatorToken = Previous;
@@ -294,18 +284,24 @@ internal class Parser
     private Token Previous => _tokens[_position - 1];
     private Token Current  => _tokens[_position];
 
-    private Token Advance()
-    {
-        _position++;
-        return Previous;
-    }
+    private ParseRule CurrentParseRule =>
+        _rules.TryGetValue(Current.Type, out var parseRule)
+            ? parseRule
+            : throw new InvalidOperationException($"Could not parse token {Current.Type}");
+
+    private Precedence CurrentPrecedence =>
+        _rules.TryGetValue(Current.Type, out var parseRule)
+            ? parseRule.Precedence
+            : Precedence.PREC_NONE;
+    
+    private void Advance() => _position++;
 
     private bool Match(TokenType expected)
     {
         if (Current.Type != expected)
             return false;
         
-        _position++;
+        Advance();
         return true;
     }
     
@@ -313,8 +309,8 @@ internal class Parser
     {
         if (Current.Type != expected)
             throw new InvalidOperationException($"Expected {expected} but got {Current.Type}");
-        
-        _position++;
+
+        Advance();
     }
 }
 
