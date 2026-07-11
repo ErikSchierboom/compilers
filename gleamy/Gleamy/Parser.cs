@@ -36,9 +36,10 @@ internal class Parser
         {
             [TokenType.Eof] = new(null, null, Precedence.PREC_NONE),
             [TokenType.EqualEqual] = new(null, ParseBinaryExpression, Precedence.PREC_COMPARISON),
+            [TokenType.Bang] = new(ParseUnaryExpression, null, Precedence.PREC_UNARY),
             [TokenType.BangEqual] = new(null, ParseBinaryExpression, Precedence.PREC_COMPARISON),
-            [TokenType.Plus] = new(null, ParseBinaryExpression, Precedence.PREC_ADDITION),
-            [TokenType.Minus] = new(null, ParseBinaryExpression, Precedence.PREC_ADDITION),
+            [TokenType.Plus] = new(ParseUnaryExpression, ParseBinaryExpression, Precedence.PREC_ADDITION),
+            [TokenType.Minus] = new(ParseUnaryExpression, ParseBinaryExpression, Precedence.PREC_ADDITION),
             [TokenType.Star] = new(null, ParseBinaryExpression, Precedence.PREC_PRODUCT),
             [TokenType.Slash] = new(null, ParseBinaryExpression, Precedence.PREC_PRODUCT),
             [TokenType.Ampersand] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_AND),
