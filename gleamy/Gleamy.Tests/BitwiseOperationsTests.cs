@@ -25,4 +25,8 @@ public sealed class BitwiseOperationsTests
     [InlineData("10 ^ 2", 8)]
     public void Xor(string code, int expected) =>
         Assert.Equal(expected, Interpreter.Evaluate(code));
+    
+    // TODO: implement bitwise shift right
+    // TODO: implement bitwise shift left
+    // TODO: implement bitwise complement
 }
