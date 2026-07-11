@@ -45,6 +45,10 @@ internal sealed class Scanner
                     tokens.Add(new Token(TokenType.Slash, "/"));
                     _position++;
                     break;
+                case '^':
+                    tokens.Add(new Token(TokenType.Caret, "^"));
+                    _position++;
+                    break;
                 case ',':
                     tokens.Add(new Token(TokenType.Comma, ","));
                     _position++;
@@ -219,6 +223,7 @@ internal enum TokenType
     AmpersandAmpersand,
     Pipe,
     PipePipe,
+    Caret,
     
     // Keywords
     LetKeyword,

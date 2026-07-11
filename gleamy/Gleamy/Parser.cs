@@ -7,6 +7,7 @@ internal enum Precedence
     PREC_OR,          // or
     PREC_AND,         // and
     PREC_BITWISE_OR,  // |
+    PREC_BITWISE_XOR, // ^
     PREC_BITWISE_AND, // &
     PREC_EQUALITY,    // == !=
     PREC_COMPARISON,  // < > <= >=
@@ -42,6 +43,7 @@ internal class Parser
             [TokenType.Minus] = new(ParseUnaryExpression, ParseBinaryExpression, Precedence.PREC_ADDITION),
             [TokenType.Star] = new(null, ParseBinaryExpression, Precedence.PREC_PRODUCT),
             [TokenType.Slash] = new(null, ParseBinaryExpression, Precedence.PREC_PRODUCT),
+            [TokenType.Caret] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_XOR),
             [TokenType.Ampersand] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_AND),
             [TokenType.AmpersandAmpersand] = new(null, ParseLogicalAndExpression, Precedence.PREC_AND),
             [TokenType.Pipe] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_OR),

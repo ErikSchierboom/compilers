@@ -1,6 +1,6 @@
 ﻿namespace Gleamy.Tests;
 
-public sealed class BooleansTests
+public sealed class LogicalOperationsTests
 {
     [Theory]
     [InlineData("true && true", true)]

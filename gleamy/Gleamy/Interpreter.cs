@@ -159,6 +159,7 @@ public class Interpreter
             (TokenType.Slash, int l, int r) => l / r,
             (TokenType.Percent, int l, int r) => l % r,
             (TokenType.Ampersand, int l, int r) => l & r,
+            (TokenType.Caret, int l, int r) => l ^ r,
             (TokenType.Pipe, int l, int r) => l | r,
             (TokenType.Less, int l, int r) => l < r,
             (TokenType.LessEqual, int l, int r) => l <= r,
