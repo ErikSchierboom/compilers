@@ -1,6 +1,6 @@
 namespace Gleamy;
 
-internal class Interpreter
+public class Interpreter
 {
     private readonly SyntaxTree _tree;
 
