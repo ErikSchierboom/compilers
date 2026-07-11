@@ -194,7 +194,7 @@ internal class Parser
     {
         var operatorToken = Previous;
         var rule = _rules[operatorToken.Type];
-        var right = ParseExpression(rule.Precedence + 1);
+        var right = ParseExpression(rule.Precedence);
 
         return new BinaryExpression(left, operatorToken, right);
     }
