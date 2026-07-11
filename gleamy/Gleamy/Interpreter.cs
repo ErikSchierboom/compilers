@@ -162,8 +162,10 @@ public class Interpreter
             (TokenType.Caret, int l, int r) => l ^ r,
             (TokenType.Pipe, int l, int r) => l | r,
             (TokenType.Less, int l, int r) => l < r,
+            (TokenType.LessLess, int l, int r) => l << r,
             (TokenType.LessEqual, int l, int r) => l <= r,
             (TokenType.Greater, int l, int r) => l > r,
+            (TokenType.GreaterGreater, int l, int r) => l >> r,
             (TokenType.GreaterEqual, int l, int r) => l >= r,
             (TokenType.EqualEqual, int l, int r) => l == r,
             (TokenType.EqualEqual, bool l, bool r) => l == r,
@@ -182,6 +184,7 @@ public class Interpreter
             (TokenType.Plus, int i) => i,
             (TokenType.Minus, int i) => -i,
             (TokenType.Bang, bool b) => !b,
+            (TokenType.Tilde, int i) => ~i,
             _ => throw new ArgumentOutOfRangeException(nameof(unaryExpression.Operator))
         };
     }

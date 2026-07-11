@@ -4,13 +4,14 @@ internal enum Precedence
 {
     PREC_NONE,
     PREC_ASSIGNMENT,  // =
-    PREC_OR,          // or
-    PREC_AND,         // and
+    PREC_LOGICAL_OR,  // or
+    PREC_LOGICAL_AND, // and
     PREC_BITWISE_OR,  // |
     PREC_BITWISE_XOR, // ^
     PREC_BITWISE_AND, // &
     PREC_EQUALITY,    // == !=
     PREC_COMPARISON,  // < > <= >=
+    PREC_BITWISE_SHIFT,       // << >>
     PREC_ADDITION,    // + -
     PREC_PRODUCT,     // * /
     PREC_MATCH,       // match
@@ -44,10 +45,13 @@ internal class Parser
             [TokenType.Star] = new(null, ParseBinaryExpression, Precedence.PREC_PRODUCT),
             [TokenType.Slash] = new(null, ParseBinaryExpression, Precedence.PREC_PRODUCT),
             [TokenType.Caret] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_XOR),
+            [TokenType.Tilde] = new(ParseUnaryExpression, null, Precedence.PREC_UNARY),
+            [TokenType.GreaterGreater] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_SHIFT),
+            [TokenType.LessLess] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_SHIFT),
             [TokenType.Ampersand] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_AND),
-            [TokenType.AmpersandAmpersand] = new(null, ParseLogicalAndExpression, Precedence.PREC_AND),
+            [TokenType.AmpersandAmpersand] = new(null, ParseLogicalAndExpression, Precedence.PREC_LOGICAL_AND),
             [TokenType.Pipe] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_OR),
-            [TokenType.PipePipe] = new(null, ParseLogicalOrExpression, Precedence.PREC_OR),
+            [TokenType.PipePipe] = new(null, ParseLogicalOrExpression, Precedence.PREC_LOGICAL_OR),
             [TokenType.Number] = new(ParseNumber, null, Precedence.PREC_PRIMARY),
             [TokenType.Identifier] = new(ParseName, null, Precedence.PREC_PRIMARY),
             [TokenType.TrueKeyword] = new(ParseBoolean, null, Precedence.PREC_PRIMARY),

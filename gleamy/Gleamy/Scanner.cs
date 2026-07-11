@@ -119,6 +119,10 @@ internal sealed class Scanner
 
                     _position++;
                     break;
+                case '~':
+                    tokens.Add(new Token(TokenType.Tilde, "~"));
+                    _position++;
+                    break;
                 case '-':
                     if (Match('>'))
                         tokens.Add(new Token(TokenType.MinusGreater, "->"));
@@ -128,7 +132,9 @@ internal sealed class Scanner
                     _position++;
                     break;
                 case '>':
-                    if (Match('='))
+                    if (Match('>'))
+                        tokens.Add(new Token(TokenType.GreaterGreater, ">>"));
+                    else if (Match('='))
                         tokens.Add(new Token(TokenType.GreaterEqual, ">="));
                     else
                         tokens.Add(new Token(TokenType.Greater, ">"));
@@ -136,7 +142,9 @@ internal sealed class Scanner
                     _position++;
                     break;
                 case '<':
-                    if (Match('='))
+                    if (Match('<'))
+                        tokens.Add(new Token(TokenType.LessLess, "<<"));
+                    else if (Match('='))
                         tokens.Add(new Token(TokenType.LessEqual, "<="));
                     else
                         tokens.Add(new Token(TokenType.Less, "<"));
@@ -201,8 +209,10 @@ internal enum TokenType
     OpenBracket,
     CloseBracket,
     Less,
+    LessLess,
     LessEqual,
     Greater,
+    GreaterGreater,
     GreaterEqual,
     Equal,
     EqualEqual,
@@ -224,6 +234,7 @@ internal enum TokenType
     Pipe,
     PipePipe,
     Caret,
+    Tilde,
     
     // Keywords
     LetKeyword,
