@@ -105,7 +105,7 @@ internal class Parser
                 break;
         }
         Consume(TokenType.CloseParen);
-        
+
         Consume(TokenType.MinusGreater);
         var returnType = ParseType();
         
@@ -158,13 +158,13 @@ internal class Parser
     private Expression ParseExpression(Precedence precedence = Precedence.PREC_NONE)
     {
         var parsePrefixFn = CurrentParseRule.Prefix ?? throw new InvalidOperationException("Expected prefix");
-        Advance();
+        Consume();
         var left = parsePrefixFn();
         
         while (precedence < CurrentPrecedence)
         {
             var parseInfixFn = CurrentParseRule.Infix ?? throw new InvalidOperationException("Expected infix");
-            Advance();
+            Consume();
             left = parseInfixFn(left);
         }
 
@@ -293,24 +293,24 @@ internal class Parser
         _rules.TryGetValue(Current.Type, out var parseRule)
             ? parseRule.Precedence
             : Precedence.PREC_NONE;
-    
-    private void Advance() => _position++;
 
     private bool Match(TokenType expected)
     {
         if (Current.Type != expected)
             return false;
         
-        Advance();
+        _position++;
         return true;
     }
+    
+    private void Consume() => _position++;
     
     private void Consume(TokenType expected)
     {
         if (Current.Type != expected)
             throw new InvalidOperationException($"Expected {expected} but got {Current.Type}");
 
-        Advance();
+        _position++;
     }
 }
 
