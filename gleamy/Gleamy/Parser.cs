@@ -110,6 +110,9 @@ internal class Parser
         var parameters = new List<Parameter>();
         while (true)
         {
+            if (Current.Type == TokenType.CloseParen)
+                break;
+
             parameters.Add(ParseParameter());
 
             if (!Match(TokenType.Comma))
