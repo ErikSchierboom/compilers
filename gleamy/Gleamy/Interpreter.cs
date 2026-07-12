@@ -14,7 +14,7 @@ public class Interpreter
     public static object? Evaluate(string source)
     {
         var tree = Parser.Parse(source);
-        return new Interpreter(tree).Evaluate(_defaultFrame);
+        return new Interpreter(tree).Evaluate(_defaultFrame.CreateChild());
     }
 
     private object? Evaluate(Frame frame)
@@ -72,7 +72,8 @@ public class Interpreter
             CallExpression callExpression => Evaluate(callExpression, frame),
             LiteralExpression literalExpression => Evaluate(literalExpression, frame),
             NameExpression nameExpression => Evaluate(nameExpression, frame),
-            MatchExpression matchExpression => Evaluate(matchExpression, frame),
+            ValueMatchExpression valueMatchExpression => Evaluate(valueMatchExpression, frame),
+            ExpressionMatchExpression expressionMatchExpression => Evaluate(expressionMatchExpression, frame),
             ParenthesizedExpression parenthesizedExpression => Evaluate(parenthesizedExpression, frame),
             LogicalAndExpression andExpression => Evaluate(andExpression, frame),
             LogicalOrExpression orExpression => Evaluate(orExpression, frame),
@@ -189,20 +190,20 @@ public class Interpreter
         };
     }
 
-    private object? Evaluate(MatchExpression matchExpression, Frame frame)
+    private object? Evaluate(ValueMatchExpression valueMatchExpression, Frame frame)
     {
-        var input = Evaluate(matchExpression.Input, frame);
+        var input = Evaluate(valueMatchExpression.Input, frame);
 
-        foreach (var matchCase in matchExpression.Cases)
+        foreach (var matchCase in valueMatchExpression.Cases)
         {
             switch (matchCase.Pattern)
             {
-                case BindingMatchPattern bindingMatchPattern:
+                case BindingValueMatchPattern bindingMatchPattern:
                     var bindingMatchFrame = frame.CreateChild();
                     bindingMatchFrame[bindingMatchPattern.Identifier.Text] = input;
             
                     return Evaluate(matchCase.ReturnValue, bindingMatchFrame);
-                case ConstantMatchPattern constantMatchPattern:
+                case ConstantValueMatchPattern constantMatchPattern:
                     switch (constantMatchPattern.Value.Literal, input)
                     {
                         case (int intMatch, int intInput) when intInput == intMatch:
@@ -210,7 +211,7 @@ public class Interpreter
                             return Evaluate(matchCase.ReturnValue, frame);
                     }
                     break;
-                case NegationMatchPattern constantMatchPattern:
+                case NegationValueMatchPattern constantMatchPattern:
                     switch (constantMatchPattern.Value.Literal, input)
                     {
                         case (int intMatch, int intInput) when intInput != intMatch:
@@ -218,7 +219,7 @@ public class Interpreter
                             return Evaluate(matchCase.ReturnValue, frame);
                     }
                     break;
-                case ComparisonMatchPattern comparisonMatchPattern:
+                case ComparisonValueMatchPattern comparisonMatchPattern:
                     switch (comparisonMatchPattern.Operator.Type, comparisonMatchPattern.CompareValue.Literal, input)
                     {
                         case (TokenType.Greater, int comparison1, int input1) when input1 > comparison1:
@@ -232,7 +233,32 @@ public class Interpreter
                             return Evaluate(matchCase.ReturnValue, frame);
                     }
                     break;
-                case DiscardPattern:
+                case DiscardValueMatchPattern:
+                    return Evaluate(matchCase.ReturnValue, frame);
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        throw new InvalidOperationException("No matching pattern found");
+    }
+    
+    private object? Evaluate(ExpressionMatchExpression expressionMatchExpression, Frame frame)
+    {
+        foreach (var matchCase in expressionMatchExpression.Cases)
+        {
+            switch (matchCase.Pattern)
+            {
+                case ExpressionExpressionMatchPattern expressionExpressionMatchPattern:
+                    var evaluatedExpression = Evaluate(expressionExpressionMatchPattern.Expression, frame);
+                    if (evaluatedExpression is not bool b)
+                        throw new InvalidOperationException("Can only evaluate boolean expressions");
+                    
+                    if (b)
+                        return Evaluate(matchCase.ReturnValue, frame);
+
+                    break;
+                case DiscardExpressionMatchPattern:
                     return Evaluate(matchCase.ReturnValue, frame);
                 default:
                     throw new ArgumentOutOfRangeException();

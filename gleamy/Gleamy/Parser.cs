@@ -207,47 +207,55 @@ internal class Parser
 
     private Expression ParseMatchExpression()
     {
+        if (Match(TokenType.OpenBracket))
+            return ParseExpressionMatchExpression();
+        
+        return ParseValueMatchExpression();
+    }
+
+    private ValueMatchExpression ParseValueMatchExpression()
+    {
         var input = ParseExpression(Precedence.Match + 1);
         Consume(TokenType.OpenBracket);
     
-        var cases = new List<MatchCase>();
+        var cases = new List<ValueMatchCase>();
     
         while (Current.Type != TokenType.CloseBracket)
         {
             do
             {
-                cases.Add(ParseMatchCase());
+                cases.Add(ParseValueMatchCase());
             } while (Match(TokenType.Comma));
         }
         
         Consume(TokenType.CloseBracket);
     
-        return new MatchExpression(input, [..cases]);
+        return new ValueMatchExpression(input, [..cases]);
     }
 
-    private MatchCase ParseMatchCase()
+    private ValueMatchCase ParseValueMatchCase()
     {
-        var pattern = ParseMatchPattern();
+        var pattern = ParseValueMatchPattern();
         Consume(TokenType.EqualGreater);
         var returnValue = ParseExpression();
-        return new MatchCase(pattern, returnValue);
+        return new ValueMatchCase(pattern, returnValue);
     }
 
-    private MatchPattern ParseMatchPattern()
+    private ValueMatchPattern ParseValueMatchPattern()
     {
         if (Match(TokenType.Underscore))
-            return new DiscardPattern();
+            return new DiscardValueMatchPattern();
 
         if (Match(TokenType.Identifier))
-            return new BindingMatchPattern(Previous);
+            return new BindingValueMatchPattern(Previous);
 
         if (Match(TokenType.Number) || Match(TokenType.TrueKeyword) || Match(TokenType.FalseKeyword))
-            return new ConstantMatchPattern(Previous);
+            return new ConstantValueMatchPattern(Previous);
 
         if (Match(TokenType.Bang))
         {
             if (Match(TokenType.Number) || Match(TokenType.TrueKeyword) || Match(TokenType.FalseKeyword))
-                return new NegationMatchPattern(Previous);
+                return new NegationValueMatchPattern(Previous);
             
             throw new InvalidOperationException("Expected constant after '!'");
         }
@@ -260,11 +268,46 @@ internal class Parser
             if (compareValue is not LiteralExpression literal)
                 throw new InvalidOperationException($"Unexpected token {compareValue}");
 
-            return new ComparisonMatchPattern(operatorToken, literal.Value);
+            return new ComparisonValueMatchPattern(operatorToken, literal.Value);
         }
 
         throw new InvalidOperationException("Expected pattern");
     }
+
+    private ExpressionMatchExpression ParseExpressionMatchExpression()
+    {
+        var cases = new List<ExpressionMatchCase>();
+    
+        while (Current.Type != TokenType.CloseBracket)
+        {
+            do
+            {
+                cases.Add(ParseExpressionMatchCase());
+            } while (Match(TokenType.Comma));
+        }
+        
+        Consume(TokenType.CloseBracket);
+    
+        return new ExpressionMatchExpression([..cases]);
+    }
+
+    private ExpressionMatchCase ParseExpressionMatchCase()
+    {
+        var expression = ParseExpressionMatchPattern();
+        Consume(TokenType.EqualGreater);
+        var returnValue = ParseExpression();
+        return new ExpressionMatchCase(expression, returnValue);
+    }
+
+    private ExpressionMatchPattern ParseExpressionMatchPattern()
+    {
+        if (Match(TokenType.Underscore))
+            return new DiscardExpressionMatchPattern();
+
+        var expression = ParseExpression();
+        return new ExpressionExpressionMatchPattern(expression);
+    }
+    
 
     private Expression ParseUnaryExpression() => new UnaryExpression(Previous, ParseExpression());
 
@@ -359,11 +402,17 @@ internal sealed record ParenthesizedExpression(Expression Expression) : Expressi
 internal sealed record LogicalAndExpression(Expression Left, Expression Right) : Expression;
 internal sealed record LogicalOrExpression(Expression Left, Expression Right) : Expression;
 
-internal sealed record MatchExpression(Expression Input, MatchCase[] Cases) : Expression;
-internal sealed record MatchCase(MatchPattern Pattern, Expression ReturnValue);
-internal abstract record MatchPattern;
-internal sealed record ConstantMatchPattern(Token Value) : MatchPattern;
-internal sealed record NegationMatchPattern(Token Value) : MatchPattern;
-internal sealed record BindingMatchPattern(Token Identifier) :  MatchPattern;
-internal sealed record ComparisonMatchPattern(Token Operator, Token CompareValue) :  MatchPattern;
-internal sealed record DiscardPattern :  MatchPattern;
+internal sealed record ValueMatchExpression(Expression Input, ValueMatchCase[] Cases) : Expression;
+internal sealed record ValueMatchCase(ValueMatchPattern Pattern, Expression ReturnValue);
+internal abstract record ValueMatchPattern;
+internal sealed record ConstantValueMatchPattern(Token Value) : ValueMatchPattern;
+internal sealed record NegationValueMatchPattern(Token Value) : ValueMatchPattern;
+internal sealed record BindingValueMatchPattern(Token Identifier) :  ValueMatchPattern;
+internal sealed record ComparisonValueMatchPattern(Token Operator, Token CompareValue) :  ValueMatchPattern;
+internal sealed record DiscardValueMatchPattern : ValueMatchPattern;
+
+internal sealed record ExpressionMatchExpression(ExpressionMatchCase[] Cases) : Expression;
+internal sealed record ExpressionMatchCase(ExpressionMatchPattern Pattern, Expression ReturnValue);
+internal abstract record ExpressionMatchPattern;
+internal sealed record ExpressionExpressionMatchPattern(Expression Expression) : ExpressionMatchPattern;
+internal sealed record DiscardExpressionMatchPattern : ExpressionMatchPattern;
