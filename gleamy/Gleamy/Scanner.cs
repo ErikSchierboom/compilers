@@ -65,6 +65,10 @@ internal sealed class Scanner
                     tokens.Add(new Token(TokenType.Percent, "%"));
                     _position++;
                     break;
+                case '~':
+                    tokens.Add(new Token(TokenType.Tilde, "~"));
+                    _position++;
+                    break;
                 case '_':
                     tokens.Add(new Token(TokenType.Underscore, "_"));
                     _position++;
@@ -87,69 +91,102 @@ internal sealed class Scanner
                     break;
                 case '&':
                     if (Match('&'))
+                    {
                         tokens.Add(new Token(TokenType.AmpersandAmpersand, "&&"));
+                        _position++;
+                    }
                     else
+                    {
                         tokens.Add(new Token(TokenType.Ampersand, "&"));
-
-                    _position++;
+                        _position++;
+                    }
                     break;
                 case '|':
                     if (Match('|'))
+                    {
                         tokens.Add(new Token(TokenType.PipePipe, "||"));
+                        _position++;
+                    }
                     else
+                    {
                         tokens.Add(new Token(TokenType.Pipe, "|"));
-
-                    _position++;
+                        _position++;
+                    }
                     break;
                 case '=':
                     if (Match('>'))
+                    {
                         tokens.Add(new Token(TokenType.EqualGreater, "=>"));
+                        _position++;
+                    }
                     else if (Match('='))
+                    {
                         tokens.Add(new Token(TokenType.EqualEqual, "=="));
+                        _position++;
+                    }
                     else
+                    {
                         tokens.Add(new Token(TokenType.Equal, "="));
-
-                    _position++;
+                        _position++;
+                    }
                     break;
                 case '!':
                     if (Match('='))
+                    {
                         tokens.Add(new Token(TokenType.BangEqual, "!="));
+                        _position++;
+                    }
                     else
+                    {
                         tokens.Add(new Token(TokenType.Bang, "!"));
-
-                    _position++;
-                    break;
-                case '~':
-                    tokens.Add(new Token(TokenType.Tilde, "~"));
-                    _position++;
+                        _position++;
+                    }
                     break;
                 case '-':
                     if (Match('>'))
+                    {
                         tokens.Add(new Token(TokenType.MinusGreater, "->"));
+                        _position++;
+                    }
                     else
+                    {
                         tokens.Add(new Token(TokenType.Minus, "-"));
-
-                    _position++;
+                        _position++;
+                    }
                     break;
                 case '>':
                     if (Match('>'))
+                    {
                         tokens.Add(new Token(TokenType.GreaterGreater, ">>"));
+                        _position++;
+                    }
                     else if (Match('='))
+                    {
                         tokens.Add(new Token(TokenType.GreaterEqual, ">="));
+                        _position++;
+                    }
                     else
+                    {
                         tokens.Add(new Token(TokenType.Greater, ">"));
-
-                    _position++;
+                        _position++;
+                    }
                     break;
                 case '<':
                     if (Match('<'))
+                    {
                         tokens.Add(new Token(TokenType.LessLess, "<<"));
+                        _position++;
+                    }
                     else if (Match('='))
+                    {
                         tokens.Add(new Token(TokenType.LessEqual, "<="));
+                        _position++;
+                    }
                     else
+                    {
                         tokens.Add(new Token(TokenType.Less, "<"));
-
-                    _position++;
+                        _position++;
+                    }
                     break;
                 case >= '0' and <= '9':
                     var numberStartPosition = _position;
