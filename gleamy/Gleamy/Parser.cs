@@ -108,11 +108,8 @@ internal class Parser
 
         Consume(TokenType.OpenParen);
         var parameters = new List<Parameter>();
-        while (true)
+        while (Current.Type != TokenType.CloseParen)
         {
-            if (Current.Type == TokenType.CloseParen)
-                break;
-
             parameters.Add(ParseParameter());
 
             if (!Match(TokenType.Comma))
@@ -133,8 +130,8 @@ internal class Parser
         Consume(TokenType.OpenBracket);
         
         var statements = new List<Statement>();
-        while (true)
-        {
+        while (Current.Type != TokenType.CloseBracket)
+        {   
             statements.Add(ParseStatement());
 
             if (!Match(TokenType.Semicolon))
