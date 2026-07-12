@@ -2,11 +2,6 @@
 
 internal sealed class Scanner
 {
-    private readonly string _source;
-    private int _position;
-
-    private Scanner(string source) => _source = source;
-
     private static readonly Dictionary<string, (TokenType TokenType, object? Literal)> _keywords = new()
     {
         ["let"]   = (TokenType.LetKeyword, null),
@@ -18,6 +13,11 @@ internal sealed class Scanner
         ["Bool"]  = (TokenType.BoolKeyword, null),
         ["Int"]   = (TokenType.IntKeyword, null),
     };
+    
+    private readonly string _source;
+    private int _position;
+
+    private Scanner(string source) => _source = source;
 
     public static List<Token> Scan(string source) =>
         new Scanner(source).Scan();
