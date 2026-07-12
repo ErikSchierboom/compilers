@@ -2,22 +2,21 @@ namespace Gleamy;
 
 internal enum Precedence
 {
-    PREC_NONE,
-    PREC_ASSIGNMENT,  // =
-    PREC_LOGICAL_OR,  // or
-    PREC_LOGICAL_AND, // and
-    PREC_BITWISE_OR,  // |
-    PREC_BITWISE_XOR, // ^
-    PREC_BITWISE_AND, // &
-    PREC_EQUALITY,    // == !=
-    PREC_COMPARISON,  // < > <= >=
-    PREC_BITWISE_SHIFT,       // << >>
-    PREC_ADDITION,    // + -
-    PREC_PRODUCT,     // * /
-    PREC_MATCH,       // match
-    PREC_UNARY,       // ! -
-    PREC_CALL,        // ()
-    PREC_PRIMARY
+    None,         // =
+    LogicalOr,    // or
+    LogicalAnd,   // and
+    BitwiseOr,    // |
+    BitwiseXor,   // ^
+    BitwiseAnd,   // &
+    Equality,     // == !=
+    Comparison,   // < > <= >=
+    BitwiseShift, // << >>
+    Addition,     // + -
+    Product,      // * /
+    Match,        // match
+    Unary,        // ! - + ~
+    Call,         // ()
+    Primary
 }
 
 internal delegate Expression ParsePrefix();
@@ -36,32 +35,32 @@ internal class Parser
         _tokens = tokens;
         _rules = new()
         {
-            [TokenType.Eof] = new(null, null, Precedence.PREC_NONE),
-            [TokenType.EqualEqual] = new(null, ParseBinaryExpression, Precedence.PREC_COMPARISON),
-            [TokenType.Bang] = new(ParseUnaryExpression, null, Precedence.PREC_UNARY),
-            [TokenType.BangEqual] = new(null, ParseBinaryExpression, Precedence.PREC_COMPARISON),
-            [TokenType.Greater] = new(null, ParseBinaryExpression, Precedence.PREC_COMPARISON),
-            [TokenType.GreaterEqual] = new(null, ParseBinaryExpression, Precedence.PREC_COMPARISON),
-            [TokenType.Less] = new(null, ParseBinaryExpression, Precedence.PREC_COMPARISON),
-            [TokenType.LessEqual] = new(null, ParseBinaryExpression, Precedence.PREC_COMPARISON),
-            [TokenType.Plus] = new(ParseUnaryExpression, ParseBinaryExpression, Precedence.PREC_ADDITION),
-            [TokenType.Minus] = new(ParseUnaryExpression, ParseBinaryExpression, Precedence.PREC_ADDITION),
-            [TokenType.Star] = new(null, ParseBinaryExpression, Precedence.PREC_PRODUCT),
-            [TokenType.Slash] = new(null, ParseBinaryExpression, Precedence.PREC_PRODUCT),
-            [TokenType.Caret] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_XOR),
-            [TokenType.Tilde] = new(ParseUnaryExpression, null, Precedence.PREC_UNARY),
-            [TokenType.GreaterGreater] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_SHIFT),
-            [TokenType.LessLess] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_SHIFT),
-            [TokenType.Ampersand] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_AND),
-            [TokenType.AmpersandAmpersand] = new(null, ParseLogicalAndExpression, Precedence.PREC_LOGICAL_AND),
-            [TokenType.Pipe] = new(null, ParseBinaryExpression, Precedence.PREC_BITWISE_OR),
-            [TokenType.PipePipe] = new(null, ParseLogicalOrExpression, Precedence.PREC_LOGICAL_OR),
-            [TokenType.Number] = new(ParseNumber, null, Precedence.PREC_PRIMARY),
-            [TokenType.Identifier] = new(ParseName, null, Precedence.PREC_PRIMARY),
-            [TokenType.TrueKeyword] = new(ParseBoolean, null, Precedence.PREC_PRIMARY),
-            [TokenType.FalseKeyword] = new(ParseBoolean, null, Precedence.PREC_PRIMARY),
-            [TokenType.MatchKeyword] = new(ParseMatchExpression, null, Precedence.PREC_MATCH),
-            [TokenType.OpenParen] = new(ParseParenthesized, ParseCall, Precedence.PREC_CALL),
+            [TokenType.Eof] = new(null, null, Precedence.None),
+            [TokenType.EqualEqual] = new(null, ParseBinaryExpression, Precedence.Equality),
+            [TokenType.Bang] = new(ParseUnaryExpression, null, Precedence.Unary),
+            [TokenType.BangEqual] = new(null, ParseBinaryExpression, Precedence.Equality),
+            [TokenType.Greater] = new(null, ParseBinaryExpression, Precedence.Comparison),
+            [TokenType.GreaterEqual] = new(null, ParseBinaryExpression, Precedence.Comparison),
+            [TokenType.Less] = new(null, ParseBinaryExpression, Precedence.Comparison),
+            [TokenType.LessEqual] = new(null, ParseBinaryExpression, Precedence.Comparison),
+            [TokenType.Plus] = new(ParseUnaryExpression, ParseBinaryExpression, Precedence.Addition),
+            [TokenType.Minus] = new(ParseUnaryExpression, ParseBinaryExpression, Precedence.Addition),
+            [TokenType.Star] = new(null, ParseBinaryExpression, Precedence.Product),
+            [TokenType.Slash] = new(null, ParseBinaryExpression, Precedence.Product),
+            [TokenType.Caret] = new(null, ParseBinaryExpression, Precedence.BitwiseXor),
+            [TokenType.Tilde] = new(ParseUnaryExpression, null, Precedence.Unary),
+            [TokenType.GreaterGreater] = new(null, ParseBinaryExpression, Precedence.BitwiseShift),
+            [TokenType.LessLess] = new(null, ParseBinaryExpression, Precedence.BitwiseShift),
+            [TokenType.Ampersand] = new(null, ParseBinaryExpression, Precedence.BitwiseAnd),
+            [TokenType.AmpersandAmpersand] = new(null, ParseLogicalAndExpression, Precedence.LogicalAnd),
+            [TokenType.Pipe] = new(null, ParseBinaryExpression, Precedence.BitwiseOr),
+            [TokenType.PipePipe] = new(null, ParseLogicalOrExpression, Precedence.LogicalOr),
+            [TokenType.Number] = new(ParseNumber, null, Precedence.Primary),
+            [TokenType.Identifier] = new(ParseName, null, Precedence.Primary),
+            [TokenType.TrueKeyword] = new(ParseBoolean, null, Precedence.Primary),
+            [TokenType.FalseKeyword] = new(ParseBoolean, null, Precedence.Primary),
+            [TokenType.MatchKeyword] = new(ParseMatchExpression, null, Precedence.Match),
+            [TokenType.OpenParen] = new(ParseParenthesized, ParseCall, Precedence.Call),
         };
     }
 
@@ -166,7 +165,7 @@ internal class Parser
         return new ExpressionStatement(expression);
     }
 
-    private Expression ParseExpression(Precedence precedence = Precedence.PREC_NONE)
+    private Expression ParseExpression(Precedence precedence = Precedence.None)
     {
         var parsePrefixFn = CurrentParseRule.Prefix ?? throw new InvalidOperationException("Expected prefix");
         Consume();
@@ -211,7 +210,7 @@ internal class Parser
 
     private Expression ParseMatchExpression()
     {
-        var input = ParseExpression(Precedence.PREC_MATCH + 1);
+        var input = ParseExpression(Precedence.Match + 1);
         Consume(TokenType.OpenBracket);
     
         var cases = new List<MatchCase>();
@@ -260,7 +259,7 @@ internal class Parser
             Match(TokenType.Less) || Match(TokenType.LessEqual))
         {
             var operatorToken = Previous;
-            var compareValue = ParseExpression(Precedence.PREC_PRIMARY + 1);
+            var compareValue = ParseExpression(Precedence.Primary + 1);
             if (compareValue is not LiteralExpression literal)
                 throw new InvalidOperationException($"Unexpected token {compareValue}");
 
@@ -311,7 +310,7 @@ internal class Parser
     private Precedence CurrentPrecedence =>
         _rules.TryGetValue(Current.Type, out var parseRule)
             ? parseRule.Precedence
-            : Precedence.PREC_NONE;
+            : Precedence.None;
 
     private bool Match(TokenType expected)
     {
