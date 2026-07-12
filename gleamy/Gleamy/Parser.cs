@@ -97,6 +97,7 @@ internal class Parser
         var identifier = Previous;
         Consume(TokenType.Equal);
         var expression = ParseExpression();
+        Match(TokenType.Semicolon);
         return new BindingDeclarationStatement(identifier, expression);
     }
 
@@ -130,12 +131,7 @@ internal class Parser
         
         var statements = new List<Statement>();
         while (Current.Type != TokenType.CloseBracket)
-        {   
             statements.Add(ParseStatement());
-
-            if (!Match(TokenType.Semicolon))
-                break;
-        }
          
         Consume(TokenType.CloseBracket);
         
@@ -162,6 +158,7 @@ internal class Parser
     private ExpressionStatement ParseExpressionStatement()
     {
         var expression = ParseExpression();
+        Match(TokenType.Semicolon);
         return new ExpressionStatement(expression);
     }
 
