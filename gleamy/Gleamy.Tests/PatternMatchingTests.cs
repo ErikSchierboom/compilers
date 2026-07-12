@@ -113,7 +113,7 @@ public sealed class PatternMatchingTests
                 let y = 2;
                 match {
                     x == y => 1,
-                    x == y + 1 => 2
+                    x > y => 2
                 }
                 """;
             
