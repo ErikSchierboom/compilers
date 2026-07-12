@@ -1,0 +1,114 @@
+﻿@page "/"
+@using Gleamy
+
+<PageTitle>Gleamy Playground</PageTitle>
+
+<div class="playground-container">
+    <div class="editor-section">
+        <div class="section-header">
+            <h3>Editor</h3>
+            <button class="btn btn-primary" @onclick="ExecuteCode">Run (Shift+Enter)</button>
+        </div>
+        <textarea class="code-editor" 
+                  @bind="_code" 
+                  @bind:event="oninput"
+                  @onkeydown="HandleKeyDown"
+                  placeholder="Enter your Gleamy code here..."></textarea>
+    </div>
+
+    <div class="result-section">
+        <h3>Result</h3>
+        <div class="result-display">
+            @if (_error != null)
+            {
+                <div class="alert alert-danger">
+                    <pre>@_error</pre>
+                </div>
+            }
+            else
+            {
+                <pre>@_result</pre>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _code = "let x = 10;\nlet y = 20;\nx + y";
+    private string? _result;
+    private string? _error;
+
+    private void ExecuteCode()
+    {
+        _error = null;
+        _result = null;
+
+        if (string.IsNullOrWhiteSpace(_code))
+        {
+            return;
+        }
+
+        try
+        {
+            var output = Interpreter.Evaluate(_code);
+            _result = output?.ToString() ?? "null";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e is { Key: "Enter", ShiftKey: true })
+            ExecuteCode();
+    }
+}
+
+<style>
+    .playground-container {
+        display: flex;
+        gap: 20px;
+        height: calc(100vh - 150px);
+        min-height: 400px;
+    }
+
+    .editor-section, .result-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .code-editor {
+        flex: 1;
+        width: 100%;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        resize: none;
+    }
+
+    .result-display {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #eee;
+        background-color: #f9f9f9;
+        border-radius: 4px;
+        overflow-y: auto;
+    }
+
+    pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+</style>
