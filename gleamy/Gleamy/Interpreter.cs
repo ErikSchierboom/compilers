@@ -210,6 +210,14 @@ public class Interpreter
                             return Evaluate(matchCase.ReturnValue, frame);
                     }
                     break;
+                case NegationMatchPattern constantMatchPattern:
+                    switch (constantMatchPattern.Value.Literal, input)
+                    {
+                        case (int intMatch, int intInput) when intInput != intMatch:
+                        case (bool boolMatch, bool boolInput) when boolInput != boolMatch:
+                            return Evaluate(matchCase.ReturnValue, frame);
+                    }
+                    break;
                 case ComparisonMatchPattern comparisonMatchPattern:
                     switch (comparisonMatchPattern.Operator.Type, comparisonMatchPattern.CompareValue.Literal, input)
                     {
@@ -231,7 +239,7 @@ public class Interpreter
             }
         }
 
-        return null;
+        throw new InvalidOperationException("No matching pattern found");
     }
 
     private class UserDefinedFunction(FunctionDeclarationStatement declaration, Frame closure) : ICallable

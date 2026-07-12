@@ -233,7 +233,7 @@ internal class Parser
     {
         var pattern = ParseMatchPattern();
         Consume(TokenType.EqualGreater);
-        var returnValue = ParseExpression(Precedence.PREC_MATCH + 1);
+        var returnValue = ParseExpression();
         return new MatchCase(pattern, returnValue);
     }
 
@@ -245,14 +245,22 @@ internal class Parser
         if (Match(TokenType.Identifier))
             return new BindingMatchPattern(Previous);
 
-        if (Match(TokenType.Number))
+        if (Match(TokenType.Number) || Match(TokenType.TrueKeyword) || Match(TokenType.FalseKeyword))
             return new ConstantMatchPattern(Previous);
+
+        if (Match(TokenType.Bang))
+        {
+            if (Match(TokenType.Number) || Match(TokenType.TrueKeyword) || Match(TokenType.FalseKeyword))
+                return new NegationMatchPattern(Previous);
+            
+            throw new InvalidOperationException("Expected constant after '!'");
+        }
 
         if (Match(TokenType.Greater) || Match(TokenType.GreaterEqual) ||
             Match(TokenType.Less) || Match(TokenType.LessEqual))
         {
             var operatorToken = Previous;
-            var compareValue = ParseUnaryExpression();
+            var compareValue = ParseExpression(Precedence.PREC_PRIMARY + 1);
             if (compareValue is not LiteralExpression literal)
                 throw new InvalidOperationException($"Unexpected token {compareValue}");
 
@@ -359,6 +367,7 @@ internal sealed record MatchExpression(Expression Input, MatchCase[] Cases) : Ex
 internal sealed record MatchCase(MatchPattern Pattern, Expression ReturnValue);
 internal abstract record MatchPattern;
 internal sealed record ConstantMatchPattern(Token Value) : MatchPattern;
+internal sealed record NegationMatchPattern(Token Value) : MatchPattern;
 internal sealed record BindingMatchPattern(Token Identifier) :  MatchPattern;
 internal sealed record ComparisonMatchPattern(Token Operator, Token CompareValue) :  MatchPattern;
 internal sealed record DiscardPattern :  MatchPattern;
