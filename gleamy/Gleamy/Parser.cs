@@ -228,6 +228,9 @@ internal class Parser
             } while (Match(TokenType.Comma));
         }
         
+        if (cases.Count == 0)
+            throw new InvalidOperationException("Expected case");
+        
         Consume(TokenType.CloseBracket);
     
         return new ValueMatchExpression(input, [..cases]);
@@ -286,6 +289,9 @@ internal class Parser
             } while (Match(TokenType.Comma));
         }
         
+        if (cases.Count == 0)
+            throw new InvalidOperationException("Expected case");
+        
         Consume(TokenType.CloseBracket);
     
         return new ExpressionMatchExpression([..cases]);
@@ -307,7 +313,6 @@ internal class Parser
         var expression = ParseExpression();
         return new ExpressionExpressionMatchPattern(expression);
     }
-    
 
     private Expression ParseUnaryExpression() => new UnaryExpression(Previous, ParseExpression());
 
