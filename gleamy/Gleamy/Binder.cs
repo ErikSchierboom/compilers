@@ -44,8 +44,6 @@ internal class BoundScope(BoundScope? parent = null)
     }
 }
 
-
-
 internal sealed record BoundProgram(BoundStatement[] Statements)
 {
     public TypeSymbol Type => Statements.LastOrDefault()?.Type ?? TypeSymbol.Void;
@@ -108,11 +106,77 @@ internal sealed record BoundCallExpression(FunctionSymbol Function, BoundExpress
     public override TypeSymbol Type => Function.Type;
 }
 
+internal enum BoundUnaryOperatorKind
+{
+    Negation,
+    Plus,
+    Minus,
+    Complement
+}
+
+internal sealed record BoundUnaryOperator(BoundUnaryOperatorKind Kind, TypeSymbol Operand, TypeSymbol Result)
+{
+    public TypeSymbol Type => Result;
+
+    public static BoundUnaryOperator Bind(Token @operator, TypeSymbol operand) =>
+        @operator.Type switch
+        {
+            TokenType.Bang when operand == TypeSymbol.Bool => new BoundUnaryOperator(BoundUnaryOperatorKind.Negation, operand, TypeSymbol.Bool),
+            TokenType.Plus when operand == TypeSymbol.Int => new BoundUnaryOperator(BoundUnaryOperatorKind.Plus, operand, TypeSymbol.Int),
+            TokenType.Minus when operand == TypeSymbol.Int => new BoundUnaryOperator(BoundUnaryOperatorKind.Minus, operand, TypeSymbol.Int),
+            TokenType.Tilde when operand == TypeSymbol.Int => new BoundUnaryOperator(BoundUnaryOperatorKind.Complement, operand, TypeSymbol.Int),
+            _ => throw new InvalidOperationException($"Unary operator '{@operator.Type}' is not defined for type '{operand}'.")
+        };
+}
+
 internal sealed record BoundUnaryExpression(Token Operator, BoundExpression Value) : BoundExpression
 {
     public override TypeSymbol Type => Value.Type;
 }
-internal sealed record BoundBinaryExpression(BoundExpression Left, Token Operator, BoundExpression Right) : BoundExpression;
+
+internal enum BoundBinaryOperatorKind
+{
+    Addition,
+    Subtraction,
+    Multiplication,
+    Division,
+    Modulus,
+    Equality,
+    Inequality,
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual
+}
+
+internal sealed record BoundBinaryOperator(BoundBinaryOperatorKind Kind, TypeSymbol LeftOperand, TypeSymbol RightOperand, TypeSymbol Result)
+{
+    public TypeSymbol Type => Result;
+
+    public static BoundBinaryOperator Bind(Token @operator, TypeSymbol left, TypeSymbol right) =>
+        @operator.Type switch
+        {
+            TokenType.EqualEqual when left == TypeSymbol.Bool && right == TypeSymbol.Bool => new BoundBinaryOperator(BoundBinaryOperatorKind.Equality, left, right, TypeSymbol.Bool),
+            TokenType.EqualEqual when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Equality, left, right, TypeSymbol.Bool),
+            TokenType.BangEqual when left == TypeSymbol.Bool && right == TypeSymbol.Bool => new BoundBinaryOperator(BoundBinaryOperatorKind.Inequality, left, right, TypeSymbol.Bool),
+            TokenType.BangEqual when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Inequality, left, right, TypeSymbol.Bool),
+            TokenType.Plus when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.Int),
+            TokenType.Minus when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Subtraction, left, right, TypeSymbol.Int),
+            TokenType.Star when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Multiplication, left, right, TypeSymbol.Int),
+            TokenType.Slash when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Division, left, right, TypeSymbol.Int),
+            TokenType.Percent when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Modulus, left, right, TypeSymbol.Int),
+            TokenType.Greater when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.GreaterThan, left, right, TypeSymbol.Bool),
+            TokenType.GreaterEqual when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.GreaterThanOrEqual, left, right, TypeSymbol.Bool),
+            TokenType.Less when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.LessThan, left, right, TypeSymbol.Bool),
+            TokenType.LessEqual when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.LessThanOrEqual, left, right, TypeSymbol.Bool),
+            _ => throw new InvalidOperationException($"Binary operator '{@operator.Type}' is not defined for types '{left}' and '{right}'.")
+        };
+}
+
+internal sealed record BoundBinaryExpression(BoundExpression Left, BoundBinaryOperator Operator, BoundExpression Right) : BoundExpression
+{
+    public override TypeSymbol Type => Operator.Type;
+}
 
 internal sealed record BoundParenthesizedExpression(BoundExpression Expression) : BoundExpression
 {
