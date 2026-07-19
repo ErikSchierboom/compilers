@@ -2,14 +2,171 @@ namespace Gleamy;
 
 internal class Binder
 {
+    private readonly SyntaxTree _tree;
+
+    private Binder(SyntaxTree tree) => _tree = tree;
+
     public static BoundProgram Bind(SyntaxTree tree)
     {
+        return new Binder(tree).Bind();
+    }
+
+    public BoundProgram Bind()
+    {
+        var boundStatements = new List<BoundStatement>();
+        var boundScope = new BoundScope
+        {
+            [TypeSymbol.Bool.Name] = TypeSymbol.Bool,
+            [TypeSymbol.Int.Name] = TypeSymbol.Int
+        };
+
+        foreach (var statement in _tree.Statements)
+            boundStatements.Add(Bind(statement, boundScope));
+
+        return new BoundProgram(boundStatements);
+    }
+
+    private BoundStatement Bind(Statement statement, BoundScope scope)
+    {
+        switch (statement)
+        {
+            case BindingDeclarationStatement bindingDeclarationStatement:
+                return Bind(bindingDeclarationStatement, scope);
+            case BlockStatement blockStatement:
+                return Bind(blockStatement, scope);
+            case ExpressionStatement expressionStatement:
+                return Bind(expressionStatement, scope);
+            case FunctionDeclarationStatement functionDeclarationStatement:
+                return Bind(functionDeclarationStatement, scope);
+            default:
+                throw new ArgumentOutOfRangeException(nameof(statement));
+        }
+    }
+    
+    private BoundExpressionStatement Bind(ExpressionStatement expressionStatement, BoundScope scope)
+    {
+        var boundExpression = Bind(expressionStatement.Expression, scope);
+        return new BoundExpressionStatement(boundExpression);
+    }
+
+    private BoundBindingDeclarationStatement Bind(BindingDeclarationStatement bindingDeclarationStatement, BoundScope scope)
+    {
+        var boundValue = Bind(bindingDeclarationStatement.Value, scope);
+        var bindingSymbol = new BindingSymbol(bindingDeclarationStatement.Identifier.Text, boundValue.Type);
+        scope[bindingDeclarationStatement.Identifier.Text] = bindingSymbol;
+        return new BoundBindingDeclarationStatement(bindingSymbol, boundValue);
+    }
+    
+    private BoundBlockStatement Bind(BlockStatement blockStatement, BoundScope scope)
+    {
+        var boundStatements = new List<BoundStatement>();
+        
+        foreach (var statement in blockStatement.Statements)
+            boundStatements.Add(Bind(statement, scope));
+
+        return new BoundBlockStatement(boundStatements);
+    }
+
+    private BoundFunctionDeclarationStatement Bind(FunctionDeclarationStatement functionDeclarationStatement, BoundScope scope)
+    {
+        var boundBlockStatement = Bind(functionDeclarationStatement.Body, scope);
+        
+        var parameters = new List<ParameterSymbol>();
+        foreach (var parameter in functionDeclarationStatement.Parameters)
+            parameters.Add(new ParameterSymbol(parameter.Identifier.Text, Bind(parameter.IdentifierType, scope)));
+        
+        var returnType = Bind(functionDeclarationStatement.ReturnValue, scope);
+        var functionSymbol = new FunctionSymbol(functionDeclarationStatement.Identifier.Text, returnType, parameters, functionDeclarationStatement);
+        return new BoundFunctionDeclarationStatement(functionSymbol, boundBlockStatement);
+    }
+
+    private BoundExpression Bind(Expression expression, BoundScope scope)
+    {
+        switch (expression)
+        {
+            case BinaryExpression binaryExpression:
+                return Bind(binaryExpression, scope);
+            case CallExpression callExpression:
+                return Bind(callExpression, scope);
+            case ExpressionMatchExpression expressionMatchExpression:
+                return Bind(expressionMatchExpression, scope);
+            case LiteralExpression literalExpression:
+                return Bind(literalExpression, scope);
+            case LogicalAndExpression logicalAndExpression:
+                return Bind(logicalAndExpression, scope);
+            case LogicalOrExpression logicalOrExpression:
+                return Bind(logicalOrExpression, scope);
+            case NameExpression nameExpression:
+                return Bind(nameExpression, scope);
+            case ParenthesizedExpression parenthesizedExpression:
+                return Bind(parenthesizedExpression, scope);
+            case UnaryExpression unaryExpression:
+                return Bind(unaryExpression, scope);
+            case ValueMatchExpression valueMatchExpression:
+                return Bind(valueMatchExpression, scope);
+            default:
+                throw new ArgumentOutOfRangeException(nameof(expression));
+        }
+    }
+
+    private BoundBinaryExpression Bind(BinaryExpression binaryExpression, BoundScope scope)
+    {
         throw new NotImplementedException();
+    }
+
+    private BoundCallExpression Bind(CallExpression callExpression, BoundScope scope)
+    {
+        throw new NotImplementedException();
+    }
+
+    private BoundExpressionMatchExpression Bind(ExpressionMatchExpression expressionMatchExpression, BoundScope scope)
+    {
+        throw new NotImplementedException();
+    }
+
+    private BoundLiteralExpression Bind(LiteralExpression literalExpression, BoundScope scope)
+    {
+        throw new NotImplementedException();
+    }
+
+    private BoundLogicalAndExpression Bind(LogicalAndExpression logicalAndExpression, BoundScope scope)
+    {
+        throw new NotImplementedException();
+    }
+
+    private BoundLogicalOrExpression Bind(LogicalOrExpression logicalOrExpression, BoundScope scope)
+    {
+        throw new NotImplementedException();
+    }
+
+    private BoundNameExpression Bind(NameExpression nameExpression, BoundScope scope)
+    {
+        throw new NotImplementedException();
+    }
+
+    private BoundParenthesizedExpression Bind(ParenthesizedExpression expression, BoundScope scope)
+    {
+        throw new NotImplementedException();
+    }
+
+    private BoundUnaryExpression Bind(UnaryExpression unaryExpression, BoundScope scope)
+    {
+        throw new NotImplementedException();
+    }
+
+    private BoundValueMatchExpression Bind(ValueMatchExpression valueMatchExpression, BoundScope scope)
+    {
+        throw new NotImplementedException();
+    }
+
+    private TypeSymbol Bind(IdentifierType identifierType, BoundScope scope)
+    {
+        return (TypeSymbol)scope[identifierType.Identifier.Text];
     }
 }
 
 internal abstract record Symbol(string Name);
-internal sealed record FunctionSymbol(string Name, TypeSymbol Type, ParameterSymbol[] Parameters, FunctionDeclarationStatement Declaration) : Symbol(Name);
+internal sealed record FunctionSymbol(string Name, TypeSymbol Type, List<ParameterSymbol> Parameters, FunctionDeclarationStatement Declaration) : Symbol(Name);
 internal sealed record BindingSymbol(string Name, TypeSymbol Type) : Symbol(Name);
 internal sealed record ParameterSymbol(string Name, TypeSymbol Type) : Symbol(Name);
 
@@ -36,6 +193,7 @@ internal class BoundScope(BoundScope? parent = null)
             
             return parent?[key] ?? throw new KeyNotFoundException();
         }
+
         set
         {
             if (!_locals.TryAdd(key, value))
@@ -44,7 +202,7 @@ internal class BoundScope(BoundScope? parent = null)
     }
 }
 
-internal sealed record BoundProgram(BoundStatement[] Statements)
+internal sealed record BoundProgram(List<BoundStatement> Statements)
 {
     public TypeSymbol Type => Statements.LastOrDefault()?.Type ?? TypeSymbol.Void;
 }
@@ -64,12 +222,12 @@ internal sealed record BoundExpressionStatement(BoundExpression Expression) : Bo
     public override TypeSymbol Type => Expression.Type;
 }
 
-internal sealed record BoundBindingDeclarationStatement(Token Identifier, BoundExpression Value) : BoundStatement
+internal sealed record BoundBindingDeclarationStatement(BindingSymbol Binding, BoundExpression Value) : BoundStatement
 {
     public override TypeSymbol Type => Value.Type;
 }
 
-internal sealed record BoundBlockStatement(BoundStatement[] Statements) : BoundStatement
+internal sealed record BoundBlockStatement(List<BoundStatement> Statements) : BoundStatement
 {
     public override TypeSymbol Type => Statements.LastOrDefault()?.Type ?? TypeSymbol.Void;
 }
@@ -101,7 +259,7 @@ internal sealed record BoundNameExpression(BindingSymbol Symbol) : BoundExpressi
     public override TypeSymbol Type => Symbol.Type;
 }
 
-internal sealed record BoundCallExpression(FunctionSymbol Function, BoundExpression[] Arguments) : BoundExpression
+internal sealed record BoundCallExpression(FunctionSymbol Function, List<BoundExpression> Arguments) : BoundExpression
 {
     public override TypeSymbol Type => Function.Type;
 }
@@ -193,7 +351,7 @@ internal sealed record BoundLogicalOrExpression(BoundExpression Left, BoundExpre
     public override TypeSymbol Type => TypeSymbol.Bool;
 }
 
-internal sealed record BoundValueMatchExpression(BoundExpression Input, BoundValueMatchCase[] Cases) : BoundExpression
+internal sealed record BoundValueMatchExpression(BoundExpression Input, List<BoundValueMatchCase> Cases) : BoundExpression
 {
     // We will verify that all expressions in the cases have the same type
     public override TypeSymbol Type => Cases[0].ReturnValue.Type;
@@ -221,7 +379,7 @@ internal sealed record BoundDiscardValueMatchPattern : BoundValueMatchPattern
     public TypeSymbol Type => TypeSymbol.Any;
 }
 
-internal sealed record BoundExpressionMatchExpression(BoundExpressionMatchCase[] Cases) : BoundExpression
+internal sealed record BoundExpressionMatchExpression(List<BoundExpressionMatchCase> Cases) : BoundExpression
 {
     // We will verify that all expressions in the cases have the same type
     public override TypeSymbol Type => Cases[0].ReturnValue.Type;
