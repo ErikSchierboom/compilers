@@ -111,12 +111,26 @@ internal class Binder
 
     private BoundBinaryExpression Bind(BinaryExpression binaryExpression, BoundScope scope)
     {
-        throw new NotImplementedException();
+        var boundLeftExpression = Bind(binaryExpression.Left, scope);
+        var boundRightExpression = Bind(binaryExpression.Right, scope);
+        var boundBinaryOperator = BoundBinaryOperator.Bind(binaryExpression.Operator, boundLeftExpression.Type, boundRightExpression.Type);
+        return new BoundBinaryExpression(boundLeftExpression, boundBinaryOperator, boundRightExpression);
     }
 
     private BoundCallExpression Bind(CallExpression callExpression, BoundScope scope)
     {
-        throw new NotImplementedException();
+        var boundFunction = Bind(callExpression.Function, scope);
+        if (boundFunction is not BoundNameExpression boundNameExpression)
+            throw new InvalidOperationException($"Unexpected function {callExpression.Function}");
+        
+        if (boundNameExpression.Symbol is not FunctionSymbol functionSymbol)
+            throw new InvalidOperationException($"Unexpected function {callExpression.Function}");
+        
+        var boundArguments = new List<BoundExpression>();
+        foreach (var argument in callExpression.Arguments)
+            boundArguments.Add(Bind(argument, scope));
+
+        return new BoundCallExpression(functionSymbol, boundArguments);
     }
 
     private BoundExpressionMatchExpression Bind(ExpressionMatchExpression expressionMatchExpression, BoundScope scope)
@@ -126,32 +140,46 @@ internal class Binder
 
     private BoundLiteralExpression Bind(LiteralExpression literalExpression, BoundScope scope)
     {
-        throw new NotImplementedException();
+        return new BoundLiteralExpression(literalExpression.Value);
     }
 
     private BoundLogicalAndExpression Bind(LogicalAndExpression logicalAndExpression, BoundScope scope)
     {
-        throw new NotImplementedException();
+        var boundLeftExpression = Bind(logicalAndExpression.Left, scope);
+        var boundRightExpression = Bind(logicalAndExpression.Right, scope);
+        if (boundLeftExpression.Type != TypeSymbol.Bool || boundRightExpression.Type  != TypeSymbol.Bool)
+            throw new InvalidOperationException("AND comparison operands must both be booleans");
+        
+        return new BoundLogicalAndExpression(boundLeftExpression, boundRightExpression);
     }
 
     private BoundLogicalOrExpression Bind(LogicalOrExpression logicalOrExpression, BoundScope scope)
     {
-        throw new NotImplementedException();
+        var boundLeftExpression = Bind(logicalOrExpression.Left, scope);
+        var boundRightExpression = Bind(logicalOrExpression.Right, scope);
+        if (boundLeftExpression.Type != TypeSymbol.Bool || boundRightExpression.Type  != TypeSymbol.Bool)
+            throw new InvalidOperationException("OR comparison operands must both be booleans");
+        
+        return new BoundLogicalOrExpression(boundLeftExpression, boundRightExpression);
     }
 
     private BoundNameExpression Bind(NameExpression nameExpression, BoundScope scope)
     {
-        throw new NotImplementedException();
+        var boundSymbol = scope[nameExpression.Identifier.Text];
+        return new BoundNameExpression(boundSymbol);
     }
 
     private BoundParenthesizedExpression Bind(ParenthesizedExpression expression, BoundScope scope)
     {
-        throw new NotImplementedException();
+        var boundExpression = Bind(expression.Expression, scope);
+        return new BoundParenthesizedExpression(boundExpression);
     }
 
     private BoundUnaryExpression Bind(UnaryExpression unaryExpression, BoundScope scope)
     {
-        throw new NotImplementedException();
+        var boundExpression = Bind(unaryExpression.Value, scope);
+        var boundUnaryOperator = BoundUnaryOperator.Bind(unaryExpression.Operator, boundExpression.Type);
+        return new BoundUnaryExpression(boundUnaryOperator, boundExpression);
     }
 
     private BoundValueMatchExpression Bind(ValueMatchExpression valueMatchExpression, BoundScope scope)
@@ -165,17 +193,25 @@ internal class Binder
     }
 }
 
-internal abstract record Symbol(string Name);
+internal abstract record Symbol(string Name)
+{
+    public abstract TypeSymbol Type { get; init; } 
+}
+
 internal sealed record FunctionSymbol(string Name, TypeSymbol Type, List<ParameterSymbol> Parameters, FunctionDeclarationStatement Declaration) : Symbol(Name);
 internal sealed record BindingSymbol(string Name, TypeSymbol Type) : Symbol(Name);
 internal sealed record ParameterSymbol(string Name, TypeSymbol Type) : Symbol(Name);
 
-internal sealed record TypeSymbol(string Name) : Symbol(Name)
+internal sealed record TypeSymbol : Symbol
 {
+    private TypeSymbol(string Name) : base(Name) => Type = this;
+
     public static readonly TypeSymbol Any = new("Any");
     public static readonly TypeSymbol Void = new("Void");
     public static readonly TypeSymbol Bool = new("Bool");
     public static readonly TypeSymbol Int = new("Int");
+    
+    public override TypeSymbol Type { get; init; }
 }
 
 internal class BoundScope(BoundScope? parent = null)
@@ -254,7 +290,7 @@ internal sealed record BoundLiteralExpression(Token Value) : BoundExpression
     public override TypeSymbol Type => Constant.Type;
 }
 
-internal sealed record BoundNameExpression(BindingSymbol Symbol) : BoundExpression
+internal sealed record BoundNameExpression(Symbol Symbol) : BoundExpression
 {
     public override TypeSymbol Type => Symbol.Type;
 }
@@ -287,7 +323,7 @@ internal sealed record BoundUnaryOperator(BoundUnaryOperatorKind Kind, TypeSymbo
         };
 }
 
-internal sealed record BoundUnaryExpression(Token Operator, BoundExpression Value) : BoundExpression
+internal sealed record BoundUnaryExpression(BoundUnaryOperator Operator, BoundExpression Value) : BoundExpression
 {
     public override TypeSymbol Type => Value.Type;
 }
