@@ -1,57 +1,62 @@
 namespace Gleamy;
 
+internal static class BuiltinFunctions
+{
+    public static readonly FunctionSymbol Abs = new("abs", TypeSymbol.Int, [new ParameterSymbol("x", TypeSymbol.Int)], null);
+}
+
 public class Interpreter
 {
-    private readonly SyntaxTree _tree;
+    private readonly BoundProgram _program;
 
-    private Interpreter(SyntaxTree tree) => _tree = tree;
+    private Interpreter(BoundProgram program) => _program = program;
 
     private static readonly Frame _defaultFrame = new()
     {
-        ["abs"] = new BuiltinFunction((args) => Math.Abs((int)args[0]!), [typeof(int)])
+        ["abs"] = BuiltinFunctions.Abs,
     };
     
     public static object? Evaluate(string source)
     {
         var tree = Parser.Parse(source);
-        return new Interpreter(tree).Evaluate(_defaultFrame.CreateChild());
+        var program = Binder.Bind(tree);
+        return new Interpreter(program).Evaluate(_defaultFrame.CreateChild());
     }
 
     private object? Evaluate(Frame frame)
     {
         object? result = null;   
         
-        foreach (var statement in _tree.Statements)
+        foreach (var statement in _program.Statements)
             result = Evaluate(statement, frame);
 
         return result;
     }
 
-    private object? Evaluate(Statement statement, Frame frame) =>
+    private object? Evaluate(BoundStatement statement, Frame frame) =>
         statement switch
         {
-            BindingDeclarationStatement bindingDeclarationStatement => Evaluate(bindingDeclarationStatement, frame),
-            BlockStatement blockStatement => Evaluate(blockStatement, frame),
-            ExpressionStatement expressionStatement => Evaluate(expressionStatement, frame),
-            FunctionDeclarationStatement functionDeclarationStatement => Evaluate(functionDeclarationStatement, frame),
+            BoundBindingDeclarationStatement bindingDeclarationStatement => Evaluate(bindingDeclarationStatement, frame),
+            BoundBlockStatement blockStatement => Evaluate(blockStatement, frame),
+            BoundExpressionStatement expressionStatement => Evaluate(expressionStatement, frame),
+            BoundFunctionDeclarationStatement functionDeclarationStatement => Evaluate(functionDeclarationStatement, frame),
             _ => throw new ArgumentOutOfRangeException(nameof(statement))
         };
 
-    private object? Evaluate(BindingDeclarationStatement bindingDeclarationStatement, Frame frame)
+    private object? Evaluate(BoundBindingDeclarationStatement bindingDeclarationStatement, Frame frame)
     {
         var value = Evaluate(bindingDeclarationStatement.Value, frame);
-        frame[bindingDeclarationStatement.Identifier.Text] = value;
+        frame[bindingDeclarationStatement.Binding.Name] = value;
         return null;
     }
 
-    private object? Evaluate(FunctionDeclarationStatement functionDeclarationStatement, Frame frame)
+    private object? Evaluate(BoundFunctionDeclarationStatement functionDeclarationStatement, Frame frame)
     {
-        var userDefinedFunction = new UserDefinedFunction(functionDeclarationStatement, frame.CreateChild());
-        frame[functionDeclarationStatement.Identifier.Text] = userDefinedFunction;
+        frame[functionDeclarationStatement.Function.Name] = functionDeclarationStatement.Body;
         return null;
     }
     
-    private object? Evaluate(BlockStatement blockStatement, Frame frame)
+    private object? Evaluate(BoundBlockStatement blockStatement, Frame frame)
     {
         object? result = null;
         
@@ -61,61 +66,58 @@ public class Interpreter
         return result;
     }
     
-    private object? Evaluate(ExpressionStatement expressionStatement, Frame frame) =>
+    private object? Evaluate(BoundExpressionStatement expressionStatement, Frame frame) =>
         Evaluate(expressionStatement.Expression, frame);
 
-    private object? Evaluate(Expression expression, Frame frame) =>
+    private object? Evaluate(BoundExpression expression, Frame frame) =>
         expression switch
         {
-            UnaryExpression unaryExpression => Evaluate(unaryExpression, frame),
-            BinaryExpression binaryExpression => Evaluate(binaryExpression, frame),
-            CallExpression callExpression => Evaluate(callExpression, frame),
-            LiteralExpression literalExpression => Evaluate(literalExpression, frame),
-            NameExpression nameExpression => Evaluate(nameExpression, frame),
-            ValueMatchExpression valueMatchExpression => Evaluate(valueMatchExpression, frame),
-            ExpressionMatchExpression expressionMatchExpression => Evaluate(expressionMatchExpression, frame),
-            ParenthesizedExpression parenthesizedExpression => Evaluate(parenthesizedExpression, frame),
-            LogicalAndExpression andExpression => Evaluate(andExpression, frame),
-            LogicalOrExpression orExpression => Evaluate(orExpression, frame),
+            BoundUnaryExpression unaryExpression => Evaluate(unaryExpression, frame),
+            BoundBinaryExpression binaryExpression => Evaluate(binaryExpression, frame),
+            BoundCallExpression callExpression => Evaluate(callExpression, frame),
+            BoundLiteralExpression literalExpression => Evaluate(literalExpression, frame),
+            BoundNameExpression nameExpression => Evaluate(nameExpression, frame),
+            BoundValueMatchExpression valueMatchExpression => Evaluate(valueMatchExpression, frame),
+            BoundExpressionMatchExpression expressionMatchExpression => Evaluate(expressionMatchExpression, frame),
+            BoundParenthesizedExpression parenthesizedExpression => Evaluate(parenthesizedExpression, frame),
+            BoundLogicalAndExpression andExpression => Evaluate(andExpression, frame),
+            BoundLogicalOrExpression orExpression => Evaluate(orExpression, frame),
             _ => throw new ArgumentOutOfRangeException(nameof(expression))
         };
 
-    private object? Evaluate(CallExpression callExpression, Frame frame)
+    private object? Evaluate(BoundCallExpression callExpression, Frame frame)
     {
-        var binding = Evaluate(callExpression.Function, frame);
-        if (binding is null)
-            throw new InvalidOperationException("Could not find function");
-        
-        if (binding is not ICallable callable)
-            throw new InvalidOperationException("Not callable");
-
-        if (callable.Signature.Length != callExpression.Arguments.Length)
+        if (callExpression.Function.Parameters.Count != callExpression.Arguments.Count)
             throw new ArgumentException("Invalid number of arguments");
 
-        var arguments = new List<object?>(capacity: callExpression.Arguments.Length);
+        var functionFrame = frame.CreateChild();
 
-        foreach (var (argument, parameterType) in callExpression.Arguments.Zip(callable.Signature))
+        foreach (var (argument, parameter) in callExpression.Arguments.Zip(callExpression.Function.Parameters))
         {
-            var argumentValue = Evaluate(argument, frame);
-            if (parameterType != argumentValue?.GetType())
+            if (argument.Type != parameter.Type)
                 throw new InvalidOperationException("Invalid type of argument");
             
-            arguments.Add(argumentValue);
+            var argumentValue = Evaluate(argument, functionFrame);
+            functionFrame[parameter.Name] = argumentValue;
         }
-    
-        return callable.Invoke(this, [..arguments]);
+
+        if (callExpression.Function == BuiltinFunctions.Abs)
+            return Math.Abs((int)functionFrame[BuiltinFunctions.Abs.Parameters[0].Name]!);
+
+        var body = (BoundBlockStatement)frame[callExpression.Function.Name]!;
+        return Evaluate(body, functionFrame);
     }
 
-    private object? Evaluate(NameExpression nameExpression, Frame frame) =>
-        frame[nameExpression.Identifier.Text];
+    private object? Evaluate(BoundNameExpression nameExpression, Frame frame) =>
+        frame[nameExpression.Symbol.Name];
 
-    private object Evaluate(LiteralExpression literalExpression, Frame frame) =>
+    private object Evaluate(BoundLiteralExpression literalExpression, Frame frame) =>
         literalExpression.Value.Literal!;
 
-    private object? Evaluate(ParenthesizedExpression parenthesizedExpression, Frame frame) => 
+    private object? Evaluate(BoundParenthesizedExpression parenthesizedExpression, Frame frame) => 
         Evaluate(parenthesizedExpression.Expression, frame);
 
-    private object? Evaluate(LogicalAndExpression logicalAndExpression, Frame frame)
+    private object? Evaluate(BoundLogicalAndExpression logicalAndExpression, Frame frame)
     {
         var left = Evaluate(logicalAndExpression.Left, frame) ?? throw new InvalidOperationException("Cannot apply && to null");
         if (left is not bool leftBool)
@@ -131,7 +133,7 @@ public class Interpreter
         return rightBool;
     }
 
-    private object? Evaluate(LogicalOrExpression logicalOrExpression, Frame frame)
+    private object? Evaluate(BoundLogicalOrExpression logicalOrExpression, Frame frame)
     {
         var left = Evaluate(logicalOrExpression.Left, frame) ?? throw new InvalidOperationException("Cannot apply && to null");
         if (left is not bool leftBool)
@@ -147,50 +149,50 @@ public class Interpreter
         return rightBool;
     }
 
-    private object? Evaluate(BinaryExpression binaryExpression, Frame frame)
+    private object? Evaluate(BoundBinaryExpression binaryExpression, Frame frame)
     {
         var left =  Evaluate(binaryExpression.Left, frame) ?? throw new InvalidOperationException("Cannot apply binary operation to null");
         var right = Evaluate(binaryExpression.Right, frame) ?? throw new InvalidOperationException("Cannot apply binary operation to null");;
 
-        return (binaryExpression.Operator.Type, left, right) switch
+        return (binaryExpression.Operator.Kind, left, right) switch
         {
-            (TokenType.Plus, int l, int r) => l + r,
-            (TokenType.Minus, int l, int r) => l - r,
-            (TokenType.Star, int l, int r) => l * r,
-            (TokenType.Slash, int l, int r) => l / r,
-            (TokenType.Percent, int l, int r) => l % r,
-            (TokenType.Ampersand, int l, int r) => l & r,
-            (TokenType.Caret, int l, int r) => l ^ r,
-            (TokenType.Pipe, int l, int r) => l | r,
-            (TokenType.Less, int l, int r) => l < r,
-            (TokenType.LessLess, int l, int r) => l << r,
-            (TokenType.LessEqual, int l, int r) => l <= r,
-            (TokenType.Greater, int l, int r) => l > r,
-            (TokenType.GreaterGreater, int l, int r) => l >> r,
-            (TokenType.GreaterEqual, int l, int r) => l >= r,
-            (TokenType.EqualEqual, int l, int r) => l == r,
-            (TokenType.EqualEqual, bool l, bool r) => l == r,
-            (TokenType.BangEqual, int l, int r) => l != r,
-            (TokenType.BangEqual, bool l, bool r) => l != r,
+            (BoundBinaryOperatorKind.Addition, int l, int r) => l + r,
+            (BoundBinaryOperatorKind.Subtraction, int l, int r) => l - r,
+            (BoundBinaryOperatorKind.Multiplication, int l, int r) => l * r,
+            (BoundBinaryOperatorKind.Division, int l, int r) => l / r,
+            (BoundBinaryOperatorKind.Modulus, int l, int r) => l % r,
+            (BoundBinaryOperatorKind.BitwiseAnd, int l, int r) => l & r,
+            (BoundBinaryOperatorKind.BitwiseXor, int l, int r) => l ^ r,
+            (BoundBinaryOperatorKind.BitwiseOr, int l, int r) => l | r,
+            (BoundBinaryOperatorKind.Less, int l, int r) => l < r,
+            (BoundBinaryOperatorKind.LeftShift, int l, int r) => l << r,
+            (BoundBinaryOperatorKind.LessEqual, int l, int r) => l <= r,
+            (BoundBinaryOperatorKind.Greater, int l, int r) => l > r,
+            (BoundBinaryOperatorKind.RightShift, int l, int r) => l >> r,
+            (BoundBinaryOperatorKind.GreaterEqual, int l, int r) => l >= r,
+            (BoundBinaryOperatorKind.Equality, int l, int r) or => l == r,
+            (BoundBinaryOperatorKind.Equality, bool l, bool r) => l == r,
+            (BoundBinaryOperatorKind.Inequality, int l, int r) => l != r,
+            (BoundBinaryOperatorKind.Inequality, bool l, bool r) => l != r,
             _ => throw new ArgumentOutOfRangeException(nameof(binaryExpression.Operator))
         };
     }
 
-    private object? Evaluate(UnaryExpression unaryExpression, Frame frame)
+    private object? Evaluate(BoundUnaryExpression unaryExpression, Frame frame)
     {
         var value = Evaluate(unaryExpression.Value, frame) ?? throw new InvalidOperationException("Cannot apply unary operation to null");
 
-        return (unaryExpression.Operator.Type, value) switch
+        return (unaryExpression.Operator.Kind, value) switch
         {
-            (TokenType.Plus, int i) => i,
-            (TokenType.Minus, int i) => -i,
-            (TokenType.Bang, bool b) => !b,
-            (TokenType.Tilde, int i) => ~i,
+            (BoundUnaryOperatorKind.Plus, int i) => i,
+            (BoundUnaryOperatorKind.Minus, int i) => -i,
+            (BoundUnaryOperatorKind.Negation, bool b) => !b,
+            (BoundUnaryOperatorKind.Complement, int i) => ~i,
             _ => throw new ArgumentOutOfRangeException(nameof(unaryExpression.Operator))
         };
     }
 
-    private object? Evaluate(ValueMatchExpression valueMatchExpression, Frame frame)
+    private object? Evaluate(BoundValueMatchExpression valueMatchExpression, Frame frame)
     {
         var input = Evaluate(valueMatchExpression.Input, frame);
 
@@ -198,29 +200,29 @@ public class Interpreter
         {
             switch (matchCase.Pattern)
             {
-                case BindingValueMatchPattern bindingMatchPattern:
+                case BoundBindingValueMatchPattern bindingMatchPattern:
                     var bindingMatchFrame = frame.CreateChild();
                     bindingMatchFrame[bindingMatchPattern.Identifier.Text] = input;
             
                     return Evaluate(matchCase.ReturnValue, bindingMatchFrame);
-                case ConstantValueMatchPattern constantMatchPattern:
-                    switch (constantMatchPattern.Value.Literal, input)
+                case BoundConstantValueMatchPattern constantMatchPattern:
+                    switch (constantMatchPattern.Value.Value, input)
                     {
                         case (int intMatch, int intInput) when intInput == intMatch:
                         case (bool boolMatch, bool boolInput) when boolInput == boolMatch:
                             return Evaluate(matchCase.ReturnValue, frame);
                     }
                     break;
-                case NegationValueMatchPattern constantMatchPattern:
-                    switch (constantMatchPattern.Value.Literal, input)
+                case BoundNegationValueMatchPattern constantMatchPattern:
+                    switch (constantMatchPattern.Value.Value, input)
                     {
                         case (int intMatch, int intInput) when intInput != intMatch:
                         case (bool boolMatch, bool boolInput) when boolInput != boolMatch:
                             return Evaluate(matchCase.ReturnValue, frame);
                     }
                     break;
-                case ComparisonValueMatchPattern comparisonMatchPattern:
-                    switch (comparisonMatchPattern.Operator.Type, comparisonMatchPattern.CompareValue.Literal, input)
+                case BoundComparisonValueMatchPattern comparisonMatchPattern:
+                    switch (comparisonMatchPattern.Operator.Type, comparisonMatchPattern.CompareValue.Value, input)
                     {
                         case (TokenType.Greater, int comparison1, int input1) when input1 > comparison1:
                         case (TokenType.GreaterEqual, int comparison2, int input2) when input2 > comparison2:
@@ -233,7 +235,7 @@ public class Interpreter
                             return Evaluate(matchCase.ReturnValue, frame);
                     }
                     break;
-                case DiscardValueMatchPattern:
+                case BoundDiscardValueMatchPattern:
                     return Evaluate(matchCase.ReturnValue, frame);
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -243,13 +245,13 @@ public class Interpreter
         throw new InvalidOperationException("No matching pattern found");
     }
     
-    private object? Evaluate(ExpressionMatchExpression expressionMatchExpression, Frame frame)
+    private object? Evaluate(BoundExpressionMatchExpression expressionMatchExpression, Frame frame)
     {
         foreach (var matchCase in expressionMatchExpression.Cases)
         {
             switch (matchCase.Pattern)
             {
-                case ExpressionExpressionMatchPattern expressionExpressionMatchPattern:
+                case BoundExpressionExpressionMatchPattern expressionExpressionMatchPattern:
                     var evaluatedExpression = Evaluate(expressionExpressionMatchPattern.Expression, frame);
                     if (evaluatedExpression is not bool b)
                         throw new InvalidOperationException("Can only evaluate boolean expressions");
@@ -258,7 +260,7 @@ public class Interpreter
                         return Evaluate(matchCase.ReturnValue, frame);
 
                     break;
-                case DiscardExpressionMatchPattern:
+                case BoundDiscardExpressionMatchPattern:
                     return Evaluate(matchCase.ReturnValue, frame);
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -266,29 +268,6 @@ public class Interpreter
         }
 
         throw new InvalidOperationException("No matching pattern found");
-    }
-
-    private class UserDefinedFunction(FunctionDeclarationStatement declaration, Frame closure) : ICallable
-    {
-        public Type[] Signature { get; } = [..declaration.Parameters.Select(parameter => parameter.IdentifierType.RuntimeType)];
-        
-        public object? Invoke(Interpreter interpreter, object?[] args)
-        {
-            var frame = closure.CreateChild();
-            
-            foreach (var (argument, parameter) in args.Zip(declaration.Parameters))
-                frame[parameter.Identifier.Text] = argument;
-            
-            return interpreter.Evaluate(declaration.Body, frame);
-        }
-    }
-
-    private class BuiltinFunction(Func<object?[], object?> invoke, Type[] parameters) : ICallable
-    {
-        public Type[] Signature => parameters;
-        
-        public object? Invoke(Interpreter interpreter, object?[] args) =>
-            invoke(args);
     }
 }
 
@@ -313,11 +292,4 @@ internal class Frame(Frame? parent = null)
                 throw new InvalidOperationException("Cannot redeclare local");;
         }
     }
-}
-
-internal interface ICallable
-{
-    Type[] Signature { get; }
-
-    object? Invoke(Interpreter interpreter, object?[] args);
 }

@@ -69,14 +69,21 @@ internal class Binder
 
     private BoundFunctionDeclarationStatement Bind(FunctionDeclarationStatement functionDeclarationStatement, BoundScope scope)
     {
-        var boundBlockStatement = Bind(functionDeclarationStatement.Body, scope);
+        var functionScope = scope.CreateChild();
         
         var parameters = new List<ParameterSymbol>();
         foreach (var parameter in functionDeclarationStatement.Parameters)
-            parameters.Add(new ParameterSymbol(parameter.Identifier.Text, Bind(parameter.IdentifierType, scope)));
-        
-        var returnType = Bind(functionDeclarationStatement.ReturnValue, scope);
+        {
+            var parameterSymbol = new ParameterSymbol(parameter.Identifier.Text, Bind(parameter.IdentifierType, scope));
+            parameters.Add(parameterSymbol);
+            functionScope[parameter.Identifier.Text] = parameterSymbol;
+        }
+
+        var boundBlockStatement = Bind(functionDeclarationStatement.Body, functionScope);
+        var returnType = Bind(functionDeclarationStatement.ReturnValue, functionScope);
         var functionSymbol = new FunctionSymbol(functionDeclarationStatement.Identifier.Text, returnType, parameters, functionDeclarationStatement);
+        scope[functionDeclarationStatement.Identifier.Text] = functionSymbol;
+        
         return new BoundFunctionDeclarationStatement(functionSymbol, boundBlockStatement);
     }
 
@@ -125,10 +132,15 @@ internal class Binder
         
         if (boundNameExpression.Symbol is not FunctionSymbol functionSymbol)
             throw new InvalidOperationException($"Unexpected function {callExpression.Function}");
+
+        if (functionSymbol.Parameters.Count != callExpression.Arguments.Length)
+            throw new  InvalidOperationException($"Unexpected function {callExpression.Function}");
+
+        var childScope = scope.CreateChild();
         
         var boundArguments = new List<BoundExpression>();
         foreach (var argument in callExpression.Arguments)
-            boundArguments.Add(Bind(argument, scope));
+            boundArguments.Add(Bind(argument, childScope));
 
         return new BoundCallExpression(functionSymbol, boundArguments);
     }
@@ -193,25 +205,18 @@ internal class Binder
     }
 }
 
-internal abstract record Symbol(string Name)
-{
-    public abstract TypeSymbol Type { get; init; } 
-}
+internal abstract record Symbol(string Name);
 
-internal sealed record FunctionSymbol(string Name, TypeSymbol Type, List<ParameterSymbol> Parameters, FunctionDeclarationStatement Declaration) : Symbol(Name);
+internal sealed record FunctionSymbol(string Name, TypeSymbol Type, List<ParameterSymbol> Parameters, FunctionDeclarationStatement? Declaration) : Symbol(Name);
 internal sealed record BindingSymbol(string Name, TypeSymbol Type) : Symbol(Name);
 internal sealed record ParameterSymbol(string Name, TypeSymbol Type) : Symbol(Name);
 
-internal sealed record TypeSymbol : Symbol
+internal sealed record TypeSymbol(string Name, Type RuntimeType) : Symbol(Name)
 {
-    private TypeSymbol(string Name) : base(Name) => Type = this;
-
-    public static readonly TypeSymbol Any = new("Any");
-    public static readonly TypeSymbol Void = new("Void");
-    public static readonly TypeSymbol Bool = new("Bool");
-    public static readonly TypeSymbol Int = new("Int");
-    
-    public override TypeSymbol Type { get; init; }
+    public static readonly TypeSymbol Any = new("Any", typeof(object));
+    public static readonly TypeSymbol Void = new("Void", typeof(void));
+    public static readonly TypeSymbol Bool = new("Bool", typeof(bool));
+    public static readonly TypeSymbol Int = new("Int", typeof(int));
 }
 
 internal class BoundScope(BoundScope? parent = null)
@@ -292,7 +297,14 @@ internal sealed record BoundLiteralExpression(Token Value) : BoundExpression
 
 internal sealed record BoundNameExpression(Symbol Symbol) : BoundExpression
 {
-    public override TypeSymbol Type => Symbol.Type;
+    public override TypeSymbol Type => Symbol switch
+    {
+        BindingSymbol bindingSymbol => bindingSymbol.Type,
+        FunctionSymbol functionSymbol => functionSymbol.Type,
+        ParameterSymbol parameterSymbol => parameterSymbol.Type,
+        TypeSymbol typeSymbol => typeSymbol,
+        _ => throw new ArgumentOutOfRangeException(nameof(Symbol))
+    };
 }
 
 internal sealed record BoundCallExpression(FunctionSymbol Function, List<BoundExpression> Arguments) : BoundExpression
@@ -337,10 +349,15 @@ internal enum BoundBinaryOperatorKind
     Modulus,
     Equality,
     Inequality,
-    LessThan,
-    LessThanOrEqual,
-    GreaterThan,
-    GreaterThanOrEqual
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+    LeftShift,
+    RightShift,
+    BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor
 }
 
 internal sealed record BoundBinaryOperator(BoundBinaryOperatorKind Kind, TypeSymbol LeftOperand, TypeSymbol RightOperand, TypeSymbol Result)
@@ -359,10 +376,15 @@ internal sealed record BoundBinaryOperator(BoundBinaryOperatorKind Kind, TypeSym
             TokenType.Star when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Multiplication, left, right, TypeSymbol.Int),
             TokenType.Slash when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Division, left, right, TypeSymbol.Int),
             TokenType.Percent when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Modulus, left, right, TypeSymbol.Int),
-            TokenType.Greater when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.GreaterThan, left, right, TypeSymbol.Bool),
-            TokenType.GreaterEqual when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.GreaterThanOrEqual, left, right, TypeSymbol.Bool),
-            TokenType.Less when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.LessThan, left, right, TypeSymbol.Bool),
-            TokenType.LessEqual when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.LessThanOrEqual, left, right, TypeSymbol.Bool),
+            TokenType.Ampersand when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.BitwiseAnd, left, right, TypeSymbol.Int),
+            TokenType.Pipe when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.BitwiseOr, left, right, TypeSymbol.Int),
+            TokenType.Caret when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.BitwiseXor, left, right, TypeSymbol.Int),
+            TokenType.LessLess when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.LeftShift, left, right, TypeSymbol.Int),
+            TokenType.GreaterGreater when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.RightShift, left, right, TypeSymbol.Int),
+            TokenType.Greater when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Greater, left, right, TypeSymbol.Bool),
+            TokenType.GreaterEqual when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.GreaterEqual, left, right, TypeSymbol.Bool),
+            TokenType.Less when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Less, left, right, TypeSymbol.Bool),
+            TokenType.LessEqual when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.LessEqual, left, right, TypeSymbol.Bool),
             _ => throw new InvalidOperationException($"Binary operator '{@operator.Type}' is not defined for types '{left}' and '{right}'.")
         };
 }
