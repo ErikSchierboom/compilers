@@ -69,14 +69,26 @@ internal class Binder
 
     private BoundFunctionDeclarationStatement Bind(FunctionDeclarationStatement functionDeclarationStatement, BoundScope scope)
     {
-        var boundBlockStatement = Bind(functionDeclarationStatement.Body, scope);
-        
+        var functionScope = scope.CreateChild();
+        var returnType = Bind(functionDeclarationStatement.ReturnValue, functionScope);
         var parameters = new List<ParameterSymbol>();
-        foreach (var parameter in functionDeclarationStatement.Parameters)
-            parameters.Add(new ParameterSymbol(parameter.Identifier.Text, Bind(parameter.IdentifierType, scope)));
-        
-        var returnType = Bind(functionDeclarationStatement.ReturnValue, scope);
         var functionSymbol = new FunctionSymbol(functionDeclarationStatement.Identifier.Text, returnType, parameters, functionDeclarationStatement);
+        
+        // We need to forward declare the function within the function body's scope to allow
+        // for recursive functions
+        functionScope[functionDeclarationStatement.Identifier.Text] = functionSymbol;
+        
+        foreach (var parameter in functionDeclarationStatement.Parameters)
+        {
+            var parameterSymbol = new ParameterSymbol(parameter.Identifier.Text, Bind(parameter.IdentifierType, scope));
+            parameters.Add(parameterSymbol);
+            functionScope[parameter.Identifier.Text] = parameterSymbol;
+        }
+
+        var boundBlockStatement = Bind(functionDeclarationStatement.Body, functionScope);
+        
+        scope[functionDeclarationStatement.Identifier.Text] = functionSymbol;
+        
         return new BoundFunctionDeclarationStatement(functionSymbol, boundBlockStatement);
     }
 
@@ -125,17 +137,48 @@ internal class Binder
         
         if (boundNameExpression.Symbol is not FunctionSymbol functionSymbol)
             throw new InvalidOperationException($"Unexpected function {callExpression.Function}");
+
+        if (functionSymbol.Parameters.Count != callExpression.Arguments.Length)
+            throw new  InvalidOperationException($"Unexpected function {callExpression.Function}");
+
+        var childScope = scope.CreateChild();
         
         var boundArguments = new List<BoundExpression>();
         foreach (var argument in callExpression.Arguments)
-            boundArguments.Add(Bind(argument, scope));
+            boundArguments.Add(Bind(argument, childScope));
 
         return new BoundCallExpression(functionSymbol, boundArguments);
     }
 
     private BoundExpressionMatchExpression Bind(ExpressionMatchExpression expressionMatchExpression, BoundScope scope)
     {
-        throw new NotImplementedException();
+        var cases = new List<BoundExpressionMatchCase>();
+        
+        foreach (var caseExpression in expressionMatchExpression.Cases)
+            cases.Add(Bind(caseExpression, scope));
+        
+        return new BoundExpressionMatchExpression(cases);
+    }
+
+    private BoundExpressionMatchCase Bind(ExpressionMatchCase expressionMatchCase, BoundScope scope)
+    {
+        var boundPattern = Bind(expressionMatchCase.Pattern, scope);
+        var boundReturnValue = Bind(expressionMatchCase.ReturnValue, scope);
+        return new BoundExpressionMatchCase(boundPattern, boundReturnValue);
+    }
+
+    private BoundExpressionMatchPattern Bind(ExpressionMatchPattern expressionMatchPattern, BoundScope scope)
+    {
+        switch (expressionMatchPattern)
+        {
+            case DiscardExpressionMatchPattern discardExpressionMatchPattern:
+                return new BoundDiscardExpressionMatchPattern();
+            case ExpressionExpressionMatchPattern expressionExpressionMatchPattern:
+                var boundExpression = Bind(expressionExpressionMatchPattern.Expression, scope);
+                return new BoundExpressionExpressionMatchPattern(boundExpression);
+            default:
+                throw new ArgumentOutOfRangeException(nameof(expressionMatchPattern));
+        }
     }
 
     private BoundLiteralExpression Bind(LiteralExpression literalExpression, BoundScope scope)
@@ -184,7 +227,80 @@ internal class Binder
 
     private BoundValueMatchExpression Bind(ValueMatchExpression valueMatchExpression, BoundScope scope)
     {
-        throw new NotImplementedException();
+        var boundInput = Bind(valueMatchExpression.Input, scope);
+
+        var matchScope = scope.CreateChild();
+        matchScope["$match"] = new BindingSymbol("$match", boundInput.Type);
+        
+        var boundCases = new List<BoundValueMatchCase>();
+
+        foreach (var valueMatchCase in valueMatchExpression.Cases)
+            boundCases.Add(Bind(valueMatchCase, matchScope));
+
+        return new BoundValueMatchExpression(boundInput, boundCases);
+    }
+
+    private BoundValueMatchCase Bind(ValueMatchCase valueMatchCase, BoundScope scope)
+    {
+        var boundPattern = Bind(valueMatchCase.Pattern, scope);
+        var boundReturnValue = Bind(valueMatchCase.ReturnValue, scope);
+        
+        return new BoundValueMatchCase(boundPattern, boundReturnValue);
+    }
+
+    private BoundValueMatchPattern Bind(ValueMatchPattern valueMatchPattern, BoundScope scope)
+    {
+        switch (valueMatchPattern)
+        {
+            case BindingValueMatchPattern bindingValueMatchPattern:
+                return Bind(bindingValueMatchPattern, scope);
+            case ComparisonValueMatchPattern comparisonValueMatchPattern:
+                return Bind(comparisonValueMatchPattern, scope);
+            case ConstantValueMatchPattern constantValueMatchPattern:
+                return Bind(constantValueMatchPattern, scope);
+            case DiscardValueMatchPattern discardValueMatchPattern:
+                return Bind(discardValueMatchPattern, scope);
+            case NegationValueMatchPattern negationValueMatchPattern:
+                return Bind(negationValueMatchPattern, scope);
+            default:
+                throw new ArgumentOutOfRangeException(nameof(valueMatchPattern));
+        }
+    }
+
+    private BoundBindingValueMatchPattern Bind(BindingValueMatchPattern bindingValueMatchPattern, BoundScope scope)
+    {
+        scope[bindingValueMatchPattern.Identifier.Text] = scope["$match"];
+        
+        return new BoundBindingValueMatchPattern(bindingValueMatchPattern.Identifier);
+    }
+    
+    private BoundValueMatchPattern Bind(ComparisonValueMatchPattern comparisonValueMatchPattern, BoundScope scope)
+    {
+        var boundConstant = BindConstant(comparisonValueMatchPattern.CompareValue);
+        return new BoundComparisonValueMatchPattern(comparisonValueMatchPattern.Operator, boundConstant);
+    }
+    
+    private BoundConstantValueMatchPattern Bind(ConstantValueMatchPattern constantValueMatchPattern, BoundScope scope)
+    {
+        var boundConstant = BindConstant(constantValueMatchPattern.Value);
+        return new BoundConstantValueMatchPattern(boundConstant);
+    }
+    
+    private BoundDiscardValueMatchPattern Bind(DiscardValueMatchPattern discardValueMatchPattern, BoundScope scope)
+    {
+        return new BoundDiscardValueMatchPattern();
+    }
+    
+    private BoundNegationValueMatchPattern Bind(NegationValueMatchPattern negationValueMatchPattern, BoundScope scope)
+    {
+        var boundConstant = BindConstant(negationValueMatchPattern.Value);
+        return new BoundNegationValueMatchPattern(boundConstant);
+    }
+    
+    private BoundConstant BindConstant(Token token)
+    {
+        var literal = token.Literal ?? throw new ArgumentNullException(nameof(token));
+        return new BoundConstant(literal);
     }
 
     private TypeSymbol Bind(IdentifierType identifierType, BoundScope scope)
@@ -193,25 +309,18 @@ internal class Binder
     }
 }
 
-internal abstract record Symbol(string Name)
-{
-    public abstract TypeSymbol Type { get; init; } 
-}
+internal abstract record Symbol(string Name);
 
-internal sealed record FunctionSymbol(string Name, TypeSymbol Type, List<ParameterSymbol> Parameters, FunctionDeclarationStatement Declaration) : Symbol(Name);
+internal sealed record FunctionSymbol(string Name, TypeSymbol Type, List<ParameterSymbol> Parameters, FunctionDeclarationStatement? Declaration) : Symbol(Name);
 internal sealed record BindingSymbol(string Name, TypeSymbol Type) : Symbol(Name);
 internal sealed record ParameterSymbol(string Name, TypeSymbol Type) : Symbol(Name);
 
-internal sealed record TypeSymbol : Symbol
+internal sealed record TypeSymbol(string Name, Type RuntimeType) : Symbol(Name)
 {
-    private TypeSymbol(string Name) : base(Name) => Type = this;
-
-    public static readonly TypeSymbol Any = new("Any");
-    public static readonly TypeSymbol Void = new("Void");
-    public static readonly TypeSymbol Bool = new("Bool");
-    public static readonly TypeSymbol Int = new("Int");
-    
-    public override TypeSymbol Type { get; init; }
+    public static readonly TypeSymbol Any = new("Any", typeof(object));
+    public static readonly TypeSymbol Void = new("Void", typeof(void));
+    public static readonly TypeSymbol Bool = new("Bool", typeof(bool));
+    public static readonly TypeSymbol Int = new("Int", typeof(int));
 }
 
 internal class BoundScope(BoundScope? parent = null)
@@ -292,7 +401,14 @@ internal sealed record BoundLiteralExpression(Token Value) : BoundExpression
 
 internal sealed record BoundNameExpression(Symbol Symbol) : BoundExpression
 {
-    public override TypeSymbol Type => Symbol.Type;
+    public override TypeSymbol Type => Symbol switch
+    {
+        BindingSymbol bindingSymbol => bindingSymbol.Type,
+        FunctionSymbol functionSymbol => functionSymbol.Type,
+        ParameterSymbol parameterSymbol => parameterSymbol.Type,
+        TypeSymbol typeSymbol => typeSymbol,
+        _ => throw new ArgumentOutOfRangeException(nameof(Symbol))
+    };
 }
 
 internal sealed record BoundCallExpression(FunctionSymbol Function, List<BoundExpression> Arguments) : BoundExpression
@@ -337,10 +453,15 @@ internal enum BoundBinaryOperatorKind
     Modulus,
     Equality,
     Inequality,
-    LessThan,
-    LessThanOrEqual,
-    GreaterThan,
-    GreaterThanOrEqual
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+    LeftShift,
+    RightShift,
+    BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor
 }
 
 internal sealed record BoundBinaryOperator(BoundBinaryOperatorKind Kind, TypeSymbol LeftOperand, TypeSymbol RightOperand, TypeSymbol Result)
@@ -359,10 +480,15 @@ internal sealed record BoundBinaryOperator(BoundBinaryOperatorKind Kind, TypeSym
             TokenType.Star when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Multiplication, left, right, TypeSymbol.Int),
             TokenType.Slash when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Division, left, right, TypeSymbol.Int),
             TokenType.Percent when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Modulus, left, right, TypeSymbol.Int),
-            TokenType.Greater when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.GreaterThan, left, right, TypeSymbol.Bool),
-            TokenType.GreaterEqual when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.GreaterThanOrEqual, left, right, TypeSymbol.Bool),
-            TokenType.Less when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.LessThan, left, right, TypeSymbol.Bool),
-            TokenType.LessEqual when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.LessThanOrEqual, left, right, TypeSymbol.Bool),
+            TokenType.Ampersand when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.BitwiseAnd, left, right, TypeSymbol.Int),
+            TokenType.Pipe when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.BitwiseOr, left, right, TypeSymbol.Int),
+            TokenType.Caret when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.BitwiseXor, left, right, TypeSymbol.Int),
+            TokenType.LessLess when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.LeftShift, left, right, TypeSymbol.Int),
+            TokenType.GreaterGreater when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.RightShift, left, right, TypeSymbol.Int),
+            TokenType.Greater when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Greater, left, right, TypeSymbol.Bool),
+            TokenType.GreaterEqual when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.GreaterEqual, left, right, TypeSymbol.Bool),
+            TokenType.Less when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Less, left, right, TypeSymbol.Bool),
+            TokenType.LessEqual when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.LessEqual, left, right, TypeSymbol.Bool),
             _ => throw new InvalidOperationException($"Binary operator '{@operator.Type}' is not defined for types '{left}' and '{right}'.")
         };
 }
