@@ -195,16 +195,15 @@ public class Interpreter
     private object? Evaluate(BoundValueMatchExpression valueMatchExpression, Frame frame)
     {
         var input = Evaluate(valueMatchExpression.Input, frame);
-        
-        // $match represents the matched value
-        var bindingMatchFrame = frame.CreateChild();
-        bindingMatchFrame["$match"] = input;
 
         foreach (var matchCase in valueMatchExpression.Cases)
         {
             switch (matchCase.Pattern)
             {
                 case BoundBindingValueMatchPattern:
+                    // $match represents the matched value
+                    var bindingMatchFrame = frame.CreateChild();
+                    bindingMatchFrame["$match"] = input;
                     return Evaluate(matchCase.ReturnValue, bindingMatchFrame);
                 case BoundConstantValueMatchPattern constantMatchPattern:
                     switch (constantMatchPattern.Value.Value, input)
