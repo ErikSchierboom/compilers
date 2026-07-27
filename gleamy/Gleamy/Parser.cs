@@ -127,13 +127,13 @@ internal class Parser
 
     private BlockStatement ParseBlockStatement()
     {
-        Consume(TokenType.OpenBracket);
+        Consume(TokenType.OpenBrace);
         
         var statements = new List<Statement>();
-        while (Current.Type != TokenType.CloseBracket)
+        while (Current.Type != TokenType.CloseBrace)
             statements.Add(ParseStatement());
          
-        Consume(TokenType.CloseBracket);
+        Consume(TokenType.CloseBrace);
         
         return new BlockStatement([..statements]);
     }
@@ -207,7 +207,7 @@ internal class Parser
 
     private Expression ParseMatchExpression()
     {
-        if (Match(TokenType.OpenBracket))
+        if (Match(TokenType.OpenBrace))
             return ParseExpressionMatchExpression();
         
         return ParseValueMatchExpression();
@@ -216,11 +216,11 @@ internal class Parser
     private ValueMatchExpression ParseValueMatchExpression()
     {
         var input = ParseExpression(Precedence.Match + 1);
-        Consume(TokenType.OpenBracket);
+        Consume(TokenType.OpenBrace);
     
         var cases = new List<ValueMatchCase>();
     
-        while (Current.Type != TokenType.CloseBracket)
+        while (Current.Type != TokenType.CloseBrace)
         {
             do
             {
@@ -231,7 +231,7 @@ internal class Parser
         if (cases.Count == 0)
             throw new InvalidOperationException("Expected case");
         
-        Consume(TokenType.CloseBracket);
+        Consume(TokenType.CloseBrace);
     
         return new ValueMatchExpression(input, [..cases]);
     }
@@ -281,7 +281,7 @@ internal class Parser
     {
         var cases = new List<ExpressionMatchCase>();
     
-        while (Current.Type != TokenType.CloseBracket)
+        while (Current.Type != TokenType.CloseBrace)
         {
             do
             {
@@ -292,7 +292,7 @@ internal class Parser
         if (cases.Count == 0)
             throw new InvalidOperationException("Expected case");
         
-        Consume(TokenType.CloseBracket);
+        Consume(TokenType.CloseBrace);
     
         return new ExpressionMatchExpression([..cases]);
     }

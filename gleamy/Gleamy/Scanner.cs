@@ -82,11 +82,19 @@ internal sealed class Scanner
                     _position++;
                     break;
                 case '{':
-                    tokens.Add(new Token(TokenType.OpenBracket, "{"));
+                    tokens.Add(new Token(TokenType.OpenBrace, "{"));
                     _position++;
                     break;
                 case '}':
-                    tokens.Add(new Token(TokenType.CloseBracket, "}"));
+                    tokens.Add(new Token(TokenType.CloseBrace, "}"));
+                    _position++;
+                    break;
+                case '[':
+                    tokens.Add(new Token(TokenType.OpenBracket, "["));
+                    _position++;
+                    break;
+                case ']':
+                    tokens.Add(new Token(TokenType.CloseBracket, "]"));
                     _position++;
                     break;
                 case '&':
@@ -246,6 +254,7 @@ internal enum TokenType
     Bang,
     BangEqual,
     Caret,
+    CloseBrace,
     CloseBracket,
     CloseParen,
     Colon,
@@ -261,6 +270,7 @@ internal enum TokenType
     LessLess,
     Minus,
     MinusGreater,
+    OpenBrace,
     OpenBracket,
     OpenParen,
     Percent,
