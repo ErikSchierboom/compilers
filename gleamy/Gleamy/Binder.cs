@@ -228,31 +228,32 @@ internal class Binder
     private BoundValueMatchExpression Bind(ValueMatchExpression valueMatchExpression, BoundScope scope)
     {
         var boundInput = Bind(valueMatchExpression.Input, scope);
-
-        var matchScope = scope.CreateChild();
-        matchScope["$match"] = new BindingSymbol("$match", boundInput.Type);
         
         var boundCases = new List<BoundValueMatchCase>();
 
         foreach (var valueMatchCase in valueMatchExpression.Cases)
-            boundCases.Add(Bind(valueMatchCase, matchScope));
+            boundCases.Add(Bind(valueMatchCase, boundInput.Type, scope));
 
         return new BoundValueMatchExpression(boundInput, boundCases);
     }
 
-    private BoundValueMatchCase Bind(ValueMatchCase valueMatchCase, BoundScope scope)
+    private BoundValueMatchCase Bind(ValueMatchCase valueMatchCase, TypeSymbol boundInputType, BoundScope scope)
     {
-        var boundPattern = Bind(valueMatchCase.Pattern, scope);
-        var boundReturnValue = Bind(valueMatchCase.ReturnValue, scope);
+        var bindingScope = scope.CreateChild();
+        
+        var boundPattern = Bind(valueMatchCase.Pattern, boundInputType, bindingScope);
+        var boundReturnValue = Bind(valueMatchCase.ReturnValue, bindingScope);
         
         return new BoundValueMatchCase(boundPattern, boundReturnValue);
     }
 
-    private BoundValueMatchPattern Bind(ValueMatchPattern valueMatchPattern, BoundScope scope)
+    private BoundValueMatchPattern Bind(ValueMatchPattern valueMatchPattern, TypeSymbol boundInputType, BoundScope scope)
     {
         switch (valueMatchPattern)
         {
             case BindingValueMatchPattern bindingValueMatchPattern:
+                var symbol = new BindingSymbol(bindingValueMatchPattern.Identifier.Text, boundInputType);
+                scope[bindingValueMatchPattern.Identifier.Text] = symbol;
                 return Bind(bindingValueMatchPattern, scope);
             case ComparisonValueMatchPattern comparisonValueMatchPattern:
                 return Bind(comparisonValueMatchPattern, scope);
@@ -269,8 +270,6 @@ internal class Binder
 
     private BoundBindingValueMatchPattern Bind(BindingValueMatchPattern bindingValueMatchPattern, BoundScope scope)
     {
-        scope[bindingValueMatchPattern.Identifier.Text] = scope["$match"];
-        
         return new BoundBindingValueMatchPattern(bindingValueMatchPattern.Identifier);
     }
     
@@ -564,4 +563,3 @@ internal sealed record BoundDiscardExpressionMatchPattern : BoundExpressionMatch
     // A discard can match any type
     public TypeSymbol Type => TypeSymbol.Any;
 }
-

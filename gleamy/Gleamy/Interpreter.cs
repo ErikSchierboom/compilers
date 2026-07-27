@@ -200,11 +200,10 @@ public class Interpreter
         {
             switch (matchCase.Pattern)
             {
-                case BoundBindingValueMatchPattern:
-                    // $match represents the matched value
-                    var bindingMatchFrame = frame.CreateChild();
-                    bindingMatchFrame["$match"] = input;
-                    return Evaluate(matchCase.ReturnValue, bindingMatchFrame);
+                case BoundBindingValueMatchPattern bindingPattern:
+                    var bindingFrame = frame.CreateChild();
+                    bindingFrame[bindingPattern.Identifier.Text] = input;
+                    return Evaluate(matchCase.ReturnValue, bindingFrame);
                 case BoundConstantValueMatchPattern constantMatchPattern:
                     switch (constantMatchPattern.Value.Value, input)
                     {
