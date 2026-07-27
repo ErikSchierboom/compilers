@@ -210,10 +210,14 @@ internal sealed class Scanner
                         _position++;
 
                     var text = _source[identifierStartPosition.._position];
+
                     if (_keywords.TryGetValue(text, out var tokenTypeAndLiteral))
-                        tokens.Add(new Token(tokenTypeAndLiteral.TokenType, text, tokenTypeAndLiteral.Literal));    
-                    else
-                        tokens.Add(new Token(TokenType.Identifier, text));
+                    {
+                        tokens.Add(new Token(tokenTypeAndLiteral.TokenType, text, tokenTypeAndLiteral.Literal));
+                        break;
+                    }
+
+                    tokens.Add(new Token(TokenType.Identifier, text));
                     break;
                 default:
                     throw new InvalidOperationException($"Unknown character: '{_source[_position]}'");
