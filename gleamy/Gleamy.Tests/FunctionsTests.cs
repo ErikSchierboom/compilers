@@ -36,6 +36,24 @@ public sealed class FunctionsTests
                 """;
             Assert.Equal(120, Interpreter.Evaluate(code));
         }
+        
+        [Fact]
+        public void Nested()
+        {
+            const string code =
+                """
+                fn outer(i: Int) -> Int {
+                    fn inner(j: Int) -> Int {
+                        j * 2
+                    }
+                    
+                    inner(i) + 1
+                }
+
+                outer(4)
+                """;
+            Assert.Equal(9, Interpreter.Evaluate(code));
+        }
     }
     
     public sealed class Arguments
