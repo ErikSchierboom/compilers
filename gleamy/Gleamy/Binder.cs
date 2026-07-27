@@ -183,7 +183,8 @@ internal class Binder
 
     private BoundLiteralExpression Bind(LiteralExpression literalExpression, BoundScope scope)
     {
-        return new BoundLiteralExpression(literalExpression.Value.Literal!);
+        var boundConstant = BindConstant(literalExpression.Value);
+        return new BoundLiteralExpression(boundConstant);
     }
 
     private BoundLogicalAndExpression Bind(LogicalAndExpression logicalAndExpression, BoundScope scope)
@@ -391,11 +392,9 @@ internal sealed record BoundConstant(object Value)
     };
 }
 
-internal sealed record BoundLiteralExpression(object Value) : BoundExpression
+internal sealed record BoundLiteralExpression(BoundConstant Value) : BoundExpression
 {
-    public BoundConstant Constant { get; } = new(Value);
-
-    public override TypeSymbol Type => Constant.Type;
+    public override TypeSymbol Type => Value.Type;
 }
 
 internal sealed record BoundNameExpression(Symbol Symbol) : BoundExpression
