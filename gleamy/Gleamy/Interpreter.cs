@@ -112,7 +112,7 @@ public class Interpreter
         frame[nameExpression.Symbol.Name];
 
     private object Evaluate(BoundLiteralExpression literalExpression, Frame frame) =>
-        literalExpression.Value.Literal!;
+        literalExpression.Value;
 
     private object? Evaluate(BoundParenthesizedExpression parenthesizedExpression, Frame frame) => 
         Evaluate(parenthesizedExpression.Expression, frame);

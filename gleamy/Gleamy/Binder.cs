@@ -171,7 +171,7 @@ internal class Binder
     {
         switch (expressionMatchPattern)
         {
-            case DiscardExpressionMatchPattern discardExpressionMatchPattern:
+            case DiscardExpressionMatchPattern:
                 return new BoundDiscardExpressionMatchPattern();
             case ExpressionExpressionMatchPattern expressionExpressionMatchPattern:
                 var boundExpression = Bind(expressionExpressionMatchPattern.Expression, scope);
@@ -183,7 +183,7 @@ internal class Binder
 
     private BoundLiteralExpression Bind(LiteralExpression literalExpression, BoundScope scope)
     {
-        return new BoundLiteralExpression(literalExpression.Value);
+        return new BoundLiteralExpression(literalExpression.Value.Literal!);
     }
 
     private BoundLogicalAndExpression Bind(LogicalAndExpression logicalAndExpression, BoundScope scope)
@@ -391,9 +391,9 @@ internal sealed record BoundConstant(object Value)
     };
 }
 
-internal sealed record BoundLiteralExpression(Token Value) : BoundExpression
+internal sealed record BoundLiteralExpression(object Value) : BoundExpression
 {
-    public BoundConstant Constant { get; } = new(Value.Literal!);
+    public BoundConstant Constant { get; } = new(Value);
 
     public override TypeSymbol Type => Constant.Type;
 }
