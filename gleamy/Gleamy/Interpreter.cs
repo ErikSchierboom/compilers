@@ -252,10 +252,10 @@ public class Interpreter
             {
                 case BoundExpressionExpressionMatchPattern expressionExpressionMatchPattern:
                     var evaluatedExpression = Evaluate(expressionExpressionMatchPattern.Expression, frame);
-                    if (evaluatedExpression is not bool b)
+                    if (evaluatedExpression is not bool booleanResult)
                         throw new InvalidOperationException("Can only evaluate boolean expressions");
                     
-                    if (b)
+                    if (booleanResult)
                         return Evaluate(matchCase.ReturnValue, frame);
 
                     break;
