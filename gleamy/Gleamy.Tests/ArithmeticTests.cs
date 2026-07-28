@@ -1,6 +1,6 @@
 ﻿namespace Gleamy.Tests;
 
-public sealed class ArithmeticTests
+public class ArithmeticTests
 {
     [Theory]
     [InlineData("-1", -1)]

@@ -1,8 +1,8 @@
 namespace Gleamy.Tests;
 
-public sealed class FunctionsTests
+public class FunctionsTests
 {
-    public sealed class Evaluation
+    public class Evaluation
     {
         [Fact]
         public void LastStatementIsReturned()
@@ -56,7 +56,7 @@ public sealed class FunctionsTests
         }
     }
     
-    public sealed class Arguments
+    public class Arguments
     {
         [Fact]
         public void None()

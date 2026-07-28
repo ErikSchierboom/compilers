@@ -1,6 +1,6 @@
 namespace Gleamy.Tests;
 
-public sealed class BitwiseOperationsTests
+public class BitwiseOperationsTests
 {
     [Theory]
     [InlineData("1 & 1", 1)]

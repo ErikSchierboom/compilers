@@ -1,10 +1,10 @@
 namespace Gleamy.Tests;
 
-public sealed class PatternMatchingTests
+public class PatternMatchingTests
 {
-    public sealed class Values
+    public class Values
     {
-        public sealed class Patterns
+        public class Patterns
         {
             [Theory]
             [InlineData("match 5 { 5 => 1 }", 1)]
@@ -40,7 +40,7 @@ public sealed class PatternMatchingTests
                 Assert.Equal(expected, Interpreter.Evaluate(code));
         }
 
-        public sealed class Evaluation
+        public class Evaluation
         {
             [Fact]
             public void ReturnValueOfMatchingPattern()
@@ -84,7 +84,7 @@ public sealed class PatternMatchingTests
         }
     }
     
-    public sealed class Expressions
+    public class Expressions
     {
         [Theory]
         [InlineData("match { false => 1, true => 2 }", 2)]
@@ -120,7 +120,7 @@ public sealed class PatternMatchingTests
             Assert.Equal(2, Interpreter.Evaluate(code));
         }
 
-        public sealed class Evaluation
+        public class Evaluation
         {
             [Fact]
             public void ReturnValueOfMatchingPattern()

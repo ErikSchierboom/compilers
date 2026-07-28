@@ -1,6 +1,6 @@
 namespace Gleamy.Tests;
 
-public sealed class ComparisonTests
+public class ComparisonTests
 {
     [Theory]
     [InlineData("1 == 1", true)]

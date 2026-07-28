@@ -1,6 +1,6 @@
 namespace Gleamy.Tests;
 
-public sealed class LiteralsTests
+public class LiteralsTests
 {
     [Theory]
     [InlineData("1", 1)]

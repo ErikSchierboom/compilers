@@ -1,6 +1,6 @@
 namespace Gleamy.Tests;
 
-public sealed class BindingTests
+public class BindingTests
 {
     [Fact]
     public void Binding()
