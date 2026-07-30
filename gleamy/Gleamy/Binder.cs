@@ -104,6 +104,8 @@ internal class Binder
                 return Bind(expressionMatchExpression, scope);
             case LiteralExpression literalExpression:
                 return Bind(literalExpression, scope);
+            case ArrayLiteralExpression arrayLiteralExpression:
+                return Bind(arrayLiteralExpression, scope);
             case LogicalAndExpression logicalAndExpression:
                 return Bind(logicalAndExpression, scope);
             case LogicalOrExpression logicalOrExpression:
@@ -185,6 +187,25 @@ internal class Binder
     {
         var boundConstant = BindConstant(literalExpression.Value);
         return new BoundLiteralExpression(boundConstant);
+    }
+
+    private BoundArrayLiteralExpression Bind(ArrayLiteralExpression arrayLiteralExpression, BoundScope scope)
+    {
+        var boundElements = new List<BoundExpression>();
+        TypeSymbol? arrayElementType = null;
+
+        foreach (var element in arrayLiteralExpression.Elements)
+        {
+            var boundExpression = Bind(element, scope);
+            arrayElementType ??= boundExpression.Type;
+            
+            if (boundExpression.Type != arrayElementType)
+                throw new InvalidOperationException("All elements in an array literal must have the same type.");
+
+            boundElements.Add(boundExpression);
+        }
+
+        return new BoundArrayLiteralExpression(boundElements);
     }
 
     private BoundLogicalAndExpression Bind(LogicalAndExpression logicalAndExpression, BoundScope scope)
@@ -321,6 +342,8 @@ internal sealed record TypeSymbol(string Name, Type RuntimeType) : Symbol(Name)
     public static readonly TypeSymbol Void = new("Void", typeof(void));
     public static readonly TypeSymbol Bool = new("Bool", typeof(bool));
     public static readonly TypeSymbol Int = new("Int", typeof(int));
+    
+    public static TypeSymbol Array(Type runtimeType) => new("Array", runtimeType.MakeArrayType());
 }
 
 internal class BoundScope(BoundScope? parent = null)
@@ -395,6 +418,12 @@ internal sealed record BoundConstant(object Value)
 internal sealed record BoundLiteralExpression(BoundConstant Value) : BoundExpression
 {
     public override TypeSymbol Type => Value.Type;
+}
+
+internal sealed record BoundArrayLiteralExpression(List<BoundExpression> Elements) : BoundExpression
+{
+    public override TypeSymbol Type => TypeSymbol.Array(ElementType.RuntimeType);
+    public TypeSymbol ElementType => Elements.FirstOrDefault()?.Type ?? TypeSymbol.Any;
 }
 
 internal sealed record BoundNameExpression(Symbol Symbol) : BoundExpression

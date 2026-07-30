@@ -61,6 +61,7 @@ internal class Parser
             [TokenType.FalseKeyword] = new(ParseBoolean, null, Precedence.Primary),
             [TokenType.MatchKeyword] = new(ParseMatchExpression, null, Precedence.Match),
             [TokenType.OpenParen] = new(ParseParenthesized, ParseCall, Precedence.Call),
+            [TokenType.OpenBracket] = new(ParseArray, null, Precedence.Primary),
         };
     }
 
@@ -319,11 +320,28 @@ internal class Parser
     private Expression ParseNumber() => new LiteralExpression(Previous);
     private Expression ParseBoolean() => new LiteralExpression(Previous);
     private Expression ParseName() => new NameExpression(Previous);
+    
     private Expression ParseParenthesized()
     {
         var expr = ParseExpression();
         Consume(TokenType.CloseParen);
         return new ParenthesizedExpression(expr);
+    }
+
+    private Expression ParseArray()
+    {
+        var elements = new List<Expression>();
+        while (Current.Type != TokenType.CloseBracket)
+        {
+            do
+            {
+                elements.Add(ParseExpression());
+            } while (Match(TokenType.Comma));
+        }
+
+        Consume(TokenType.CloseBracket);
+                
+        return new ArrayLiteralExpression([..elements]);
     }
 
     private Expression ParseCall(Expression left)
@@ -385,20 +403,13 @@ internal sealed record ExpressionStatement(Expression Expression) : Statement;
 internal sealed record BindingDeclarationStatement(Token Identifier, Expression Value) : Statement;
 internal sealed record BlockStatement(Statement[] Statements) : Statement;
 
-internal sealed record IdentifierType(Token Identifier)
-{
-    public Type RuntimeType => Identifier.Type switch
-    {
-        TokenType.IntKeyword => typeof(int),
-        TokenType.BoolKeyword => typeof(bool),
-        _ => throw new InvalidOperationException($"Unexpected token {Identifier}")
-    };
-}
+internal sealed record IdentifierType(Token Identifier);
 
 internal sealed record Parameter(Token Identifier, IdentifierType IdentifierType);
 
 internal abstract record Expression;
 internal sealed record LiteralExpression(Token Value) : Expression;
+internal sealed record ArrayLiteralExpression(Expression[] Elements) : Expression;
 internal sealed record NameExpression(Token Identifier) : Expression;
 internal sealed record CallExpression(Expression Function, Expression[] Arguments) : Expression;
 internal sealed record UnaryExpression(Token Operator, Expression Value) : Expression;
