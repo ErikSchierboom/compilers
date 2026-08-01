@@ -528,24 +528,21 @@ internal sealed record BoundBinaryOperator(BoundBinaryOperatorKind Kind, TypeSym
     public static BoundBinaryOperator Bind(Token @operator, TypeSymbol left, TypeSymbol right) =>
         (@operator.Type, left.Kind, right.Kind) switch
         {
-            (TokenType.EqualEqual, TypeKind.Bool, TypeKind.Bool) => new BoundBinaryOperator(BoundBinaryOperatorKind.Equality, left, right, TypeSymbol.Bool),
-            (TokenType.EqualEqual, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Equality, left, right, TypeSymbol.Bool),
-            (TokenType.BangEqual, TypeKind.Bool, TypeKind.Bool) => new BoundBinaryOperator(BoundBinaryOperatorKind.Inequality, left, right, TypeSymbol.Bool),
-            (TokenType.BangEqual, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Inequality, left, right, TypeSymbol.Bool),
+            (TokenType.EqualEqual, var leftKind, var rightKind) when leftKind == rightKind => new BoundBinaryOperator(BoundBinaryOperatorKind.Equality, left, right, TypeSymbol.Bool),
+            (TokenType.BangEqual, var leftKind, var rightKind) when leftKind == rightKind => new BoundBinaryOperator(BoundBinaryOperatorKind.Inequality, left, right, TypeSymbol.Bool),
+            
             (TokenType.Plus, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.Int),
-            (TokenType.Plus, TypeKind.Int, TypeKind.IntArray) or
-            (TokenType.Plus, TypeKind.IntArray, TypeKind.Int) or
-            (TokenType.Plus, TypeKind.IntArray, TypeKind.IntArray)=> new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.IntArray),
-            (TokenType.Plus, TypeKind.Int, TypeKind.IntMatrix) or
-            (TokenType.Plus, TypeKind.IntMatrix, TypeKind.Int) or
-            (TokenType.Plus, TypeKind.IntMatrix, TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.IntMatrix),
-            (TokenType.Plus, TypeKind.Int, TypeKind.AnyArray) or
-            (TokenType.Plus, TypeKind.AnyArray, TypeKind.Int) or
-            (TokenType.Plus, TypeKind.AnyArray, TypeKind.AnyArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.AnyArray),
-            (TokenType.Plus, TypeKind.Int, TypeKind.AnyMatrix) or
-            (TokenType.Plus, TypeKind.AnyMatrix, TypeKind.Int) or
-            (TokenType.Plus, TypeKind.AnyMatrix, TypeKind.AnyMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.AnyMatrix),
+            (TokenType.Plus, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.IntArray),
+            (TokenType.Plus, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.IntMatrix),
+            (TokenType.Plus, TypeKind.Int or TypeKind.AnyArray, TypeKind.Int or TypeKind.AnyArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.AnyArray),
+            (TokenType.Plus, TypeKind.Int or TypeKind.AnyMatrix, TypeKind.Int or TypeKind.AnyMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.AnyMatrix),
+            
             (TokenType.Minus, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Subtraction, left, right, TypeSymbol.Int),
+            (TokenType.Minus, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Subtraction, left, right, TypeSymbol.IntArray),
+            (TokenType.Minus, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Subtraction, left, right, TypeSymbol.IntMatrix),
+            (TokenType.Minus, TypeKind.Int or TypeKind.AnyArray, TypeKind.Int or TypeKind.AnyArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Subtraction, left, right, TypeSymbol.AnyArray),
+            (TokenType.Minus, TypeKind.Int or TypeKind.AnyMatrix, TypeKind.Int or TypeKind.AnyMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Subtraction, left, right, TypeSymbol.AnyMatrix),
+           
             (TokenType.Star, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Multiplication, left, right, TypeSymbol.Int),
             (TokenType.Slash, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Division, left, right, TypeSymbol.Int),
             (TokenType.Percent, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Modulus, left, right, TypeSymbol.Int),
