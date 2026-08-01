@@ -115,8 +115,25 @@ public class Interpreter
     private object Evaluate(BoundLiteralExpression literalExpression, Frame frame) =>
         literalExpression.Value.Value;
 
-    private object Evaluate(BoundListLiteralExpression listLiteralExpression, Frame frame) =>
-        listLiteralExpression.Elements.Select(element => Evaluate(element, frame)).ToArray();
+    private object Evaluate(BoundListLiteralExpression listLiteralExpression, Frame frame)
+    {
+        if (listLiteralExpression.Type == TypeSymbol.IntArray)
+            return listLiteralExpression.Elements.Select(element => (int)Evaluate(element, frame)!).ToArray();
+        
+        if (listLiteralExpression.Type == TypeSymbol.IntMatrix)
+            return listLiteralExpression.Elements.Select(element => (int[])Evaluate(element, frame)!).ToArray();
+        
+        if (listLiteralExpression.Type == TypeSymbol.BoolArray)
+            return listLiteralExpression.Elements.Select(element => (bool)Evaluate(element, frame)!).ToArray();
+        
+        if (listLiteralExpression.Type == TypeSymbol.BoolMatrix)
+            return listLiteralExpression.Elements.Select(element => (bool[])Evaluate(element, frame)!).ToArray();
+        
+        if (listLiteralExpression.Type == TypeSymbol.AnyMatrix)
+            return listLiteralExpression.Elements.Select(element => (object[])Evaluate(element, frame)!).ToArray();
+
+        return listLiteralExpression.Elements.Select(element => Evaluate(element, frame)!).ToArray();
+    }
 
     private object? Evaluate(BoundParenthesizedExpression parenthesizedExpression, Frame frame) => 
         Evaluate(parenthesizedExpression.Expression, frame);
@@ -161,6 +178,14 @@ public class Interpreter
         return (binaryExpression.Operator.Kind, left, right) switch
         {
             (BoundBinaryOperatorKind.Addition, int l, int r) => l + r,
+            (BoundBinaryOperatorKind.Addition, int[][] l, int r) => l.Select(x => x.Select(y => y + r)).ToArray(),
+            (BoundBinaryOperatorKind.Addition, int l, int[][] r) => r.Select(x => x.Select(y => y + l)).ToArray(),
+            (BoundBinaryOperatorKind.Addition, int[][] l, int[][] r) => l.Zip(r, (x, y) => x.Zip(y, (a, b) => a + b).ToArray()).ToArray(),
+            (BoundBinaryOperatorKind.Addition, int l, int[] r) => r.Select(x => l + x).ToArray(),
+            (BoundBinaryOperatorKind.Addition, int[] l, int r) => l.Select(x => x + r).ToArray(),
+            (BoundBinaryOperatorKind.Addition, int[] l, int[] r) => l.Zip(r, (x, y) => x + y).ToArray(),
+            (BoundBinaryOperatorKind.Addition, _, object[]) or
+            (BoundBinaryOperatorKind.Addition, object[], _) => Array.Empty<object>(),
             (BoundBinaryOperatorKind.Subtraction, int l, int r) => l - r,
             (BoundBinaryOperatorKind.Multiplication, int l, int r) => l * r,
             (BoundBinaryOperatorKind.Division, int l, int r) => l / r,

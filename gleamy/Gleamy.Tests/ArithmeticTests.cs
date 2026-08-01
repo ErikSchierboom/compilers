@@ -16,12 +16,35 @@ public class ArithmeticTests
     public void UnaryPlus(string code, int expected) =>
         Assert.Equal(expected, Interpreter.Evaluate(code));
     
-    [Theory]
-    [InlineData("1 + 1", 2)]
-    [InlineData("2 + 3", 5)]
-    [InlineData("88 + 0", 88)]
-    public void Addition(string code, int expected) =>
-        Assert.Equal(expected, Interpreter.Evaluate(code));
+    public class Addition
+    {
+        [Theory]
+        [InlineData("1 + 1", 2)]
+        [InlineData("2 + 3", 5)]
+        [InlineData("88 + 0", 88)]
+        public void ScalarAndScalar(string code, int expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+        
+        [Theory]
+        [InlineData("5 + []", new int[0])]
+        [InlineData("1 + [2, 3]", new[] { 3, 4 })]
+        [InlineData("[3, 4] + 2", new[] { 5, 6 })]
+        public void ScalarAndArray(string code, int[] expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+        
+        [Theory]
+        [InlineData("[] + []", new int[0])]
+        [InlineData("[1, 2] + [3, 4]", new[] { 4, 6 })]
+        public void ArrayAndArray(string code, int[] expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+        
+        [Fact]
+        public void ScalarAndMatrix()
+        {
+            // Assert.Equal(Array.Empty<object[]>(), Interpreter.Evaluate("5 + [[]]"));
+            Assert.Equal(new int[][] { [6], [7, 8] }, Interpreter.Evaluate("5 + [[1], [2, 3]]"));
+        }
+    }
     
     [Theory]
     [InlineData("1 - 1", 0)]
