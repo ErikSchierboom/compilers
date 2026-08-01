@@ -19,7 +19,9 @@ internal class Binder
             [TypeSymbol.Bool.Name] = TypeSymbol.Bool,
             [TypeSymbol.Int.Name] = TypeSymbol.Int,
             [TypeSymbol.IntArray.Name] = TypeSymbol.IntArray,
-            [TypeSymbol.BoolArray.Name] = TypeSymbol.BoolArray
+            [TypeSymbol.IntMatrix.Name] = TypeSymbol.IntMatrix,
+            [TypeSymbol.BoolArray.Name] = TypeSymbol.BoolArray,
+            [TypeSymbol.BoolMatrix.Name] = TypeSymbol.BoolMatrix
         };
 
         foreach (var statement in _tree.Statements)
@@ -233,9 +235,22 @@ internal class Binder
         return new BoundLogicalOrExpression(boundLeftExpression, boundRightExpression);
     }
 
-    private BoundNameExpression Bind(NameExpression nameExpression, BoundScope scope)
+    private BoundExpression Bind(NameExpression nameExpression, BoundScope scope)
     {
         var boundSymbol = scope[nameExpression.Identifier.Text];
+
+        if (boundSymbol is TypeSymbol typeSymbol)
+        {
+            switch (typeSymbol.Kind)
+            {
+                case TypeKind.IntArray: return new BoundArrayLiteralExpression([], TypeSymbol.Int);
+                case TypeKind.IntMatrix: return new BoundArrayLiteralExpression([], TypeSymbol.IntArray);
+                case TypeKind.BoolArray: return new BoundArrayLiteralExpression([], TypeSymbol.Bool);
+                case TypeKind.BoolMatrix: return new BoundArrayLiteralExpression([], TypeSymbol.BoolArray);
+                default: throw new InvalidOperationException($"Unexpected type symbol: {typeSymbol}");
+            }
+        }
+
         return new BoundNameExpression(boundSymbol);
     }
 

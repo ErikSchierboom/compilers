@@ -63,7 +63,7 @@ internal class Parser
             [TokenType.FalseKeyword] = new(ParseBoolean, null, Precedence.Primary),
             [TokenType.MatchKeyword] = new(ParseMatchExpression, null, Precedence.Match),
             [TokenType.OpenParen] = new(ParseParenthesized, ParseCall, Precedence.Call),
-            [TokenType.OpenBracket] = new(ParseArray, null, Precedence.Primary),
+            [TokenType.OpenBracket] = new(ParseArray, ParseArrayTypeSuffix, Precedence.Call),
         };
     }
 
@@ -144,7 +144,17 @@ internal class Parser
     private IdentifierType ParseType()
     {
         if (Match(TokenType.IntKeyword) || Match(TokenType.BoolKeyword))
-            return new IdentifierType(Previous);
+        {
+            var typeToken = Previous;
+            var text = typeToken.Text;
+            while (Match(TokenType.OpenBracket))
+            {
+                Consume(TokenType.CloseBracket);
+                text += "[]";
+            }
+            
+            return new IdentifierType(new Token(TokenType.Identifier, text));
+        }
         
         throw new InvalidOperationException($"Expected type but got {Current.Type}");
     }
@@ -344,6 +354,18 @@ internal class Parser
         Consume(TokenType.CloseBracket);
         
         return new ArrayLiteralExpression([..elements]);
+    }
+
+    private Expression ParseArrayTypeSuffix(Expression left)
+    {
+        Consume(TokenType.CloseBracket);
+        
+        if (left is not NameExpression nameExpression)
+            throw new InvalidOperationException("Array type suffix must follow a type name");
+        
+        var newText = nameExpression.Identifier.Text + "[]";
+        var newToken = new Token(TokenType.Identifier, newText);
+        return new NameExpression(newToken);
     }
 
     private Expression ParseCall(Expression left)
