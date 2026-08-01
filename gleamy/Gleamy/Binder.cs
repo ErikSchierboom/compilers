@@ -104,7 +104,7 @@ internal class Binder
                 return Bind(expressionMatchExpression, scope);
             case LiteralExpression literalExpression:
                 return Bind(literalExpression, scope);
-            case ArrayLiteralExpression arrayLiteralExpression:
+            case ListLiteralExpression arrayLiteralExpression:
                 return Bind(arrayLiteralExpression, scope);
             case LogicalAndExpression logicalAndExpression:
                 return Bind(logicalAndExpression, scope);
@@ -189,12 +189,12 @@ internal class Binder
         return new BoundLiteralExpression(boundConstant);
     }
 
-    private BoundArrayLiteralExpression Bind(ArrayLiteralExpression arrayLiteralExpression, BoundScope scope)
+    private BoundListLiteralExpression Bind(ListLiteralExpression listLiteralExpression, BoundScope scope)
     {
         var boundElements = new List<BoundExpression>();
         TypeSymbol? arrayElementType = null;
 
-        foreach (var element in arrayLiteralExpression.Elements)
+        foreach (var element in listLiteralExpression.Elements)
         {
             var boundExpression = Bind(element, scope);
             arrayElementType ??= boundExpression.Type;
@@ -205,7 +205,7 @@ internal class Binder
             boundElements.Add(boundExpression);
         }
 
-        return new BoundArrayLiteralExpression(boundElements);
+        return new BoundListLiteralExpression(boundElements);
     }
 
     private BoundLogicalAndExpression Bind(LogicalAndExpression logicalAndExpression, BoundScope scope)
@@ -336,14 +336,45 @@ internal sealed record FunctionSymbol(string Name, TypeSymbol Type, List<Paramet
 internal sealed record BindingSymbol(string Name, TypeSymbol Type) : Symbol(Name);
 internal sealed record ParameterSymbol(string Name, TypeSymbol Type) : Symbol(Name);
 
-internal sealed record TypeSymbol(string Name, Type RuntimeType) : Symbol(Name)
+internal enum TypeKind
 {
-    public static readonly TypeSymbol Any = new("Any", typeof(object));
-    public static readonly TypeSymbol Void = new("Void", typeof(void));
-    public static readonly TypeSymbol Bool = new("Bool", typeof(bool));
-    public static readonly TypeSymbol Int = new("Int", typeof(int));
+    Unit,
+    Any,
+    Bool,
+    Int,
+}
+
+internal enum ListTypeKind
+{
+    Scalar,
+    Array,
+    Matrix
+}
+
+internal sealed record TypeSymbol(TypeKind Kind, ListTypeKind ListKind, string Name) : Symbol(Name)
+{
+    public static readonly TypeSymbol Unit       = new(TypeKind.Unit, ListTypeKind.Scalar, "Unit");
+    public static readonly TypeSymbol Any        = new(TypeKind.Any,  ListTypeKind.Scalar, "Any");
+    public static readonly TypeSymbol AnyArray   = new(TypeKind.Any,  ListTypeKind.Array, "Any[]");
+    public static readonly TypeSymbol AnyMatrix  = new(TypeKind.Any,  ListTypeKind.Matrix, "Any[][]");
+    public static readonly TypeSymbol Bool       = new(TypeKind.Bool, ListTypeKind.Scalar, "Bool");
+    public static readonly TypeSymbol BoolArray  = new(TypeKind.Bool, ListTypeKind.Array, "Bool[]");
+    public static readonly TypeSymbol BoolMatrix = new(TypeKind.Bool, ListTypeKind.Matrix, "Bool[][]");
+    public static readonly TypeSymbol Int        = new(TypeKind.Int,  ListTypeKind.Scalar, "Int");
+    public static readonly TypeSymbol IntArray   = new(TypeKind.Int,  ListTypeKind.Array, "Int[]");
+    public static readonly TypeSymbol IntMatrix  = new(TypeKind.Int,  ListTypeKind.Matrix, "Int[][]");
+
+    public TypeSymbol AddDimension() => AddDimensionMap[this];
     
-    public static TypeSymbol Array(Type runtimeType) => new("Array", runtimeType.MakeArrayType());
+    private static Dictionary<TypeSymbol, TypeSymbol> AddDimensionMap = new()
+    {
+        [Any] = AnyArray,
+        [AnyArray] = AnyMatrix,
+        [Bool] = BoolArray,
+        [BoolArray] = BoolMatrix,
+        [Int] = IntArray,
+        [IntArray] = IntMatrix,
+    };
 }
 
 internal class BoundScope(BoundScope? parent = null)
@@ -372,7 +403,7 @@ internal class BoundScope(BoundScope? parent = null)
 
 internal sealed record BoundProgram(List<BoundStatement> Statements)
 {
-    public TypeSymbol Type => Statements.LastOrDefault()?.Type ?? TypeSymbol.Void;
+    public TypeSymbol Type => Statements.LastOrDefault()?.Type ?? TypeSymbol.Unit;
 }
 
 internal abstract record BoundStatement
@@ -397,7 +428,7 @@ internal sealed record BoundBindingDeclarationStatement(BindingSymbol Binding, B
 
 internal sealed record BoundBlockStatement(List<BoundStatement> Statements) : BoundStatement
 {
-    public override TypeSymbol Type => Statements.LastOrDefault()?.Type ?? TypeSymbol.Void;
+    public override TypeSymbol Type => Statements.LastOrDefault()?.Type ?? TypeSymbol.Unit;
 }
 
 internal abstract record BoundExpression
@@ -409,8 +440,8 @@ internal sealed record BoundConstant(object Value)
 {
     public TypeSymbol Type { get; } = Value switch
     {
-        int i => TypeSymbol.Int,
-        bool b => TypeSymbol.Bool,
+        int => TypeSymbol.Int,
+        bool => TypeSymbol.Bool,
         _ => throw new NotImplementedException()
     };
 }
@@ -420,9 +451,9 @@ internal sealed record BoundLiteralExpression(BoundConstant Value) : BoundExpres
     public override TypeSymbol Type => Value.Type;
 }
 
-internal sealed record BoundArrayLiteralExpression(List<BoundExpression> Elements) : BoundExpression
+internal sealed record BoundListLiteralExpression(List<BoundExpression> Elements) : BoundExpression
 {
-    public override TypeSymbol Type => TypeSymbol.Array(ElementType.RuntimeType);
+    public override TypeSymbol Type => ElementType.AddDimension();
     public TypeSymbol ElementType => Elements.FirstOrDefault()?.Type ?? TypeSymbol.Any;
 }
 

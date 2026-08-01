@@ -341,7 +341,7 @@ internal class Parser
 
         Consume(TokenType.CloseBracket);
                 
-        return new ArrayLiteralExpression([..elements]);
+        return new ListLiteralExpression([..elements]);
     }
 
     private Expression ParseCall(Expression left)
@@ -409,7 +409,7 @@ internal sealed record Parameter(Token Identifier, IdentifierType IdentifierType
 
 internal abstract record Expression;
 internal sealed record LiteralExpression(Token Value) : Expression;
-internal sealed record ArrayLiteralExpression(Expression[] Elements) : Expression;
+internal sealed record ListLiteralExpression(Expression[] Elements) : Expression;
 internal sealed record NameExpression(Token Identifier) : Expression;
 internal sealed record CallExpression(Expression Function, Expression[] Arguments) : Expression;
 internal sealed record UnaryExpression(Token Operator, Expression Value) : Expression;

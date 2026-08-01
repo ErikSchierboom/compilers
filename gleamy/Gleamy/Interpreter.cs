@@ -76,7 +76,7 @@ public class Interpreter
             BoundBinaryExpression binaryExpression => Evaluate(binaryExpression, frame),
             BoundCallExpression callExpression => Evaluate(callExpression, frame),
             BoundLiteralExpression literalExpression => Evaluate(literalExpression, frame),
-            BoundArrayLiteralExpression arrayLiteralExpression => Evaluate(arrayLiteralExpression, frame),
+            BoundListLiteralExpression arrayLiteralExpression => Evaluate(arrayLiteralExpression, frame),
             BoundNameExpression nameExpression => Evaluate(nameExpression, frame),
             BoundValueMatchExpression valueMatchExpression => Evaluate(valueMatchExpression, frame),
             BoundExpressionMatchExpression expressionMatchExpression => Evaluate(expressionMatchExpression, frame),
@@ -115,8 +115,8 @@ public class Interpreter
     private object Evaluate(BoundLiteralExpression literalExpression, Frame frame) =>
         literalExpression.Value.Value;
 
-    private object Evaluate(BoundArrayLiteralExpression arrayLiteralExpression, Frame frame) =>
-        arrayLiteralExpression.Elements.Select(element => Evaluate(element, frame)).ToArray();
+    private object Evaluate(BoundListLiteralExpression listLiteralExpression, Frame frame) =>
+        listLiteralExpression.Elements.Select(element => Evaluate(element, frame)).ToArray();
 
     private object? Evaluate(BoundParenthesizedExpression parenthesizedExpression, Frame frame) => 
         Evaluate(parenthesizedExpression.Expression, frame);
