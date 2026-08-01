@@ -196,7 +196,7 @@ public class Interpreter
             (BoundBinaryOperatorKind.Greater, int l, int r) => l > r,
             (BoundBinaryOperatorKind.RightShift, int l, int r) => l >> r,
             (BoundBinaryOperatorKind.GreaterEqual, int l, int r) => l >= r,
-            (BoundBinaryOperatorKind.Equality, int l, int r) or => l == r,
+            (BoundBinaryOperatorKind.Equality, int l, int r) => l == r,
             (BoundBinaryOperatorKind.Equality, bool l, bool r) => l == r,
             (BoundBinaryOperatorKind.Inequality, int l, int r) => l != r,
             (BoundBinaryOperatorKind.Inequality, bool l, bool r) => l != r,
@@ -250,12 +250,12 @@ public class Interpreter
                     switch (comparisonMatchPattern.Operator.Type, comparisonMatchPattern.CompareValue.Value, input)
                     {
                         case (TokenType.Greater, int comparison1, int input1) when input1 > comparison1:
-                        case (TokenType.GreaterEqual, int comparison2, int input2) when input2 > comparison2:
+                        case (TokenType.GreaterEqual, int comparison2, int input2) when input2 >= comparison2:
                         case (TokenType.Less, int comparison3, int input3) when input3 < comparison3:
                         case (TokenType.LessEqual, int comparison4, int input4) when input4 <= comparison4:
                         case (TokenType.EqualEqual, int comparison5, int input5) when input5 == comparison5:
                         case (TokenType.EqualEqual, bool comparison6, bool input6) when input6 == comparison6:
-                        case (TokenType.BangEqual, int comparison7, int input7) when input7 == comparison7:
+                        case (TokenType.BangEqual, int comparison7, int input7) when input7 != comparison7:
                         case (TokenType.BangEqual, bool comparison8, bool input8) when input8 != comparison8:
                             return Evaluate(matchCase.ReturnValue, frame);
                     }
