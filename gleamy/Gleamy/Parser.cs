@@ -63,7 +63,7 @@ internal class Parser
             [TokenType.FalseKeyword] = new(ParseBoolean, null, Precedence.Primary),
             [TokenType.MatchKeyword] = new(ParseMatchExpression, null, Precedence.Match),
             [TokenType.OpenParen] = new(ParseParenthesized, ParseCall, Precedence.Call),
-            [TokenType.OpenBracket] = new(ParseArray, ParseTypedArray, Precedence.Primary),
+            [TokenType.OpenBracket] = new(ParseArray, null, Precedence.Primary),
         };
     }
 
@@ -332,23 +332,6 @@ internal class Parser
 
     private Expression ParseArray()
     {
-        var elements = ParseArrayElements();
-        
-        return new ArrayLiteralExpression([..elements], null);
-    }
-
-    private Expression ParseTypedArray(Expression elementType)
-    {
-        var elements = ParseArrayElements();
-
-        var identifierTypeName = (NameExpression)elementType;
-        var identifierType = new IdentifierType(identifierTypeName.Identifier);
-
-        return new ArrayLiteralExpression([..elements], identifierType);
-    }
-
-    private List<Expression> ParseArrayElements()
-    {
         var elements = new List<Expression>();
         while (Current.Type != TokenType.CloseBracket)
         {
@@ -359,7 +342,8 @@ internal class Parser
         }
 
         Consume(TokenType.CloseBracket);
-        return elements;
+        
+        return new ArrayLiteralExpression([..elements]);
     }
 
     private Expression ParseCall(Expression left)
@@ -427,7 +411,7 @@ internal sealed record Parameter(Token Identifier, IdentifierType IdentifierType
 
 internal abstract record Expression;
 internal sealed record LiteralExpression(Token Value) : Expression;
-internal sealed record ArrayLiteralExpression(Expression[] Elements, IdentifierType? ElementType) : Expression;
+internal sealed record ArrayLiteralExpression(Expression[] Elements) : Expression;
 internal sealed record NameExpression(Token Identifier) : Expression;
 internal sealed record CallExpression(Expression Function, Expression[] Arguments) : Expression;
 internal sealed record UnaryExpression(Token Operator, Expression Value) : Expression;

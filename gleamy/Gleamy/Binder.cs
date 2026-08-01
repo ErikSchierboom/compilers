@@ -194,9 +194,7 @@ internal class Binder
     private BoundArrayLiteralExpression Bind(ArrayLiteralExpression arrayLiteralExpression, BoundScope scope)
     {
         var boundElements = new List<BoundExpression>();
-        var arrayElementType = arrayLiteralExpression.ElementType is null
-            ? null
-            : Bind(arrayLiteralExpression.ElementType, scope); 
+        TypeSymbol? arrayElementType = null;
 
         foreach (var element in arrayLiteralExpression.Elements)
         {
