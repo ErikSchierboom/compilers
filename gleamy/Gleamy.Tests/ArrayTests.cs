@@ -27,6 +27,13 @@ public class ArrayTests
     public class Matrix
     {
         [Fact]
+        public void Empty()
+        {
+            Assert.Equal(Array.Empty<int[]>(), Interpreter.Evaluate("Int[][]"));
+            Assert.Equal(Array.Empty<bool[]>(), Interpreter.Evaluate("Bool[][]"));
+        }
+        
+        [Fact]
         public void Integer()
         {   
             Assert.Equal(new[] { new[] { 1 } }, Interpreter.Evaluate("[[1]]"));
