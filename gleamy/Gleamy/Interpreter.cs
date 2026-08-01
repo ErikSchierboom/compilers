@@ -76,7 +76,7 @@ public class Interpreter
             BoundBinaryExpression binaryExpression => Evaluate(binaryExpression, frame),
             BoundCallExpression callExpression => Evaluate(callExpression, frame),
             BoundLiteralExpression literalExpression => Evaluate(literalExpression, frame),
-            BoundListLiteralExpression arrayLiteralExpression => Evaluate(arrayLiteralExpression, frame),
+            BoundArrayLiteralExpression arrayLiteralExpression => Evaluate(arrayLiteralExpression, frame),
             BoundNameExpression nameExpression => Evaluate(nameExpression, frame),
             BoundValueMatchExpression valueMatchExpression => Evaluate(valueMatchExpression, frame),
             BoundExpressionMatchExpression expressionMatchExpression => Evaluate(expressionMatchExpression, frame),
@@ -115,24 +115,21 @@ public class Interpreter
     private object Evaluate(BoundLiteralExpression literalExpression, Frame frame) =>
         literalExpression.Value.Value;
 
-    private object Evaluate(BoundListLiteralExpression listLiteralExpression, Frame frame)
+    private object Evaluate(BoundArrayLiteralExpression arrayLiteralExpression, Frame frame)
     {
-        if (listLiteralExpression.Type == TypeSymbol.IntArray)
-            return listLiteralExpression.Elements.Select(element => (int)Evaluate(element, frame)!).ToArray();
+        if (arrayLiteralExpression.Type == TypeSymbol.IntArray)
+            return arrayLiteralExpression.Elements.Select(element => (int)Evaluate(element, frame)!).ToArray();
         
-        if (listLiteralExpression.Type == TypeSymbol.IntMatrix)
-            return listLiteralExpression.Elements.Select(element => (int[])Evaluate(element, frame)!).ToArray();
+        if (arrayLiteralExpression.Type == TypeSymbol.IntMatrix)
+            return arrayLiteralExpression.Elements.Select(element => (int[])Evaluate(element, frame)!).ToArray();
         
-        if (listLiteralExpression.Type == TypeSymbol.BoolArray)
-            return listLiteralExpression.Elements.Select(element => (bool)Evaluate(element, frame)!).ToArray();
+        if (arrayLiteralExpression.Type == TypeSymbol.BoolArray)
+            return arrayLiteralExpression.Elements.Select(element => (bool)Evaluate(element, frame)!).ToArray();
         
-        if (listLiteralExpression.Type == TypeSymbol.BoolMatrix)
-            return listLiteralExpression.Elements.Select(element => (bool[])Evaluate(element, frame)!).ToArray();
-        
-        if (listLiteralExpression.Type == TypeSymbol.AnyMatrix)
-            return listLiteralExpression.Elements.Select(element => (object[])Evaluate(element, frame)!).ToArray();
+        if (arrayLiteralExpression.Type == TypeSymbol.BoolMatrix)
+            return arrayLiteralExpression.Elements.Select(element => (bool[])Evaluate(element, frame)!).ToArray();
 
-        return listLiteralExpression.Elements.Select(element => Evaluate(element, frame)!).ToArray();
+        throw new InvalidOperationException("Unknown array type");
     }
 
     private object? Evaluate(BoundParenthesizedExpression parenthesizedExpression, Frame frame) => 

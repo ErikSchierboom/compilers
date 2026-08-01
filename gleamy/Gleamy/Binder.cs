@@ -17,7 +17,9 @@ internal class Binder
         var boundScope = new BoundScope
         {
             [TypeSymbol.Bool.Name] = TypeSymbol.Bool,
-            [TypeSymbol.Int.Name] = TypeSymbol.Int
+            [TypeSymbol.Int.Name] = TypeSymbol.Int,
+            [TypeSymbol.IntArray.Name] = TypeSymbol.IntArray,
+            [TypeSymbol.BoolArray.Name] = TypeSymbol.BoolArray
         };
 
         foreach (var statement in _tree.Statements)
@@ -104,7 +106,7 @@ internal class Binder
                 return Bind(expressionMatchExpression, scope);
             case LiteralExpression literalExpression:
                 return Bind(literalExpression, scope);
-            case ListLiteralExpression arrayLiteralExpression:
+            case ArrayLiteralExpression arrayLiteralExpression:
                 return Bind(arrayLiteralExpression, scope);
             case LogicalAndExpression logicalAndExpression:
                 return Bind(logicalAndExpression, scope);
@@ -189,12 +191,14 @@ internal class Binder
         return new BoundLiteralExpression(boundConstant);
     }
 
-    private BoundListLiteralExpression Bind(ListLiteralExpression listLiteralExpression, BoundScope scope)
+    private BoundArrayLiteralExpression Bind(ArrayLiteralExpression arrayLiteralExpression, BoundScope scope)
     {
         var boundElements = new List<BoundExpression>();
-        TypeSymbol? arrayElementType = null;
+        var arrayElementType = arrayLiteralExpression.ElementType is null
+            ? null
+            : Bind(arrayLiteralExpression.ElementType, scope); 
 
-        foreach (var element in listLiteralExpression.Elements)
+        foreach (var element in arrayLiteralExpression.Elements)
         {
             var boundExpression = Bind(element, scope);
             arrayElementType ??= boundExpression.Type;
@@ -205,7 +209,10 @@ internal class Binder
             boundElements.Add(boundExpression);
         }
 
-        return new BoundListLiteralExpression(boundElements);
+        if (arrayElementType is null)
+            throw new InvalidOperationException("An empty array must have an element type specified");
+
+        return new BoundArrayLiteralExpression(boundElements, arrayElementType);
     }
 
     private BoundLogicalAndExpression Bind(LogicalAndExpression logicalAndExpression, BoundScope scope)
@@ -340,8 +347,6 @@ internal enum TypeKind
 {
     Unit,
     Any,
-    AnyArray,
-    AnyMatrix,
     Bool,
     BoolArray,
     BoolMatrix,
@@ -352,10 +357,8 @@ internal enum TypeKind
 
 internal sealed record TypeSymbol(TypeKind Kind, string Name) : Symbol(Name)
 {
-    public static readonly TypeSymbol Unit       = new(TypeKind.Unit, "Unit");
     public static readonly TypeSymbol Any        = new(TypeKind.Any, "Any");
-    public static readonly TypeSymbol AnyArray   = new(TypeKind.AnyArray, "Any[]");
-    public static readonly TypeSymbol AnyMatrix  = new(TypeKind.AnyMatrix, "Any[][]");
+    public static readonly TypeSymbol Unit       = new(TypeKind.Unit, "Unit");
     public static readonly TypeSymbol Bool       = new(TypeKind.Bool, "Bool");
     public static readonly TypeSymbol BoolArray  = new(TypeKind.BoolArray, "Bool[]");
     public static readonly TypeSymbol BoolMatrix = new(TypeKind.BoolMatrix, "Bool[][]");
@@ -363,12 +366,10 @@ internal sealed record TypeSymbol(TypeKind Kind, string Name) : Symbol(Name)
     public static readonly TypeSymbol IntArray   = new(TypeKind.IntArray, "Int[]");
     public static readonly TypeSymbol IntMatrix  = new(TypeKind.IntMatrix, "Int[][]");
 
-    public TypeSymbol AddDimension() => AddDimensionMap[this];
+    public TypeSymbol AddDimension() => _addDimensionMap[this];
     
-    private static Dictionary<TypeSymbol, TypeSymbol> AddDimensionMap = new()
+    private static readonly Dictionary<TypeSymbol, TypeSymbol> _addDimensionMap = new()
     {
-        [Any] = AnyArray,
-        [AnyArray] = AnyMatrix,
         [Bool] = BoolArray,
         [BoolArray] = BoolMatrix,
         [Int] = IntArray,
@@ -450,10 +451,9 @@ internal sealed record BoundLiteralExpression(BoundConstant Value) : BoundExpres
     public override TypeSymbol Type => Value.Type;
 }
 
-internal sealed record BoundListLiteralExpression(List<BoundExpression> Elements) : BoundExpression
+internal sealed record BoundArrayLiteralExpression(List<BoundExpression> Elements, TypeSymbol ElementType) : BoundExpression
 {
     public override TypeSymbol Type => ElementType.AddDimension();
-    public TypeSymbol ElementType => Elements.FirstOrDefault()?.Type ?? TypeSymbol.Any;
 }
 
 internal sealed record BoundNameExpression(Symbol Symbol) : BoundExpression
@@ -534,15 +534,11 @@ internal sealed record BoundBinaryOperator(BoundBinaryOperatorKind Kind, TypeSym
             (TokenType.Plus, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.Int),
             (TokenType.Plus, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.IntArray),
             (TokenType.Plus, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.IntMatrix),
-            (TokenType.Plus, TypeKind.Int or TypeKind.AnyArray, TypeKind.Int or TypeKind.AnyArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.AnyArray),
-            (TokenType.Plus, TypeKind.Int or TypeKind.AnyMatrix, TypeKind.Int or TypeKind.AnyMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.AnyMatrix),
             
             (TokenType.Minus, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Subtraction, left, right, TypeSymbol.Int),
             (TokenType.Minus, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Subtraction, left, right, TypeSymbol.IntArray),
             (TokenType.Minus, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Subtraction, left, right, TypeSymbol.IntMatrix),
-            (TokenType.Minus, TypeKind.Int or TypeKind.AnyArray, TypeKind.Int or TypeKind.AnyArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Subtraction, left, right, TypeSymbol.AnyArray),
-            (TokenType.Minus, TypeKind.Int or TypeKind.AnyMatrix, TypeKind.Int or TypeKind.AnyMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Subtraction, left, right, TypeSymbol.AnyMatrix),
-           
+            
             (TokenType.Star, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Multiplication, left, right, TypeSymbol.Int),
             (TokenType.Slash, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Division, left, right, TypeSymbol.Int),
             (TokenType.Percent, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Modulus, left, right, TypeSymbol.Int),

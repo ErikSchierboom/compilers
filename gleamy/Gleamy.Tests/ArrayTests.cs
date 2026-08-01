@@ -1,16 +1,16 @@
 namespace Gleamy.Tests;
 
-public class ListsTests
-{   
-    [Fact]
-    public void Empty()
+public class ArrayTests
+{
+    public class Vector
     {
-        const string source = "[]";
-        Assert.Equal(System.Array.Empty<object>(), Interpreter.Evaluate(source));
-    }
-
-    public class Array
-    {
+        [Fact]
+        public void Empty()
+        {
+            Assert.Equal(Array.Empty<int>(), Interpreter.Evaluate("Int[]"));
+            Assert.Equal(Array.Empty<bool>(), Interpreter.Evaluate("Bool[]"));
+        }
+        
         [Theory]
         [InlineData("[1]", new[] { 1 })]
         [InlineData("[13, 15, 17]", new [] { 13, 15, 17 })]
