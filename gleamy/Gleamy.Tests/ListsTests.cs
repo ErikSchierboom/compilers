@@ -6,19 +6,38 @@ public class ListsTests
     public void Empty()
     {
         const string source = "[]";
-        Assert.Equal(Array.Empty<object>(), Interpreter.Evaluate(source));
+        Assert.Equal(System.Array.Empty<object>(), Interpreter.Evaluate(source));
     }
 
-    [Theory]
-    [InlineData("[1]", new object[] { 1 })]
-    [InlineData("[true, false]", new object[] { true, false })]
-    [InlineData("[13, 15, 17]", new object[] { 13, 15, 17 })]
-    public void NonEmpty(string code, object[] expected) =>
-        Assert.Equal(expected, Interpreter.Evaluate(code));
+    public class Array
+    {
+        [Theory]
+        [InlineData("[1]", new[] { 1 })]
+        [InlineData("[13, 15, 17]", new [] { 13, 15, 17 })]
+        public void Integer(string code, int[] expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+    
+        [Theory]
+        [InlineData("[true]", new [] { true })]
+        [InlineData("[true, false]", new [] { true, false })]
+        public void Boolean(string code, bool[] expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+    }
 
-    [Theory]
-    [InlineData("[[1], [2, 3]]", new object[] { new object[] { 1 }, new object[] { 2, 3 } })]
-    [InlineData("[[[true]], [[false]], [[true]]]", new object[] { new object[] { new object[] { true } }, new object[] { new object[] { false } }, new object[] { new object[] { true } } })]
-    public void Nested(string code, object[] expected) =>
-        Assert.Equal(expected, Interpreter.Evaluate(code));
+    public class Matrix
+    {
+        [Fact]
+        public void Integer()
+        {   
+            Assert.Equal(new[] { new[] { 1 } }, Interpreter.Evaluate("[[1]]"));
+            Assert.Equal(new[] { new[] { 1 }, new[] { 2, 3 } }, Interpreter.Evaluate("[[1], [2, 3]]"));
+        }
+
+        [Fact]
+        public void Boolean()
+        {   
+            Assert.Equal(new[] { new[] { true } }, Interpreter.Evaluate("[[true]]"));
+            Assert.Equal(new[] { new[] { true }, new[] { true, false } }, Interpreter.Evaluate("[[true], [true, false]]"));
+        }
+    }
 }

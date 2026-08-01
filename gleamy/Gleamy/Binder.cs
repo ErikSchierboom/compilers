@@ -344,25 +344,25 @@ internal enum TypeKind
     Int,
 }
 
-internal enum ListTypeKind
+internal enum TypeSymbolKind
 {
     Scalar,
     Array,
     Matrix
 }
 
-internal sealed record TypeSymbol(TypeKind Kind, ListTypeKind ListKind, string Name) : Symbol(Name)
+internal sealed record TypeSymbol(TypeKind Kind, TypeSymbolKind SymbolKind, string Name) : Symbol(Name)
 {
-    public static readonly TypeSymbol Unit       = new(TypeKind.Unit, ListTypeKind.Scalar, "Unit");
-    public static readonly TypeSymbol Any        = new(TypeKind.Any,  ListTypeKind.Scalar, "Any");
-    public static readonly TypeSymbol AnyArray   = new(TypeKind.Any,  ListTypeKind.Array, "Any[]");
-    public static readonly TypeSymbol AnyMatrix  = new(TypeKind.Any,  ListTypeKind.Matrix, "Any[][]");
-    public static readonly TypeSymbol Bool       = new(TypeKind.Bool, ListTypeKind.Scalar, "Bool");
-    public static readonly TypeSymbol BoolArray  = new(TypeKind.Bool, ListTypeKind.Array, "Bool[]");
-    public static readonly TypeSymbol BoolMatrix = new(TypeKind.Bool, ListTypeKind.Matrix, "Bool[][]");
-    public static readonly TypeSymbol Int        = new(TypeKind.Int,  ListTypeKind.Scalar, "Int");
-    public static readonly TypeSymbol IntArray   = new(TypeKind.Int,  ListTypeKind.Array, "Int[]");
-    public static readonly TypeSymbol IntMatrix  = new(TypeKind.Int,  ListTypeKind.Matrix, "Int[][]");
+    public static readonly TypeSymbol Unit       = new(TypeKind.Unit, TypeSymbolKind.Scalar, "Unit");
+    public static readonly TypeSymbol Any        = new(TypeKind.Any,  TypeSymbolKind.Scalar, "Any");
+    public static readonly TypeSymbol AnyArray   = new(TypeKind.Any,  TypeSymbolKind.Array, "Any[]");
+    public static readonly TypeSymbol AnyMatrix  = new(TypeKind.Any,  TypeSymbolKind.Matrix, "Any[][]");
+    public static readonly TypeSymbol Bool       = new(TypeKind.Bool, TypeSymbolKind.Scalar, "Bool");
+    public static readonly TypeSymbol BoolArray  = new(TypeKind.Bool, TypeSymbolKind.Array, "Bool[]");
+    public static readonly TypeSymbol BoolMatrix = new(TypeKind.Bool, TypeSymbolKind.Matrix, "Bool[][]");
+    public static readonly TypeSymbol Int        = new(TypeKind.Int,  TypeSymbolKind.Scalar, "Int");
+    public static readonly TypeSymbol IntArray   = new(TypeKind.Int,  TypeSymbolKind.Array, "Int[]");
+    public static readonly TypeSymbol IntMatrix  = new(TypeKind.Int,  TypeSymbolKind.Matrix, "Int[][]");
 
     public TypeSymbol AddDimension() => AddDimensionMap[this];
     
