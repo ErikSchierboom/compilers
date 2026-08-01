@@ -44,6 +44,13 @@ public class ArithmeticTests
             Assert.Equal(Array.Empty<int[]>(), Interpreter.Evaluate("5 + Int[][]"));
             Assert.Equal(new int[][] { [6], [7, 8] }, Interpreter.Evaluate("5 + [[1], [2, 3]]"));
         }
+        
+        [Fact]
+        public void Matrices()
+        {
+            Assert.Equal(Array.Empty<int[]>(), Interpreter.Evaluate("Int[][] + Int[][]"));
+            Assert.Equal(new int[][] { [6], [7, 9] }, Interpreter.Evaluate("[[1], [2, 3]] + [[5], [5, 6]]"));
+        }
     }
     
     [Theory]
