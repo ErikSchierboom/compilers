@@ -1,6 +1,6 @@
 namespace Gleamy.Tests;
 
-public class ArrayTests
+public class ListsTests
 {   
     [Fact]
     public void Empty()
