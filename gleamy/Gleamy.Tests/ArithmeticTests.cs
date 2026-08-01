@@ -2,39 +2,26 @@
 
 public class ArithmeticTests
 {
-    public class Unary
-    {
-        [Theory]
-        [InlineData("-1", -1)]
-        [InlineData("-8", -8)]
-        [InlineData("--13", 13)]
-        public void Minus(string code, int expected) =>
-            Assert.Equal(expected, Interpreter.Evaluate(code));
+    [Theory]
+    [InlineData("-1", -1)]
+    [InlineData("-8", -8)]
+    [InlineData("--13", 13)]
+    public void UnaryMinus(string code, int expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
     
-        [Theory]
-        [InlineData("+1", 1)]
-        [InlineData("+8", 8)]
-        [InlineData("++13", 13)]
-        public void Plus(string code, int expected) =>
-            Assert.Equal(expected, Interpreter.Evaluate(code));
-    }
-
-    public class Addition
-    {
-        [Theory]
-        [InlineData("1 + 1", 2)]
-        [InlineData("2 + 3", 5)]
-        [InlineData("88 + 0", 88)]
-        public void Scalars(string code, int expected) =>
-            Assert.Equal(expected, Interpreter.Evaluate(code));
-        
-        [Theory]
-        [InlineData("1 + []", new object[0])]
-        [InlineData("2 + [2]", new object[] { 4 })]
-        [InlineData("5 + [3, 7, 9]", new object[] { 8, 12, 14 })]
-        public void ScalarAndArray(string code, object[] expected) =>
-            Assert.Equal(expected, Interpreter.Evaluate(code));
-    }
+    [Theory]
+    [InlineData("+1", 1)]
+    [InlineData("+8", 8)]
+    [InlineData("++13", 13)]
+    public void UnaryPlus(string code, int expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
+    
+    [Theory]
+    [InlineData("1 + 1", 2)]
+    [InlineData("2 + 3", 5)]
+    [InlineData("88 + 0", 88)]
+    public void Addition(string code, int expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
     
     [Theory]
     [InlineData("1 - 1", 0)]

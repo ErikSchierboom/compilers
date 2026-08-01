@@ -343,23 +343,7 @@ internal sealed record TypeSymbol(string Name, Type RuntimeType) : Symbol(Name)
     public static readonly TypeSymbol Bool = new("Bool", typeof(bool));
     public static readonly TypeSymbol Int = new("Int", typeof(int));
     
-    public static readonly TypeSymbol AnyArray = new("AnyArray", typeof(object[]));
-    public static readonly TypeSymbol BoolArray = new("BoolArray", typeof(bool[]));
-    public static readonly TypeSymbol IntArray = new("IntArray", typeof(int[]));
-    
-    public TypeSymbol ToArray()
-    {
-        if (this == Any)
-            return AnyArray;
-        
-        if (this == Int)
-            return IntArray;
-
-        if (this == Bool)
-            return BoolArray;
-
-        throw new NotImplementedException();
-    }
+    public static TypeSymbol Array(Type runtimeType) => new("Array", runtimeType.MakeArrayType());
 }
 
 internal class BoundScope(BoundScope? parent = null)
@@ -438,7 +422,7 @@ internal sealed record BoundLiteralExpression(BoundConstant Value) : BoundExpres
 
 internal sealed record BoundArrayLiteralExpression(List<BoundExpression> Elements) : BoundExpression
 {
-    public override TypeSymbol Type => ElementType.ToArray();
+    public override TypeSymbol Type => TypeSymbol.Array(ElementType.RuntimeType);
     public TypeSymbol ElementType => Elements.FirstOrDefault()?.Type ?? TypeSymbol.Any;
 }
 
@@ -519,8 +503,6 @@ internal sealed record BoundBinaryOperator(BoundBinaryOperatorKind Kind, TypeSym
             TokenType.BangEqual when left == TypeSymbol.Bool && right == TypeSymbol.Bool => new BoundBinaryOperator(BoundBinaryOperatorKind.Inequality, left, right, TypeSymbol.Bool),
             TokenType.BangEqual when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Inequality, left, right, TypeSymbol.Bool),
             TokenType.Plus when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.Int),
-            TokenType.Plus when left == TypeSymbol.Int && right == TypeSymbol.IntArray => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.IntArray),
-            TokenType.Plus when left == TypeSymbol.Int && right == TypeSymbol.AnyArray => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.AnyArray),
             TokenType.Minus when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Subtraction, left, right, TypeSymbol.Int),
             TokenType.Star when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Multiplication, left, right, TypeSymbol.Int),
             TokenType.Slash when left == TypeSymbol.Int && right == TypeSymbol.Int => new BoundBinaryOperator(BoundBinaryOperatorKind.Division, left, right, TypeSymbol.Int),

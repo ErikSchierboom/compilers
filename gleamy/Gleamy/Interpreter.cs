@@ -115,22 +115,8 @@ public class Interpreter
     private object Evaluate(BoundLiteralExpression literalExpression, Frame frame) =>
         literalExpression.Value.Value;
 
-    private object Evaluate(BoundArrayLiteralExpression arrayLiteralExpression, Frame frame)
-    {
-        return arrayLiteralExpression.Elements
-            .Select(element => Evaluate(element, frame))
-            .Select(element =>
-            {
-                if (arrayLiteralExpression.Type == TypeSymbol.Int)
-                    return (int)element!;
-                
-                if (arrayLiteralExpression.Type == TypeSymbol.Bool)
-                    return (bool)element!;
-
-                return element!;
-            })
-            .ToArray();
-    }
+    private object Evaluate(BoundArrayLiteralExpression arrayLiteralExpression, Frame frame) =>
+        arrayLiteralExpression.Elements.Select(element => Evaluate(element, frame)).ToArray();
 
     private object? Evaluate(BoundParenthesizedExpression parenthesizedExpression, Frame frame) => 
         Evaluate(parenthesizedExpression.Expression, frame);
@@ -175,7 +161,6 @@ public class Interpreter
         return (binaryExpression.Operator.Kind, left, right) switch
         {
             (BoundBinaryOperatorKind.Addition, int l, int r) => l + r,
-            (BoundBinaryOperatorKind.Addition, int l, int[] r) => r.Select(x => l + x).ToArray(),
             (BoundBinaryOperatorKind.Subtraction, int l, int r) => l - r,
             (BoundBinaryOperatorKind.Multiplication, int l, int r) => l * r,
             (BoundBinaryOperatorKind.Division, int l, int r) => l / r,
@@ -243,12 +228,12 @@ public class Interpreter
                     switch (comparisonMatchPattern.Operator.Type, comparisonMatchPattern.CompareValue.Value, input)
                     {
                         case (TokenType.Greater, int comparison1, int input1) when input1 > comparison1:
-                        case (TokenType.GreaterEqual, int comparison2, int input2) when input2 >= comparison2:
+                        case (TokenType.GreaterEqual, int comparison2, int input2) when input2 > comparison2:
                         case (TokenType.Less, int comparison3, int input3) when input3 < comparison3:
                         case (TokenType.LessEqual, int comparison4, int input4) when input4 <= comparison4:
                         case (TokenType.EqualEqual, int comparison5, int input5) when input5 == comparison5:
                         case (TokenType.EqualEqual, bool comparison6, bool input6) when input6 == comparison6:
-                        case (TokenType.BangEqual, int comparison7, int input7) when input7 != comparison7:
+                        case (TokenType.BangEqual, int comparison7, int input7) when input7 == comparison7:
                         case (TokenType.BangEqual, bool comparison8, bool input8) when input8 != comparison8:
                             return Evaluate(matchCase.ReturnValue, frame);
                     }
