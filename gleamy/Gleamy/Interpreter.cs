@@ -174,34 +174,39 @@ public class Interpreter
 
         return (binaryExpression.Operator.Kind, left, right) switch
         {
-            (BoundBinaryOperatorKind.Addition, int l, int r) => l + r,
-            (BoundBinaryOperatorKind.Addition, int[][] l, int r) => l.Select(x => x.Select(y => y + r)).ToArray(),
-            (BoundBinaryOperatorKind.Addition, int l, int[][] r) => r.Select(x => x.Select(y => y + l)).ToArray(),
-            (BoundBinaryOperatorKind.Addition, int[][] l, int[][] r) => l.Zip(r, (x, y) => x.Zip(y, (a, b) => a + b).ToArray()).ToArray(),
-            (BoundBinaryOperatorKind.Addition, int l, int[] r) => r.Select(x => l + x).ToArray(),
-            (BoundBinaryOperatorKind.Addition, int[] l, int r) => l.Select(x => x + r).ToArray(),
-            (BoundBinaryOperatorKind.Addition, int[] l, int[] r) => l.Zip(r, (x, y) => x + y).ToArray(),
-            (BoundBinaryOperatorKind.Addition, _, object[]) or
-            (BoundBinaryOperatorKind.Addition, object[], _) => Array.Empty<object>(),
-            (BoundBinaryOperatorKind.Subtraction, int l, int r) => l - r,
-            (BoundBinaryOperatorKind.Multiplication, int l, int r) => l * r,
-            (BoundBinaryOperatorKind.Division, int l, int r) => l / r,
-            (BoundBinaryOperatorKind.Modulus, int l, int r) => l % r,
-            (BoundBinaryOperatorKind.BitwiseAnd, int l, int r) => l & r,
-            (BoundBinaryOperatorKind.BitwiseXor, int l, int r) => l ^ r,
-            (BoundBinaryOperatorKind.BitwiseOr, int l, int r) => l | r,
-            (BoundBinaryOperatorKind.Less, int l, int r) => l < r,
-            (BoundBinaryOperatorKind.LeftShift, int l, int r) => l << r,
-            (BoundBinaryOperatorKind.LessEqual, int l, int r) => l <= r,
-            (BoundBinaryOperatorKind.Greater, int l, int r) => l > r,
-            (BoundBinaryOperatorKind.RightShift, int l, int r) => l >> r,
-            (BoundBinaryOperatorKind.GreaterEqual, int l, int r) => l >= r,
-            (BoundBinaryOperatorKind.Equality, int l, int r) => l == r,
-            (BoundBinaryOperatorKind.Equality, bool l, bool r) => l == r,
-            (BoundBinaryOperatorKind.Inequality, int l, int r) => l != r,
-            (BoundBinaryOperatorKind.Inequality, bool l, bool r) => l != r,
+            (BoundBinaryOperatorKind.Addition, _, _) => BinaryOperation<int>((l, r) => l + r),
+            (BoundBinaryOperatorKind.Subtraction, _, _) => BinaryOperation<int>((l, r) => l - r),
+            (BoundBinaryOperatorKind.Multiplication, _, _) => BinaryOperation<int>((l, r) => l * r),
+            (BoundBinaryOperatorKind.Division, _, _) => BinaryOperation<int>((l, r) => l / r),
+            (BoundBinaryOperatorKind.Modulus, _, _) => BinaryOperation<int>((l, r) => l % r),
+            (BoundBinaryOperatorKind.BitwiseAnd, _, _) => BinaryOperation<int>((l, r) => l & r),
+            (BoundBinaryOperatorKind.BitwiseXor, _, _) => BinaryOperation<int>((l, r) => l ^ r),
+            (BoundBinaryOperatorKind.BitwiseOr, _, _) => BinaryOperation<int>((l, r) => l | r),
+            (BoundBinaryOperatorKind.Less, _, _) => BinaryOperation<int>((l, r) => l < r),
+            (BoundBinaryOperatorKind.LeftShift, _, _) => BinaryOperation<int>((l, r) => l << r),
+            (BoundBinaryOperatorKind.LessEqual, _, _) => BinaryOperation<int>((l, r) => l <= r),
+            (BoundBinaryOperatorKind.Greater, _, _) => BinaryOperation<int>((l, r) => l > r),
+            (BoundBinaryOperatorKind.RightShift, _, _) => BinaryOperation<int>((l, r) => l >> r),
+            (BoundBinaryOperatorKind.GreaterEqual, _, _) => BinaryOperation<int>((l, r) => l >= r),
+            (BoundBinaryOperatorKind.Equality, bool or bool[] or bool[][], bool or bool[] or bool[][]) => BinaryOperation<bool>((l, r) => l == r),
+            (BoundBinaryOperatorKind.Equality, int or int[] or int[][], int or int[] or int[][]) => BinaryOperation<int>((l, r) => l == r),
+            (BoundBinaryOperatorKind.Inequality, bool or bool[] or bool[][], bool or bool[] or bool[][]) => BinaryOperation<bool>((l, r) => l != r),
+            (BoundBinaryOperatorKind.Inequality, int or int[] or int[][], int or int[] or int[][]) => BinaryOperation<int>((l, r) => l != r),
             _ => throw new ArgumentOutOfRangeException(nameof(binaryExpression.Operator))
         };
+
+        object BinaryOperation<T>(Func<T, T, object> numberOperatorFunc) =>
+            (left, right) switch
+            {
+                (T l, T r) => numberOperatorFunc(l, r),
+                (T[][] l, T r) => l.Select(x => x.Select<T, object>(y => numberOperatorFunc(y, r)).ToArray()).ToArray(),
+                (T l, T[][] r) => r.Select(x => x.Select<T, object>(y => numberOperatorFunc(l, y)).ToArray()).ToArray(),
+                (T[][] l, T[][] r) => l.Zip(r, (x, y) => x.Zip(y, numberOperatorFunc).ToArray<object>()).ToArray(),
+                (T l, T[] r) => r.Select(x => numberOperatorFunc(l, x)).ToArray(),
+                (T[] l, T r) => l.Select(x => numberOperatorFunc(x, r)).ToArray(),
+                (T[] l, T[] r) => l.Zip(r, numberOperatorFunc).ToArray(),
+                _ => throw new ArgumentOutOfRangeException()
+            };
     }
 
     private object? Evaluate(BoundUnaryExpression unaryExpression, Frame frame)
