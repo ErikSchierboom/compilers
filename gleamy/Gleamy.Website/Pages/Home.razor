@@ -51,11 +51,40 @@
         try
         {
             var output = Interpreter.Evaluate(_code);
-            _result = output?.ToString() ?? "null";
+            PrintResult(output);
         }
         catch (Exception ex)
         {
             _error = ex.Message;
+        }
+    }
+    
+    private void PrintResult(object? output)
+    {
+        switch (output)
+        {
+            case int:
+            case bool:
+                _result = output.ToString();
+                break;
+            case int[] ints:
+                _result = "[" + string.Join(", ", ints) + "]";
+                break;
+            case bool[] bools:
+                _result = "[" + string.Join(", ", bools) + "]";
+                break;
+            case int[][] ints:
+                _result = "[" + string.Join(", ", ints.Select(inner => "[" + string.Join(", ", inner) + "]")) + "]";
+                break;
+            case bool[][] bools:
+                _result = "[" + string.Join(", ", bools.Select(inner => "[" + string.Join(", ", inner) + "]")) + "]";
+                break;
+            case null:
+                _result = "null";
+                break;
+            default:
+                _result = "Error: unknown output";
+                break;
         }
     }
 
