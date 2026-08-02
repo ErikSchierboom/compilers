@@ -464,6 +464,7 @@ internal sealed record BoundConstant(object Value)
         int => TypeSymbol.Int,
         bool => TypeSymbol.Bool,
         char => TypeSymbol.Char,
+        string => TypeSymbol.CharArray,
         _ => throw new NotImplementedException()
     };
 }

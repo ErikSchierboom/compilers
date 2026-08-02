@@ -1,4 +1,6 @@
-﻿namespace Gleamy;
+﻿using System.Text;
+
+namespace Gleamy;
 
 internal sealed class Scanner
 {
@@ -16,6 +18,7 @@ internal sealed class Scanner
     };
     
     private readonly string _source;
+    private readonly StringBuilder _stringValue = new();
     private int _position;
 
     private Scanner(string source) => _source = source;
@@ -35,167 +38,163 @@ internal sealed class Scanner
                     _position++;
                     break;
                 case '+':
-                    tokens.Add(new Token(TokenType.Plus, "+"));
                     _position++;
+                    tokens.Add(new Token(TokenType.Plus, "+"));
                     break;
                 case '*':
-                    tokens.Add(new Token(TokenType.Star, "*"));
                     _position++;
+                    tokens.Add(new Token(TokenType.Star, "*"));
                     break;
                 case '/':
-                    tokens.Add(new Token(TokenType.Slash, "/"));
                     _position++;
+                    tokens.Add(new Token(TokenType.Slash, "/"));
                     break;
                 case '^':
-                    tokens.Add(new Token(TokenType.Caret, "^"));
                     _position++;
+                    tokens.Add(new Token(TokenType.Caret, "^"));
                     break;
                 case ',':
-                    tokens.Add(new Token(TokenType.Comma, ","));
                     _position++;
+                    tokens.Add(new Token(TokenType.Comma, ","));
                     break;
                 case ':':
-                    tokens.Add(new Token(TokenType.Colon, ":"));
                     _position++;
+                    tokens.Add(new Token(TokenType.Colon, ":"));
                     break;
                 case ';':
-                    tokens.Add(new Token(TokenType.Semicolon, ";"));
                     _position++;
+                    tokens.Add(new Token(TokenType.Semicolon, ";"));
                     break;
                 case '%':
-                    tokens.Add(new Token(TokenType.Percent, "%"));
                     _position++;
+                    tokens.Add(new Token(TokenType.Percent, "%"));
                     break;
                 case '~':
-                    tokens.Add(new Token(TokenType.Tilde, "~"));
                     _position++;
+                    tokens.Add(new Token(TokenType.Tilde, "~"));
                     break;
                 case '_':
-                    tokens.Add(new Token(TokenType.Underscore, "_"));
                     _position++;
+                    tokens.Add(new Token(TokenType.Underscore, "_"));
                     break;
                 case '(':
-                    tokens.Add(new Token(TokenType.OpenParen, "("));
                     _position++;
+                    tokens.Add(new Token(TokenType.OpenParen, "("));
                     break;
                 case ')':
-                    tokens.Add(new Token(TokenType.CloseParen, ")"));
                     _position++;
+                    tokens.Add(new Token(TokenType.CloseParen, ")"));
                     break;
                 case '{':
-                    tokens.Add(new Token(TokenType.OpenBrace, "{"));
                     _position++;
+                    tokens.Add(new Token(TokenType.OpenBrace, "{"));
                     break;
                 case '}':
-                    tokens.Add(new Token(TokenType.CloseBrace, "}"));
                     _position++;
+                    tokens.Add(new Token(TokenType.CloseBrace, "}"));
                     break;
                 case '[':
-                    tokens.Add(new Token(TokenType.OpenBracket, "["));
                     _position++;
+                    tokens.Add(new Token(TokenType.OpenBracket, "["));
                     break;
                 case ']':
-                    tokens.Add(new Token(TokenType.CloseBracket, "]"));
                     _position++;
+                    tokens.Add(new Token(TokenType.CloseBracket, "]"));
                     break;
                 case '&':
+                    _position++;
+                    
                     if (Match('&'))
                     {
                         tokens.Add(new Token(TokenType.AmpersandAmpersand, "&&"));
-                        _position++;
+                        break;
                     }
-                    else
-                    {
-                        tokens.Add(new Token(TokenType.Ampersand, "&"));
-                        _position++;
-                    }
+
+                    tokens.Add(new Token(TokenType.Ampersand, "&"));
                     break;
                 case '|':
+                    _position++;
+                    
                     if (Match('|'))
                     {
                         tokens.Add(new Token(TokenType.PipePipe, "||"));
-                        _position++;
+                        break;
                     }
-                    else
-                    {
-                        tokens.Add(new Token(TokenType.Pipe, "|"));
-                        _position++;
-                    }
+
+                    tokens.Add(new Token(TokenType.Pipe, "|"));
                     break;
                 case '=':
+                    _position++;
+                    
                     if (Match('>'))
                     {
                         tokens.Add(new Token(TokenType.EqualGreater, "=>"));
-                        _position++;
+                        break;
                     }
-                    else if (Match('='))
+
+                    if (Match('='))
                     {
                         tokens.Add(new Token(TokenType.EqualEqual, "=="));
-                        _position++;
+                        break;
                     }
-                    else
-                    {
-                        tokens.Add(new Token(TokenType.Equal, "="));
-                        _position++;
-                    }
+
+                    tokens.Add(new Token(TokenType.Equal, "="));
                     break;
                 case '!':
+                    _position++;
+                    
                     if (Match('='))
                     {
                         tokens.Add(new Token(TokenType.BangEqual, "!="));
-                        _position++;
+                        break;
                     }
-                    else
-                    {
-                        tokens.Add(new Token(TokenType.Bang, "!"));
-                        _position++;
-                    }
+
+                    tokens.Add(new Token(TokenType.Bang, "!"));
                     break;
                 case '-':
+                    _position++;
+                    
                     if (Match('>'))
                     {
                         tokens.Add(new Token(TokenType.MinusGreater, "->"));
-                        _position++;
+                        break;
                     }
-                    else
-                    {
-                        tokens.Add(new Token(TokenType.Minus, "-"));
-                        _position++;
-                    }
+
+                    tokens.Add(new Token(TokenType.Minus, "-"));
                     break;
                 case '>':
+                    _position++;
+                    
                     if (Match('>'))
                     {
                         tokens.Add(new Token(TokenType.GreaterGreater, ">>"));
-                        _position++;
+                        break;
                     }
-                    else if (Match('='))
+
+                    if (Match('='))
                     {
                         tokens.Add(new Token(TokenType.GreaterEqual, ">="));
-                        _position++;
+                        break;
                     }
-                    else
-                    {
-                        tokens.Add(new Token(TokenType.Greater, ">"));
-                        _position++;
-                    }
+
+                    tokens.Add(new Token(TokenType.Greater, ">"));
                     break;
                 case '<':
+                    _position++;
+                    
                     if (Match('<'))
                     {
                         tokens.Add(new Token(TokenType.LessLess, "<<"));
-                        _position++;
+                        break;
                     }
-                    else if (Match('='))
+
+                    if (Match('='))
                     {
                         tokens.Add(new Token(TokenType.LessEqual, "<="));
-                        _position++;
+                        break;
                     }
-                    else
-                    {
-                        tokens.Add(new Token(TokenType.Less, "<"));
-                        _position++;
-                    }
+
+                    tokens.Add(new Token(TokenType.Less, "<"));
                     break;
                 case >= '0' and <= '9':
                     var numberStartPosition = _position;
@@ -220,9 +219,9 @@ internal sealed class Scanner
 
                     tokens.Add(new Token(TokenType.Identifier, text));
                     break;
-                
                 case '\'':
                     var charStartPosition = _position;
+                    _position++;
                     
                     if (Match('\\'))
                     {
@@ -230,7 +229,6 @@ internal sealed class Scanner
                         {
                             Consume('\'');
                             tokens.Add(new Token(TokenType.Char, "'\n'", '\n'));
-                            _position++;
                             break;
                         }
                     
@@ -238,7 +236,6 @@ internal sealed class Scanner
                         {
                             Consume('\'');
                             tokens.Add(new Token(TokenType.Char, "'\r'", '\r'));
-                            _position++;
                             break;
                         }
                         
@@ -246,18 +243,53 @@ internal sealed class Scanner
                         {
                             Consume('\'');
                             tokens.Add(new Token(TokenType.Char, "'\t'", '\t'));
-                            _position++;
                             break;
                         }
                         
                         throw new InvalidOperationException($"Unknown escape sequence: '\\{Current}'");
                     }
 
-                    _position++;
                     var currentChar = Current; 
-                    Consume('\'');
-                    tokens.Add(new Token(TokenType.Char, _source[charStartPosition..(_position + 1)], currentChar));
                     _position++;
+                    Consume('\'');
+                    tokens.Add(new Token(TokenType.Char, _source[charStartPosition.._position], currentChar));
+                    break;
+                
+                case '"':
+                    var stringStartPosition = _position;
+                    _position++;
+                    
+                    _stringValue.Clear();
+                    while (!Match('"'))
+                    {
+                        if (Match('\\'))
+                        {
+                            if (Match('n'))
+                            {
+                                _stringValue.Append('\n');
+                                continue;
+                            }
+                    
+                            if (Match('r'))
+                            {
+                                _stringValue.Append('\r');
+                                continue;
+                            }
+                        
+                            if (Match('t'))
+                            {
+                                _stringValue.Append('\t');
+                                continue;
+                            }
+                        
+                            throw new InvalidOperationException($"Unknown escape sequence: '\\{Current}'");
+                        }
+                        
+                        _stringValue.Append(Current);
+                        _position++;
+                    }
+                   
+                    tokens.Add(new Token(TokenType.String, _source[stringStartPosition.._position], _stringValue.ToString()));
                     break;
                 default:
                     throw new InvalidOperationException($"Unknown character: '{_source[_position]}'");
@@ -271,7 +303,7 @@ internal sealed class Scanner
 
     private bool Match(char expected)
     {
-        if (Next != expected)
+        if (Current != expected)
             return false;
         
         _position++;
@@ -280,7 +312,7 @@ internal sealed class Scanner
     
     private void Consume(char expected)
     {
-        if (Next != expected)
+        if (Current != expected)
             throw new InvalidOperationException($"Expected '{expected}' but found '{Next}'");
         
         _position++;

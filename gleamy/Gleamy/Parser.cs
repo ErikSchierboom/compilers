@@ -58,6 +58,7 @@ internal class Parser
             [TokenType.PipePipe] = new(null, ParseLogicalOrExpression, Precedence.LogicalOr),
             [TokenType.Number] = new(ParseNumber, null, Precedence.Primary),
             [TokenType.Char] = new(ParseChar, null, Precedence.Primary),
+            [TokenType.String] = new(ParseString, null, Precedence.Primary),
             [TokenType.Identifier] = new(ParseName, null, Precedence.Primary),
             [TokenType.IntKeyword] = new(ParseName, null, Precedence.Primary),
             [TokenType.BoolKeyword] = new(ParseName, null, Precedence.Primary),
@@ -334,6 +335,7 @@ internal class Parser
     private Expression ParseNumber() => new LiteralExpression(Previous);
     private Expression ParseBoolean() => new LiteralExpression(Previous);
     private Expression ParseChar() => new LiteralExpression(Previous);
+    private Expression ParseString() => new LiteralExpression(Previous);
     private Expression ParseName() => new NameExpression(Previous);
     
     private Expression ParseParenthesized()
