@@ -24,12 +24,10 @@ public class LiteralsTests
             Assert.Equal(expected, Interpreter.Evaluate(code));
         
         [Theory]
-        [InlineData("'\n'", '\n')]
-        [InlineData("'\r'", '\r')]
-        [InlineData("'\t'", '\t')]
+        [InlineData("'\\n'", '\n')]
+        [InlineData("'\\r'", '\r')]
+        [InlineData("'\\t'", '\t')]
         public void Escaped(string code, char expected) =>
             Assert.Equal(expected, Interpreter.Evaluate(code));
     }
-    
-    
 }
