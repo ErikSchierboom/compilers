@@ -18,9 +18,25 @@ public class LogicalOperationsTests
     public void LogicalOr(string code, bool expected) =>
         Assert.Equal(expected, Interpreter.Evaluate(code));
 
-    [Theory]
-    [InlineData("!true", false)]
-    [InlineData("!false", true)]
-    public void LogicalNot(string code, bool expected) =>
-        Assert.Equal(expected, Interpreter.Evaluate(code));
+    public class LogicalNot
+    {
+        [Theory]
+        [InlineData("!true", false)]
+        [InlineData("!false", true)]
+        public void Scalars(string code, bool expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+
+        [Theory]
+        [InlineData("!Bool[]", new bool[0])]
+        [InlineData("![true, false]", new[] { false, true })]
+        public void Vectors(string code, bool[] expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+
+        [Fact]
+        public void Matrices()
+        {
+            Assert.Equal(Array.Empty<bool[]>(), Interpreter.Evaluate("!Bool[][]"));
+            Assert.Equal(new bool[][] { [false], [true, true] }, Interpreter.Evaluate("![[true], [false, false]]"));
+        }
+    }
 }

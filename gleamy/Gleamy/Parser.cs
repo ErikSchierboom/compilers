@@ -47,6 +47,7 @@ internal class Parser
             [TokenType.Minus] = new(ParseUnaryExpression, ParseBinaryExpression, Precedence.Addition),
             [TokenType.Star] = new(null, ParseBinaryExpression, Precedence.Product),
             [TokenType.Slash] = new(null, ParseBinaryExpression, Precedence.Product),
+            [TokenType.Percent] = new(null, ParseBinaryExpression, Precedence.Product),
             [TokenType.Caret] = new(null, ParseBinaryExpression, Precedence.BitwiseXor),
             [TokenType.Tilde] = new(ParseUnaryExpression, null, Precedence.Unary),
             [TokenType.GreaterGreater] = new(null, ParseBinaryExpression, Precedence.BitwiseShift),

@@ -502,9 +502,21 @@ internal sealed record BoundUnaryOperator(BoundUnaryOperatorKind Kind, TypeSymbo
         @operator.Type switch
         {
             TokenType.Bang when operand == TypeSymbol.Bool => new BoundUnaryOperator(BoundUnaryOperatorKind.Negation, operand, TypeSymbol.Bool),
+            TokenType.Bang when operand == TypeSymbol.BoolArray => new BoundUnaryOperator(BoundUnaryOperatorKind.Negation, operand, TypeSymbol.BoolArray),
+            TokenType.Bang when operand == TypeSymbol.BoolMatrix => new BoundUnaryOperator(BoundUnaryOperatorKind.Negation, operand, TypeSymbol.BoolMatrix),
+
             TokenType.Plus when operand == TypeSymbol.Int => new BoundUnaryOperator(BoundUnaryOperatorKind.Plus, operand, TypeSymbol.Int),
+            TokenType.Plus when operand == TypeSymbol.IntArray => new BoundUnaryOperator(BoundUnaryOperatorKind.Plus, operand, TypeSymbol.IntArray),
+            TokenType.Plus when operand == TypeSymbol.IntMatrix => new BoundUnaryOperator(BoundUnaryOperatorKind.Plus, operand, TypeSymbol.IntMatrix),
+
             TokenType.Minus when operand == TypeSymbol.Int => new BoundUnaryOperator(BoundUnaryOperatorKind.Minus, operand, TypeSymbol.Int),
+            TokenType.Minus when operand == TypeSymbol.IntArray => new BoundUnaryOperator(BoundUnaryOperatorKind.Minus, operand, TypeSymbol.IntArray),
+            TokenType.Minus when operand == TypeSymbol.IntMatrix => new BoundUnaryOperator(BoundUnaryOperatorKind.Minus, operand, TypeSymbol.IntMatrix),
+
             TokenType.Tilde when operand == TypeSymbol.Int => new BoundUnaryOperator(BoundUnaryOperatorKind.Complement, operand, TypeSymbol.Int),
+            TokenType.Tilde when operand == TypeSymbol.IntArray => new BoundUnaryOperator(BoundUnaryOperatorKind.Complement, operand, TypeSymbol.IntArray),
+            TokenType.Tilde when operand == TypeSymbol.IntMatrix => new BoundUnaryOperator(BoundUnaryOperatorKind.Complement, operand, TypeSymbol.IntMatrix),
+
             _ => throw new InvalidOperationException($"Unary operator '{@operator.Type}' is not defined for type '{operand}'.")
         };
 }
@@ -541,9 +553,6 @@ internal sealed record BoundBinaryOperator(BoundBinaryOperatorKind Kind, TypeSym
     public static BoundBinaryOperator Bind(Token @operator, TypeSymbol left, TypeSymbol right) =>
         (@operator.Type, left.Kind, right.Kind) switch
         {
-            (TokenType.EqualEqual, var leftKind, var rightKind) when leftKind == rightKind => new BoundBinaryOperator(BoundBinaryOperatorKind.Equality, left, right, TypeSymbol.Bool),
-            (TokenType.BangEqual, var leftKind, var rightKind) when leftKind == rightKind => new BoundBinaryOperator(BoundBinaryOperatorKind.Inequality, left, right, TypeSymbol.Bool),
-            
             (TokenType.Plus, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.Int),
             (TokenType.Plus, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.IntArray),
             (TokenType.Plus, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Addition, left, right, TypeSymbol.IntMatrix),
@@ -553,17 +562,69 @@ internal sealed record BoundBinaryOperator(BoundBinaryOperatorKind Kind, TypeSym
             (TokenType.Minus, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Subtraction, left, right, TypeSymbol.IntMatrix),
             
             (TokenType.Star, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Multiplication, left, right, TypeSymbol.Int),
+            (TokenType.Star, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Multiplication, left, right, TypeSymbol.IntArray),
+            (TokenType.Star, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Multiplication, left, right, TypeSymbol.IntMatrix),
+
             (TokenType.Slash, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Division, left, right, TypeSymbol.Int),
+            (TokenType.Slash, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Division, left, right, TypeSymbol.IntArray),
+            (TokenType.Slash, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Division, left, right, TypeSymbol.IntMatrix),
+            
             (TokenType.Percent, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Modulus, left, right, TypeSymbol.Int),
+            (TokenType.Percent, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Modulus, left, right, TypeSymbol.IntArray),
+            (TokenType.Percent, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Modulus, left, right, TypeSymbol.IntMatrix),
+
             (TokenType.Ampersand, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.BitwiseAnd, left, right, TypeSymbol.Int),
+            (TokenType.Ampersand, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.BitwiseAnd, left, right, TypeSymbol.IntArray),
+            (TokenType.Ampersand, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.BitwiseAnd, left, right, TypeSymbol.IntMatrix),
+
             (TokenType.Pipe, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.BitwiseOr, left, right, TypeSymbol.Int),
+            (TokenType.Pipe, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.BitwiseOr, left, right, TypeSymbol.IntArray),
+            (TokenType.Pipe, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.BitwiseOr, left, right, TypeSymbol.IntMatrix),
+
             (TokenType.Caret, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.BitwiseXor, left, right, TypeSymbol.Int),
+            (TokenType.Caret, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.BitwiseXor, left, right, TypeSymbol.IntArray),
+            (TokenType.Caret, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.BitwiseXor, left, right, TypeSymbol.IntMatrix),
+
             (TokenType.LessLess, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.LeftShift, left, right, TypeSymbol.Int),
+            (TokenType.LessLess, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.LeftShift, left, right, TypeSymbol.IntArray),
+            (TokenType.LessLess, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.LeftShift, left, right, TypeSymbol.IntMatrix),
+
             (TokenType.GreaterGreater, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.RightShift, left, right, TypeSymbol.Int),
+            (TokenType.GreaterGreater, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.RightShift, left, right, TypeSymbol.IntArray),
+            (TokenType.GreaterGreater, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.RightShift, left, right, TypeSymbol.IntMatrix),
+
             (TokenType.Greater, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Greater, left, right, TypeSymbol.Bool),
+            (TokenType.Greater, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Greater, left, right, TypeSymbol.BoolArray),
+            (TokenType.Greater, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Greater, left, right, TypeSymbol.BoolMatrix),
+
             (TokenType.GreaterEqual, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.GreaterEqual, left, right, TypeSymbol.Bool),
+            (TokenType.GreaterEqual, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.GreaterEqual, left, right, TypeSymbol.BoolArray),
+            (TokenType.GreaterEqual, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.GreaterEqual, left, right, TypeSymbol.BoolMatrix),
+
             (TokenType.Less, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Less, left, right, TypeSymbol.Bool),
+            (TokenType.Less, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Less, left, right, TypeSymbol.BoolArray),
+            (TokenType.Less, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Less, left, right, TypeSymbol.BoolMatrix),
+
             (TokenType.LessEqual, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.LessEqual, left, right, TypeSymbol.Bool),
+            (TokenType.LessEqual, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.LessEqual, left, right, TypeSymbol.BoolArray),
+            (TokenType.LessEqual, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.LessEqual, left, right, TypeSymbol.BoolMatrix),
+
+            (TokenType.EqualEqual, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Equality, left, right, TypeSymbol.Bool),
+            (TokenType.EqualEqual, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Equality, left, right, TypeSymbol.BoolArray),
+            (TokenType.EqualEqual, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Equality, left, right, TypeSymbol.BoolMatrix),
+            
+            (TokenType.EqualEqual, TypeKind.Bool, TypeKind.Bool) => new BoundBinaryOperator(BoundBinaryOperatorKind.Equality, left, right, TypeSymbol.Bool),
+            (TokenType.EqualEqual, TypeKind.Bool or TypeKind.BoolArray, TypeKind.Bool or TypeKind.BoolArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Equality, left, right, TypeSymbol.BoolArray),
+            (TokenType.EqualEqual, TypeKind.Bool or TypeKind.BoolMatrix, TypeKind.Bool or TypeKind.BoolMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Equality, left, right, TypeSymbol.BoolMatrix),
+
+            (TokenType.BangEqual, TypeKind.Int, TypeKind.Int) => new BoundBinaryOperator(BoundBinaryOperatorKind.Inequality, left, right, TypeSymbol.Bool),
+            (TokenType.BangEqual, TypeKind.Int or TypeKind.IntArray, TypeKind.Int or TypeKind.IntArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Inequality, left, right, TypeSymbol.BoolArray),
+            (TokenType.BangEqual, TypeKind.Int or TypeKind.IntMatrix, TypeKind.Int or TypeKind.IntMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Inequality, left, right, TypeSymbol.BoolMatrix),
+
+            (TokenType.BangEqual, TypeKind.Bool, TypeKind.Bool) => new BoundBinaryOperator(BoundBinaryOperatorKind.Inequality, left, right, TypeSymbol.Bool),
+            (TokenType.BangEqual, TypeKind.Bool or TypeKind.BoolArray, TypeKind.Bool or TypeKind.BoolArray) => new BoundBinaryOperator(BoundBinaryOperatorKind.Inequality, left, right, TypeSymbol.BoolArray),
+            (TokenType.BangEqual, TypeKind.Bool or TypeKind.BoolMatrix, TypeKind.Bool or TypeKind.BoolMatrix) => new BoundBinaryOperator(BoundBinaryOperatorKind.Inequality, left, right, TypeSymbol.BoolMatrix),
+
             _ => throw new InvalidOperationException($"Binary operator '{@operator.Type}' is not defined for types '{left}' and '{right}'.")
         };
 }
