@@ -11,6 +11,7 @@ internal sealed class Scanner
         ["true"]  = (TokenType.TrueKeyword, true),
         ["false"] = (TokenType.FalseKeyword, false),
         ["Bool"]  = (TokenType.BoolKeyword, null),
+        ["Char"]  = (TokenType.CharKeyword, null),
         ["Int"]   = (TokenType.IntKeyword, null),
     };
     
@@ -219,6 +220,45 @@ internal sealed class Scanner
 
                     tokens.Add(new Token(TokenType.Identifier, text));
                     break;
+                
+                case '\'':
+                    var charStartPosition = _position;
+                    
+                    if (Match('\\'))
+                    {
+                        if (Match('n'))
+                        {
+                            Consume('\'');
+                            tokens.Add(new Token(TokenType.Char, "'\n'", '\n'));
+                            _position++;
+                            break;
+                        }
+                    
+                        if (Match('r'))
+                        {
+                            Consume('\'');
+                            tokens.Add(new Token(TokenType.Char, "'\r'", '\r'));
+                            _position++;
+                            break;
+                        }
+                        
+                        if (Match('t'))
+                        {
+                            Consume('\'');
+                            tokens.Add(new Token(TokenType.Char, "'\t'", '\t'));
+                            _position++;
+                            break;
+                        }
+                        
+                        throw new InvalidOperationException($"Unknown escape sequence: '\\{Current}'");
+                    }
+
+                    _position++;
+                    var currentChar = Current; 
+                    Consume('\'');
+                    tokens.Add(new Token(TokenType.Char, _source[charStartPosition..(_position + 1)], currentChar));
+                    _position++;
+                    break;
                 default:
                     throw new InvalidOperationException($"Unknown character: '{_source[_position]}'");
             }
@@ -237,6 +277,14 @@ internal sealed class Scanner
         _position++;
         return true;
     }
+    
+    private void Consume(char expected)
+    {
+        if (Next != expected)
+            throw new InvalidOperationException($"Expected '{expected}' but found '{Next}'");
+        
+        _position++;
+    }
 
     private bool IsEndOfFile => _position >= _source.Length;
     
@@ -251,6 +299,8 @@ internal enum TokenType
     // Literals
     Identifier,
     Number,
+    Char,
+    String,
     
     // Symbols
     Ampersand,
@@ -290,6 +340,7 @@ internal enum TokenType
     // Keywords
     BoolKeyword,
     CaseKeyword,
+    CharKeyword,
     FalseKeyword,
     FnKeyword,
     IntKeyword,

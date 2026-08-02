@@ -13,4 +13,23 @@ public class LiteralsTests
     [InlineData("false", false)]
     public void Booleans(string code, bool expected) =>
         Assert.Equal(expected, Interpreter.Evaluate(code));
+
+    public class Chars
+    {
+        [Theory]
+        [InlineData("'a'", 'a')]
+        [InlineData("'7'", '7')]
+        [InlineData("' '", ' ')]
+        public void Unescaped(string code, char expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+        
+        [Theory]
+        [InlineData("'\n'", '\n')]
+        [InlineData("'\r'", '\r')]
+        [InlineData("'\t'", '\t')]
+        public void Escaped(string code, char expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+    }
+    
+    
 }

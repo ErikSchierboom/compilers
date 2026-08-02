@@ -363,6 +363,9 @@ internal enum TypeKind
     Bool,
     BoolArray,
     BoolMatrix,
+    Char,
+    CharArray,
+    CharMatrix,
     Int,
     IntArray,
     IntMatrix,
@@ -375,6 +378,9 @@ internal sealed record TypeSymbol(TypeKind Kind, string Name) : Symbol(Name)
     public static readonly TypeSymbol Bool       = new(TypeKind.Bool, "Bool");
     public static readonly TypeSymbol BoolArray  = new(TypeKind.BoolArray, "Bool[]");
     public static readonly TypeSymbol BoolMatrix = new(TypeKind.BoolMatrix, "Bool[][]");
+    public static readonly TypeSymbol Char       = new(TypeKind.Char, "Char");
+    public static readonly TypeSymbol CharArray  = new(TypeKind.CharArray, "Char[]");
+    public static readonly TypeSymbol CharMatrix = new(TypeKind.CharMatrix, "Char[][]");
     public static readonly TypeSymbol Int        = new(TypeKind.Int, "Int");
     public static readonly TypeSymbol IntArray   = new(TypeKind.IntArray, "Int[]");
     public static readonly TypeSymbol IntMatrix  = new(TypeKind.IntMatrix, "Int[][]");
@@ -385,6 +391,8 @@ internal sealed record TypeSymbol(TypeKind Kind, string Name) : Symbol(Name)
     {
         [Bool] = BoolArray,
         [BoolArray] = BoolMatrix,
+        [Char] = CharArray,
+        [CharArray] = CharMatrix,
         [Int] = IntArray,
         [IntArray] = IntMatrix,
     };
@@ -455,6 +463,7 @@ internal sealed record BoundConstant(object Value)
     {
         int => TypeSymbol.Int,
         bool => TypeSymbol.Bool,
+        char => TypeSymbol.Char,
         _ => throw new NotImplementedException()
     };
 }
