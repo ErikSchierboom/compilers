@@ -1,0 +1,105 @@
+﻿namespace Arya;
+
+internal sealed class Scanner
+{
+    private readonly string _source;
+    private int _position;
+
+    private Scanner(string source) => _source = source;
+    
+    public static List<Token> Scan(string source) => new Scanner(source).Scan();
+
+    private List<Token> Scan()
+    {
+        var tokens = new List<Token>();
+        
+        while (!IsEndOfFile)
+        {
+            switch (Current)
+            {
+                case ' ' or '\n' or '\r' or '\t':
+                    Advance();
+                    break;
+                case '+':
+                    Advance();
+                    
+                    if (Match('+'))
+                        tokens.Add(new Token(TokenType.PlusPlus, "++"));
+                    else
+                        tokens.Add(new Token(TokenType.Plus, "+"));
+                    break;
+                case '*':
+                    Advance();
+                    tokens.Add(new Token(TokenType.Star, "*"));
+                    break;
+                case '[':
+                    Advance();
+                    tokens.Add(new Token(TokenType.OpenBracket, "["));
+                    break;
+                case ']':
+                    Advance();
+                    tokens.Add(new Token(TokenType.CloseBracket, "]"));
+                    break;
+                case >= '0' and <= '9':
+                    var numberStartPosition = _position;
+                    
+                    while (Current is >= '0' and <= '9')
+                        Advance();
+
+                    var numberString = _source[numberStartPosition.._position];
+                    var number = int.Parse(numberString);
+
+                    tokens.Add(new Token(TokenType.Number, numberString, number));
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unknown character: '{_source[_position]}'");
+            }
+        }
+        
+        tokens.Add(new Token(TokenType.Eof, ""));
+        
+        return tokens;
+    }
+    
+    private bool Match(char expected)
+    {
+        if (Current != expected)
+            return false;
+        
+        Advance();
+        return true;
+    }
+    
+    private void Consume(char expected)
+    {
+        if (Current != expected)
+            throw new InvalidOperationException($"Expected '{expected}' but found '{Next}'");
+        
+        Advance();
+    }
+    
+    private void Advance() => _position++;
+
+    private bool IsEndOfFile => _position >= _source.Length;
+    
+    private char Current => _position < _source.Length ? _source[_position] : '\0';
+    private char Next => _position < _source.Length - 1 ? _source[_position + 1] : '\0';
+}
+
+internal sealed record Token(TokenType Type, string Text, object? Literal = null);
+
+internal enum TokenType
+{
+    // Literals
+    Number,
+    
+    // Symbols
+    OpenBracket,
+    CloseBracket,
+    Plus,
+    PlusPlus,
+    Star,
+
+    // Synthetic
+    Eof,
+}

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Arya.Tests/Arya.Tests.csproj" />
+  <Project Path="Arya/Arya.csproj" />
+</Solution>
