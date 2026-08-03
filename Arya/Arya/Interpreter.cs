@@ -43,6 +43,8 @@ public class Interpreter
             case LiteralExpression literal:
                 // TODO: check for type
                 return new Array([(int)literal.Value.Literal!], []);
+            case ParenthesizedExpression parenthesized:
+                return Evaluate(parenthesized.Expression);
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }

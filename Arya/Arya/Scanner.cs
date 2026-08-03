@@ -40,6 +40,14 @@ internal sealed class Scanner
                     Advance();
                     tokens.Add(new Token(TokenType.CloseBracket, "]"));
                     break;
+                case '(':
+                    Advance();
+                    tokens.Add(new Token(TokenType.OpenParen, "("));
+                    break;
+                case ')':
+                    Advance();
+                    tokens.Add(new Token(TokenType.CloseParen, ")"));
+                    break;
                 case >= '0' and <= '9':
                     var numberStartPosition = _position;
                     
@@ -96,6 +104,8 @@ internal enum TokenType
     // Symbols
     OpenBracket,
     CloseBracket,
+    OpenParen,
+    CloseParen,
     Plus,
     PlusPlus,
     Star,

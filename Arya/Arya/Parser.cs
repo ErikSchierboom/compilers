@@ -6,6 +6,7 @@ internal enum Precedence
     Addition,     // +
     Product,      // *
     Array,        // []
+    Call,         // ()
     Primary
 }
 
@@ -30,6 +31,7 @@ internal class Parser
             [TokenType.Star] = new(null, ParseBinaryExpression, Precedence.Product),
             [TokenType.Number] = new(ParseNumber, null, Precedence.Primary),
             [TokenType.OpenBracket] = new(ParseArray, null, Precedence.Array),
+            [TokenType.OpenParen] = new(ParseParenthesized, null, Precedence.Call),
         };
     }
 
@@ -88,6 +90,13 @@ internal class Parser
         
         return new ArrayLiteralExpression([..elements]);
     }
+    
+    private Expression ParseParenthesized()
+    {
+        var expr = ParseExpression();
+        Consume(TokenType.CloseParen);
+        return new ParenthesizedExpression(expr);
+    }
 
     private bool IsEndOfFile => Current.Type == TokenType.Eof; 
     
@@ -128,4 +137,5 @@ internal abstract record Expression;
 internal sealed record LiteralExpression(Token Value) : Expression;
 internal sealed record ArrayLiteralExpression(Expression[] Elements) : Expression;
 internal sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
+internal sealed record ParenthesizedExpression(Expression Expression) : Expression;
 
