@@ -35,14 +35,15 @@ public class Interpreter
                 
                 switch (binary.Operator.Type)
                 {
-                    case TokenType.Plus: return Array.ApplyBinary(left, right, (a, b) => a + b);
-                    case TokenType.Star: return Array.ApplyBinary(left, right, (a, b) => a * b);
+                    case TokenType.Plus: return left.Add(right);
+                    case TokenType.Star: return left.Multiply(right);
+                    case TokenType.PlusPlus: return left.Append(right);
                     default:
                         throw new ArgumentOutOfRangeException(nameof(binary.Operator.Type));
                 }
             case LiteralExpression literal:
                 // TODO: check for type
-                return new Array([(int)literal.Value.Literal!], []);
+                return new Array((int)literal.Value.Literal!);
             case ParenthesizedExpression parenthesized:
                 return Evaluate(parenthesized.Expression);
             default:

@@ -2,6 +2,20 @@ namespace Arya.Tests;
 
 public class ArrayTests
 {
+    public static TheoryData<string, Array> AppendTestData() =>
+        new()
+        {
+            { "1 ++ 2", new Array([1, 2], [2]) },
+            { "1 ++ [2 3]", new Array([1, 2, 3], [3]) },
+            { "[4 5] ++ 6", new Array([4, 5, 6], [3]) },
+            { "[7 8] ++ [9 10]", new Array([7, 8, 9, 10], [4]) },
+            { "88 ++ 123 ++ 6", new Array([88, 123, 6], [3]) }
+        };
+    
+    [Theory, MemberData(nameof(AppendTestData))]
+    public void Append(string code, Array expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
+    
     public class Equality
     {
         [Fact]

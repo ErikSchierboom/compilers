@@ -28,6 +28,7 @@ internal class Parser
         {
             [TokenType.Eof] = new(null, null, Precedence.None),
             [TokenType.Plus] = new(null, ParseBinaryExpression, Precedence.Addition),
+            [TokenType.PlusPlus] = new(null, ParseBinaryExpression, Precedence.Addition),
             [TokenType.Star] = new(null, ParseBinaryExpression, Precedence.Product),
             [TokenType.Number] = new(ParseNumber, null, Precedence.Primary),
             [TokenType.OpenBracket] = new(ParseArray, null, Precedence.Array),
@@ -59,7 +60,10 @@ internal class Parser
         
         while (precedence < CurrentPrecedence)
         {
-            var parseInfixFn = CurrentParseRule.Infix ?? throw new InvalidOperationException("Expected infix");
+            var parseInfixFn = CurrentParseRule.Infix;
+            if (parseInfixFn is null)
+                break;
+            
             Consume();
             left = parseInfixFn(left);
         }
@@ -81,10 +85,8 @@ internal class Parser
     private Expression ParseArray()
     {
         var elements = new List<Expression>();
-        while (Current.Type != TokenType.CloseBracket)
-        {
+        while (!IsEndOfFile && Current.Type != TokenType.CloseBracket)
             elements.Add(ParseExpression());
-        }
 
         Consume(TokenType.CloseBracket);
         
