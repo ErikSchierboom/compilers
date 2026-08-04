@@ -19,12 +19,13 @@ public sealed record Array(params Value[] Elements) : Value
         if (left.Elements.Length != right.Elements.Length)
             throw new ArgumentException("Arrays must have the same length", nameof(left));
 
-        var mappedElements = left.Elements.Zip(right.Elements, (l, r) => (l, r) switch
-        {
-            (Integer li, Integer ri) => new Integer(operation(li.Value, ri.Value)),
-            (Array la, Array ra) => (Value)BinaryOp(la, ra, operation),
-            _ => throw new ArgumentOutOfRangeException()
-        });
+        var mappedElements = left.Elements.Zip(right.Elements, 
+            (l, r) => (l, r) switch
+            {
+                (Integer li, Integer ri) => new Integer(operation(li.Value, ri.Value)),
+                (Array la, Array ra) => (Value)BinaryOp(la, ra, operation),
+                _ => throw new ArgumentOutOfRangeException()
+            });
 
         return new Array([.. mappedElements]);
     }
