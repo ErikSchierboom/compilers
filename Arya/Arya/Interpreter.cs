@@ -6,15 +6,15 @@ public class Interpreter
 
     private Interpreter(List<Expression> expressions) => _expressions = expressions;
 
-    public static Array? Evaluate(string code)
+    public static Value? Evaluate(string code)
     {
         var expressions = Parser.Parse(code);
         return new Interpreter(expressions).Evaluate();
     }
 
-    private Array? Evaluate()
+    private Value? Evaluate()
     {
-        Array? result = null;
+        Value? result = null;
         
         foreach (var expression in _expressions)
             result = Evaluate(expression);
@@ -22,28 +22,27 @@ public class Interpreter
         return result;
     }
 
-    private Array Evaluate(Expression expression)
+    private Value Evaluate(Expression expression)
     {
         switch (expression)
         {
             case ArrayLiteralExpression arrayLiteral:
                 var elements = arrayLiteral.Elements.Select(Evaluate).ToArray();
-                return Array.Merge(elements);
+                return new Array(elements);
             case BinaryExpression binary:
                 var left = Evaluate(binary.Left);
                 var right = Evaluate(binary.Right);
                 
-                switch (binary.Operator.Type)
+                switch (binary.Operator.Type, left, right)
                 {
-                    case TokenType.Plus: return left.Add(right);
-                    case TokenType.Star: return left.Multiply(right);
-                    case TokenType.PlusPlus: return left.Append(right);
+                    case (TokenType.Plus, Integer l, Integer r): return new Integer(l.Value + r.Value);
+                    case (TokenType.Star, Integer l, Integer r): return new Integer(l.Value * r.Value);
+                    case (TokenType.PlusPlus, Integer l, Integer r): return new Integer(l.Value + r.Value);
                     default:
                         throw new ArgumentOutOfRangeException(nameof(binary.Operator.Type));
                 }
             case LiteralExpression literal:
-                // TODO: check for type
-                return new Array((int)literal.Value.Literal!);
+                return new Integer((int)literal.Value.Literal!);
             case ParenthesizedExpression parenthesized:
                 return Evaluate(parenthesized.Expression);
             default:
