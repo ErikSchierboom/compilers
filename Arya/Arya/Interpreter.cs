@@ -35,9 +35,18 @@ public class Interpreter
                 
                 switch (binary.Operator.Type, left, right)
                 {
-                    case (TokenType.Plus, Integer l, Integer r): return new Integer(l.Value + r.Value);
-                    case (TokenType.Star, Integer l, Integer r): return new Integer(l.Value * r.Value);
-                    case (TokenType.PlusPlus, Integer l, Integer r): return new Integer(l.Value + r.Value);
+                    case (TokenType.Plus, Integer l, Integer r): 
+                        return new Integer(l.Value + r.Value);
+                    case (TokenType.Plus, Integer l, Array r): 
+                        return Array.BinaryOp(l, r, (li, ri) => li + ri);
+                    case (TokenType.Plus, Array l, Integer r): 
+                        return Array.BinaryOp(l, r, (li, ri) => li + ri);
+                    case (TokenType.Plus, Array l, Array r): 
+                        return Array.BinaryOp(l, r, (li, ri) => li + ri);
+                    case (TokenType.Star, Integer l, Integer r): 
+                        return new Integer(l.Value * r.Value);
+                    case (TokenType.PlusPlus, Integer l, Integer r): 
+                        return new Integer(l.Value + r.Value);
                     default:
                         throw new ArgumentOutOfRangeException(nameof(binary.Operator.Type));
                 }

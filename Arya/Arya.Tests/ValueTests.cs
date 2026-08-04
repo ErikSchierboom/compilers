@@ -70,7 +70,7 @@ public class ValueTests
             [Fact]
             public void EqualWhenSameInstance()
             {
-                var array = new Array([new Integer(1), new Integer(2), new Integer(3)]);
+                var array = new Array(new Integer(1), new Integer(2), new Integer(3));
 
                 Assert.Equal(array, array);
             }
@@ -78,8 +78,8 @@ public class ValueTests
             [Fact]
             public void EqualWhenElementsAreEqualAndInSameOrder()
             {
-                var array1 = new Array([new Integer(1), new Integer(2), new Integer(3)]);
-                var array2 = new Array([new Integer(1), new Integer(2), new Integer(3)]);
+                var array1 = new Array(new Integer(1), new Integer(2), new Integer(3));
+                var array2 = new Array(new Integer(1), new Integer(2), new Integer(3));
 
                 Assert.Equal(array1, array2);
             }
@@ -87,8 +87,8 @@ public class ValueTests
             [Fact]
             public void UnequalWhenSameNumberOfElementsButElementsAreUnequal()
             {
-                var array1 = new Array([new Integer(1), new Integer(2), new Integer(3)]);
-                var array2 = new Array([new Integer(4), new Integer(5), new Integer(6)]);
+                var array1 = new Array(new Integer(1), new Integer(2), new Integer(3));
+                var array2 = new Array(new Integer(4), new Integer(5), new Integer(6));
 
                 Assert.NotEqual(array1, array2);
             }
@@ -96,8 +96,8 @@ public class ValueTests
             [Fact]
             public void UnequalWhenElementsAreEqualButInDifferentOrder()
             {
-                var array1 = new Array([new Integer(1), new Integer(2), new Integer(3)]);
-                var array2 = new Array([new Integer(3), new Integer(2), new Integer(1)]);
+                var array1 = new Array(new Integer(1), new Integer(2), new Integer(3));
+                var array2 = new Array(new Integer(3), new Integer(2), new Integer(1));
 
                 Assert.NotEqual(array1, array2);
             }
@@ -105,8 +105,8 @@ public class ValueTests
             [Fact]
             public void UnequalWhenElementsAreEqualButFewer()
             {
-                var array1 = new Array([new Integer(1), new Integer(2), new Integer(3)]);
-                var array2 = new Array([new Integer(1), new Integer(2)]);
+                var array1 = new Array(new Integer(1), new Integer(2), new Integer(3));
+                var array2 = new Array(new Integer(1), new Integer(2));
 
                 Assert.NotEqual(array1, array2);
             }
@@ -114,8 +114,8 @@ public class ValueTests
             [Fact]
             public void UnequalWhenElementsAreEqualButMore()
             {
-                var array1 = new Array([new Integer(1), new Integer(2), new Integer(3)]);
-                var array2 = new Array([new Integer(1), new Integer(2), new Integer(3), new Integer(4)]);
+                var array1 = new Array(new Integer(1), new Integer(2), new Integer(3));
+                var array2 = new Array(new Integer(1), new Integer(2), new Integer(3), new Integer(4));
 
                 Assert.NotEqual(array1, array2);
             }
@@ -126,7 +126,7 @@ public class ValueTests
             [Fact]
             public void SameHashCodeForSameInstance()
             {
-                var array = new Array([new Integer(1), new Integer(2), new Integer(3)]);
+                var array = new Array(new Integer(1), new Integer(2), new Integer(3));
 
                 Assert.Equal(array.GetHashCode(), array.GetHashCode());
             }
@@ -134,8 +134,8 @@ public class ValueTests
             [Fact]
             public void SameHashCodeWhenElementsAreEqual()
             {
-                var array1 = new Array([new Integer(1), new Integer(2), new Integer(3)]);
-                var array2 = new Array([new Integer(1), new Integer(2), new Integer(3)]);
+                var array1 = new Array(new Integer(1), new Integer(2), new Integer(3));
+                var array2 = new Array(new Integer(1), new Integer(2), new Integer(3));
 
                 Assert.Equal(array1.GetHashCode(), array2.GetHashCode());
             }
@@ -143,8 +143,8 @@ public class ValueTests
             [Fact]
             public void DifferentHashCodeWhenElementsAreDifferent()
             {
-                var array1 = new Array([new Integer(1), new Integer(2), new Integer(3)]);
-                var array2 = new Array([new Integer(4), new Integer(5)]);
+                var array1 = new Array(new Integer(1), new Integer(2), new Integer(3));
+                var array2 = new Array(new Integer(4), new Integer(5));
 
                 Assert.NotEqual(array1.GetHashCode(), array2.GetHashCode());
             }
@@ -152,8 +152,8 @@ public class ValueTests
             [Fact]
             public void DifferentHashCodeWhenElementsAreEqualButFewer()
             {
-                var array1 = new Array([new Integer(1), new Integer(2), new Integer(3)]);
-                var array2 = new Array([new Integer(1), new Integer(2)]);
+                var array1 = new Array(new Integer(1), new Integer(2), new Integer(3));
+                var array2 = new Array(new Integer(1), new Integer(2));
 
                 Assert.NotEqual(array1.GetHashCode(), array2.GetHashCode());
             }
@@ -161,8 +161,8 @@ public class ValueTests
             [Fact]
             public void DifferentHashCodeWhenElementsAreEqualButMore()
             {
-                var array1 = new Array([new Integer(1), new Integer(2), new Integer(3)]);
-                var array2 = new Array([new Integer(1), new Integer(2), new Integer(3), new Integer(4)]);
+                var array1 = new Array(new Integer(1), new Integer(2), new Integer(3));
+                var array2 = new Array(new Integer(1), new Integer(2), new Integer(3), new Integer(4));
 
                 Assert.NotEqual(array1.GetHashCode(), array2.GetHashCode());
             }
@@ -170,8 +170,8 @@ public class ValueTests
             [Fact]
             public void DifferentHashCodeWhenElementAreEqualButOrderIsDifferent()
             {
-                var array1 = new Array([new Integer(1), new Integer(2), new Integer(3)]);
-                var array2 = new Array([new Integer(3), new Integer(2), new Integer(1)]);
+                var array1 = new Array(new Integer(1), new Integer(2), new Integer(3));
+                var array2 = new Array(new Integer(3), new Integer(2), new Integer(1));
 
                 Assert.NotEqual(array1.GetHashCode(), array2.GetHashCode());
             }
