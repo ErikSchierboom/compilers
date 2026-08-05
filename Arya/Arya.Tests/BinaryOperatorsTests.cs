@@ -38,7 +38,24 @@ public class BinaryOperatorsTests
         public void Strings(string code, Value expected) =>
             Assert.Equal(expected, Interpreter.Evaluate(code));
     }
-    
+
+    public class Subtraction
+    {
+        public static readonly TheoryData<string, Value> IntegersTestData =
+            new()
+            {
+                { "2 - 1", new Integer(1) },
+                { "1 - []", new Array() },
+                { "5 - [2 3 4]", new Array(new Integer(3), new Integer(2), new Integer(1)) },
+                { "[7 9] - [2 6]", new Array(new Integer(5), new Integer(3)) },
+                { "[[5] [6 7]] - 2", new Array(new Array(new Integer(3)), new Array(new Integer(4), new Integer(5))) }
+            };
+
+        [Theory, MemberData(nameof(IntegersTestData))]
+        public void Integers(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+    }
+
     public static readonly TheoryData<string, Value> MultiplicationTestData =
         new()
         {
