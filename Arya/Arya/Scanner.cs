@@ -1,8 +1,11 @@
-﻿namespace Arya;
+﻿using System.Text;
+
+namespace Arya;
 
 internal sealed class Scanner
 {
     private readonly string _source;
+    private readonly StringBuilder _stringValue = new();
     private int _position;
 
     private Scanner(string source) => _source = source;
@@ -59,6 +62,48 @@ internal sealed class Scanner
 
                     tokens.Add(new Token(TokenType.Number, numberString, number));
                     break;
+                case '"':
+                    var stringStartPosition = _position;
+                    Advance();
+                    
+                    _stringValue.Clear();
+                    while (!Match('"'))
+                    {
+                        if (Match('\\'))
+                        {
+                            if (Match('n'))
+                            {
+                                _stringValue.Append('\n');
+                                continue;
+                            }
+                    
+                            if (Match('r'))
+                            {
+                                _stringValue.Append('\r');
+                                continue;
+                            }
+                        
+                            if (Match('t'))
+                            {
+                                _stringValue.Append('\t');
+                                continue;
+                            }
+                        
+                            if (Match('\\'))
+                            {
+                                _stringValue.Append('\\');
+                                continue;
+                            }
+                        
+                            throw new InvalidOperationException($"Unknown escape sequence: '\\{Current}'");
+                        }
+                        
+                        _stringValue.Append(Current);
+                        Advance();
+                    }
+                   
+                    tokens.Add(new Token(TokenType.String, _source[stringStartPosition.._position], _stringValue.ToString()));
+                    break;
                 default:
                     throw new InvalidOperationException($"Unknown character: '{_source[_position]}'");
             }
@@ -100,6 +145,7 @@ internal enum TokenType
 {
     // Literals
     Number,
+    String,
     
     // Symbols
     OpenBracket,

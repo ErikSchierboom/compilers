@@ -15,6 +15,54 @@ public class LiteralsTests
         public void Integers(string code, Value expected) =>
             Assert.Equal(expected, Interpreter.Evaluate(code));
     }
+    
+    public class Strings
+    {
+        public static TheoryData<string, Value> UnescapedTestData() =>
+            new()
+            {
+                { """
+                  ""
+                  """, new String("") },
+                { """
+                  "a"
+                  """, new String("a") },
+                { """
+                  "2"
+                  """, new String("2") },
+                { """
+                  "hello there 123!"
+                  """, new String("hello there 123!") }
+            };
+    
+        [Theory, MemberData(nameof(UnescapedTestData))]
+        public void Unescaped(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+        
+        public static TheoryData<string, Value> EscapedTestData() =>
+            new()
+            {
+                { """
+                  "\t"
+                  """, new String("\t") },
+                { """
+                  "\r"
+                  """, new String("\r") },
+                { """
+                  "\n"
+                  """, new String("\n") },
+                { """
+                  "\\"
+                  """, new String("\\") },
+                { """
+                  "hey\tyou!\r\n"
+                  """, new String("hey\tyou!\r\n") },
+            };
+    
+        [Theory, MemberData(nameof(EscapedTestData))]
+        public void Escaped(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+    }
 
     public class Arrays
     {

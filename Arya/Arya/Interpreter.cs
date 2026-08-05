@@ -57,7 +57,12 @@ public class Interpreter
                         throw new ArgumentOutOfRangeException(nameof(binary.Operator.Type));
                 }
             case LiteralExpression literal:
-                return new Integer((int)literal.Value.Literal!);
+                return literal.Value.Type switch
+                {
+                    TokenType.String => new String((string)literal.Value.Literal!),
+                    TokenType.Number => new Integer((int)literal.Value.Literal!),
+                    _ => throw new ArgumentOutOfRangeException(nameof(literal.Value.Type))
+                };
             case ParenthesizedExpression parenthesized:
                 return Evaluate(parenthesized.Expression);
             default:
