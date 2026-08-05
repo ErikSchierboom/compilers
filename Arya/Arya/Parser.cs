@@ -27,9 +27,9 @@ internal class Parser
         _rules = new()
         {
             [TokenType.Eof] = new(null, null, Precedence.None),
-            [TokenType.Plus] = new(null, ParseBinaryExpression, Precedence.Addition),
-            [TokenType.PlusPlus] = new(null, ParseBinaryExpression, Precedence.Addition),
-            [TokenType.Star] = new(null, ParseBinaryExpression, Precedence.Product),
+            [TokenType.Plus] = new(ParseUnary, ParseBinary, Precedence.Addition),
+            [TokenType.PlusPlus] = new(null, ParseBinary, Precedence.Addition),
+            [TokenType.Star] = new(null, ParseBinary, Precedence.Product),
             [TokenType.Number] = new(ParseNumber, null, Precedence.Primary),
             [TokenType.String] = new(ParseString, null, Precedence.Primary),
             [TokenType.OpenBracket] = new(ParseArray, null, Precedence.Array),
@@ -72,7 +72,9 @@ internal class Parser
         return left;
     }
     
-    private Expression ParseBinaryExpression(Expression left)
+    private UnaryExpression ParseUnary() => new(Previous, ParseExpression());
+
+    private BinaryExpression ParseBinary(Expression left)
     {
         var operatorToken = Previous;
         var rule = _rules[operatorToken.Type];
@@ -81,10 +83,10 @@ internal class Parser
         return new BinaryExpression(left, operatorToken, right);
     }
 
-    private Expression ParseNumber() => new LiteralExpression(Previous);
-    private Expression ParseString() => new LiteralExpression(Previous);
+    private LiteralExpression ParseNumber() => new(Previous);
+    private LiteralExpression ParseString() => new(Previous);
 
-    private Expression ParseArray()
+    private ArrayLiteralExpression ParseArray()
     {
         var elements = new List<Expression>();
         while (!IsEndOfFile && Current.Type != TokenType.CloseBracket)
@@ -92,14 +94,14 @@ internal class Parser
 
         Consume(TokenType.CloseBracket);
         
-        return new ArrayLiteralExpression([..elements]);
+        return new([..elements]);
     }
     
-    private Expression ParseParenthesized()
+    private ParenthesizedExpression ParseParenthesized()
     {
         var expr = ParseExpression();
         Consume(TokenType.CloseParen);
-        return new ParenthesizedExpression(expr);
+        return new(expr);
     }
 
     private bool IsEndOfFile => Current.Type == TokenType.Eof; 
@@ -140,6 +142,7 @@ internal class Parser
 internal abstract record Expression;
 internal sealed record LiteralExpression(Token Value) : Expression;
 internal sealed record ArrayLiteralExpression(Expression[] Elements) : Expression;
+internal sealed record UnaryExpression(Token Operator, Expression Operand) : Expression;
 internal sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
 internal sealed record ParenthesizedExpression(Expression Expression) : Expression;
 

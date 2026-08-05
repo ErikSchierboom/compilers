@@ -29,6 +29,16 @@ public class Interpreter
             case ArrayLiteralExpression arrayLiteral:
                 var elements = arrayLiteral.Elements.Select(Evaluate).ToArray();
                 return new Array(elements);
+            case UnaryExpression unary:
+                var operand = Evaluate(unary.Operand);
+                switch (unary.Operator.Type, operand)
+                {
+                    case (TokenType.Plus, Integer):
+                    case (TokenType.Plus, Array):
+                        return operand;
+                    default:
+                        throw new InvalidOperationException("Invalid unary operator");
+                }
             case BinaryExpression binary:
                 var left = Evaluate(binary.Left);
                 var right = Evaluate(binary.Right);

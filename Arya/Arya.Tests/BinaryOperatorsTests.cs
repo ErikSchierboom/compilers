@@ -1,6 +1,6 @@
 ﻿namespace Arya.Tests;
 
-public class OperatorsTests
+public class BinaryOperatorsTests
 {
     public class Addition
     {
