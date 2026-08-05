@@ -4,7 +4,7 @@ public class LiteralsTests
 {
     public class Numbers
     {
-        public static TheoryData<string, Value> IntegersTestData =
+        public static readonly TheoryData<string, Value> IntegersTestData =
             new()
             {
                 { "5", new Integer(5) },
@@ -18,7 +18,7 @@ public class LiteralsTests
     
     public class Strings
     {
-        public static TheoryData<string, Value> UnescapedTestData =
+        public static readonly TheoryData<string, Value> UnescapedTestData =
             new()
             {
                 { """
@@ -39,7 +39,7 @@ public class LiteralsTests
         public void Unescaped(string code, Value expected) =>
             Assert.Equal(expected, Interpreter.Evaluate(code));
         
-        public static TheoryData<string, Value> EscapedTestData =
+        public static readonly TheoryData<string, Value> EscapedTestData =
             new()
             {
                 { """
@@ -66,7 +66,7 @@ public class LiteralsTests
 
     public class Arrays
     {
-        public static TheoryData<string, Array> VectorsTestData =
+        public static readonly TheoryData<string, Array> VectorsTestData =
             new()
             {
                 { "[]", new Array() },
@@ -78,7 +78,7 @@ public class LiteralsTests
         public void Vectors(string code, Array expected) =>
             Assert.Equal(expected, Interpreter.Evaluate(code));
         
-        public static TheoryData<string, Array> MatricesTestData =
+        public static readonly TheoryData<string, Array> MatricesTestData =
             new()
             {
                 { "[[]]", new Array(new Array()) },
