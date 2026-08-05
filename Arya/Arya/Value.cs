@@ -8,6 +8,15 @@ public sealed record Integer(int Value) : Value;
 
 public sealed record Array(params Value[] Elements) : Value
 {
+    public static Array Append(Array left, Array right) =>
+        new([.. left.Elements, .. right.Elements]);
+    
+    public static Array Append(Array left, Value right) =>
+        new([.. left.Elements.Append(right)]);
+    
+    public static Array Append(Value left, Array right) =>
+        new([.. right.Elements.Prepend(left)]);
+
     public static Array BinaryOp(Array left, Integer right, Func<int, int, int> operation) =>
         left.MapIntegers(li => new Integer(operation(li, right.Value)));
     

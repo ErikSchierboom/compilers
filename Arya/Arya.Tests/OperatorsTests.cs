@@ -33,6 +33,21 @@ public class OperatorsTests
             { "(2 + 3) * 4", new Integer(20) }
         };
     
+    public static TheoryData<string, Value> AppendTestData() =>
+        new()
+        {
+            { "[] ++ []", new Array() },
+            { "[1] ++ []", new Array(new Integer(1)) },
+            { "[] ++ [1 2]", new Array(new Integer(1), new Integer(2)) },
+            { "[1] ++ [2 3]", new Array(new Integer(1), new Integer(2), new Integer(3)) },
+            { "4 ++ [5 6]", new Array(new Integer(4), new Integer(5), new Integer(6)) },
+            { "[] ++ [7 9]", new Array(new Integer(7), new Integer(9)) },
+        };
+
+    [Theory, MemberData(nameof(AppendTestData))]
+    public void Append(string code, Value expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
+    
     [Theory, MemberData(nameof(OperatorPrecedenceTestData))]
     public void OperatorPrecedence(string code, Value expected) =>
         Assert.Equal(expected, Interpreter.Evaluate(code));

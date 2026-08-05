@@ -47,6 +47,12 @@ public class Interpreter
                         return new Integer(l.Value * r.Value);
                     case (TokenType.PlusPlus, Integer l, Integer r): 
                         return new Integer(l.Value + r.Value);
+                    case (TokenType.PlusPlus, Array l, Array r): 
+                        return Array.Append(l, r);
+                    case (TokenType.PlusPlus, Value l, Array r): 
+                        return Array.Append(l, r);
+                    case (TokenType.PlusPlus, Array l, Value r): 
+                        return Array.Append(l, r);
                     default:
                         throw new ArgumentOutOfRangeException(nameof(binary.Operator.Type));
                 }
