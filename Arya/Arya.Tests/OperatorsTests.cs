@@ -32,21 +32,42 @@ public class OperatorsTests
             { "2 + 3 * 4", new Integer(14) },
             { "(2 + 3) * 4", new Integer(20) }
         };
-    
-    public static readonly TheoryData<string, Value> AppendTestData =
-        new()
-        {
-            { "[] ++ []", new Array() },
-            { "[1] ++ []", new Array(new Integer(1)) },
-            { "[] ++ [1 2]", new Array(new Integer(1), new Integer(2)) },
-            { "[1] ++ [2 3]", new Array(new Integer(1), new Integer(2), new Integer(3)) },
-            { "4 ++ [5 6]", new Array(new Integer(4), new Integer(5), new Integer(6)) },
-            { "[] ++ [7 9]", new Array(new Integer(7), new Integer(9)) },
-        };
 
-    [Theory, MemberData(nameof(AppendTestData))]
-    public void Append(string code, Value expected) =>
-        Assert.Equal(expected, Interpreter.Evaluate(code));
+    public class Append
+    {
+        public static readonly TheoryData<string, Value> StringTestData =
+            new()
+            {
+                { """
+                  "" ++ ""
+                  """, new String("") },
+                { """
+                  "" ++ "hi"
+                  """, new String("hi") },
+                { """
+                  "hel" ++ "lo"
+                  """, new String("hello") }
+            };
+
+        [Theory, MemberData(nameof(StringTestData))]
+        public void Strings(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+        
+        public static readonly TheoryData<string, Value> ArraysTestData =
+            new()
+            {
+                { "[] ++ []", new Array() },
+                { "[1] ++ []", new Array(new Integer(1)) },
+                { "[] ++ [1 2]", new Array(new Integer(1), new Integer(2)) },
+                { "[1] ++ [2 3]", new Array(new Integer(1), new Integer(2), new Integer(3)) },
+                { "4 ++ [5 6]", new Array(new Integer(4), new Integer(5), new Integer(6)) },
+                { "[] ++ [7 9]", new Array(new Integer(7), new Integer(9)) },
+            };
+
+        [Theory, MemberData(nameof(ArraysTestData))]
+        public void Arrays(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+    }
     
     [Theory, MemberData(nameof(OperatorPrecedenceTestData))]
     public void OperatorPrecedence(string code, Value expected) =>

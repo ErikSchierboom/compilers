@@ -49,6 +49,8 @@ public class Interpreter
                         return new Integer(l.Value + r.Value);
                     case (TokenType.PlusPlus, Array l, Array r): 
                         return Array.Append(l, r);
+                    case (TokenType.PlusPlus, String l, String r): 
+                        return new String(l.Value + r.Value);
                     case (TokenType.PlusPlus, Value l, Array r): 
                         return Array.Append(l, r);
                     case (TokenType.PlusPlus, Array l, Value r): 
