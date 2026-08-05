@@ -2,7 +2,7 @@
 
 public class OperatorsTests
 {
-    public static TheoryData<string, Value> AdditionTestData() =>
+    public static TheoryData<string, Value> AdditionTestData =
         new()
         {
             { "1 + 2", new Integer(3) },
@@ -16,7 +16,7 @@ public class OperatorsTests
     public void Addition(string code, Value expected) =>
         Assert.Equal(expected, Interpreter.Evaluate(code));
     
-    public static TheoryData<string, Value> MultiplicationTestData() =>
+    public static TheoryData<string, Value> MultiplicationTestData =
         new()
         {
             { "2 * 3", new Integer(6) }
@@ -26,14 +26,14 @@ public class OperatorsTests
     public void Multiplication(string code, Value expected) =>
         Assert.Equal(expected, Interpreter.Evaluate(code));
     
-    public static TheoryData<string, Value> OperatorPrecedenceTestData() =>
+    public static TheoryData<string, Value> OperatorPrecedenceTestData =
         new()
         {
             { "2 + 3 * 4", new Integer(14) },
             { "(2 + 3) * 4", new Integer(20) }
         };
     
-    public static TheoryData<string, Value> AppendTestData() =>
+    public static TheoryData<string, Value> AppendTestData =
         new()
         {
             { "[] ++ []", new Array() },
