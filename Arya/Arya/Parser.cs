@@ -7,6 +7,7 @@ internal enum Precedence
     Product,      // *
     Array,        // []
     Call,         // ()
+    Unary,        // -
     Primary
 }
 
