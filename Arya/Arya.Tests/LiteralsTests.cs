@@ -29,5 +29,16 @@ public class LiteralsTests
         [Theory, MemberData(nameof(VectorsTestData))]
         public void Vectors(string code, Array expected) =>
             Assert.Equal(expected, Interpreter.Evaluate(code));
+        
+        public static TheoryData<string, Array> MatricesTestData() =>
+            new()
+            {
+                { "[[]]", new Array(new Array()) },
+                { "[[3] [4 5 6]]", new Array(new Array(new Integer(3)), new Array(new Integer(4), new Integer(5), new Integer(6))) }
+            };
+    
+        [Theory, MemberData(nameof(MatricesTestData))]
+        public void Matrices(string code, Array expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
     }
 }
