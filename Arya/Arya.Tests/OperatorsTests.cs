@@ -27,6 +27,7 @@ public class OperatorsTests
                 { """
                   3 + "efg"
                   """, new String("hij") },
+                // TODO: allow for nested array
                 // { "1 + []", new Array() },
                 // { "1 + [2 3 4]", new Array(new Integer(3), new Integer(4), new Integer(5)) },
                 // { "[2 3] + [4 5]", new Array(new Integer(6), new Integer(8)) },
