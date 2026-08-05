@@ -23,6 +23,9 @@ public sealed record Array(params Value[] Elements) : Value
     public static Array Append(Value left, Array right) =>
         new([.. right.Elements.Prepend(left)]);
 
+    public static Array UnaryOp(Array operand, Func<int, int> operation) =>
+        operand.MapIntegers(li => new Integer(operation(li)));
+
     public static Array BinaryOp(Array left, Integer right, Func<int, int, int> operation) =>
         left.MapIntegers(li => new Integer(operation(li, right.Value)));
     

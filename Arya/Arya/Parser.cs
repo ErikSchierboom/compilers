@@ -3,7 +3,7 @@ namespace Arya;
 internal enum Precedence
 {
     None,         // =
-    Addition,     // +
+    Addition,     // + -
     Product,      // *
     Array,        // []
     Call,         // ()
@@ -29,6 +29,7 @@ internal class Parser
             [TokenType.Eof] = new(null, null, Precedence.None),
             [TokenType.Plus] = new(ParseUnary, ParseBinary, Precedence.Addition),
             [TokenType.PlusPlus] = new(null, ParseBinary, Precedence.Addition),
+            [TokenType.Minus] = new(ParseUnary, ParseBinary, Precedence.Addition),
             [TokenType.Star] = new(null, ParseBinary, Precedence.Product),
             [TokenType.Number] = new(ParseNumber, null, Precedence.Primary),
             [TokenType.String] = new(ParseString, null, Precedence.Primary),

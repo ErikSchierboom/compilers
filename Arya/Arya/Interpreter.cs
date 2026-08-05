@@ -36,6 +36,10 @@ public class Interpreter
                     case (TokenType.Plus, Integer):
                     case (TokenType.Plus, Array):
                         return operand;
+                    case (TokenType.Minus, Integer i):
+                        return new Integer(-i.Value);
+                    case (TokenType.Minus, Array a):
+                        return Array.UnaryOp(a, i => -i);
                     default:
                         throw new InvalidOperationException("Invalid unary operator");
                 }
@@ -57,8 +61,23 @@ public class Interpreter
                         return r.RotateChars(l.Value);
                     case (TokenType.Plus, String l, Integer r): 
                         return l.RotateChars(r.Value);
+                    
+                    case (TokenType.Minus, Integer l, Integer r): 
+                        return new Integer(l.Value - r.Value);
+                    case (TokenType.Minus, Integer l, Array r): 
+                        return Array.BinaryOp(l, r, (li, ri) => li - ri);
+                    case (TokenType.Minus, Array l, Integer r): 
+                        return Array.BinaryOp(l, r, (li, ri) => li - ri);
+                    case (TokenType.Minus, Array l, Array r): 
+                        return Array.BinaryOp(l, r, (li, ri) => li - ri);
+                    case (TokenType.Minus, Integer l, String r): 
+                        return r.RotateChars(-l.Value);
+                    case (TokenType.Minus, String l, Integer r): 
+                        return l.RotateChars(-r.Value);
+                    
                     case (TokenType.Star, Integer l, Integer r): 
                         return new Integer(l.Value * r.Value);
+                    
                     case (TokenType.PlusPlus, Integer l, Integer r): 
                         return new Integer(l.Value + r.Value);
                     case (TokenType.PlusPlus, Array l, Array r): 

@@ -31,6 +31,10 @@ internal sealed class Scanner
                     else
                         tokens.Add(new Token(TokenType.Plus, "+"));
                     break;
+                case '-':
+                    Advance();
+                    tokens.Add(new Token(TokenType.Minus, "-"));
+                    break;
                 case '*':
                     Advance();
                     tokens.Add(new Token(TokenType.Star, "*"));
@@ -154,6 +158,7 @@ internal enum TokenType
     CloseParen,
     Plus,
     PlusPlus,
+    Minus,
     Star,
 
     // Synthetic
