@@ -1,6 +1,6 @@
 ﻿namespace Arya.Tests;
 
-public class ArithmeticTests
+public class OperatorsTests
 {
     public static TheoryData<string, Value> AdditionTestData() =>
         new()
