@@ -33,8 +33,9 @@ internal class Parser
             [TokenType.Star] = new(null, ParseBinary, Precedence.Product),
             [TokenType.Number] = new(ParseNumber, null, Precedence.Primary),
             [TokenType.String] = new(ParseString, null, Precedence.Primary),
+            [TokenType.Identifier] = new(ParseName, null, Precedence.Primary),
             [TokenType.OpenBracket] = new(ParseArray, null, Precedence.Array),
-            [TokenType.OpenParen] = new(ParseParenthesized, null, Precedence.Call),
+            [TokenType.OpenParen] = new(ParseParenthesized, ParseCall, Precedence.Call),
         };
     }
 
@@ -86,6 +87,28 @@ internal class Parser
 
     private LiteralExpression ParseNumber() => new(Previous);
     private LiteralExpression ParseString() => new(Previous);
+    
+    private NameExpression ParseName() => new NameExpression(Previous);
+    
+    private Expression ParseCall(Expression left)
+    {
+        if (left is not NameExpression name)
+            throw new InvalidOperationException("Can only call names");
+        
+        var arguments = new List<Expression>();
+        while (!IsEndOfFile)
+        {
+            if (Match(TokenType.CloseParen))
+                break;
+            
+            do
+            {
+                arguments.Add(ParseExpression());
+            } while (Match(TokenType.Comma));
+        }
+                
+        return new CallExpression(name.Identifier, [..arguments]);
+    }
 
     private ArrayLiteralExpression ParseArray()
     {
@@ -143,6 +166,8 @@ internal class Parser
 internal abstract record Expression;
 internal sealed record LiteralExpression(Token Value) : Expression;
 internal sealed record ArrayLiteralExpression(Expression[] Elements) : Expression;
+internal sealed record NameExpression(Token Identifier) : Expression;
+internal sealed record CallExpression(Token FunctionName, Expression[] Arguments) : Expression;
 internal sealed record UnaryExpression(Token Operator, Expression Operand) : Expression;
 internal sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
 internal sealed record ParenthesizedExpression(Expression Expression) : Expression;

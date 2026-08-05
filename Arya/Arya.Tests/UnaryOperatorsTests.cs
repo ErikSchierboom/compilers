@@ -24,7 +24,9 @@ public class UnaryOperatorsTests
             {
                 { "-1", new Integer(-1) },
                 { "-[1 2 3]", new Array(new Integer(-1), new Integer(-2), new Integer(-3)) },
-                { "-[[4 5] [6 7]]", new Array(new Array(new Integer(-4), new Integer(-5)), new Array(new Integer(-6), new Integer(-7))) }
+                { "[-1 -2 -3]", new Array(new Integer(-1), new Integer(-2), new Integer(-3)) },
+                { "-[[4 5] [6 7]]", new Array(new Array(new Integer(-4), new Integer(-5)), new Array(new Integer(-6), new Integer(-7))) },
+                { "[[-4 -5] [-6 -7]]", new Array(new Array(new Integer(-4), new Integer(-5)), new Array(new Integer(-6), new Integer(-7))) }
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]

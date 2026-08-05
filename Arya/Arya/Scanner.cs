@@ -35,6 +35,10 @@ internal sealed class Scanner
                     Advance();
                     tokens.Add(new Token(TokenType.Minus, "-"));
                     break;
+                case ',':
+                    Advance();
+                    tokens.Add(new Token(TokenType.Comma, ","));
+                    break;
                 case '*':
                     Advance();
                     tokens.Add(new Token(TokenType.Star, "*"));
@@ -65,6 +69,14 @@ internal sealed class Scanner
                     var number = int.Parse(numberString);
 
                     tokens.Add(new Token(TokenType.Number, numberString, number));
+                    break;
+                case >= 'a' and <= 'z' or >= 'A' and <= 'Z':
+                    var identifierStartPosition = _position;
+                    while (Current is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '_')
+                        Advance();
+
+                    var text = _source[identifierStartPosition.._position];
+                    tokens.Add(new Token(TokenType.Identifier, text));
                     break;
                 case '"':
                     var stringStartPosition = _position;
@@ -150,6 +162,7 @@ internal enum TokenType
     // Literals
     Number,
     String,
+    Identifier,
     
     // Symbols
     OpenBracket,
@@ -160,6 +173,7 @@ internal enum TokenType
     PlusPlus,
     Minus,
     Star,
+    Comma,
 
     // Synthetic
     Eof,

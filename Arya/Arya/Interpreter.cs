@@ -1,5 +1,31 @@
 namespace Arya;
 
+public sealed record Scope
+{
+    private readonly Scope? _parent;
+    private Dictionary<string, Value?> Values => field ??= new Dictionary<string, Value?>();
+    
+    public Scope(Scope? parent = null) => _parent = parent;
+
+    public Scope CreateChild() => new(this);
+    
+    public Value? this[string key]
+    {
+        get
+        {
+            if (Values.TryGetValue(key, out var result))
+                return result;
+            
+            return _parent?[key];
+        }
+        set
+        {
+            if (!Values.TryAdd(key, value))
+                throw new InvalidOperationException("Cannot redeclare local");;
+        }
+    }
+}
+
 public class Interpreter
 {
     private readonly List<Expression> _expressions;
@@ -15,22 +41,26 @@ public class Interpreter
     private Value? Evaluate()
     {
         Value? result = null;
-        
+        var scope = new Scope
+        {
+            ["abs"] = new AbsFunction()
+        };
+
         foreach (var expression in _expressions)
-            result = Evaluate(expression);
+            result = Evaluate(expression, scope);
 
         return result;
     }
 
-    private Value Evaluate(Expression expression)
+    private Value Evaluate(Expression expression, Scope scope)
     {
         switch (expression)
         {
             case ArrayLiteralExpression arrayLiteral:
-                var elements = arrayLiteral.Elements.Select(Evaluate).ToArray();
+                var elements = arrayLiteral.Elements.Select(element => Evaluate(element, scope)).ToArray();
                 return new Array(elements);
             case UnaryExpression unary:
-                var operand = Evaluate(unary.Operand);
+                var operand = Evaluate(unary.Operand, scope);
                 switch (unary.Operator.Type, operand)
                 {
                     case (TokenType.Plus, Integer):
@@ -44,8 +74,8 @@ public class Interpreter
                         throw new InvalidOperationException("Invalid unary operator");
                 }
             case BinaryExpression binary:
-                var left = Evaluate(binary.Left);
-                var right = Evaluate(binary.Right);
+                var left = Evaluate(binary.Left, scope);
+                var right = Evaluate(binary.Right, scope);
                 
                 switch (binary.Operator.Type, left, right)
                 {
@@ -98,8 +128,17 @@ public class Interpreter
                     TokenType.Number => new Integer((int)literal.Value.Literal!),
                     _ => throw new ArgumentOutOfRangeException(nameof(literal.Value.Type))
                 };
+            case CallExpression call:
+                if (scope[call.FunctionName.Text] is not Function function)
+                    throw new InvalidOperationException("Can only call functions");
+                
+                if (call.Arguments.Length != function.Arity)
+                    throw new InvalidOperationException("Invalid number of arguments");
+
+                var arguments = call.Arguments.Select(arg => Evaluate(arg, scope)).ToArray();
+                return function.Invoke(arguments);
             case ParenthesizedExpression parenthesized:
-                return Evaluate(parenthesized.Expression);
+                return Evaluate(parenthesized.Expression, scope);
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }
