@@ -5,7 +5,12 @@ namespace Arya;
 public abstract record Value;
 
 public sealed record Integer(int Value) : Value;
-public sealed record String(string Value) : Value;
+
+public sealed record String(string Value) : Value
+{
+    public String RotateChars(int amount) =>
+        new(new string([..Value.Select(c => (char)(c + amount))]));
+}
 
 public sealed record Array(params Value[] Elements) : Value
 {

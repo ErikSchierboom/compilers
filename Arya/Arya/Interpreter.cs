@@ -43,6 +43,10 @@ public class Interpreter
                         return Array.BinaryOp(l, r, (li, ri) => li + ri);
                     case (TokenType.Plus, Array l, Array r): 
                         return Array.BinaryOp(l, r, (li, ri) => li + ri);
+                    case (TokenType.Plus, Integer l, String r): 
+                        return r.RotateChars(l.Value);
+                    case (TokenType.Plus, String l, Integer r): 
+                        return l.RotateChars(r.Value);
                     case (TokenType.Star, Integer l, Integer r): 
                         return new Integer(l.Value * r.Value);
                     case (TokenType.PlusPlus, Integer l, Integer r): 
