@@ -3,11 +3,11 @@ namespace Arya;
 internal enum Precedence
 {
     None,         // =
+    Array,        // []
     Addition,     // + -
     Product,      // *
-    Array,        // []
-    Call,         // ()
     Unary,        // -
+    Call,         // ()
     Primary
 }
 
@@ -75,7 +75,7 @@ internal class Parser
         return left;
     }
     
-    private UnaryExpression ParseUnary() => new(Previous, ParseExpression());
+    private UnaryExpression ParseUnary() => new(Previous, ParseExpression(Precedence.Unary));
 
     private BinaryExpression ParseBinary(Expression left)
     {
@@ -115,7 +115,7 @@ internal class Parser
     {
         var elements = new List<Expression>();
         while (!IsEndOfFile && Current.Type != TokenType.CloseBracket)
-            elements.Add(ParseExpression());
+            elements.Add(ParseExpression(Precedence.Addition));
 
         Consume(TokenType.CloseBracket);
         
@@ -172,4 +172,3 @@ internal sealed record CallExpression(Token FunctionName, Expression[] Arguments
 internal sealed record UnaryExpression(Token Operator, Expression Operand) : Expression;
 internal sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
 internal sealed record ParenthesizedExpression(Expression Expression) : Expression;
-
