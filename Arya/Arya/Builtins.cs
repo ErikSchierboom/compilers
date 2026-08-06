@@ -6,7 +6,8 @@ public static class BuiltinFunctions
     [
         new AbsFunction(),
         new LowercaseFunction(),
-        new UppercaseFunction()
+        new UppercaseFunction(),
+        new TrimFunction()
     ];
 }
 
@@ -39,3 +40,4 @@ public abstract record UnaryStringFunction(string Name, Func<string, string> Ope
 public sealed record AbsFunction() : UnaryIntegerFunction("abs", Math.Abs);
 public sealed record LowercaseFunction() : UnaryStringFunction("lowercase", str => str.ToLowerInvariant());
 public sealed record UppercaseFunction() : UnaryStringFunction("uppercase", str => str.ToUpperInvariant());
+public sealed record TrimFunction() : UnaryStringFunction("trim", str => str.Trim());
