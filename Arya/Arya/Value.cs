@@ -17,11 +17,13 @@ public sealed record String(string Value) : Value
     public override string ToString() => Value;
 }
 
-public abstract record Function : Value
+public abstract record Function(string Name) : Value
 {
     public abstract int Arity { get; }
     
     public abstract Value Invoke(params Value[] arguments);
+    
+    public override string ToString() => $"{Name}/{Arity}";
 }
 
 public sealed record Array(params Value[] Elements) : Value

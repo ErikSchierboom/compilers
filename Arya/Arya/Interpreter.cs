@@ -41,14 +41,11 @@ public class Interpreter
     private Value? Evaluate()
     {
         Value? result = null;
-        var scope = new Scope
-        {
-            ["abs"] = new AbsFunction(),
-            ["lowercase"] = new LowercaseFunction()
-        };
+        
+        var defaultScope = CreateDefaultScope();
 
         foreach (var expression in _expressions)
-            result = Evaluate(expression, scope);
+            result = Evaluate(expression, defaultScope);
 
         return result;
     }
@@ -143,5 +140,15 @@ public class Interpreter
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }
+    }
+
+    private static Scope CreateDefaultScope()
+    {
+        var scope = new Scope();
+        
+        foreach (var builtinFunction in BuiltinFunctions.All)
+            scope[builtinFunction.Name] = builtinFunction;
+
+        return scope;
     }
 }

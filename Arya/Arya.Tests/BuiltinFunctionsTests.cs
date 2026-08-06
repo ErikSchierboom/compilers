@@ -36,7 +36,34 @@ public class BuiltinFunctionsTests
                   """, new Array(new String("this"), new String("is"), new String("cool")) },
                 { """
                   lowercase([["LET'S"] ["Do"] ["iT"]])
-                  """, new Array(new String("let's"), new String("do"), new String("it")) },
+                  """, new Array(new Array(new String("let's")), new Array(new String("do")), new Array(new String("it"))) },
+            };
+
+        [Theory, MemberData(nameof(StringsTestData))]
+        public void Strings(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+    }
+
+    public class Uppercase
+    {
+        public static readonly TheoryData<string, Value> StringsTestData =
+            new()
+            {
+                { """
+                  uppercase("")
+                  """, new String("") },
+                { """
+                  uppercase("hi there!")
+                  """, new String("HI THERE!") },
+                { """
+                  uppercase("123")
+                  """, new String("123") },
+                { """
+                  uppercase(["this" "Is" "CooL"])
+                  """, new Array(new String("THIS"), new String("IS"), new String("COOL")) },
+                { """
+                  uppercase([["let's"] ["Do"] ["iT"]])
+                  """, new Array(new Array(new String("LET'S")), new Array(new String("DO")), new Array(new String("IT"))) },
             };
 
         [Theory, MemberData(nameof(StringsTestData))]

@@ -1,12 +1,19 @@
 namespace Arya;
 
-public abstract record UnaryFunction : Function
+public static class BuiltinFunctions
 {
-    public override int Arity => 1;
+    public static readonly Function[] All =
+    [
+        new AbsFunction(),
+        new LowercaseFunction(),
+        new UppercaseFunction()
+    ];
 }
 
-public abstract record UnaryIntegerFunction(Func<int, int> Operation) : UnaryFunction
+public abstract record UnaryIntegerFunction(string Name, Func<int, int> Operation) : Function(Name)
 {
+    public override int Arity => 1;
+    
     public override Value Invoke(params Value[] arguments) =>
         arguments[0] switch
         {
@@ -16,8 +23,10 @@ public abstract record UnaryIntegerFunction(Func<int, int> Operation) : UnaryFun
         };
 }
 
-public abstract record UnaryStringFunction(Func<string, string> Operation) : UnaryFunction
+public abstract record UnaryStringFunction(string Name, Func<string, string> Operation) : Function(Name)
 {
+    public override int Arity => 1;
+    
     public override Value Invoke(params Value[] arguments) =>
         arguments[0] switch
         {
@@ -27,5 +36,6 @@ public abstract record UnaryStringFunction(Func<string, string> Operation) : Una
         };
 }
 
-public sealed record AbsFunction() : UnaryIntegerFunction(Math.Abs);
-public sealed record LowercaseFunction() : UnaryStringFunction(str => str.ToLower());
+public sealed record AbsFunction() : UnaryIntegerFunction("abs", Math.Abs);
+public sealed record LowercaseFunction() : UnaryStringFunction("lowercase", str => str.ToLowerInvariant());
+public sealed record UppercaseFunction() : UnaryStringFunction("uppercase", str => str.ToUpperInvariant());
