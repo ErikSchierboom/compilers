@@ -89,7 +89,7 @@ internal class Parser
     private LiteralExpression ParseNumber() => new(Previous);
     private LiteralExpression ParseString() => new(Previous);
     
-    private NameExpression ParseName() => new NameExpression(Previous);
+    private NameExpression ParseName() => new(Previous);
     
     private Expression ParseCall(Expression left)
     {
