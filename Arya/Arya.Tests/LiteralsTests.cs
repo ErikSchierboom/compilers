@@ -66,27 +66,27 @@ public class LiteralsTests
 
     public class Arrays
     {
-        public static readonly TheoryData<string, Array> VectorsTestData =
+        public static readonly TheoryData<string, Value> VectorsTestData =
             new()
             {
-                { "[]", new EmptyArray(Shape.Scalar) },
+                { "[]", new UntypedArray(Shape.Scalar) },
                 { "[3]", new IntArray(new Shape([1]), [3]) },
                 { "[6 7 8]", new IntArray(new Shape([3]), [6, 7, 8]) },
             };
     
         [Theory, MemberData(nameof(VectorsTestData))]
-        public void Vectors(string code, Array expected) =>
+        public void Vectors(string code, Value expected) =>
             Assert.Equal(expected, Interpreter.Evaluate(code));
         
-        public static readonly TheoryData<string, Array> MatricesTestData =
+        public static readonly TheoryData<string, Value> MatricesTestData =
             new()
             {
-                { "[[]]", new EmptyArray(new Shape([1])) },
+                { "[[]]", new UntypedArray(new Shape([1])) },
                 { "[[3 4] [5 6]]", new IntArray(new Shape([2, 2]), [3, 4, 5, 6]) }
             };
     
         [Theory, MemberData(nameof(MatricesTestData))]
-        public void Matrices(string code, Array expected) =>
+        public void Matrices(string code, Value expected) =>
             Assert.Equal(expected, Interpreter.Evaluate(code));
     }
 }

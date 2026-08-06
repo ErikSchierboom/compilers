@@ -157,7 +157,7 @@ public class Interpreter
     private Value Evaluate(ArrayLiteralExpression arrayLiteral, Scope scope)
     {
         if (arrayLiteral.Elements.Length == 0)
-            return EmptyArray.Scalar;
+            return UntypedArray.Empty;
                 
         Type? elementType = null;
         Shape? shape = null;
@@ -189,8 +189,8 @@ public class Interpreter
         if (elementType == typeof(CharArray))
             return new CharArray(newShape, [..newElements.Cast<CharArray>().SelectMany(array => array.Elements)]);
                 
-        if (elementType == typeof(EmptyArray))
-            return new EmptyArray(newShape);
+        if (elementType == typeof(UntypedArray))
+            return new UntypedArray(newShape);
                 
         throw new InvalidOperationException("Invalid array element type");
     }

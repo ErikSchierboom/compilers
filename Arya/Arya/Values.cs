@@ -24,14 +24,14 @@ public sealed record Shape(params int[] Dimensions)
     public override string ToString() => "<" + string.Join(" ", Dimensions.Select(d => d.ToString())) + ">";
 }
 
-public abstract record Array : Value;
+public abstract record Array<T>(Shape Shape, params T[] Elements) : Value;
 
-public sealed record EmptyArray(Shape Shape) : Array
+public sealed record UntypedArray(Shape Shape, params UntypedArray[] Elements) : Array<UntypedArray>(Shape, Elements)
 {
-    public static readonly EmptyArray Scalar = new(Shape.Scalar);
+    public static readonly UntypedArray Empty = new(Shape.Scalar);
 }
 
-public sealed record IntArray(Shape Shape, params int[] Elements) : Array
+public sealed record IntArray(Shape Shape, params int[] Elements) : Array<int>(Shape, Elements)
 {
     public bool Equals(IntArray? other) => 
         StructuralComparisons.StructuralEqualityComparer.Equals(Elements, other?.Elements) &&
@@ -45,7 +45,7 @@ public sealed record IntArray(Shape Shape, params int[] Elements) : Array
     public override string ToString() => "[" + string.Join(" ", Elements.Select(e => e.ToString())) + "]";
 }
 
-public sealed record CharArray(Shape Shape, params char[] Elements) : Array
+public sealed record CharArray(Shape Shape, params char[] Elements) : Array<char>(Shape, Elements)
 {
     public bool Equals(CharArray? other) => 
         StructuralComparisons.StructuralEqualityComparer.Equals(Elements, other?.Elements) &&
