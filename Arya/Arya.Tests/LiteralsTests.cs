@@ -7,8 +7,8 @@ public class LiteralsTests
         public static readonly TheoryData<string, Value> IntegersTestData =
             new()
             {
-                { "5", new IntArray(Shape.Scalar, [5]) },
-                { "123", new IntArray(Shape.Scalar, [123]) }
+                { "5", new IntArray(Shape.Scalar, 5) },
+                { "123", new IntArray(Shape.Scalar, 123) }
             };
     
         [Theory, MemberData(nameof(IntegersTestData))]
@@ -70,8 +70,8 @@ public class LiteralsTests
             new()
             {
                 { "[]", new UntypedArray(Shape.Scalar) },
-                { "[3]", new IntArray(new Shape([1]), [3]) },
-                { "[6 7 8]", new IntArray(new Shape([3]), [6, 7, 8]) },
+                { "[3]", new IntArray(new Shape(1), 3) },
+                { "[6 7 8]", new IntArray(new Shape(3), 6, 7, 8) },
             };
     
         [Theory, MemberData(nameof(VectorsTestData))]
@@ -81,8 +81,8 @@ public class LiteralsTests
         public static readonly TheoryData<string, Value> MatricesTestData =
             new()
             {
-                { "[[]]", new UntypedArray(new Shape([1])) },
-                { "[[3 4] [5 6]]", new IntArray(new Shape([2, 2]), [3, 4, 5, 6]) }
+                { "[[]]", new UntypedArray(new Shape(1)) },
+                { "[[3 4] [5 6]]", new IntArray(new Shape(2, 2), 3, 4, 5, 6) }
             };
     
         [Theory, MemberData(nameof(MatricesTestData))]
