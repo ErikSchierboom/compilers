@@ -34,6 +34,9 @@ public sealed record Array(params Value[] Elements) : Value
     
     public static Array Append(Value left, Array right) =>
         new([.. right.Elements.Prepend(left)]);
+    
+    public static Array UnaryOp(Array operand, Func<string, string> operation) =>
+        operand.MapStrings(li => new String(operation(li)));
 
     public static Array UnaryOp(Array operand, Func<int, int> operation) =>
         operand.MapIntegers(li => new Integer(operation(li)));
@@ -65,6 +68,14 @@ public sealed record Array(params Value[] Elements) : Value
         {
             Array array => array.MapIntegers(map),
             Integer integer => map(integer.Value),
+            _ => throw new ArgumentOutOfRangeException(nameof(element))
+        });
+
+    private Array MapStrings(Func<string, Value> map) =>
+        Map(element => element switch
+        {
+            Array array => array.MapStrings(map),
+            String str => map(str.Value),
             _ => throw new ArgumentOutOfRangeException(nameof(element))
         });
 

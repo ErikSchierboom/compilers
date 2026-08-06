@@ -43,7 +43,8 @@ public class Interpreter
         Value? result = null;
         var scope = new Scope
         {
-            ["abs"] = new AbsFunction()
+            ["abs"] = new AbsFunction(),
+            ["lowercase"] = new LowercaseFunction()
         };
 
         foreach (var expression in _expressions)
