@@ -93,12 +93,10 @@ public class Interpreter
         switch (literal.Value.Type)
         {
             case TokenType.String:
-                // TODO: create constructor overload
-                var chars = ((string)literal.Value.Literal!).ToCharArray();
-                return new CharArray(new Shape(chars.Length), chars);
+                return CharArray.Vector((string)literal.Value.Literal!);
             case TokenType.Number:
                 // TODO: create constructor overload
-                return new IntArray(Shape.Scalar, (int)literal.Value.Literal!);
+                return IntArray.Scalar((int)literal.Value.Literal!);
             default:
                 throw new ArgumentOutOfRangeException(nameof(literal.Value.Type));
         }
