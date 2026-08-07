@@ -59,8 +59,19 @@ public sealed record IntArray(Shape Shape, params int[] Elements) : Array<int>(S
     
     public IntArray UnaryOp(Func<int, int> operation) => new(Shape, [.. Elements.Select(operation)]);
     
-    public IntArray BinaryOp(IntArray other, Func<int, int, int> operation) =>
-        new(Shape, [.. Elements.Zip(other.Elements).Select(pair => operation(pair.First, pair.Second))]);
+    public IntArray BinaryOp(IntArray other, Func<int, int, int> operation)
+    {
+        if (Shape.IsScalar)
+            return new IntArray(other.Shape, [.. Elements.Cycle(other.Elements.Length).Zip(other.Elements).Select(pair => operation(pair.First, pair.Second))]);
+
+        if (other.Shape.IsScalar)
+            return new IntArray(Shape, [.. Elements.Zip(other.Elements.Cycle(Elements.Length)).Select(pair => operation(pair.First, pair.Second))]);
+        
+        if (Shape != other.Shape)
+            throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");
+        
+        return new IntArray(Shape, [.. Elements.Zip(other.Elements).Select(pair => operation(pair.First, pair.Second))]);
+    }
 
     public bool Equals(IntArray? other) => 
         StructuralComparisons.StructuralEqualityComparer.Equals(Elements, other?.Elements) &&
@@ -89,6 +100,20 @@ public sealed record CharArray(Shape Shape, params char[] Elements) : Array<char
     public static CharArray Vector(string str) => new(Shape.Vector(str.Length), str.ToCharArray());
     
     public static CharArray Matrix(char[][] elements) => new(Shape.Matrix(elements), [.. elements.SelectMany(row => row)]);
+    
+    public CharArray BinaryOp(CharArray other, Func<char, char, char> operation)
+    {
+        if (Shape.IsScalar)
+            return new CharArray(other.Shape, [.. Elements.Cycle(other.Elements.Length).Zip(other.Elements).Select(pair => operation(pair.First, pair.Second))]);
+
+        if (other.Shape.IsScalar)
+            return new CharArray(Shape, [.. Elements.Zip(other.Elements.Cycle(Elements.Length)).Select(pair => operation(pair.First, pair.Second))]);
+        
+        if (Shape != other.Shape)
+            throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");
+        
+        return new CharArray(Shape, [.. Elements.Zip(other.Elements).Select(pair => operation(pair.First, pair.Second))]);
+    }
 
     public bool Equals(CharArray? other) => 
         StructuralComparisons.StructuralEqualityComparer.Equals(Elements, other?.Elements) &&

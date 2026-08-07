@@ -12,7 +12,8 @@ public class BinaryOperatorsTests
                 { "1 + 2", IntArray.Scalar(3) },
                 { "1 + [2 3 4]", IntArray.Vector(3, 4, 5) },
                 { "[2 3] + [4 5]", IntArray.Vector(6, 8) },
-                { "[[5 4] [6 7]] + 2", IntArray.Matrix([[7, 6], [8, 9]]) }
+                { "[[5 4] [6 7]] + 2", IntArray.Matrix([[7, 6], [8, 9]]) },
+                { "[[1 2] [3 4]] + [[5 6] [7 8]]", IntArray.Matrix([[6, 8], [10, 12]]) }
             };
 
          [Theory, MemberData(nameof(IntegersTestData))]
