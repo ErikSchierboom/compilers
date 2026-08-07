@@ -68,7 +68,7 @@ public static class LiteralsTests
     {
         [Fact]
         public void Empty() =>
-            Assert.Equal(Arya.EmptyArray.Instance, Interpreter.Evaluate("[]"));
+            Assert.Equal(EmptyArray.Instance, Interpreter.Evaluate("[]"));
         
         public static readonly TheoryData<string, Value> IntegersTestData =
             new()
@@ -93,6 +93,16 @@ public static class LiteralsTests
 
         [Theory, MemberData(nameof(IntegersTestData))]
         public void Integers(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+        
+        public static readonly TheoryData<string, Value> BoxedTestData =
+            new()
+            {
+                { "[[3] [4 5]]", BoxArray.Matrix([[IntArray.Vector(3).Box()], [IntArray.Vector(4, 5).Box()]]) },
+            };
+
+        [Theory, MemberData(nameof(BoxedTestData))]
+        public void Boxed(string code, Value expected) =>
             Assert.Equal(expected, Interpreter.Evaluate(code));
     }
 }

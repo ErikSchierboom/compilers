@@ -123,6 +123,7 @@ public class Interpreter
                 
         Type? elementType = null;
         Shape? shape = null;
+        bool identicalShapes = true;
                 
         Value[] newElements = new Value[arrayLiteral.Elements.Length];
 
@@ -138,12 +139,15 @@ public class Interpreter
             if (shape is null)
                 shape = evaluatedElement.Shape;
             else if (shape != evaluatedElement.Shape)
-                throw new InvalidOperationException("Array elements must have the same shape.");
+                identicalShapes = false;
 
             newElements[index] = evaluatedElement;
         }
 
         var newShape = shape!.Prepend(newElements.Length);
+        
+        if (!identicalShapes)
+            return new BoxArray(newShape, [..newElements.Select(element => element.Box())]);
 
         if (elementType == typeof(IntArray))
             return new IntArray(newShape, [..newElements.Cast<IntArray>().SelectMany(array => array.Elements)]);

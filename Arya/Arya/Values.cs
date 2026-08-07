@@ -5,6 +5,13 @@ namespace Arya;
 public abstract record Value
 {
     public abstract Shape Shape { get; init; }
+
+    public Box Box() => new(this);
+}
+
+public sealed record Box(Value Value) : Value
+{
+    public override Shape Shape { get; init; } = Shape.Scalar;
 }
 
 public sealed record Shape(params int[] Dimensions)
@@ -54,6 +61,21 @@ public sealed record IntArray(Shape Shape, params int[] Elements) : Array<int>(S
 public sealed record CharArray(Shape Shape, params char[] Elements) : Array<char>(Shape, Elements)
 {
     public bool Equals(CharArray? other) => 
+        StructuralComparisons.StructuralEqualityComparer.Equals(Elements, other?.Elements) &&
+        Shape.Equals(other?.Shape);
+
+    public override int GetHashCode() =>
+        HashCode.Combine(
+            StructuralComparisons.StructuralEqualityComparer.GetHashCode(Elements),
+            Shape.GetHashCode());
+}
+
+public sealed record BoxArray(Shape Shape, params Box[] Elements) : Array<Box>(Shape, Elements)
+{
+    public static BoxArray Vector(params Box[] elements) => new(Shape.Vector(elements), elements);
+    public static BoxArray Matrix(Box[][] elements) => new(Shape.Matrix(elements), [.. elements.SelectMany(row => row)]);
+    
+    public bool Equals(BoxArray? other) => 
         StructuralComparisons.StructuralEqualityComparer.Equals(Elements, other?.Elements) &&
         Shape.Equals(other?.Shape);
 
