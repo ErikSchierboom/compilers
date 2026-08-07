@@ -50,114 +50,76 @@ public class Interpreter
         return result;
     }
 
-    private Value Evaluate(Expression expression, Scope scope)
-    {
-        switch (expression)
+    private Value Evaluate(Expression expression, Scope scope) =>
+        expression switch
         {
-            case ArrayLiteralExpression arrayLiteral:
-                return Evaluate(arrayLiteral, scope);
-            // case UnaryExpression unary:
-            //     var operand = Evaluate(unary.Operand, scope);
-            //     switch (unary.Operator.Type, operand)
-            //     {
-            //         case (TokenType.Plus, Integer):
-            //         case (TokenType.Plus, Array):
-            //             return operand;
-            //         case (TokenType.Minus, Integer i):
-            //             return new Integer(-i.Value);
-            //         case (TokenType.Minus, Array a):
-            //             return Array.UnaryOp(a, i => -i);
-            //         default:
-            //             throw new InvalidOperationException("Invalid unary expression");
-            //     }
-            case BinaryExpression binary:
-                var left = Evaluate(binary.Left, scope);
-                var right = Evaluate(binary.Right, scope);
+            ArrayLiteralExpression arrayLiteral => Evaluate(arrayLiteral, scope),
+            UnaryExpression unary => Evaluate(unary, scope),
+            BinaryExpression binary => Evaluate(binary, scope),
+            LiteralExpression literal => Evaluate(literal, scope),
+            CallExpression call => Evaluate(call, scope),
+            ParenthesizedExpression parenthesized => Evaluate(parenthesized.Expression, scope),
+            _ => throw new ArgumentOutOfRangeException(nameof(expression))
+        };
 
-                switch (binary.Operator.Type, left, right)
-                {
-                    case (TokenType.Plus, Int l, Int r):
-                        throw new NotImplementedException();
-                    default:
-                        throw new InvalidOperationException("Invalid binary expression");
-                }
-            // switch (binary.Operator.Type, left, right)
-                // {
-                //     case (TokenType.Plus, Integer l, Integer r): 
-                //         return new Integer(l.Value + r.Value);
-                //     case (TokenType.Plus, Integer l, Array r): 
-                //         return Array.BinaryOp(l, r, (li, ri) => li + ri);
-                //     case (TokenType.Plus, Array l, Integer r): 
-                //         return Array.BinaryOp(l, r, (li, ri) => li + ri);
-                //     case (TokenType.Plus, Array l, Array r): 
-                //         return Array.BinaryOp(l, r, (li, ri) => li + ri);
-                //     case (TokenType.Plus, Integer l, String r): 
-                //         return r.RotateChars(l.Value);
-                //     case (TokenType.Plus, String l, Integer r): 
-                //         return l.RotateChars(r.Value);
-                //     
-                //     case (TokenType.Minus, Integer l, Integer r): 
-                //         return new Integer(l.Value - r.Value);
-                //     case (TokenType.Minus, Integer l, Array r): 
-                //         return Array.BinaryOp(l, r, (li, ri) => li - ri);
-                //     case (TokenType.Minus, Array l, Integer r): 
-                //         return Array.BinaryOp(l, r, (li, ri) => li - ri);
-                //     case (TokenType.Minus, Array l, Array r): 
-                //         return Array.BinaryOp(l, r, (li, ri) => li - ri);
-                //     case (TokenType.Minus, Integer l, String r): 
-                //         return r.RotateChars(-l.Value);
-                //     case (TokenType.Minus, String l, Integer r): 
-                //         return l.RotateChars(-r.Value);
-                //     
-                //     case (TokenType.Star, Integer l, Integer r): 
-                //         return new Integer(l.Value * r.Value);
-                //     
-                //     case (TokenType.PlusPlus, Integer l, Integer r): 
-                //         return new Integer(l.Value + r.Value);
-                //     case (TokenType.PlusPlus, Array l, Array r): 
-                //         return Array.Append(l, r);
-                //     case (TokenType.PlusPlus, String l, String r): 
-                //         return new String(l.Value + r.Value);
-                //     case (TokenType.PlusPlus, Value l, Array r): 
-                //         return Array.Append(l, r);
-                //     case (TokenType.PlusPlus, Array l, Value r): 
-                //         return Array.Append(l, r);
-                //     default:
-                //         throw new ArgumentOutOfRangeException(nameof(binary.Operator.Type));
-                // }
-            case LiteralExpression literal:
-                switch (literal.Value.Type)
-                {
-                    case TokenType.String:
-                        // TODO: create constructor overload
-                        var chars = ((string)literal.Value.Literal!).ToCharArray();
-                        return new Char(new Shape(chars.Length), chars);
-                    case TokenType.Number:
-                        // TODO: create constructor overload
-                        return new Int(Shape.Scalar, (int)literal.Value.Literal!);
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(literal.Value.Type));
-                }
-            case CallExpression call:
-                if (scope[call.FunctionName.Text] is not Function function)
-                    throw new InvalidOperationException("Can only call functions");
-                
-                if (call.Arguments.Length != function.Arity)
-                    throw new InvalidOperationException("Invalid number of arguments");
+    private Value Evaluate(UnaryExpression unary, Scope scope)
+    {
+        var operand = Evaluate(unary.Operand, scope);
+        
+        return (unary.Operator.Type, operand) switch
+        {
+            (TokenType.Plus, IntArray arr) => arr,
+            (TokenType.Minus, IntArray arr) => arr.UnaryOp(i => -i),
+            _ => throw new InvalidOperationException("Invalid unary expression")
+        };
+    }
 
-                var arguments = call.Arguments.Select(arg => Evaluate(arg, scope)).ToArray();
-                return function.Invoke(arguments);
-            case ParenthesizedExpression parenthesized:
-                return Evaluate(parenthesized.Expression, scope);
+    private Value Evaluate(BinaryExpression binary, Scope scope)
+    {
+        var left = Evaluate(binary.Left, scope);
+        var right = Evaluate(binary.Right, scope);
+
+        switch (binary.Operator.Type, left, right)
+        {
+            case (TokenType.Plus, IntArray l, IntArray r):
+                throw new NotImplementedException();
             default:
-                throw new ArgumentOutOfRangeException(nameof(expression));
+                throw new InvalidOperationException("Invalid binary expression");
         }
+    }
+
+    private static Value Evaluate(LiteralExpression literal, Scope scope)
+    {
+        switch (literal.Value.Type)
+        {
+            case TokenType.String:
+                // TODO: create constructor overload
+                var chars = ((string)literal.Value.Literal!).ToCharArray();
+                return new CharArray(new Shape(chars.Length), chars);
+            case TokenType.Number:
+                // TODO: create constructor overload
+                return new IntArray(Shape.Scalar, (int)literal.Value.Literal!);
+            default:
+                throw new ArgumentOutOfRangeException(nameof(literal.Value.Type));
+        }
+    }
+
+    private Value Evaluate(CallExpression call, Scope scope)
+    {
+        if (scope[call.FunctionName.Text] is not Function function)
+            throw new InvalidOperationException("Can only call functions");
+                
+        if (call.Arguments.Length != function.Arity)
+            throw new InvalidOperationException("Invalid number of arguments");
+
+        var arguments = call.Arguments.Select(arg => Evaluate(arg, scope)).ToArray();
+        return function.Invoke(arguments);
     }
 
     private Value Evaluate(ArrayLiteralExpression arrayLiteral, Scope scope)
     {
         if (arrayLiteral.Elements.Length == 0)
-            return Empty.Instance;
+            return EmptyArray.Instance;
                 
         Type? elementType = null;
         Shape? shape = null;
@@ -183,14 +145,14 @@ public class Interpreter
 
         var newShape = shape!.Prepend(newElements.Length);
 
-        if (elementType == typeof(Int))
-            return new Int(newShape, [..newElements.Cast<Int>().SelectMany(array => array.Elements)]);
+        if (elementType == typeof(IntArray))
+            return new IntArray(newShape, [..newElements.Cast<IntArray>().SelectMany(array => array.Elements)]);
                 
-        if (elementType == typeof(Char))
-            return new Char(newShape, [..newElements.Cast<Char>().SelectMany(array => array.Elements)]);
+        if (elementType == typeof(CharArray))
+            return new CharArray(newShape, [..newElements.Cast<CharArray>().SelectMany(array => array.Elements)]);
                 
-        if (elementType == typeof(Empty))
-            return Empty.Instance;
+        if (elementType == typeof(EmptyArray))
+            return EmptyArray.Instance;
                 
         throw new InvalidOperationException("Invalid array element type");
     }
