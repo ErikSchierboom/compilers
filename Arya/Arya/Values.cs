@@ -60,6 +60,10 @@ public sealed record IntArray(Shape Shape, params int[] Elements) : Array<int>(S
 
 public sealed record CharArray(Shape Shape, params char[] Elements) : Array<char>(Shape, Elements)
 {
+    public static CharArray Scalar(char element) => new(Shape.Scalar, element);
+    public static CharArray Vector(params char[] elements) => new(Shape.Vector(elements), elements);
+    public static CharArray Matrix(char[][] elements) => new(Shape.Matrix(elements), [.. elements.SelectMany(row => row)]);
+
     public bool Equals(CharArray? other) => 
         StructuralComparisons.StructuralEqualityComparer.Equals(Elements, other?.Elements) &&
         Shape.Equals(other?.Shape);
