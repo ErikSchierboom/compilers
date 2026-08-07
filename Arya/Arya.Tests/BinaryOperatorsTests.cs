@@ -152,6 +152,24 @@ public class BinaryOperatorsTests
              Assert.Equal(expected, Interpreter.Evaluate(code));
     }
 
+    public class Modulo
+    {
+        public static readonly TheoryData<string, Value> IntegersTestData =
+            new()
+            {
+                { "5 % 3", IntArray.Scalar(2) },
+                { "2 % [1 3 5]", IntArray.Vector(0, 2, 2) },
+                { "[1 3 5] % 2", IntArray.Vector(1, 1, 1) },
+                { "[9 3] % [7 5]", IntArray.Vector(2, 3) },
+                { "[[5 4] [6 7]] % 2", IntArray.Matrix([[1, 0], [0, 1]]) },
+                { "[[1 2] [3 4]] % [[5 6] [7 8]]", IntArray.Matrix([[1, 2], [3, 4]]) },
+                { "[] % 1", EmptyArray.Instance },
+            };
+
+        [Theory, MemberData(nameof(IntegersTestData))]
+        public void Integers(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+    }
 
 //     public class Append
 //     {
@@ -188,8 +206,15 @@ public class BinaryOperatorsTests
 //         public void Arrays(string code, Value expected) =>
 //             Assert.Equal(expected, Interpreter.Evaluate(code));
 //     }
-//     
-//     [Theory, MemberData(nameof(OperatorPrecedenceTestData))]
-//     public void OperatorPrecedence(string code, Value expected) =>
-//         Assert.Equal(expected, Interpreter.Evaluate(code));
+
+     public static readonly TheoryData<string, Value> OperatorPrecedenceTestData =
+         new()
+         {
+             { "2 + 3 * 4", IntArray.Scalar(14) },
+             { "(2 + 3) * 4", IntArray.Scalar(20) },
+         };
+
+     [Theory, MemberData(nameof(OperatorPrecedenceTestData))]
+     public void OperatorPrecedence(string code, Value expected) =>
+         Assert.Equal(expected, Interpreter.Evaluate(code));
 }

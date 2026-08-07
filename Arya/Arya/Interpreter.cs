@@ -95,6 +95,8 @@ public class Interpreter
             (TokenType.Star, IntArray l, IntArray r) => l.BinaryOp(r, (a, b) => a * b),
 
             (TokenType.Slash, IntArray l, IntArray r) => l.BinaryOp(r, (a, b) => a / b),
+            
+            (TokenType.Percent, IntArray l, IntArray r) => l.BinaryOp(r, (a, b) => a % b),
 
             _ => throw new InvalidOperationException("Invalid binary expression")
         };

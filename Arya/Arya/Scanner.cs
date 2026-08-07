@@ -47,6 +47,10 @@ internal sealed class Scanner
                     Advance();
                     tokens.Add(new Token(TokenType.Slash, "/"));
                     break;
+                case '%':
+                    Advance();
+                    tokens.Add(new Token(TokenType.Percent, "%"));
+                    break;
                 case '[':
                     Advance();
                     tokens.Add(new Token(TokenType.OpenBracket, "["));
@@ -209,6 +213,7 @@ internal enum TokenType
     Minus,
     Star,
     Slash,
+    Percent,
     Comma,
 
     // Synthetic
