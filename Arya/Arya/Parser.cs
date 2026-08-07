@@ -32,6 +32,7 @@ internal class Parser
             [TokenType.PlusPlus] = new(null, ParseBinary, Precedence.Addition),
             [TokenType.Minus] = new(ParseUnary, ParseBinary, Precedence.Addition),
             [TokenType.Star] = new(null, ParseBinary, Precedence.Product),
+            [TokenType.Slash] = new(null, ParseBinary, Precedence.Product),
             [TokenType.Number] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.String] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.Char] = new(ParseLiteral, null, Precedence.Primary),

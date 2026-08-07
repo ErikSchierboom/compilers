@@ -43,6 +43,10 @@ internal sealed class Scanner
                     Advance();
                     tokens.Add(new Token(TokenType.Star, "*"));
                     break;
+                case '/':
+                    Advance();
+                    tokens.Add(new Token(TokenType.Slash, "/"));
+                    break;
                 case '[':
                     Advance();
                     tokens.Add(new Token(TokenType.OpenBracket, "["));
@@ -204,6 +208,7 @@ internal enum TokenType
     PlusPlus,
     Minus,
     Star,
+    Slash,
     Comma,
 
     // Synthetic

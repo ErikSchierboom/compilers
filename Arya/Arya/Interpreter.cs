@@ -81,11 +81,21 @@ public class Interpreter
 
         return (binary.Operator.Type, left, right) switch
         {
-            (TokenType.Plus, _, EmptyArray) or
-            (TokenType.Plus, EmptyArray, _) => EmptyArray.Instance,
+            (_, _, EmptyArray) or
+            (_, EmptyArray, _) => EmptyArray.Instance,
+
             (TokenType.Plus, IntArray l, IntArray r) => l.BinaryOp(r, (a, b) => a + b),
             (TokenType.Plus, CharArray l, IntArray r) => l.BinaryOp(r, (a, b) => (char)(a + b)),
             (TokenType.Plus, IntArray l, CharArray r) => r.BinaryOp(l, (a, b) => (char)(a + b)),
+
+            (TokenType.Minus, IntArray l, IntArray r) => l.BinaryOp(r, (a, b) => a - b),
+            (TokenType.Minus, CharArray l, IntArray r) => l.BinaryOp(r, (a, b) => (char)(a - b)),
+            (TokenType.Minus, IntArray l, CharArray r) => r.BinaryOp(l, (a, b) => (char)(b - a)),
+
+            (TokenType.Star, IntArray l, IntArray r) => l.BinaryOp(r, (a, b) => a * b),
+
+            (TokenType.Slash, IntArray l, IntArray r) => l.BinaryOp(r, (a, b) => a / b),
+
             _ => throw new InvalidOperationException("Invalid binary expression")
         };
     }
