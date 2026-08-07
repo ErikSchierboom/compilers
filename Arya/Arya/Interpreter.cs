@@ -80,7 +80,12 @@ public class Interpreter
         var right = Evaluate(binary.Right, scope);
 
         return (binary.Operator.Type, left, right) switch
-        {
+        {   
+            (TokenType.PlusPlus, IntArray l, IntArray r) => l.Append(r),
+            (TokenType.PlusPlus, IntArray l, EmptyArray r) => l.Append(r),
+            (TokenType.PlusPlus, EmptyArray l, IntArray r) => r.Append(l),
+            (TokenType.PlusPlus, EmptyArray, EmptyArray) => EmptyArray.Instance,
+            
             (_, _, EmptyArray) or
             (_, EmptyArray, _) => EmptyArray.Instance,
 
@@ -97,7 +102,7 @@ public class Interpreter
             (TokenType.Slash, IntArray l, IntArray r) => l.BinaryOp(r, (a, b) => a / b),
             
             (TokenType.Percent, IntArray l, IntArray r) => l.BinaryOp(r, (a, b) => a % b),
-
+            
             _ => throw new InvalidOperationException("Invalid binary expression")
         };
     }

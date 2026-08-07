@@ -171,41 +171,43 @@ public class BinaryOperatorsTests
             Assert.Equal(expected, Interpreter.Evaluate(code));
     }
 
-//     public class Append
-//     {
-//         public static readonly TheoryData<string, Value> StringTestData =
-//             new()
-//             {
-//                 { """
-//                   "" ++ ""
-//                   """, new String("") },
-//                 { """
-//                   "" ++ "hi"
-//                   """, new String("hi") },
-//                 { """
-//                   "hel" ++ "lo"
-//                   """, new String("hello") }
-//             };
-//
-//         [Theory, MemberData(nameof(StringTestData))]
-//         public void Strings(string code, Value expected) =>
-//             Assert.Equal(expected, Interpreter.Evaluate(code));
-//         
-//         public static readonly TheoryData<string, Value> ArraysTestData =
-//             new()
-//             {
-//                 { "[] ++ []", new Array() },
-//                 { "[1] ++ []", new Array(1) },
-//                 { "[] ++ [1 2]", new Array(1, 2) },
-//                 { "[1] ++ [2 3]", new Array(1, 2, 3) },
-//                 { "4 ++ [5 6]", new Array(4, 5, 6) },
-//                 { "[] ++ [7 9]", new Array(7, 9) },
-//             };
-//
-//         [Theory, MemberData(nameof(ArraysTestData))]
-//         public void Arrays(string code, Value expected) =>
-//             Assert.Equal(expected, Interpreter.Evaluate(code));
-//     }
+     public class Append
+     {
+         public static readonly TheoryData<string, Value> StringTestData =
+             new()
+             {
+                 { """
+                   "" ++ ""
+                   """, CharArray.Vector("") },
+                 { """
+                   "" ++ "hi"
+                   """, CharArray.Vector("hi") },
+                 { """
+                   "hel" ++ "lo"
+                   """, CharArray.Vector("hello") }
+             };
+
+         [Theory, MemberData(nameof(StringTestData))]
+         public void Strings(string code, Value expected) =>
+             Assert.Equal(expected, Interpreter.Evaluate(code));
+         
+         public static readonly TheoryData<string, Value> ArraysTestData =
+             new()
+             {
+                 { "[] ++ []", EmptyArray.Instance },
+                 { "1 ++ []", IntArray.Vector(1) },
+                 { "[] ++ [1 2]", IntArray.Vector(1, 2) },
+                 { "[1] ++ [2 3]", IntArray.Vector(1, 2, 3) },
+                 { "[5 6] ++ 4", IntArray.Vector(5, 6, 4) },
+                 { "[] ++ [7 9]", IntArray.Vector(7, 9) },
+                 { "[[5 4] [6 7]] ++ 2", IntArray.Matrix([[5, 4, 2], [6, 7, 2]]) },
+                 { "[[1 2] [3 4]] ++ [[5 6] [7 8]]", IntArray.Matrix([[1, 2, 5, 6], [3, 4, 7, 8]]) },
+             };
+
+         [Theory, MemberData(nameof(ArraysTestData))]
+         public void Arrays(string code, Value expected) =>
+             Assert.Equal(expected, Interpreter.Evaluate(code));
+     }
 
      public static readonly TheoryData<string, Value> OperatorPrecedenceTestData =
          new()

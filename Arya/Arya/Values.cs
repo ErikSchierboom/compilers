@@ -32,6 +32,8 @@ public sealed record Shape(params int[] Dimensions)
     
     public Shape Prepend(int dimension) => new([dimension, ..Dimensions]);
     
+    public Shape Expand(int dimension, int size) => new([..Dimensions[..dimension], Dimensions[dimension] + size, ..Dimensions[(dimension + 1)..]]);
+
     public bool Equals(Shape? other) => 
         StructuralComparisons.StructuralEqualityComparer.Equals(Dimensions, other?.Dimensions);
 
@@ -72,6 +74,32 @@ public sealed record IntArray(Shape Shape, params int[] Elements) : Array<int>(S
             throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");
         
         return new IntArray(Shape, [.. Elements.Zip(other.Elements).Select(pair => operation(pair.First, pair.Second))]);
+    }
+
+    public IntArray Append(EmptyArray _)
+    {
+        if (Shape.IsScalar)
+            return Vector(Elements);
+
+        return this;
+    }
+    
+    public IntArray Append(IntArray other)
+    {
+        if (Shape.IsScalar && other.Shape.IsScalar)
+            return Vector([..Elements, ..other.Elements]);
+        
+        if (Shape.IsVector && other.Shape.IsVector)
+            return Vector([..Elements, ..other.Elements]);
+        
+        if (Shape != other.Shape)
+            throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");
+        
+        var newElements = Elements.Chunk(Shape.Dimensions[0])
+            .Zip(other.Elements.Chunk(other.Shape.Dimensions[0]), (a, b) => a.Concat(b))
+            .SelectMany(elements => elements);
+        var newShape = Shape.Expand(1, other.Shape.Dimensions[1]);
+        return new IntArray(newShape, [..newElements]);
     }
 
     public bool Equals(IntArray? other) => 
