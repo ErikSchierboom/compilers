@@ -5,9 +5,9 @@
 //     public static readonly TheoryData<string, Value> AbsTestData =
 //         new()
 //         {
-//           { "abs(-1)", new Integer(1) },
-//           { "abs([-1 -2 -3])", new Array(new Integer(1), new Integer(2), new Integer(3)) },
-//           { "abs([[-4 -5] [-6 -7]])", new Array(new Array(new Integer(4), new Integer(5)), new Array(new Integer(6), new Integer(7))) }
+//           { "abs(-1)", 1 },
+//           { "abs([-1 -2 -3])", new Array(1, 2, 3) },
+//           { "abs([[-4 -5] [-6 -7]])", new Array(new Array(4, 5), new Array(6, 7)) }
 //         };
 //
 //     [Theory, MemberData(nameof(AbsTestData))]

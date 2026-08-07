@@ -25,6 +25,10 @@ public sealed record Shape(params int[] Dimensions)
     
     public static Shape Matrix<T>(T[][] elements) => new(elements.Length, elements[0].Length);
     
+    public bool IsScalar => Dimensions.Length == 0;
+    public bool IsVector => Dimensions.Length == 1;
+    public bool IsMatrix => Dimensions.Length == 2;
+    
     public Shape Prepend(int dimension) => new([dimension, ..Dimensions]);
     
     public bool Equals(Shape? other) => 
@@ -55,6 +59,9 @@ public sealed record IntArray(Shape Shape, params int[] Elements) : Array<int>(S
     
     public IntArray UnaryOp(Func<int, int> operation) => new(Shape, [.. Elements.Select(operation)]);
     
+    public IntArray BinaryOp(IntArray other, Func<int, int, int> operation) =>
+        new(Shape, [.. Elements.Zip(other.Elements).Select(pair => operation(pair.First, pair.Second))]);
+
     public bool Equals(IntArray? other) => 
         StructuralComparisons.StructuralEqualityComparer.Equals(Elements, other?.Elements) &&
         Shape.Equals(other?.Shape);

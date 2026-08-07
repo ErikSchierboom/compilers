@@ -81,8 +81,11 @@ public class Interpreter
 
         switch (binary.Operator.Type, left, right)
         {
+            case (TokenType.Plus, IntArray, EmptyArray):
+            case (TokenType.Plus, EmptyArray, IntArray):
+                return EmptyArray.Instance;
             case (TokenType.Plus, IntArray l, IntArray r):
-                throw new NotImplementedException();
+                return l.BinaryOp(r, (a, b) => a + b);
             default:
                 throw new InvalidOperationException("Invalid binary expression");
         }
