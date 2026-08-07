@@ -88,19 +88,14 @@ public class Interpreter
         }
     }
 
-    private static Value Evaluate(LiteralExpression literal, Scope scope)
-    {
-        switch (literal.Value.Type)
+    private static Value Evaluate(LiteralExpression literal, Scope scope) =>
+        literal.Value.Type switch
         {
-            case TokenType.String:
-                return CharArray.Vector((string)literal.Value.Literal!);
-            case TokenType.Number:
-                // TODO: create constructor overload
-                return IntArray.Scalar((int)literal.Value.Literal!);
-            default:
-                throw new ArgumentOutOfRangeException(nameof(literal.Value.Type));
-        }
-    }
+            TokenType.String => CharArray.Vector((string)literal.Value.Literal!),
+            TokenType.Number => IntArray.Scalar((int)literal.Value.Literal!),
+            TokenType.Char => CharArray.Scalar((char)literal.Value.Literal!),
+            _ => throw new ArgumentOutOfRangeException(nameof(literal.Value.Type))
+        };
 
     private Value Evaluate(CallExpression call, Scope scope)
     {

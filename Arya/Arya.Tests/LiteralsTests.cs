@@ -40,8 +40,86 @@ public class LiteralsTests
 
     public class Chars
     {
+        public class Scalars
+        {
+            public static readonly TheoryData<string, Value> UnescapedTestData =
+                new()
+                {
+                    { """
+                      ' '
+                      """, CharArray.Scalar(' ') },
+                    { """
+                      'a'
+                      """, CharArray.Scalar('a') },
+                    { """
+                      '2'
+                      """, CharArray.Scalar('2') },
+                    { """
+                      '@'
+                      """, CharArray.Scalar('@') }
+                };
+    
+            [Theory, MemberData(nameof(UnescapedTestData))]
+            public void Unescaped(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+        
+            public static readonly TheoryData<string, Value> EscapedTestData =
+                new()
+                {
+                    { """
+                      '\t'
+                      """, CharArray.Scalar('\t') },
+                    { """
+                      '\r'
+                      """, CharArray.Scalar('\r') },
+                    { """
+                      '\n'
+                      """, CharArray.Scalar('\n') },
+                    { """
+                      '\\'
+                      """, CharArray.Scalar('\\') },
+                    { """
+                      '\''
+                      """, CharArray.Scalar('\'') }
+                };
+    
+            [Theory, MemberData(nameof(EscapedTestData))]
+            public void Escaped(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+        }
+        
         public class Vectors
         {
+            public static readonly TheoryData<string, Value> UnescapedTestData =
+                new()
+                {
+                    { """
+                      ['a']
+                      """, CharArray.Vector('a') },
+                    { """
+                      ['h' ' ' 'i']
+                      """, CharArray.Vector('h', ' ', 'i') },
+                };
+    
+            [Theory, MemberData(nameof(UnescapedTestData))]
+            public void Unescaped(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+        
+            public static readonly TheoryData<string, Value> EscapedTestData =
+                new()
+                {
+                    { """
+                      ['\\']
+                      """, CharArray.Vector('\\') },
+                    { """
+                      ['\t' '\r' '\n']
+                      """, CharArray.Vector('\t', '\r', '\n') },
+                };
+    
+            [Theory, MemberData(nameof(EscapedTestData))]
+            public void Escaped(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+            
             public class Strings
             {
                 public static readonly TheoryData<string, Value> UnescapedTestData =

@@ -32,8 +32,9 @@ internal class Parser
             [TokenType.PlusPlus] = new(null, ParseBinary, Precedence.Addition),
             [TokenType.Minus] = new(ParseUnary, ParseBinary, Precedence.Addition),
             [TokenType.Star] = new(null, ParseBinary, Precedence.Product),
-            [TokenType.Number] = new(ParseNumber, null, Precedence.Primary),
-            [TokenType.String] = new(ParseString, null, Precedence.Primary),
+            [TokenType.Number] = new(ParseLiteral, null, Precedence.Primary),
+            [TokenType.String] = new(ParseLiteral, null, Precedence.Primary),
+            [TokenType.Char] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.Identifier] = new(ParseName, null, Precedence.Primary),
             [TokenType.OpenBracket] = new(ParseArray, null, Precedence.Array),
             [TokenType.OpenParen] = new(ParseParenthesized, ParseCall, Precedence.Call),
@@ -86,8 +87,7 @@ internal class Parser
         return new BinaryExpression(left, operatorToken, right);
     }
 
-    private LiteralExpression ParseNumber() => new(Previous);
-    private LiteralExpression ParseString() => new(Previous);
+    private LiteralExpression ParseLiteral() => new(Previous);
     
     private NameExpression ParseName() => new(Previous);
     

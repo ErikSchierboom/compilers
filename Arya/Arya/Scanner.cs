@@ -78,6 +78,36 @@ internal sealed class Scanner
                     var text = _source[identifierStartPosition.._position];
                     tokens.Add(new Token(TokenType.Identifier, text));
                     break;
+                case '\'':
+                    var charStartPosition = _position;
+                    Advance();
+
+                    var charValue = Current;
+                    
+                    if (Match('\\'))
+                    {
+                        if (Match('n'))
+                            charValue = '\n';
+                        else if (Match('r'))
+                            charValue = '\r';
+                        else if (Match('t'))
+                            charValue = '\t';
+                        else if (Match('\\'))
+                            charValue = '\\';
+                        else if (Match('\''))
+                            charValue = '\'';
+                        else 
+                            throw new InvalidOperationException($"Unknown escape sequence: '\\{Current}'");
+                    }
+                    else
+                    {
+                        Advance();
+                    }
+
+                    Consume('\'');
+
+                    tokens.Add(new Token(TokenType.Char, _source[charStartPosition.._position], charValue));
+                    break;
                 case '"':
                     var stringStartPosition = _position;
                     Advance();
@@ -162,6 +192,7 @@ internal enum TokenType
     // Literals
     Number,
     String,
+    Char,
     Identifier,
     
     // Symbols
