@@ -2,10 +2,6 @@ namespace Arya.Tests;
 
 public class LiteralsTests
 {
-    [Fact]
-    public void EmptyVector() =>
-        Assert.Equal(Empty.Instance, Interpreter.Evaluate("[]"));
-    
     public class Scalars
     {
         public static readonly TheoryData<string, Value> IntegersTestData =
@@ -70,6 +66,10 @@ public class LiteralsTests
 
     public class Vectors
     {
+        [Fact]
+        public void Empty() =>
+            Assert.Equal(Arya.Empty.Instance, Interpreter.Evaluate("[]"));
+        
         public static readonly TheoryData<string, Value> IntegersTestData =
             new()
             {
