@@ -147,7 +147,7 @@ public class Interpreter
         var newShape = shape!.Prepend(newElements.Length);
         
         if (!identicalShapes)
-            return new BoxArray(newShape, [..newElements.Select(element => element.Box())]);
+            return BoxArray.Vector([..newElements.Select(element => element.Box())]);
 
         if (elementType == typeof(IntArray))
             return new IntArray(newShape, [..newElements.Cast<IntArray>().SelectMany(array => array.Elements)]);

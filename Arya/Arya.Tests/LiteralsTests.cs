@@ -98,7 +98,7 @@ public static class LiteralsTests
         public static readonly TheoryData<string, Value> BoxedTestData =
             new()
             {
-                { "[[3] [4 5]]", BoxArray.Matrix([[IntArray.Vector(3).Box()], [IntArray.Vector(4, 5).Box()]]) },
+                { "[[3] [4 5]]", BoxArray.Vector(IntArray.Vector(3).Box(), IntArray.Vector(4, 5).Box()) },
             };
 
         [Theory, MemberData(nameof(BoxedTestData))]
