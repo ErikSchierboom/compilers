@@ -20,6 +20,33 @@ public class BinaryOperatorsTests
          public void Integers(string code, Value expected) =>
              Assert.Equal(expected, Interpreter.Evaluate(code));
          
+         public static readonly TheoryData<string, Value> CharsTestData =
+             new()
+             {
+                 { """
+                   'a' + 0
+                   """, CharArray.Scalar('a') },
+                 { """
+                   'a' + 1
+                   """, CharArray.Scalar('b') },
+                 { """
+                   3 + 'e'
+                   """, CharArray.Scalar('h') },
+                 { """
+                   11 + ['d' 'g' 'i']
+                   """, CharArray.Vector('o', 'r', 't') },
+                 { """
+                   2 + [['e' 'f' 'g'] ['k' 'l' 'm']]
+                   """, CharArray.Matrix("ghi", "mno") },
+                 { """
+                   [['e'] ['k'] ['g']] + 1
+                   """, CharArray.Matrix("f", "l", "h") },
+             };
+
+         [Theory, MemberData(nameof(CharsTestData))]
+         public void Chars(string code, Value expected) =>
+             Assert.Equal(expected, Interpreter.Evaluate(code));
+         
          public static readonly TheoryData<string, Value> StringsTestData =
              new()
              {
@@ -47,41 +74,8 @@ public class BinaryOperatorsTests
          public void Strings(string code, Value expected) =>
              Assert.Equal(expected, Interpreter.Evaluate(code));
      }
-//
-//     public class Subtraction
-//     {
-//         public static readonly TheoryData<string, Value> IntegersTestData =
-//             new()
-//             {
-//                 { "2 - 1", 1 },
-//                 { "1 - []", new Array() },
-//                 { "5 - [2 3 4]", new Array(3, 2, 1) },
-//                 { "[7 9] - [2 6]", new Array(5, 3) },
-//                 { "[[5] [6 7]] - 2", new Array(new Array(3), new Array(4, 5)) }
-//             };
-//
-//         [Theory, MemberData(nameof(IntegersTestData))]
-//         public void Integers(string code, Value expected) =>
-//             Assert.Equal(expected, Interpreter.Evaluate(code));
-//     }
-//
-//     public static readonly TheoryData<string, Value> MultiplicationTestData =
-//         new()
-//         {
-//             { "2 * 3", 6 }
-//         };
-//     
-//     [Theory, MemberData(nameof(MultiplicationTestData))]
-//     public void Multiplication(string code, Value expected) =>
-//         Assert.Equal(expected, Interpreter.Evaluate(code));
-//     
-//     public static readonly TheoryData<string, Value> OperatorPrecedenceTestData =
-//         new()
-//         {
-//             { "2 + 3 * 4", 14 },
-//             { "(2 + 3) * 4", 20 }
-//         };
-//
+
+
 //     public class Append
 //     {
 //         public static readonly TheoryData<string, Value> StringTestData =
