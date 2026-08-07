@@ -157,7 +157,7 @@ public class Interpreter
     private Value Evaluate(ArrayLiteralExpression arrayLiteral, Scope scope)
     {
         if (arrayLiteral.Elements.Length == 0)
-            return UntypedArray.Empty;
+            return UntypedArray.Scalar;
                 
         Type? elementType = null;
         Shape? shape = null;

@@ -28,11 +28,15 @@ public abstract record Array<T>(Shape Shape, params T[] Elements) : Value;
 
 public sealed record UntypedArray(Shape Shape, params UntypedArray[] Elements) : Array<UntypedArray>(Shape, Elements)
 {
-    public static readonly UntypedArray Empty = new(Shape.Scalar);
+    public static readonly UntypedArray Scalar = new(Shape.Scalar);
+    public static UntypedArray Vector(UntypedArray[] elements) => new(Shape.Vector(elements.Length), elements);
 }
 
 public sealed record IntArray(Shape Shape, params int[] Elements) : Array<int>(Shape, Elements)
 {
+    public static IntArray Scalar(int element) => new(Shape.Scalar, element);
+    public static IntArray Vector(int[] elements) => new(Shape.Vector(elements.Length), elements);
+    
     public bool Equals(IntArray? other) => 
         StructuralComparisons.StructuralEqualityComparer.Equals(Elements, other?.Elements) &&
         Shape.Equals(other?.Shape);
