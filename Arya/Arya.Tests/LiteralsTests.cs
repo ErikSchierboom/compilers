@@ -4,15 +4,15 @@ public class LiteralsTests
 {
     [Fact]
     public void EmptyArrays() =>
-        Assert.Equal(UntypedArray.Scalar, Interpreter.Evaluate("[]"));
+        Assert.Equal(Unknown.Scalar, Interpreter.Evaluate("[]"));
     
     public class Scalars
     {
         public static readonly TheoryData<string, Value> IntegersTestData =
             new()
             {
-                { "5", IntArray.Scalar(5) },
-                { "123", IntArray.Scalar(123) }
+                { "5", Int.Scalar(5) },
+                { "123", Int.Scalar(123) }
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]
@@ -73,8 +73,8 @@ public class LiteralsTests
         public static readonly TheoryData<string, Value> IntegersTestData =
             new()
             {
-                { "[3]", IntArray.Vector([3]) },
-                { "[6 7 8]", IntArray.Vector([6, 7, 8]) },
+                { "[3]", Int.Vector(3) },
+                { "[6 7 8]", Int.Vector(6, 7, 8) },
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]
@@ -87,8 +87,8 @@ public class LiteralsTests
         public static readonly TheoryData<string, Value> IntegersTestData =
             new()
             {
-                { "[[]]", UntypedArray.Vector([UntypedArray.Scalar]) },
-                { "[[3 4] [5 6]]", new IntArray(new Shape(2, 2), 3, 4, 5, 6) }
+                { "[[3 4] [5 6]]", new Int(Shape.Matrix(2, 2), 3, 4, 5, 6) },
+                { "[[7] [8] [9]]", new Int(Shape.Matrix(3, 1), 7, 8, 9) }
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]

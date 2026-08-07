@@ -76,7 +76,7 @@ public class Interpreter
 
                 switch (binary.Operator.Type, left, right)
                 {
-                    case (TokenType.Plus, IntArray l, IntArray r):
+                    case (TokenType.Plus, Int l, Int r):
                         throw new NotImplementedException();
                     default:
                         throw new InvalidOperationException("Invalid binary expression");
@@ -131,10 +131,10 @@ public class Interpreter
                     case TokenType.String:
                         // TODO: create constructor overload
                         var chars = ((string)literal.Value.Literal!).ToCharArray();
-                        return new CharArray(new Shape(chars.Length), chars);
+                        return new Char(new Shape(chars.Length), chars);
                     case TokenType.Number:
                         // TODO: create constructor overload
-                        return new IntArray(Shape.Scalar, (int)literal.Value.Literal!);
+                        return new Int(Shape.Scalar, (int)literal.Value.Literal!);
                     default:
                         throw new ArgumentOutOfRangeException(nameof(literal.Value.Type));
                 }
@@ -157,7 +157,7 @@ public class Interpreter
     private Value Evaluate(ArrayLiteralExpression arrayLiteral, Scope scope)
     {
         if (arrayLiteral.Elements.Length == 0)
-            return UntypedArray.Scalar;
+            return Unknown.Scalar;
                 
         Type? elementType = null;
         Shape? shape = null;
@@ -183,14 +183,14 @@ public class Interpreter
 
         var newShape = shape!.Prepend(newElements.Length);
 
-        if (elementType == typeof(IntArray))
-            return new IntArray(newShape, [..newElements.Cast<IntArray>().SelectMany(array => array.Elements)]);
+        if (elementType == typeof(Int))
+            return new Int(newShape, [..newElements.Cast<Int>().SelectMany(array => array.Elements)]);
                 
-        if (elementType == typeof(CharArray))
-            return new CharArray(newShape, [..newElements.Cast<CharArray>().SelectMany(array => array.Elements)]);
+        if (elementType == typeof(Char))
+            return new Char(newShape, [..newElements.Cast<Char>().SelectMany(array => array.Elements)]);
                 
-        if (elementType == typeof(UntypedArray))
-            return new UntypedArray(newShape);
+        if (elementType == typeof(Unknown))
+            return new Unknown(newShape);
                 
         throw new InvalidOperationException("Invalid array element type");
     }
