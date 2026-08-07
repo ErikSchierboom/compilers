@@ -23,6 +23,7 @@ public sealed record Shape(params int[] Dimensions)
     public static Shape Vector(int length) => new(length);
     public static Shape Vector<T>(T[] elements) => new(elements.Length);
     
+    public static Shape Matrix(int rows, int columns) => new(rows, columns);
     public static Shape Matrix<T>(T[][] elements) => new(elements.Length, elements[0].Length);
     
     public bool IsScalar => Dimensions.Length == 0;
@@ -97,11 +98,12 @@ public sealed record CharArray(Shape Shape, params char[] Elements) : Array<char
     public static CharArray Scalar(char element) => new(Shape.Scalar, element);
     
     public static CharArray Vector(params char[] elements) => new(Shape.Vector(elements), elements);
-    public static CharArray Vector(string str) => new(Shape.Vector(str.Length), str.ToCharArray());
+    public static CharArray Vector(string str) => new(Shape.Vector(str.Length), [..str]);
     
-    public static CharArray Matrix(char[][] elements) => new(Shape.Matrix(elements), [.. elements.SelectMany(row => row)]);
+    public static CharArray Matrix(char[][] elements) => new(Shape.Matrix(elements.Length, elements[0].Length), [.. elements.SelectMany(row => row)]);
+    public static CharArray Matrix(params string[] elements) => new(Shape.Matrix(elements.Length, elements[0].Length), [.. elements.SelectMany(row => row)]);
     
-    public CharArray BinaryOp(CharArray other, Func<char, char, char> operation)
+    public CharArray BinaryOp(IntArray other, Func<char, int, char> operation)
     {
         if (Shape.IsScalar)
             return new CharArray(other.Shape, [.. Elements.Cycle(other.Elements.Length).Zip(other.Elements).Select(pair => operation(pair.First, pair.Second))]);

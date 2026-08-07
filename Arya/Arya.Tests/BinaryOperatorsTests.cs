@@ -19,26 +19,33 @@ public class BinaryOperatorsTests
          [Theory, MemberData(nameof(IntegersTestData))]
          public void Integers(string code, Value expected) =>
              Assert.Equal(expected, Interpreter.Evaluate(code));
-//         
-//         public static readonly TheoryData<string, Value> StringsTestData =
-//             new()
-//             {
-//                 { """
-//                   "abc" + 1
-//                   """, new String("bcd") },
-//                 { """
-//                   3 + "efg"
-//                   """, new String("hij") },
-//                 // TODO: allow for nested array
-//                 // { "1 + []", new Array() },
-//                 // { "1 + [2 3 4]", new Array(3, 4, 5) },
-//                 // { "[2 3] + [4 5]", new Array(6, 8) },
-//                 // { "[[5] [6 7]] + 2", new Array(new Array(7), new Array(8, 9)) }
-//             };
-//
-//         [Theory, MemberData(nameof(StringsTestData))]
-//         public void Strings(string code, Value expected) =>
-//             Assert.Equal(expected, Interpreter.Evaluate(code));
+         
+         public static readonly TheoryData<string, Value> StringsTestData =
+             new()
+             {
+                 { """
+                   "abc" + 0
+                   """, CharArray.Vector("abc") },
+                 { """
+                   "abc" + 1
+                   """, CharArray.Vector("bcd") },
+                 { """
+                   3 + "efg"
+                   """, CharArray.Vector("hij") },
+                 { """
+                   "" + 2
+                   """, CharArray.Vector("") },
+                 { """
+                   2 + ["efg" "klm"]
+                   """, CharArray.Matrix("ghi", "mno") },
+                 { """
+                   ["e" "k" "g"] + 1
+                   """, CharArray.Matrix("f", "l", "h") },
+             };
+
+         [Theory, MemberData(nameof(StringsTestData))]
+         public void Strings(string code, Value expected) =>
+             Assert.Equal(expected, Interpreter.Evaluate(code));
      }
 //
 //     public class Subtraction

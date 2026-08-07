@@ -79,16 +79,15 @@ public class Interpreter
         var left = Evaluate(binary.Left, scope);
         var right = Evaluate(binary.Right, scope);
 
-        switch (binary.Operator.Type, left, right)
+        return (binary.Operator.Type, left, right) switch
         {
-            case (TokenType.Plus, IntArray, EmptyArray):
-            case (TokenType.Plus, EmptyArray, IntArray):
-                return EmptyArray.Instance;
-            case (TokenType.Plus, IntArray l, IntArray r):
-                return l.BinaryOp(r, (a, b) => a + b);
-            default:
-                throw new InvalidOperationException("Invalid binary expression");
-        }
+            (TokenType.Plus, _, EmptyArray) or
+            (TokenType.Plus, EmptyArray, _) => EmptyArray.Instance,
+            (TokenType.Plus, IntArray l, IntArray r) => l.BinaryOp(r, (a, b) => a + b),
+            (TokenType.Plus, CharArray l, IntArray r) => l.BinaryOp(r, (a, b) => (char)(a + b)),
+            (TokenType.Plus, IntArray l, CharArray r) => r.BinaryOp(l, (a, b) => (char)(a + b)),
+            _ => throw new InvalidOperationException("Invalid binary expression")
+        };
     }
 
     private static Value Evaluate(LiteralExpression literal, Scope scope) =>
