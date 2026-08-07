@@ -9,7 +9,7 @@ public static class UnaryOperatorsTests
             {
                 { "+1", IntArray.Scalar(1) },
                 { "+[1 2 3]", IntArray.Vector(1, 2, 3) },
-                { "+[[4 5] [6 7]]", IntArray.Matrix(2, 2, 4, 5, 6, 7) }
+                { "+[[4 5] [6 7]]", IntArray.Matrix([[4, 5], [6, 7]]) }
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]
@@ -25,8 +25,8 @@ public static class UnaryOperatorsTests
                 { "-1", IntArray.Scalar(-1) },
                 { "-[1 2 3]", IntArray.Vector(-1, -2, -3) },
                 { "[-1 -2 -3]", IntArray.Vector(-1, -2, -3) },
-                { "-[[4 5] [6 7]]", IntArray.Matrix(2, 2, -4, -5, -6, -7) },
-                { "[[-4] [-5] [-6] [-7]]", IntArray.Matrix(4, 1, -4, -5, -6, -7) }
+                { "-[[4 5] [6 7]]", IntArray.Matrix([[-4, -5], [-6, -7]]) },
+                { "[[-4] [-5] [-6] [-7]]", IntArray.Matrix([[-4], [-5], [-6], [-7]]) },
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]

@@ -87,8 +87,8 @@ public static class LiteralsTests
         public static readonly TheoryData<string, Value> IntegersTestData =
             new()
             {
-                { "[[3 4] [5 6]]", new IntArray(Shape.Matrix(2, 2), 3, 4, 5, 6) },
-                { "[[7] [8] [9]]", new IntArray(Shape.Matrix(3, 1), 7, 8, 9) }
+                { "[[3 4] [5 6]]", IntArray.Matrix([[3, 4], [5, 6]]) },
+                { "[[7] [8] [9]]", IntArray.Matrix([[7], [8], [9]]) },
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]

@@ -11,7 +11,7 @@ public sealed record Shape(params int[] Dimensions)
 {
     public static readonly Shape Scalar = new();
     public static Shape Vector<T>(T[] elements) => new(elements.Length);
-    public static Shape Matrix(int rows, int columns) => new(rows, columns);
+    public static Shape Matrix<T>(T[][] elements) => new(elements.Length, elements[0].Length);
     
     public Shape Prepend(int dimension) => new([dimension, ..Dimensions]);
     
@@ -35,7 +35,7 @@ public sealed record IntArray(Shape Shape, params int[] Elements) : Array<int>(S
 {
     public static IntArray Scalar(int element) => new(Shape.Scalar, element);
     public static IntArray Vector(params int[] elements) => new(Shape.Vector(elements), elements);
-    public static IntArray Matrix(int rows, int columns, params int[] elements) => new(Shape.Matrix(rows, columns), elements);
+    public static IntArray Matrix(int[][] elements) => new(Shape.Matrix(elements), [.. elements.SelectMany(row => row)]);
     
     public IntArray UnaryOp(Func<int, int> operation) => new(Shape, [.. Elements.Select(operation)]);
     
