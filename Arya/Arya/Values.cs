@@ -31,12 +31,12 @@ public sealed record Empty() : Array<Empty>(Shape.Scalar)
     public static readonly Empty Instance = new();
 }
 
-public sealed record Integers(Shape Shape, params int[] Elements) : Array<int>(Shape, Elements)
+public sealed record Int(Shape Shape, params int[] Elements) : Array<int>(Shape, Elements)
 {
-    public static Integers Scalar(int element) => new(Shape.Scalar, element);
-    public static Integers Vector(params int[] elements) => new(Shape.Vector(elements), elements);
+    public static Int Scalar(int element) => new(Shape.Scalar, element);
+    public static Int Vector(params int[] elements) => new(Shape.Vector(elements), elements);
     
-    public bool Equals(Integers? other) => 
+    public bool Equals(Int? other) => 
         StructuralComparisons.StructuralEqualityComparer.Equals(Elements, other?.Elements) &&
         Shape.Equals(other?.Shape);
 
@@ -48,9 +48,9 @@ public sealed record Integers(Shape Shape, params int[] Elements) : Array<int>(S
     public override string ToString() => "[" + string.Join(" ", Elements.Select(e => e.ToString())) + "]";
 }
 
-public sealed record Chars(Shape Shape, params char[] Elements) : Array<char>(Shape, Elements)
+public sealed record Char(Shape Shape, params char[] Elements) : Array<char>(Shape, Elements)
 {
-    public bool Equals(Chars? other) => 
+    public bool Equals(Char? other) => 
         StructuralComparisons.StructuralEqualityComparer.Equals(Elements, other?.Elements) &&
         Shape.Equals(other?.Shape);
 

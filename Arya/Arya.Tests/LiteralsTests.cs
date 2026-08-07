@@ -3,7 +3,7 @@ namespace Arya.Tests;
 public class LiteralsTests
 {
     [Fact]
-    public void EmptyArrays() =>
+    public void EmptyVector() =>
         Assert.Equal(Empty.Instance, Interpreter.Evaluate("[]"));
     
     public class Scalars
@@ -11,8 +11,8 @@ public class LiteralsTests
         public static readonly TheoryData<string, Value> IntegersTestData =
             new()
             {
-                { "5", Arya.Integers.Scalar(5) },
-                { "123", Arya.Integers.Scalar(123) }
+                { "5", Int.Scalar(5) },
+                { "123", Int.Scalar(123) }
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]
@@ -73,8 +73,8 @@ public class LiteralsTests
         public static readonly TheoryData<string, Value> IntegersTestData =
             new()
             {
-                { "[3]", Arya.Integers.Vector(3) },
-                { "[6 7 8]", Arya.Integers.Vector(6, 7, 8) },
+                { "[3]", Int.Vector(3) },
+                { "[6 7 8]", Int.Vector(6, 7, 8) },
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]
@@ -87,8 +87,8 @@ public class LiteralsTests
         public static readonly TheoryData<string, Value> IntegersTestData =
             new()
             {
-                { "[[3 4] [5 6]]", new Integers(Shape.Matrix(2, 2), 3, 4, 5, 6) },
-                { "[[7] [8] [9]]", new Integers(Shape.Matrix(3, 1), 7, 8, 9) }
+                { "[[3 4] [5 6]]", new Int(Shape.Matrix(2, 2), 3, 4, 5, 6) },
+                { "[[7] [8] [9]]", new Int(Shape.Matrix(3, 1), 7, 8, 9) }
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]
