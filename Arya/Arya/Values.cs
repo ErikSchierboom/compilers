@@ -214,6 +214,8 @@ public sealed record BoxArray(Shape Shape, params Box[] Elements) : Array<Box>(S
 
 public abstract record Function(string Name) : Value
 {
+    public override Shape Shape { get; init; } = Shape.Scalar;
+    
     public abstract int Arity { get; }
     
     public abstract Value Invoke(params Value[] arguments);

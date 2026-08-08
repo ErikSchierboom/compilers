@@ -1,18 +1,19 @@
-// namespace Arya.Tests;
-//
-// public class BuiltinFunctionsTests
-// {
-//     public static readonly TheoryData<string, Value> AbsTestData =
-//         new()
-//         {
-//           { "abs(-1)", 1 },
-//           { "abs([-1 -2 -3])", new Array(1, 2, 3) },
-//           { "abs([[-4 -5] [-6 -7]])", new Array(new Array(4, 5), new Array(6, 7)) }
-//         };
-//
-//     [Theory, MemberData(nameof(AbsTestData))]
-//     public void Abs(string code, Value expected) =>
-//         Assert.Equal(expected, Interpreter.Evaluate(code));
+namespace Arya.Tests;
+
+public class BuiltinFunctionsTests
+{
+    public static readonly TheoryData<string, Value> AbsTestData =
+        new()
+        {
+            { "abs(2)", IntArray.Scalar(2) },
+            { "abs(-1)", IntArray.Scalar(1) },
+            { "abs([-1 -2 -3])", IntArray.Vector(1, 2, 3) },
+            { "abs([[-4 -5] [-6 -7]])", IntArray.Matrix([[4, 5], [6, 7]]) }
+        };
+
+    [Theory, MemberData(nameof(AbsTestData))]
+    public void Abs(string code, Value expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
 //     
 //     public static readonly TheoryData<string, Value> LowercaseTestData =
 //         new()
@@ -88,4 +89,4 @@
 //     [Theory, MemberData(nameof(TrimTestData))]
 //     public void Trim(string code, Value expected) =>
 //         Assert.Equal(expected, Interpreter.Evaluate(code));
-// }
+}
