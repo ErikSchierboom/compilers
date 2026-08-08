@@ -4,7 +4,11 @@ public static class EnumerableExtensions
 {
     extension<T>(IEnumerable<T> enumerable)
     {
-        public IEnumerable<T> Cycle(int length)
+        /// <summary>
+        /// Repeats the elements of the sequence indefinitely.
+        /// </summary>
+        /// <returns>An infinite sequence of the sequence's elements.</returns>
+        public IEnumerable<T> Repeat()
         {
             using var enumerator = enumerable.GetEnumerator();
 
@@ -12,7 +16,7 @@ public static class EnumerableExtensions
             if (!enumerator.MoveNext())
                 yield break;
             
-            for (var i = 0; i < length; i++)
+            while (true)
             {
                 yield return enumerator.Current;
                 

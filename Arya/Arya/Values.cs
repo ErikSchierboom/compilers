@@ -67,10 +67,10 @@ public sealed record IntArray(Shape Shape, params int[] Elements) : Array<int>(S
     public IntArray BinaryOp(IntArray other, Func<int, int, int> operation)
     {
         if (Shape.IsScalar)
-            return new IntArray(other.Shape, [.. Elements.Cycle(other.Elements.Length).Zip(other.Elements).Select(pair => operation(pair.First, pair.Second))]);
+            return new IntArray(other.Shape, [.. Elements.Repeat().Zip(other.Elements).Select(pair => operation(pair.First, pair.Second))]);
 
         if (other.Shape.IsScalar)
-            return new IntArray(Shape, [.. Elements.Zip(other.Elements.Cycle(Elements.Length)).Select(pair => operation(pair.First, pair.Second))]);
+            return new IntArray(Shape, [.. Elements.Zip(other.Elements.Repeat()).Select(pair => operation(pair.First, pair.Second))]);
         
         if (Shape != other.Shape)
             throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");
@@ -137,10 +137,10 @@ public sealed record CharArray(Shape Shape, params char[] Elements) : Array<char
     public CharArray BinaryOp(IntArray other, Func<char, int, char> operation)
     {
         if (Shape.IsScalar)
-            return new CharArray(other.Shape, [.. Elements.Cycle(other.Elements.Length).Zip(other.Elements).Select(pair => operation(pair.First, pair.Second))]);
+            return new CharArray(other.Shape, [.. Elements.Repeat().Zip(other.Elements).Select(pair => operation(pair.First, pair.Second))]);
 
         if (other.Shape.IsScalar)
-            return new CharArray(Shape, [.. Elements.Zip(other.Elements.Cycle(Elements.Length)).Select(pair => operation(pair.First, pair.Second))]);
+            return new CharArray(Shape, [.. Elements.Zip(other.Elements.Repeat()).Select(pair => operation(pair.First, pair.Second))]);
         
         if (Shape != other.Shape)
             throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");

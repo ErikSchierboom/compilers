@@ -2,46 +2,38 @@ namespace Arya.Tests;
 
 public static class EnumerableExtensionsTests
 {
-    public class Cycle
+    public class Repeat
     {
         [Fact]
-        public void ReturnsEmptySequenceForEmptySequence()
+        public void EmptySequenceIsNotRepeated()
         {
             int[] empty = [];
-            var cycled = empty.Cycle(5);
+            var cycled = empty.Repeat();
             Assert.Empty(cycled);
         }
 
         [Fact]
-        public void ReturnsEmptySequenceForCycleLengthOfZero()
+        public void TakeFewerElements()
         {
             int[] values = [1, 2, 3];
-            var cycled = values.Cycle(0);
-            Assert.Empty(cycled);
-        }
-
-        [Fact]
-        public void ReturnsFullSequenceWhenCycleLengthIsEqualToSequenceLength()
-        {
-            int[] values = [1, 2, 3];
-            var result = values.Cycle(values.Length);
-            Assert.Equal(values, result);
-        }
-
-        [Fact]
-        public void ReturnsSubSequenceWhenCycleLengthIsLessThanSequenceLength()
-        {
-            int[] values = [1, 2, 3];
-            var result = values.Cycle(2);
+            var result = values.Repeat().Take(values.Length - 1);
             Assert.Equal([1, 2], result);
         }
 
         [Fact]
-        public void RepeatsSequenceWhenCycleLengthExceedsSequenceLength()
+        public void TakeSameNumberOfElements()
         {
             int[] values = [1, 2, 3];
-            var result = values.Cycle(5).ToArray();
-            Assert.Equal([1, 2, 3, 1, 2], result);
+            var result = values.Repeat().Take(values.Length);
+            Assert.Equal(values, result);
+        }
+
+        [Fact]
+        public void TakeMoreElements()
+        {
+            int[] values = [1, 3, 5];
+            var result = values.Repeat().Take(values.Length + 2);
+            Assert.Equal([1, 3, 5, 1, 3], result);
         }
     }
 }
