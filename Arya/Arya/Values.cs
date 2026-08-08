@@ -60,6 +60,8 @@ public sealed record IntArray(Shape Shape, params int[] Elements) : Array<int>(S
     
     public static IntArray Matrix(int[][] elements) => new(Shape.Matrix(elements), [.. elements.SelectMany(row => row)]);
     
+    private IEnumerable<int[]> Rows => Elements.Chunk(Shape.Dimensions[0]);
+    
     public IntArray UnaryOp(Func<int, int> operation) => new(Shape, [.. Elements.Select(operation)]);
     
     public IntArray BinaryOp(IntArray other, Func<int, int, int> operation)
@@ -95,8 +97,7 @@ public sealed record IntArray(Shape Shape, params int[] Elements) : Array<int>(S
         if (Shape != other.Shape)
             throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");
         
-        var newElements = Elements.Chunk(Shape.Dimensions[0])
-            .Zip(other.Elements.Chunk(other.Shape.Dimensions[0]), (a, b) => a.Concat(b))
+        var newElements = Rows.Zip(other.Rows, (a, b) => a.Concat(b))
             .SelectMany(elements => elements);
         var newShape = Shape.Expand(1, other.Shape.Dimensions[1]);
         return new IntArray(newShape, [..newElements]);
@@ -131,6 +132,8 @@ public sealed record CharArray(Shape Shape, params char[] Elements) : Array<char
     public static CharArray Matrix(char[][] elements) => new(Shape.Matrix(elements.Length, elements[0].Length), [.. elements.SelectMany(row => row)]);
     public static CharArray Matrix(params string[] elements) => new(Shape.Matrix(elements.Length, elements[0].Length), [.. elements.SelectMany(row => row)]);
     
+    private IEnumerable<char[]> Rows => Elements.Chunk(Shape.Dimensions[0]);
+
     public CharArray BinaryOp(IntArray other, Func<char, int, char> operation)
     {
         if (Shape.IsScalar)
@@ -164,8 +167,7 @@ public sealed record CharArray(Shape Shape, params char[] Elements) : Array<char
         if (Shape != other.Shape)
             throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");
         
-        var newElements = Elements.Chunk(Shape.Dimensions[0])
-            .Zip(other.Elements.Chunk(other.Shape.Dimensions[0]), (a, b) => a.Concat(b))
+        var newElements = Rows.Zip(other.Rows, (a, b) => a.Concat(b))
             .SelectMany(elements => elements);
         var newShape = Shape.Expand(1, other.Shape.Dimensions[1]);
         return new CharArray(newShape, [..newElements]);
