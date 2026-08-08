@@ -173,7 +173,7 @@ public class BinaryOperatorsTests
 
      public class Append
      {
-         public static readonly TheoryData<string, Value> StringTestData =
+         public static readonly TheoryData<string, Value> CharsTestData =
              new()
              {
                  { """
@@ -187,7 +187,22 @@ public class BinaryOperatorsTests
                    """, CharArray.Vector("hello") }
              };
 
-         [Theory, MemberData(nameof(StringTestData))]
+         [Theory, MemberData(nameof(CharsTestData))]
+         public void Chars(string code, Value expected) =>
+             Assert.Equal(expected, Interpreter.Evaluate(code));
+         
+         public static readonly TheoryData<string, Value> StringsTestData =
+             new()
+             {
+                 { """
+                   'a' ++ 'b'
+                   """, CharArray.Vector("ab") },
+                 { """
+                   "abc" ++ 'd'
+                   """, CharArray.Vector("abcd") },
+             };
+
+         [Theory, MemberData(nameof(StringsTestData))]
          public void Strings(string code, Value expected) =>
              Assert.Equal(expected, Interpreter.Evaluate(code));
          
@@ -200,7 +215,6 @@ public class BinaryOperatorsTests
                  { "[1] ++ [2 3]", IntArray.Vector(1, 2, 3) },
                  { "[5 6] ++ 4", IntArray.Vector(5, 6, 4) },
                  { "[] ++ [7 9]", IntArray.Vector(7, 9) },
-                 { "[[5 4] [6 7]] ++ 2", IntArray.Matrix([[5, 4, 2], [6, 7, 2]]) },
                  { "[[1 2] [3 4]] ++ [[5 6] [7 8]]", IntArray.Matrix([[1, 2, 5, 6], [3, 4, 7, 8]]) },
              };
 

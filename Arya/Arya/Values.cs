@@ -145,6 +145,32 @@ public sealed record CharArray(Shape Shape, params char[] Elements) : Array<char
         return new CharArray(Shape, [.. Elements.Zip(other.Elements).Select(pair => operation(pair.First, pair.Second))]);
     }
 
+    public CharArray Append(EmptyArray _)
+    {
+        if (Shape.IsScalar)
+            return Vector(Elements);
+
+        return this;
+    }
+    
+    public CharArray Append(CharArray other)
+    {
+        if (Shape.IsScalar && other.Shape.IsScalar ||
+            Shape.IsVector && other.Shape.IsVector ||
+            Shape.IsVector && other.Shape.IsScalar ||
+            Shape.IsScalar && other.Shape.IsVector)
+            return Vector([..Elements, ..other.Elements]);
+        
+        if (Shape != other.Shape)
+            throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");
+        
+        var newElements = Elements.Chunk(Shape.Dimensions[0])
+            .Zip(other.Elements.Chunk(other.Shape.Dimensions[0]), (a, b) => a.Concat(b))
+            .SelectMany(elements => elements);
+        var newShape = Shape.Expand(1, other.Shape.Dimensions[1]);
+        return new CharArray(newShape, [..newElements]);
+    }
+
     public bool Equals(CharArray? other) => 
         StructuralComparisons.StructuralEqualityComparer.Equals(Elements, other?.Elements) &&
         Shape.Equals(other?.Shape);

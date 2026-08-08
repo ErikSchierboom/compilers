@@ -84,6 +84,9 @@ public class Interpreter
             (TokenType.PlusPlus, IntArray l, IntArray r) => l.Append(r),
             (TokenType.PlusPlus, IntArray l, EmptyArray r) => l.Append(r),
             (TokenType.PlusPlus, EmptyArray l, IntArray r) => r.Append(l),
+            (TokenType.PlusPlus, CharArray l, CharArray r) => l.Append(r),
+            (TokenType.PlusPlus, CharArray l, EmptyArray r) => l.Append(r),
+            (TokenType.PlusPlus, EmptyArray l, CharArray r) => r.Append(l),
             (TokenType.PlusPlus, EmptyArray, EmptyArray) => EmptyArray.Instance,
             
             (_, _, EmptyArray) or
