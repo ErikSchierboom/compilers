@@ -188,8 +188,16 @@ public class Interpreter
         if (index is not IntArray indexArray)
             throw new InvalidOperationException("Can only index with arrays");
 
-        var idx = indexArray.Elements[0] - 1;
-        return IntArray.Scalar(targetArray.Elements[idx]);
+        if (index.Shape.IsScalar)
+        {
+            var scalarIndex = indexArray.Elements[0] - 1;
+            return IntArray.Scalar(targetArray.Elements[scalarIndex]);
+        }
+        
+        var newElements = indexArray.Elements
+            .SelectMany(index => targetArray.Elements[(index - 1)..(index - 1 + targetArray.Shape.Dimensions[0])]);
+        var newShape = targetArray.Shape.Replace(0, indexArray.Elements.Length);
+        return new IntArray(newShape,[..newElements]);
     }
 
     private static Scope CreateDefaultScope()

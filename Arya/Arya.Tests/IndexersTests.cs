@@ -5,7 +5,8 @@ public class IndexersTests
     public static readonly TheoryData<string, Value> IntegersTestData =
         new()
         {
-            { "[1 2 3][2]", IntArray.Scalar(2) },
+            { "[4 5 6][2]", IntArray.Scalar(5) },
+            { "[4 5 6][[1 3]]", IntArray.Vector(4, 6) },
         };
 
     [Theory, MemberData(nameof(IntegersTestData))]

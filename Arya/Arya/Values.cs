@@ -31,8 +31,8 @@ public sealed record Shape(params int[] Dimensions)
     public bool IsMatrix => Dimensions.Length == 2;
     
     public Shape Prepend(int dimension) => new([dimension, ..Dimensions]);
-    
-    public Shape Expand(int dimension, int size) => new([..Dimensions[..dimension], Dimensions[dimension] + size, ..Dimensions[(dimension + 1)..]]);
+    public Shape Increment(int dimension, int size) => Replace(dimension, Dimensions[dimension] + size);
+    public Shape Replace(int dimension, int size) => new([..Dimensions[..dimension], size, ..Dimensions[(dimension + 1)..]]);
 
     public bool Equals(Shape? other) => 
         StructuralComparisons.StructuralEqualityComparer.Equals(Dimensions, other?.Dimensions);
@@ -60,7 +60,7 @@ public sealed record IntArray(Shape Shape, params int[] Elements) : Array<int>(S
     
     public static IntArray Matrix(int[][] elements) => new(Shape.Matrix(elements), [.. elements.SelectMany(row => row)]);
     
-    private IEnumerable<int[]> Rows => Elements.Chunk(Shape.Dimensions[0]);
+    public IEnumerable<int[]> Rows => Elements.Chunk(Shape.Dimensions[0]);
     
     public IntArray UnaryOp(Func<int, int> operation) => new(Shape, [.. Elements.Select(operation)]);
     
@@ -99,7 +99,7 @@ public sealed record IntArray(Shape Shape, params int[] Elements) : Array<int>(S
         
         var newElements = Rows.Zip(other.Rows, (a, b) => a.Concat(b))
             .SelectMany(elements => elements);
-        var newShape = Shape.Expand(1, other.Shape.Dimensions[1]);
+        var newShape = Shape.Increment(1, other.Shape.Dimensions[1]);
         return new IntArray(newShape, [..newElements]);
     }
 
@@ -132,7 +132,7 @@ public sealed record CharArray(Shape Shape, params char[] Elements) : Array<char
     public static CharArray Matrix(char[][] elements) => new(Shape.Matrix(elements.Length, elements[0].Length), [.. elements.SelectMany(row => row)]);
     public static CharArray Matrix(params string[] elements) => new(Shape.Matrix(elements.Length, elements[0].Length), [.. elements.SelectMany(row => row)]);
     
-    private IEnumerable<char[]> Rows => Elements.Chunk(Shape.Dimensions[0]);
+    public IEnumerable<char[]> Rows => Elements.Chunk(Shape.Dimensions[0]);
 
     public CharArray BinaryOp(IntArray other, Func<char, int, char> operation)
     {
@@ -169,7 +169,7 @@ public sealed record CharArray(Shape Shape, params char[] Elements) : Array<char
         
         var newElements = Rows.Zip(other.Rows, (a, b) => a.Concat(b))
             .SelectMany(elements => elements);
-        var newShape = Shape.Expand(1, other.Shape.Dimensions[1]);
+        var newShape = Shape.Increment(1, other.Shape.Dimensions[1]);
         return new CharArray(newShape, [..newElements]);
     }
 
