@@ -29,10 +29,13 @@ public sealed record Shape(params int[] Dimensions)
     public bool IsScalar => Dimensions.Length == 0;
     public bool IsVector => Dimensions.Length == 1;
     public bool IsMatrix => Dimensions.Length == 2;
+
+    public int RowCount => Dimensions.Length >= 2 ? Dimensions[1] : 1;
     
     public Shape Prepend(int dimension) => new([dimension, ..Dimensions]);
     public Shape Increment(int dimension, int size) => Replace(dimension, Dimensions[dimension] + size);
     public Shape Replace(int dimension, int size) => new([..Dimensions[..dimension], size, ..Dimensions[(dimension + 1)..]]);
+    public Shape RemoveFirst() => new([.. Dimensions.Skip(1)]);
 
     public bool Equals(Shape? other) => 
         StructuralComparisons.StructuralEqualityComparer.Equals(Dimensions, other?.Dimensions);
@@ -60,8 +63,9 @@ public sealed record IntArray(Shape Shape, params int[] Elements) : Array<int>(S
     
     public static IntArray Matrix(int[][] elements) => new(Shape.Matrix(elements), [.. elements.SelectMany(row => row)]);
     
-    public IEnumerable<int[]> Rows => Elements.Chunk(Shape.Dimensions[0]);
-    
+    public IEnumerable<int[]> Rows => 
+        Shape.IsScalar || Shape.IsVector ? [Elements] : Elements.Chunk(Shape.Dimensions[0]);
+
     public IntArray UnaryOp(Func<int, int> operation) => new(Shape, [.. Elements.Select(operation)]);
     
     public IntArray BinaryOp(IntArray other, Func<int, int, int> operation)

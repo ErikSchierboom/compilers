@@ -187,16 +187,20 @@ public class Interpreter
 
         if (index is not IntArray indexArray)
             throw new InvalidOperationException("Can only index with arrays");
-
-        if (index.Shape.IsScalar)
-        {
-            var scalarIndex = indexArray.Elements[0] - 1;
-            return IntArray.Scalar(targetArray.Elements[scalarIndex]);
-        }
         
+        if (indexArray.Shape.IsMatrix)
+            throw new InvalidOperationException("Can only index with scalars or vectors");
+
         var newElements = indexArray.Elements
-            .SelectMany(targetIndex => targetArray.Elements[(targetIndex - 1)..(targetIndex - 1 + targetArray.Shape.Dimensions[0])]);
-        var newShape = targetArray.Shape.Replace(0, indexArray.Elements.Length);
+            .SelectMany(targetIndex =>
+            {   
+                var from = (targetIndex - 1) * targetArray.Shape.RowCount;
+                var until = targetIndex * targetArray.Shape.RowCount;
+                return targetArray.Elements[from..until];
+            });
+        var newShape = indexArray.Shape.IsScalar
+            ? targetArray.Shape.RemoveFirst()
+            : targetArray.Shape.Replace(0, indexArray.Elements.Length);
         return new IntArray(newShape,[..newElements]);
     }
 
