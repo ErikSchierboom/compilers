@@ -7,6 +7,7 @@ public class IndexersTests
         {
             { "[4 5 6][2]", IntArray.Scalar(5) },
             { "[4 5 6][[1 3]]", IntArray.Vector(4, 6) },
+            { "[4 5 6][[1 2 1 3]]", IntArray.Vector(4, 5, 4, 6) },
         };
 
     [Theory, MemberData(nameof(IntegersTestData))]

@@ -195,7 +195,7 @@ public class Interpreter
         }
         
         var newElements = indexArray.Elements
-            .SelectMany(index => targetArray.Elements[(index - 1)..(index - 1 + targetArray.Shape.Dimensions[0])]);
+            .SelectMany(targetIndex => targetArray.Elements[(targetIndex - 1)..(targetIndex - 1 + targetArray.Shape.Dimensions[0])]);
         var newShape = targetArray.Shape.Replace(0, indexArray.Elements.Length);
         return new IntArray(newShape,[..newElements]);
     }
