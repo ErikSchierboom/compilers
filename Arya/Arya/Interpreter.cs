@@ -58,6 +58,7 @@ public class Interpreter
             BinaryExpression binary => Evaluate(binary, scope),
             LiteralExpression literal => Evaluate(literal, scope),
             CallExpression call => Evaluate(call, scope),
+            IndexerExpression indexer => Evaluate(indexer, scope),
             ParenthesizedExpression parenthesized => Evaluate(parenthesized.Expression, scope),
             _ => throw new ArgumentOutOfRangeException(nameof(expression))
         };
@@ -174,6 +175,21 @@ public class Interpreter
             return EmptyArray.Instance;
                 
         throw new InvalidOperationException("Invalid array element type");
+    }
+    
+    private Value Evaluate(IndexerExpression indexer, Scope scope)
+    {
+        var target = Evaluate(indexer.Target, scope);
+        var index = Evaluate(indexer.Index, scope);
+
+        if (target is not IntArray targetArray)
+            throw new InvalidOperationException("Can only index into arrays");
+
+        if (index is not IntArray indexArray)
+            throw new InvalidOperationException("Can only index with arrays");
+
+        var idx = indexArray.Elements[0] - 1;
+        return IntArray.Scalar(targetArray.Elements[idx]);
     }
 
     private static Scope CreateDefaultScope()

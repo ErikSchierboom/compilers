@@ -96,6 +96,7 @@ internal class Parser
     private IndexerExpression ParseIndexer(Expression left)
     {
         var index = ParseExpression();
+        Consume(TokenType.CloseBracket);
         return new IndexerExpression(left, index);
     }
     
