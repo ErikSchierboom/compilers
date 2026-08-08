@@ -38,7 +38,7 @@ internal class Parser
             [TokenType.String] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.Char] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.Identifier] = new(ParseName, null, Precedence.Primary),
-            [TokenType.OpenBracket] = new(ParseArray, null, Precedence.Array),
+            [TokenType.OpenBracket] = new(ParseArray, ParseIndexer, Precedence.Array),
             [TokenType.OpenParen] = new(ParseParenthesized, ParseCall, Precedence.Call),
         };
     }
@@ -92,6 +92,12 @@ internal class Parser
     private LiteralExpression ParseLiteral() => new(Previous);
     
     private NameExpression ParseName() => new(Previous);
+
+    private IndexerExpression ParseIndexer(Expression left)
+    {
+        var index = ParseExpression();
+        return new IndexerExpression(left, index);
+    }
     
     private Expression ParseCall(Expression left)
     {
@@ -113,7 +119,7 @@ internal class Parser
         return new CallExpression(name.Identifier, [..arguments]);
     }
 
-    private ArrayLiteralExpression ParseArray()
+    private ArrayExpression ParseArray()
     {
         var elements = new List<Expression>();
         while (!IsEndOfFile && Current.Type != TokenType.CloseBracket)
@@ -168,9 +174,10 @@ internal class Parser
 
 internal abstract record Expression;
 internal sealed record LiteralExpression(Token Value) : Expression;
-internal sealed record ArrayLiteralExpression(Expression[] Elements) : Expression;
+internal sealed record ArrayExpression(Expression[] Elements) : Expression;
 internal sealed record NameExpression(Token Identifier) : Expression;
 internal sealed record CallExpression(Token FunctionName, Expression[] Arguments) : Expression;
 internal sealed record UnaryExpression(Token Operator, Expression Operand) : Expression;
 internal sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
 internal sealed record ParenthesizedExpression(Expression Expression) : Expression;
+internal sealed record IndexerExpression(Expression Target, Expression Index) : Expression;

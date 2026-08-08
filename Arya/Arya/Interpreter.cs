@@ -53,7 +53,7 @@ public class Interpreter
     private Value Evaluate(Expression expression, Scope scope) =>
         expression switch
         {
-            ArrayLiteralExpression arrayLiteral => Evaluate(arrayLiteral, scope),
+            ArrayExpression array => Evaluate(array, scope),
             UnaryExpression unary => Evaluate(unary, scope),
             BinaryExpression binary => Evaluate(binary, scope),
             LiteralExpression literal => Evaluate(literal, scope),
@@ -131,20 +131,20 @@ public class Interpreter
         return function.Invoke(arguments);
     }
 
-    private Value Evaluate(ArrayLiteralExpression arrayLiteral, Scope scope)
+    private Value Evaluate(ArrayExpression array, Scope scope)
     {
-        if (arrayLiteral.Elements.Length == 0)
+        if (array.Elements.Length == 0)
             return EmptyArray.Instance;
                 
         Type? elementType = null;
         Shape? shape = null;
         bool identicalShapes = true;
                 
-        Value[] newElements = new Value[arrayLiteral.Elements.Length];
+        Value[] newElements = new Value[array.Elements.Length];
 
-        for (var index = 0; index < arrayLiteral.Elements.Length; index++)
+        for (var index = 0; index < array.Elements.Length; index++)
         {
-            var evaluatedElement = Evaluate(arrayLiteral.Elements[index], scope);
+            var evaluatedElement = Evaluate(array.Elements[index], scope);
 
             if (elementType is null)
                 elementType = evaluatedElement.GetType();
