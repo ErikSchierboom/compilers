@@ -86,10 +86,10 @@ public sealed record IntArray(Shape Shape, params int[] Elements) : Array<int>(S
     
     public IntArray Append(IntArray other)
     {
-        if (Shape.IsScalar && other.Shape.IsScalar)
-            return Vector([..Elements, ..other.Elements]);
-        
-        if (Shape.IsVector && other.Shape.IsVector)
+        if (Shape.IsScalar && other.Shape.IsScalar ||
+            Shape.IsVector && other.Shape.IsVector ||
+            Shape.IsVector && other.Shape.IsScalar ||
+            Shape.IsScalar && other.Shape.IsVector)
             return Vector([..Elements, ..other.Elements]);
         
         if (Shape != other.Shape)
