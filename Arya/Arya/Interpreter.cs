@@ -69,9 +69,9 @@ public class Interpreter
     private static Value UnaryOp(TokenType op, Value operand) =>
         (op, operand) switch
         {
-            (TokenType.Plus, IntArray arr) => arr,
-            (TokenType.Minus, IntArray arr) => arr.Map(i => -i),
-            (_, BoxArray arr) => arr.Pervade(element => UnaryOp(op, element)),
+            (TokenType.Plus, Array<int> arr) => arr,
+            (TokenType.Minus, Array<int> arr) => arr.Map(i => -i),
+            (_, Array<Box> arr) => arr.Pervade(element => UnaryOp(op, element)),
             _ => throw new InvalidOperationException("Invalid unary expression")
         };
 
@@ -81,33 +81,33 @@ public class Interpreter
     private static Value BinaryOp(TokenType op, Value left, Value right) =>
         (op, left, right) switch
         {
-            (TokenType.PlusPlus, IntArray l, IntArray r) => l.Append(r),
-            (TokenType.PlusPlus, IntArray l, EmptyArray r) => l.Append(r),
-            (TokenType.PlusPlus, EmptyArray l, IntArray r) => r.Append(l),
-            (TokenType.PlusPlus, CharArray l, CharArray r) => l.Append(r),
-            (TokenType.PlusPlus, CharArray l, EmptyArray r) => l.Append(r),
-            (TokenType.PlusPlus, EmptyArray l, CharArray r) => r.Append(l),
+            (TokenType.PlusPlus, Array<int> l, Array<int> r) => l.Append(r),
+            (TokenType.PlusPlus, Array<int> l, EmptyArray r) => l.Append(r),
+            (TokenType.PlusPlus, EmptyArray l, Array<int> r) => r.Append(l),
+            (TokenType.PlusPlus, Array<char> l, Array<char> r) => l.Append(r),
+            (TokenType.PlusPlus, Array<char> l, EmptyArray r) => l.Append(r),
+            (TokenType.PlusPlus, EmptyArray l, Array<char> r) => r.Append(l),
             (TokenType.PlusPlus, EmptyArray, EmptyArray) => EmptyArray.Instance,
-            
+
             (_, _, EmptyArray) or
             (_, EmptyArray, _) => EmptyArray.Instance,
 
-            (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or TokenType.Percent, BoxArray l, var r) => l.Pervade(r, (a, b) => BinaryOp(op, a, b)),
-            (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or TokenType.Percent, var l, BoxArray r) => r.Pervade(l, (a, b) => BinaryOp(op, b, a)),
+            (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or TokenType.Percent, Array<Box> l, var r) => l.Pervade(r, (a, b) => BinaryOp(op, a, b)),
+            (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or TokenType.Percent, var l, Array<Box> r) => r.Pervade(l, (a, b) => BinaryOp(op, b, a)),
 
-            (TokenType.Plus, IntArray l, IntArray r) => l.Zip(r, (a, b) => a + b),
-            (TokenType.Plus, CharArray l, IntArray r) => l.Zip(r, (a, b) => (char)(a + b)),
-            (TokenType.Plus, IntArray l, CharArray r) => r.Zip(l, (a, b) => (char)(a + b)),
+            (TokenType.Plus, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a + b),
+            (TokenType.Plus, Array<char> l, Array<int> r) => l.Zip(r, (a, b) => (char)(a + b)),
+            (TokenType.Plus, Array<int> l, Array<char> r) => r.Zip(l, (a, b) => (char)(a + b)),
 
-            (TokenType.Minus, IntArray l, IntArray r) => l.Zip(r, (a, b) => a - b),
-            (TokenType.Minus, CharArray l, IntArray r) => l.Zip(r, (a, b) => (char)(a - b)),
-            (TokenType.Minus, IntArray l, CharArray r) => r.Zip(l, (a, b) => (char)(b - a)),
+            (TokenType.Minus, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a - b),
+            (TokenType.Minus, Array<char> l, Array<int> r) => l.Zip(r, (a, b) => (char)(a - b)),
+            (TokenType.Minus, Array<int> l, Array<char> r) => r.Zip(l, (a, b) => (char)(b - a)),
 
-            (TokenType.Star, IntArray l, IntArray r) => l.Zip(r, (a, b) => a * b),
+            (TokenType.Star, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a * b),
 
-            (TokenType.Slash, IntArray l, IntArray r) => l.Zip(r, (a, b) => a / b),
+            (TokenType.Slash, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a / b),
 
-            (TokenType.Percent, IntArray l, IntArray r) => l.Zip(r, (a, b) => a % b),
+            (TokenType.Percent, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a % b),
             
             _ => throw new InvalidOperationException("Invalid binary expression")
         };
@@ -166,11 +166,11 @@ public class Interpreter
         if (!identicalShapes)
             return BoxArray.Vector([..newElements.Select(element => element.Box())]);
 
-        if (elementType == typeof(IntArray))
-            return new IntArray(newShape, [..newElements.Cast<IntArray>().SelectMany(array => array.Elements)]);
-                
-        if (elementType == typeof(CharArray))
-            return new CharArray(newShape, [..newElements.Cast<CharArray>().SelectMany(array => array.Elements)]);
+        if (elementType == typeof(Array<int>))
+            return new Array<int>(newShape, [..newElements.Cast<Array<int>>().SelectMany(array => array.Elements)]);
+
+        if (elementType == typeof(Array<char>))
+            return new Array<char>(newShape, [..newElements.Cast<Array<char>>().SelectMany(array => array.Elements)]);
                 
         if (elementType == typeof(EmptyArray))
             return EmptyArray.Instance;
@@ -183,10 +183,10 @@ public class Interpreter
         var target = Evaluate(indexer.Target, scope);
         var index = Evaluate(indexer.Index, scope);
 
-        if (target is not IntArray targetArray)
+        if (target is not Array<int> targetArray)
             throw new InvalidOperationException("Can only index into arrays");
 
-        if (index is not IntArray indexArray)
+        if (index is not Array<int> indexArray)
             throw new InvalidOperationException("Can only index with arrays");
         
         if (indexArray.Shape.IsMatrix)
@@ -202,7 +202,7 @@ public class Interpreter
         var newShape = indexArray.Shape.IsScalar
             ? targetArray.Shape.RemoveFirst()
             : targetArray.Shape.Replace(0, indexArray.Elements.Length);
-        return new IntArray(newShape,[..newElements]);
+        return new Array<int>(newShape,[..newElements]);
     }
 
     private static Scope CreateDefaultScope()

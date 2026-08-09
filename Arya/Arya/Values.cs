@@ -68,9 +68,48 @@ public sealed record EmptyArray : Value
     public override string ToString() => "[]";
 }
 
-public abstract record Array<T>(Shape Shape, params T[] Elements) : Value
+public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
 {
-    public virtual bool Equals(Array<T>? other) =>
+    public static Array<T> Scalar(T element) => new(Shape.Scalar, element);
+
+    public static Array<T> Vector(params T[] elements) => new(Shape.Vector(elements), elements);
+
+    public static Array<T> Matrix(T[][] elements) => new(Shape.Matrix(elements), [.. elements.SelectMany(row => row)]);
+
+    public IEnumerable<T[]> Rows =>
+        Shape.IsScalar || Shape.IsVector ? [Elements] : Elements.Chunk(Shape.Dimensions[0]);
+
+    public Array<T> Map(Func<T, T> operation) =>
+        new(Shape, [.. Elements.Select(operation)]);
+
+    /// <summary>
+    /// Applies <paramref name="operation"/> to each pair of elements, stretching whichever
+    /// operand is a scalar. Repeating both sides makes the stretch fall out of taking exactly
+    /// as many elements as the resulting shape holds.
+    /// </summary>
+    public Array<T> Zip<TOther>(Array<TOther> other, Func<T, TOther, T> operation)
+    {
+        var shape = Shape.Broadcast(other.Shape);
+        return new Array<T>(shape, [.. Elements.Repeat().Zip(other.Elements.Repeat(), operation).Take(shape.Count)]);
+    }
+
+    public Array<T> Append(EmptyArray _) =>
+        Shape.IsScalar ? Vector(Elements) : this;
+
+    public Array<T> Append(Array<T> other)
+    {
+        if ((Shape.IsScalar || Shape.IsVector) && (other.Shape.IsScalar || other.Shape.IsVector))
+            return Vector([.. Elements, .. other.Elements]);
+
+        if (Shape != other.Shape)
+            throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");
+
+        var newElements = Rows.Zip(other.Rows, (row, otherRow) => row.Concat(otherRow))
+            .SelectMany(elements => elements);
+        return new Array<T>(Shape.Increment(1, other.Shape.Dimensions[1]), [.. newElements]);
+    }
+
+    public bool Equals(Array<T>? other) =>
         StructuralComparisons.StructuralEqualityComparer.Equals(Elements, other?.Elements) &&
         Shape.Equals(other?.Shape);
 
@@ -78,113 +117,54 @@ public abstract record Array<T>(Shape Shape, params T[] Elements) : Value
         HashCode.Combine(
             StructuralComparisons.StructuralEqualityComparer.GetHashCode(Elements),
             Shape.GetHashCode());
-}
-
-/// <summary>
-/// An array that knows its own concrete type, so that operations defined in terms of shapes
-/// alone can be written once here and still return the element type they started with.
-/// </summary>
-public abstract record Array<TSelf, T>(Shape Shape, params T[] Elements) : Array<T>(Shape, Elements)
-    where TSelf : Array<TSelf, T>
-{
-    protected abstract TSelf Create(Shape shape, T[] elements);
-
-    public IEnumerable<T[]> Rows =>
-        Shape.IsScalar || Shape.IsVector ? [Elements] : Elements.Chunk(Shape.Dimensions[0]);
-
-    public TSelf Map(Func<T, T> operation) =>
-        Create(Shape, [.. Elements.Select(operation)]);
-
-    /// <summary>
-    /// Applies <paramref name="operation"/> to each pair of elements, stretching whichever
-    /// operand is a scalar. Repeating both sides makes the stretch fall out of taking exactly
-    /// as many elements as the resulting shape holds.
-    /// </summary>
-    public TSelf Zip<TOther>(Array<TOther> other, Func<T, TOther, T> operation)
-    {
-        var shape = Shape.Broadcast(other.Shape);
-        return Create(shape, [.. Elements.Repeat().Zip(other.Elements.Repeat(), operation).Take(shape.Count)]);
-    }
-
-    public TSelf Append(EmptyArray _) =>
-        Shape.IsScalar ? Create(Shape.Vector(Elements), Elements) : (TSelf)this;
-
-    public TSelf Append(TSelf other)
-    {
-        if ((Shape.IsScalar || Shape.IsVector) && (other.Shape.IsScalar || other.Shape.IsVector))
-            return Create(Shape.Vector(Elements.Length + other.Elements.Length), [.. Elements, .. other.Elements]);
-
-        if (Shape != other.Shape)
-            throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");
-
-        var newElements = Rows.Zip(other.Rows, (row, otherRow) => row.Concat(otherRow))
-            .SelectMany(elements => elements);
-        return Create(Shape.Increment(1, other.Shape.Dimensions[1]), [.. newElements]);
-    }
-}
-
-public sealed record IntArray(Shape Shape, params int[] Elements) : Array<IntArray, int>(Shape, Elements)
-{
-    public static IntArray Scalar(int element) => new(Shape.Scalar, element);
-
-    public static IntArray Vector(params int[] elements) => new(Shape.Vector(elements), elements);
-
-    public static IntArray Matrix(int[][] elements) => new(Shape.Matrix(elements), [.. elements.SelectMany(row => row)]);
-
-    protected override IntArray Create(Shape shape, int[] elements) => new(shape, elements);
 
     public override string ToString() =>
         Shape.Dimensions.Length switch
         {
-            0 => Elements[0].ToString(),
-            1 => "[" + string.Join(" ", Elements.Select(e => e.ToString())) + "]",
-            2 => "[[" + string.Join("] [ ", Elements.Select(e => e.ToString())) + "]]",
+            0 when typeof(T) == typeof(char) => '"' + string.Concat(Elements) + '"',
+            0 => Elements[0]!.ToString()!,
+            1 => "[" + string.Join(" ", Elements) + "]",
+            2 => "[[" + string.Join("] [ ", Elements) + "]]",
             _ => base.ToString()
         };
 }
 
-public sealed record CharArray(Shape Shape, params char[] Elements) : Array<CharArray, char>(Shape, Elements)
+public static class IntArray
 {
-    public static CharArray Scalar(char element) => new(Shape.Scalar, element);
+    public static Array<int> Scalar(int element) => Array<int>.Scalar(element);
 
-    public static CharArray Vector(params char[] elements) => new(Shape.Vector(elements), elements);
-    public static CharArray Vector(string str) => new(Shape.Vector(str.Length), [..str]);
+    public static Array<int> Vector(params int[] elements) => Array<int>.Vector(elements);
 
-    public static CharArray Matrix(char[][] elements) => new(Shape.Matrix(elements.Length, elements[0].Length), [.. elements.SelectMany(row => row)]);
-    public static CharArray Matrix(params string[] elements) => new(Shape.Matrix(elements.Length, elements[0].Length), [.. elements.SelectMany(row => row)]);
-
-    protected override CharArray Create(Shape shape, char[] elements) => new(shape, elements);
-
-    public override string ToString() =>
-        Shape.Dimensions.Length switch
-        {
-            0 => '"' + new string(Elements) + '"',
-            1 => "[" + string.Join(" ", Elements.Select(e => e.ToString())) + "]",
-            2 => "[[" + string.Join("] [ ", Elements.Select(e => e.ToString())) + "]]",
-            _ => base.ToString()
-        };
+    public static Array<int> Matrix(int[][] elements) => Array<int>.Matrix(elements);
 }
 
-public sealed record BoxArray(Shape Shape, params Box[] Elements) : Array<BoxArray, Box>(Shape, Elements)
+public static class CharArray
 {
-    public static BoxArray Vector(params Box[] elements) => new(Shape.Vector(elements), elements);
+    public static Array<char> Scalar(char element) => Array<char>.Scalar(element);
 
-    protected override BoxArray Create(Shape shape, Box[] elements) => new(shape, elements);
+    public static Array<char> Vector(params char[] elements) => Array<char>.Vector(elements);
+    public static Array<char> Vector(string str) => new(Shape.Vector(str.Length), [.. str]);
 
-    public BoxArray Pervade(Func<Value, Value> operation) =>
-        Map(element => element.Map(operation));
+    public static Array<char> Matrix(char[][] elements) => Array<char>.Matrix(elements);
+    public static Array<char> Matrix(params string[] rows) => new(Shape.Matrix(rows.Length, rows[0].Length), [.. rows.SelectMany(row => row)]);
+}
 
-    public BoxArray Pervade(Value other, Func<Value, Value, Value> operation) =>
-        Zip(Enclose(other), (element, otherElement) => operation(element.Value, otherElement.Value).Box());
+public static class BoxArray
+{
+    public static Array<Box> Vector(params Box[] elements) => Array<Box>.Vector(elements);
+
+    public static Array<Box> Pervade(this Array<Box> array, Func<Value, Value> operation) =>
+        array.Map(element => element.Map(operation));
+
+    public static Array<Box> Pervade(this Array<Box> array, Value other, Func<Value, Value, Value> operation) =>
+        array.Zip(Enclose(other), (element, otherElement) => operation(element.Value, otherElement.Value).Box());
 
     /// <summary>
     /// Views <paramref name="value"/> as a box array, so that a non-boxed operand broadcasts
     /// into every box the same way an ordinary scalar does.
     /// </summary>
-    private static BoxArray Enclose(Value value) =>
-        value as BoxArray ?? new BoxArray(Shape.Scalar, value.Box());
-
-    public override string ToString() => "[" + string.Join(" ", Elements.Select(e => e.ToString())) + "]";
+    private static Array<Box> Enclose(Value value) =>
+        value as Array<Box> ?? new Array<Box>(Shape.Scalar, value.Box());
 }
 
 public abstract record Function(string Name) : Value
@@ -198,5 +178,5 @@ public abstract record Function(string Name) : Value
     public override string ToString() => Name;
 }
 
-// TODO: add BoolArray
-// TODO: add FunctionArray
+// TODO: add Array<bool>
+// TODO: add Array<Function>

@@ -19,8 +19,8 @@ internal static class BuiltinFunctions
             arguments[0] switch
             {
                 EmptyArray => EmptyArray.Instance,
-                IntArray intArray => intArray.Map(Operation),
-                BoxArray boxArray => boxArray.Pervade(element => Invoke(element)),
+                Array<int> intArray => intArray.Map(Operation),
+                Array<Box> boxArray => boxArray.Pervade(element => Invoke(element)),
                 _ => throw new InvalidOperationException("Invalid argument type")
             };
     }
