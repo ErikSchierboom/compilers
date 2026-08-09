@@ -70,7 +70,7 @@ public class Interpreter
         (op, operand) switch
         {
             (TokenType.Plus, IntArray arr) => arr,
-            (TokenType.Minus, IntArray arr) => arr.UnaryOp(i => -i),
+            (TokenType.Minus, IntArray arr) => arr.Map(i => -i),
             (_, BoxArray arr) => arr.Pervade(element => UnaryOp(op, element)),
             _ => throw new InvalidOperationException("Invalid unary expression")
         };
@@ -95,19 +95,19 @@ public class Interpreter
             (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or TokenType.Percent, BoxArray l, var r) => l.Pervade(r, (a, b) => BinaryOp(op, a, b)),
             (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or TokenType.Percent, var l, BoxArray r) => r.Pervade(l, (a, b) => BinaryOp(op, b, a)),
 
-            (TokenType.Plus, IntArray l, IntArray r) => l.BinaryOp(r, (a, b) => a + b),
-            (TokenType.Plus, CharArray l, IntArray r) => l.BinaryOp(r, (a, b) => (char)(a + b)),
-            (TokenType.Plus, IntArray l, CharArray r) => r.BinaryOp(l, (a, b) => (char)(a + b)),
+            (TokenType.Plus, IntArray l, IntArray r) => l.Zip(r, (a, b) => a + b),
+            (TokenType.Plus, CharArray l, IntArray r) => l.Zip(r, (a, b) => (char)(a + b)),
+            (TokenType.Plus, IntArray l, CharArray r) => r.Zip(l, (a, b) => (char)(a + b)),
 
-            (TokenType.Minus, IntArray l, IntArray r) => l.BinaryOp(r, (a, b) => a - b),
-            (TokenType.Minus, CharArray l, IntArray r) => l.BinaryOp(r, (a, b) => (char)(a - b)),
-            (TokenType.Minus, IntArray l, CharArray r) => r.BinaryOp(l, (a, b) => (char)(b - a)),
+            (TokenType.Minus, IntArray l, IntArray r) => l.Zip(r, (a, b) => a - b),
+            (TokenType.Minus, CharArray l, IntArray r) => l.Zip(r, (a, b) => (char)(a - b)),
+            (TokenType.Minus, IntArray l, CharArray r) => r.Zip(l, (a, b) => (char)(b - a)),
 
-            (TokenType.Star, IntArray l, IntArray r) => l.BinaryOp(r, (a, b) => a * b),
+            (TokenType.Star, IntArray l, IntArray r) => l.Zip(r, (a, b) => a * b),
 
-            (TokenType.Slash, IntArray l, IntArray r) => l.BinaryOp(r, (a, b) => a / b),
-            
-            (TokenType.Percent, IntArray l, IntArray r) => l.BinaryOp(r, (a, b) => a % b),
+            (TokenType.Slash, IntArray l, IntArray r) => l.Zip(r, (a, b) => a / b),
+
+            (TokenType.Percent, IntArray l, IntArray r) => l.Zip(r, (a, b) => a % b),
             
             _ => throw new InvalidOperationException("Invalid binary expression")
         };
