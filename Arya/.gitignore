@@ -7,5 +7,7 @@ riderModule.iml
 .idea/
 .vs/
 .vscode/
+.claude/
+.junie/
 
 *.DotSettings.user
