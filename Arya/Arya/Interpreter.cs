@@ -115,9 +115,9 @@ public class Interpreter
     private static Value Evaluate(LiteralExpression literal, Scope scope) =>
         literal.Value.Type switch
         {
-            TokenType.String => CharArray.Vector((string)literal.Value.Literal!),
-            TokenType.Number => IntArray.Scalar((int)literal.Value.Literal!),
-            TokenType.Char => CharArray.Scalar((char)literal.Value.Literal!),
+            TokenType.String => Array<char>.Vector(((string)literal.Value.Literal!).ToCharArray()),
+            TokenType.Number => Array<int>.Scalar((int)literal.Value.Literal!),
+            TokenType.Char => Array<char>.Scalar((char)literal.Value.Literal!),
             _ => throw new ArgumentOutOfRangeException(nameof(literal.Value.Type))
         };
 
@@ -164,7 +164,7 @@ public class Interpreter
         var newShape = shape!.Prepend(newElements.Length);
         
         if (!identicalShapes)
-            return BoxArray.Vector([..newElements.Select(element => element.Box())]);
+            return Array<Box>.Vector([..newElements.Select(element => element.Box())]);
 
         if (elementType == typeof(Array<int>))
             return new Array<int>(newShape, [..newElements.Cast<Array<int>>().SelectMany(array => array.Elements)]);

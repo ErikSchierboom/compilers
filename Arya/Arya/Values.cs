@@ -28,12 +28,6 @@ public sealed record Shape(params int[] Dimensions)
 {
     public static readonly Shape Scalar = new();
 
-    public static Shape Vector(int length) => new(length);
-    public static Shape Vector<T>(T[] elements) => new(elements.Length);
-
-    public static Shape Matrix(int rows, int columns) => new(rows, columns);
-    public static Shape Matrix<T>(T[][] elements) => new(elements.Length, elements[0].Length);
-
     public bool IsScalar => Dimensions.Length == 0;
     public bool IsVector => Dimensions.Length == 1;
     public bool IsMatrix => Dimensions.Length == 2;
@@ -78,9 +72,9 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
 {
     public static Array<T> Scalar(T element) => new(Shape.Scalar, element);
 
-    public static Array<T> Vector(params T[] elements) => new(Shape.Vector(elements), elements);
+    public static Array<T> Vector(params T[] elements) => new(new Shape(elements.Length), elements);
 
-    public static Array<T> Matrix(T[][] elements) => new(Shape.Matrix(elements), [.. elements.SelectMany(row => row)]);
+    public static Array<T> Matrix(T[][] elements) => new(new Shape(elements.Length, elements[0].Length), [.. elements.SelectMany(row => row)]);
 
     public IEnumerable<T[]> Rows =>
         Shape.IsScalar || Shape.IsVector ? [Elements] : Elements.Chunk(Shape.Dimensions[0]);
@@ -135,31 +129,6 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
         };
 }
 
-public static class IntArray
-{
-    public static Array<int> Scalar(int element) => Array<int>.Scalar(element);
-
-    public static Array<int> Vector(params int[] elements) => Array<int>.Vector(elements);
-
-    public static Array<int> Matrix(int[][] elements) => Array<int>.Matrix(elements);
-}
-
-public static class CharArray
-{
-    public static Array<char> Scalar(char element) => Array<char>.Scalar(element);
-
-    public static Array<char> Vector(params char[] elements) => Array<char>.Vector(elements);
-    public static Array<char> Vector(string str) => new(Shape.Vector(str.Length), [.. str]);
-
-    public static Array<char> Matrix(char[][] elements) => Array<char>.Matrix(elements);
-    public static Array<char> Matrix(params string[] rows) => new(Shape.Matrix(rows.Length, rows[0].Length), [.. rows.SelectMany(row => row)]);
-}
-
-public static class BoxArray
-{
-    public static Array<Box> Vector(params Box[] elements) => Array<Box>.Vector(elements);
-}
-
 public abstract record Function(string Name) : Value
 {
     public override Shape Shape { get; init; } = Shape.Scalar;
@@ -170,6 +139,3 @@ public abstract record Function(string Name) : Value
 
     public override string ToString() => Name;
 }
-
-// TODO: add Array<bool>
-// TODO: add Array<Function>

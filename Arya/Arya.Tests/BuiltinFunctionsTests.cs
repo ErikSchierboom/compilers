@@ -5,10 +5,10 @@ public class BuiltinFunctionsTests
     public static readonly TheoryData<string, Value> AbsTestData =
         new()
         {
-            { "abs(2)", IntArray.Scalar(2) },
-            { "abs(-1)", IntArray.Scalar(1) },
-            { "abs([-1 -2 -3])", IntArray.Vector(1, 2, 3) },
-            { "abs([[-4 -5] [-6 -7]])", IntArray.Matrix([[4, 5], [6, 7]]) }
+            { "abs(2)", Array<int>.Scalar(2) },
+            { "abs(-1)", Array<int>.Scalar(1) },
+            { "abs([-1 -2 -3])", Array<int>.Vector(1, 2, 3) },
+            { "abs([[-4 -5] [-6 -7]])", Array<int>.Matrix([[4, 5], [6, 7]]) }
         };
 
     [Theory, MemberData(nameof(AbsTestData))]
@@ -18,8 +18,8 @@ public class BuiltinFunctionsTests
     public static readonly TheoryData<string, Value> AbsBoxedTestData =
         new()
         {
-            { "abs([[-1] [-2 -3]])", BoxArray.Vector(IntArray.Vector(1).Box(), IntArray.Vector(2, 3).Box()) },
-            { "abs([[1] [-2 3]])", BoxArray.Vector(IntArray.Vector(1).Box(), IntArray.Vector(2, 3).Box()) },
+            { "abs([[-1] [-2 -3]])", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(2, 3).Box()) },
+            { "abs([[1] [-2 3]])", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(2, 3).Box()) },
         };
 
     [Theory, MemberData(nameof(AbsBoxedTestData))]

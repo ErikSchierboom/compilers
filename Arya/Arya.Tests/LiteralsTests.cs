@@ -7,8 +7,8 @@ public class LiteralsTests
         public static readonly TheoryData<string, Value> ScalarsTestData =
             new()
             {
-                { "5", IntArray.Scalar(5) },
-                { "123", IntArray.Scalar(123) }
+                { "5", Array<int>.Scalar(5) },
+                { "123", Array<int>.Scalar(123) }
             };
 
         [Theory, MemberData(nameof(ScalarsTestData))]
@@ -18,8 +18,8 @@ public class LiteralsTests
         public static readonly TheoryData<string, Value> VectorsTestData =
             new()
             {
-                { "[3]", IntArray.Vector(3) },
-                { "[6 7 8]", IntArray.Vector(6, 7, 8) },
+                { "[3]", Array<int>.Vector(3) },
+                { "[6 7 8]", Array<int>.Vector(6, 7, 8) },
             };
 
         [Theory, MemberData(nameof(VectorsTestData))]
@@ -29,8 +29,8 @@ public class LiteralsTests
         public static readonly TheoryData<string, Value> MatricesTestData =
             new()
             {
-                { "[[3 4] [5 6]]", IntArray.Matrix([[3, 4], [5, 6]]) },
-                { "[[7] [8] [9]]", IntArray.Matrix([[7], [8], [9]]) },
+                { "[[3 4] [5 6]]", Array<int>.Matrix([[3, 4], [5, 6]]) },
+                { "[[7] [8] [9]]", Array<int>.Matrix([[7], [8], [9]]) },
             };
 
         [Theory, MemberData(nameof(MatricesTestData))]
@@ -47,16 +47,16 @@ public class LiteralsTests
                 {
                     { """
                       ' '
-                      """, CharArray.Scalar(' ') },
+                      """, Array<char>.Scalar(' ') },
                     { """
                       'a'
-                      """, CharArray.Scalar('a') },
+                      """, Array<char>.Scalar('a') },
                     { """
                       '2'
-                      """, CharArray.Scalar('2') },
+                      """, Array<char>.Scalar('2') },
                     { """
                       '@'
-                      """, CharArray.Scalar('@') }
+                      """, Array<char>.Scalar('@') }
                 };
     
             [Theory, MemberData(nameof(UnescapedTestData))]
@@ -68,19 +68,19 @@ public class LiteralsTests
                 {
                     { """
                       '\t'
-                      """, CharArray.Scalar('\t') },
+                      """, Array<char>.Scalar('\t') },
                     { """
                       '\r'
-                      """, CharArray.Scalar('\r') },
+                      """, Array<char>.Scalar('\r') },
                     { """
                       '\n'
-                      """, CharArray.Scalar('\n') },
+                      """, Array<char>.Scalar('\n') },
                     { """
                       '\\'
-                      """, CharArray.Scalar('\\') },
+                      """, Array<char>.Scalar('\\') },
                     { """
                       '\''
-                      """, CharArray.Scalar('\'') }
+                      """, Array<char>.Scalar('\'') }
                 };
     
             [Theory, MemberData(nameof(EscapedTestData))]
@@ -95,10 +95,10 @@ public class LiteralsTests
                 {
                     { """
                       ['a']
-                      """, CharArray.Vector('a') },
+                      """, Array<char>.Vector('a') },
                     { """
                       ['h' ' ' 'i']
-                      """, CharArray.Vector('h', ' ', 'i') },
+                      """, Array<char>.Vector('h', ' ', 'i') },
                 };
     
             [Theory, MemberData(nameof(UnescapedTestData))]
@@ -110,10 +110,10 @@ public class LiteralsTests
                 {
                     { """
                       ['\\']
-                      """, CharArray.Vector('\\') },
+                      """, Array<char>.Vector('\\') },
                     { """
                       ['\t' '\r' '\n']
-                      """, CharArray.Vector('\t', '\r', '\n') },
+                      """, Array<char>.Vector('\t', '\r', '\n') },
                 };
     
             [Theory, MemberData(nameof(EscapedTestData))]
@@ -127,16 +127,16 @@ public class LiteralsTests
                     {
                         { """
                           ""
-                          """, CharArray.Vector("") },
+                          """, Array<char>.Vector([..""]) },
                         { """
                           "a"
-                          """, CharArray.Vector("a") },
+                          """, Array<char>.Vector([.."a"]) },
                         { """
                           "2"
-                          """, CharArray.Vector("2") },
+                          """, Array<char>.Vector([.."2"]) },
                         { """
                           "hello there 123!"
-                          """, CharArray.Vector("hello there 123!") }
+                          """, Array<char>.Vector([.."hello there 123!"]) }
                     };
         
                 [Theory, MemberData(nameof(UnescapedTestData))]
@@ -148,19 +148,19 @@ public class LiteralsTests
                     {
                         { """
                           "\t"
-                          """, CharArray.Vector("\t") },
+                          """, Array<char>.Vector([.."\t"]) },
                         { """
                           "\r"
-                          """, CharArray.Vector("\r") },
+                          """, Array<char>.Vector([.."\r"]) },
                         { """
                           "\n"
-                          """, CharArray.Vector("\n") },
+                          """, Array<char>.Vector([.."\n"]) },
                         { """
                           "\\"
-                          """, CharArray.Vector("\\") },
+                          """, Array<char>.Vector([.."\\"]) },
                         { """
                           "hey\tyou!\r\n"
-                          """, CharArray.Vector("hey\tyou!\r\n") },
+                          """, Array<char>.Vector([.."hey\tyou!\r\n"]) },
                     };
         
                 [Theory, MemberData(nameof(EscapedTestData))]
@@ -179,10 +179,10 @@ public class LiteralsTests
         public static readonly TheoryData<string, Value> BoxedTestData =
             new()
             {
-                { "[[3] [4 5]]", BoxArray.Vector(IntArray.Vector(3).Box(), IntArray.Vector(4, 5).Box()) },
+                { "[[3] [4 5]]", Array<Box>.Vector(Array<int>.Vector(3).Box(), Array<int>.Vector(4, 5).Box()) },
                 { """
                   ["abc" "de" "f"]
-                  """, BoxArray.Vector(CharArray.Vector("abc").Box(), CharArray.Vector("de").Box(), CharArray.Vector("f").Box()) },
+                  """, Array<Box>.Vector(Array<char>.Vector([.."abc"]).Box(), Array<char>.Vector([.."de"]).Box(), Array<char>.Vector([.."f"]).Box()) },
             };
 
         [Theory, MemberData(nameof(BoxedTestData))]
