@@ -20,7 +20,7 @@ internal static class BuiltinFunctions
             {
                 EmptyArray => EmptyArray.Instance,
                 Array<int> intArray => intArray.Map(Operation),
-                Array<Box> boxArray => boxArray.Pervade(element => Invoke(element)),
+                Array<Box> boxArray => boxArray.Map(box => box.Map(element => Invoke(element))),
                 _ => throw new InvalidOperationException("Invalid argument type")
             };
     }

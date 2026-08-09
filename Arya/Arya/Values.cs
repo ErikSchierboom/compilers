@@ -7,6 +7,12 @@ public abstract record Value
     public abstract Shape Shape { get; init; }
 
     public Box Box() => new(this);
+
+    /// <summary>
+    /// Views this value as an array of boxes. A box array already is one; anything else becomes
+    /// a scalar array holding a single box, so that it broadcasts like any other scalar.
+    /// </summary>
+    public Array<Box> Boxes() => this as Array<Box> ?? new Array<Box>(Shape.Scalar, Box());
 }
 
 public sealed record Box(Value Value) : Value
@@ -152,19 +158,6 @@ public static class CharArray
 public static class BoxArray
 {
     public static Array<Box> Vector(params Box[] elements) => Array<Box>.Vector(elements);
-
-    public static Array<Box> Pervade(this Array<Box> array, Func<Value, Value> operation) =>
-        array.Map(element => element.Map(operation));
-
-    public static Array<Box> Pervade(this Array<Box> array, Value other, Func<Value, Value, Value> operation) =>
-        array.Zip(Enclose(other), (element, otherElement) => operation(element.Value, otherElement.Value).Box());
-
-    /// <summary>
-    /// Views <paramref name="value"/> as a box array, so that a non-boxed operand broadcasts
-    /// into every box the same way an ordinary scalar does.
-    /// </summary>
-    private static Array<Box> Enclose(Value value) =>
-        value as Array<Box> ?? new Array<Box>(Shape.Scalar, value.Box());
 }
 
 public abstract record Function(string Name) : Value

@@ -71,7 +71,7 @@ public class Interpreter
         {
             (TokenType.Plus, Array<int> arr) => arr,
             (TokenType.Minus, Array<int> arr) => arr.Map(i => -i),
-            (_, Array<Box> arr) => arr.Pervade(element => UnaryOp(op, element)),
+            (_, Array<Box> arr) => arr.Map(box => box.Map(element => UnaryOp(op, element))),
             _ => throw new InvalidOperationException("Invalid unary expression")
         };
 
@@ -92,8 +92,8 @@ public class Interpreter
             (_, _, EmptyArray) or
             (_, EmptyArray, _) => EmptyArray.Instance,
 
-            (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or TokenType.Percent, Array<Box> l, var r) => l.Pervade(r, (a, b) => BinaryOp(op, a, b)),
-            (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or TokenType.Percent, var l, Array<Box> r) => r.Pervade(l, (a, b) => BinaryOp(op, b, a)),
+            (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or TokenType.Percent, Array<Box> l, var r) => l.Zip(r.Boxes(), (a, b) => BinaryOp(op, a.Value, b.Value).Box()),
+            (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or TokenType.Percent, var l, Array<Box> r) => r.Zip(l.Boxes(), (a, b) => BinaryOp(op, b.Value, a.Value).Box()),
 
             (TokenType.Plus, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a + b),
             (TokenType.Plus, Array<char> l, Array<int> r) => l.Zip(r, (a, b) => (char)(a + b)),
