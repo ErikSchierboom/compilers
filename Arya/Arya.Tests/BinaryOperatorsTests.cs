@@ -224,21 +224,12 @@ public class BinaryOperatorsTests
                 { "[[5 4] [6 7]] % 2", Array<int>.Matrix([[1, 0], [0, 1]]) },
                 { "[[1 2] [3 4]] % [[5 6] [7 8]]", Array<int>.Matrix([[1, 2], [3, 4]]) },
                 { "[] % 1", EmptyArray.Instance },
-            };
-
-        [Theory, MemberData(nameof(IntegersTestData))]
-        public void Integers(string code, Value expected) =>
-            Assert.Equal(expected, Interpreter.Evaluate(code));
-
-        public static readonly TheoryData<string, Value> BoxedIntegersTestData =
-            new()
-            {
                 { "[[10] [21 32]] % 10", Array<Box>.Vector(Array<int>.Vector(0).Box(), Array<int>.Vector(1, 2).Box()) },
                 { "[[10] [21 32]] % [[3] [5 7]]", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(1, 4).Box()) },
             };
 
-        [Theory, MemberData(nameof(BoxedIntegersTestData))]
-        public void BoxedIntegers(string code, Value expected) =>
+        [Theory, MemberData(nameof(IntegersTestData))]
+        public void Integers(string code, Value expected) =>
             Assert.Equal(expected, Interpreter.Evaluate(code));
     }
 
@@ -247,6 +238,12 @@ public class BinaryOperatorsTests
          public static readonly TheoryData<string, Value> CharsTestData =
              new()
              {
+                 { """
+                   'a' ++ 'b'
+                   """, Array<char>.Vector([.."ab"]) },
+                 { """
+                   "abc" ++ 'd'
+                   """, Array<char>.Vector([.."abcd"]) },
                  { """
                    "" ++ ""
                    """, Array<char>.Vector([..""]) },
@@ -260,21 +257,6 @@ public class BinaryOperatorsTests
 
          [Theory, MemberData(nameof(CharsTestData))]
          public void Chars(string code, Value expected) =>
-             Assert.Equal(expected, Interpreter.Evaluate(code));
-         
-         public static readonly TheoryData<string, Value> StringsTestData =
-             new()
-             {
-                 { """
-                   'a' ++ 'b'
-                   """, Array<char>.Vector([.."ab"]) },
-                 { """
-                   "abc" ++ 'd'
-                   """, Array<char>.Vector([.."abcd"]) },
-             };
-
-         [Theory, MemberData(nameof(StringsTestData))]
-         public void Strings(string code, Value expected) =>
              Assert.Equal(expected, Interpreter.Evaluate(code));
          
          public static readonly TheoryData<string, Value> ArraysTestData =

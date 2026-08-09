@@ -4,10 +4,13 @@ internal static class BuiltinFunctions
 {
     public static readonly Function[] All =
     [
-        // Unary functions
+        // Unary functions - integers
         new AbsFunction(),
-        // new LowercaseFunction(),
-        // new UppercaseFunction(),
+        
+        // Unary functions - characters
+        new LowercaseFunction(),
+        new UppercaseFunction(),
+
         // new TrimFunction()
     ];
 
@@ -27,20 +30,21 @@ internal static class BuiltinFunctions
     
     private sealed record AbsFunction() : UnaryIntegerFunction("abs", Math.Abs);
 
-    // private abstract record UnaryStringFunction(string Name, Func<string, string> Operation) : Function(Name)
-    // {
-    //     public override int Arity => 1;
-    //
-    //     public override Value Invoke(params Value[] arguments) =>
-    //         arguments[0] switch
-    //         {
-    //             Array array => Array.UnaryOp(array, Operation),
-    //             String str => new String(Operation(str.Value)),
-    //             _ => throw new InvalidOperationException("Invalid argument type")
-    //         };
-    // }
-    //
-    // private sealed record LowercaseFunction() : UnaryStringFunction("lowercase", str => str.ToLowerInvariant());
-    // private sealed record UppercaseFunction() : UnaryStringFunction("uppercase", str => str.ToUpperInvariant());
-    // private sealed record TrimFunction() : UnaryStringFunction("trim", str => str.Trim());
+    private abstract record UnaryCharFunction(string Name, Func<char, char> Operation) : Function(Name)
+    {
+        public override int Arity => 1;
+    
+        public override Value Invoke(params Value[] arguments) =>
+            arguments[0] switch
+            {
+                EmptyArray => EmptyArray.Instance,
+                Array<char> charArray => charArray.Map(Operation),
+                Array<Box> boxArray => boxArray.Map(box => box.Map(element => Invoke(element))),
+                _ => throw new InvalidOperationException("Invalid argument type")
+            };
+    }
+    
+    private sealed record LowercaseFunction() : UnaryCharFunction("lowercase", char.ToLowerInvariant);
+    private sealed record UppercaseFunction() : UnaryCharFunction("uppercase", char.ToUpperInvariant);
+    // private sealed record TrimFunction() : UnaryCharFunction("trim", char => char.Trim());
 }
