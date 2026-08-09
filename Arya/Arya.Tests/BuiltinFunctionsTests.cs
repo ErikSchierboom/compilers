@@ -14,6 +14,17 @@ public class BuiltinFunctionsTests
     [Theory, MemberData(nameof(AbsTestData))]
     public void Abs(string code, Value expected) =>
         Assert.Equal(expected, Interpreter.Evaluate(code));
+
+    public static readonly TheoryData<string, Value> AbsBoxedTestData =
+        new()
+        {
+            { "abs([[-1] [-2 -3]])", BoxArray.Vector(IntArray.Vector(1).Box(), IntArray.Vector(2, 3).Box()) },
+            { "abs([[1] [-2 3]])", BoxArray.Vector(IntArray.Vector(1).Box(), IntArray.Vector(2, 3).Box()) },
+        };
+
+    [Theory, MemberData(nameof(AbsBoxedTestData))]
+    public void AbsBoxed(string code, Value expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
 //     
 //     public static readonly TheoryData<string, Value> LowercaseTestData =
 //         new()

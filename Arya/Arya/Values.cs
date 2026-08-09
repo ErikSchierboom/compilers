@@ -11,6 +11,8 @@ public abstract record Value
 
 public sealed record Box(Value Value) : Value
 {
+    public Box Map(Func<Value, Value> operation) => new(operation(Value));
+
     public override Shape Shape { get; init; } = Shape.Scalar;
     
     public override string ToString() => $"|{Value}|";
@@ -199,6 +201,24 @@ public sealed record CharArray(Shape Shape, params char[] Elements) : Array<char
 public sealed record BoxArray(Shape Shape, params Box[] Elements) : Array<Box>(Shape, Elements)
 {
     public static BoxArray Vector(params Box[] elements) => new(Shape.Vector(elements), elements);
+
+    public BoxArray Pervade(Func<Value, Value> operation) =>
+        new(Shape, [.. Elements.Select(element => element.Map(operation))]);
+
+    public BoxArray Pervade(Value other, Func<Value, Value, Value> operation) =>
+        other is BoxArray otherArray
+            ? PervadePairwise(otherArray, operation)
+            : Pervade(element => operation(element, other));
+
+    private BoxArray PervadePairwise(BoxArray other, Func<Value, Value, Value> operation)
+    {
+        if (Shape != other.Shape)
+            throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");
+
+        var newElements = Elements.Zip(other.Elements,
+            (element, otherElement) => element.Map(value => operation(value, otherElement.Value)));
+        return new BoxArray(Shape, [.. newElements]);
+    }
 
     public bool Equals(BoxArray? other) =>
         StructuralComparisons.StructuralEqualityComparer.Equals(Elements, other?.Elements) &&

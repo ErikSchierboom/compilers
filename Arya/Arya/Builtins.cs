@@ -4,10 +4,8 @@ internal static class BuiltinFunctions
 {
     public static readonly Function[] All =
     [
-        // Unary integer functions
+        // Unary functions
         new AbsFunction(),
-        
-        // Unary string functions
         // new LowercaseFunction(),
         // new UppercaseFunction(),
         // new TrimFunction()
@@ -22,6 +20,7 @@ internal static class BuiltinFunctions
             {
                 EmptyArray => EmptyArray.Instance,
                 IntArray intArray => intArray.UnaryOp(Operation),
+                BoxArray boxArray => boxArray.Pervade(element => Invoke(element)),
                 _ => throw new InvalidOperationException("Invalid argument type")
             };
     }

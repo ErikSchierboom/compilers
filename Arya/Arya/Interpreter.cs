@@ -63,25 +63,24 @@ public class Interpreter
             _ => throw new ArgumentOutOfRangeException(nameof(expression))
         };
 
-    private Value Evaluate(UnaryExpression unary, Scope scope)
-    {
-        var operand = Evaluate(unary.Operand, scope);
-        
-        return (unary.Operator.Type, operand) switch
+    private Value Evaluate(UnaryExpression unary, Scope scope) =>
+        UnaryOp(unary.Operator.Type, Evaluate(unary.Operand, scope));
+
+    private static Value UnaryOp(TokenType op, Value operand) =>
+        (op, operand) switch
         {
             (TokenType.Plus, IntArray arr) => arr,
             (TokenType.Minus, IntArray arr) => arr.UnaryOp(i => -i),
+            (_, BoxArray arr) => arr.Pervade(element => UnaryOp(op, element)),
             _ => throw new InvalidOperationException("Invalid unary expression")
         };
-    }
 
-    private Value Evaluate(BinaryExpression binary, Scope scope)
-    {
-        var left = Evaluate(binary.Left, scope);
-        var right = Evaluate(binary.Right, scope);
+    private Value Evaluate(BinaryExpression binary, Scope scope) =>
+        BinaryOp(binary.Operator.Type, Evaluate(binary.Left, scope), Evaluate(binary.Right, scope));
 
-        return (binary.Operator.Type, left, right) switch
-        {   
+    private static Value BinaryOp(TokenType op, Value left, Value right) =>
+        (op, left, right) switch
+        {
             (TokenType.PlusPlus, IntArray l, IntArray r) => l.Append(r),
             (TokenType.PlusPlus, IntArray l, EmptyArray r) => l.Append(r),
             (TokenType.PlusPlus, EmptyArray l, IntArray r) => r.Append(l),
@@ -92,6 +91,9 @@ public class Interpreter
             
             (_, _, EmptyArray) or
             (_, EmptyArray, _) => EmptyArray.Instance,
+
+            (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or TokenType.Percent, BoxArray l, var r) => l.Pervade(r, (a, b) => BinaryOp(op, a, b)),
+            (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or TokenType.Percent, var l, BoxArray r) => r.Pervade(l, (a, b) => BinaryOp(op, b, a)),
 
             (TokenType.Plus, IntArray l, IntArray r) => l.BinaryOp(r, (a, b) => a + b),
             (TokenType.Plus, CharArray l, IntArray r) => l.BinaryOp(r, (a, b) => (char)(a + b)),
@@ -109,7 +111,6 @@ public class Interpreter
             
             _ => throw new InvalidOperationException("Invalid binary expression")
         };
-    }
 
     private static Value Evaluate(LiteralExpression literal, Scope scope) =>
         literal.Value.Type switch

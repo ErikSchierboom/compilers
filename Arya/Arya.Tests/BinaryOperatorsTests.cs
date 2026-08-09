@@ -60,6 +60,32 @@ public class BinaryOperatorsTests
          [Theory, MemberData(nameof(StringsTestData))]
          public void Strings(string code, Value expected) =>
              Assert.Equal(expected, Interpreter.Evaluate(code));
+
+         public static readonly TheoryData<string, Value> BoxedIntegersTestData =
+             new()
+             {
+                 { "[[1] [2 3]] + 10", BoxArray.Vector(IntArray.Vector(11).Box(), IntArray.Vector(12, 13).Box()) },
+                 { "10 + [[1] [2 3]]", BoxArray.Vector(IntArray.Vector(11).Box(), IntArray.Vector(12, 13).Box()) },
+                 { "[[1] [2 3]] + [[10] [20 30]]", BoxArray.Vector(IntArray.Vector(11).Box(), IntArray.Vector(22, 33).Box()) },
+                 { "[[1] [2 3]] + []", EmptyArray.Instance },
+                 { "[] + [[1] [2 3]]", EmptyArray.Instance },
+             };
+
+         [Theory, MemberData(nameof(BoxedIntegersTestData))]
+         public void BoxedIntegers(string code, Value expected) =>
+             Assert.Equal(expected, Interpreter.Evaluate(code));
+
+         public static readonly TheoryData<string, Value> BoxedStringsTestData =
+             new()
+             {
+                 { """
+                   ["abc" "de"] + 1
+                   """, BoxArray.Vector(CharArray.Vector("bcd").Box(), CharArray.Vector("ef").Box()) },
+             };
+
+         [Theory, MemberData(nameof(BoxedStringsTestData))]
+         public void BoxedStrings(string code, Value expected) =>
+             Assert.Equal(expected, Interpreter.Evaluate(code));
      }
 
     public class Subtraction
@@ -114,6 +140,18 @@ public class BinaryOperatorsTests
          [Theory, MemberData(nameof(StringsTestData))]
          public void Strings(string code, Value expected) =>
              Assert.Equal(expected, Interpreter.Evaluate(code));
+
+         public static readonly TheoryData<string, Value> BoxedIntegersTestData =
+             new()
+             {
+                 { "[[1] [2 3]] - 10", BoxArray.Vector(IntArray.Vector(-9).Box(), IntArray.Vector(-8, -7).Box()) },
+                 { "10 - [[1] [2 3]]", BoxArray.Vector(IntArray.Vector(9).Box(), IntArray.Vector(8, 7).Box()) },
+                 { "[[10] [20 30]] - [[1] [2 3]]", BoxArray.Vector(IntArray.Vector(9).Box(), IntArray.Vector(18, 27).Box()) },
+             };
+
+         [Theory, MemberData(nameof(BoxedIntegersTestData))]
+         public void BoxedIntegers(string code, Value expected) =>
+             Assert.Equal(expected, Interpreter.Evaluate(code));
     }
 
     public class Multiplication
@@ -131,6 +169,17 @@ public class BinaryOperatorsTests
 
          [Theory, MemberData(nameof(IntegersTestData))]
          public void Integers(string code, Value expected) =>
+             Assert.Equal(expected, Interpreter.Evaluate(code));
+
+         public static readonly TheoryData<string, Value> BoxedIntegersTestData =
+             new()
+             {
+                 { "[[1] [2 3]] * 10", BoxArray.Vector(IntArray.Vector(10).Box(), IntArray.Vector(20, 30).Box()) },
+                 { "[[1] [2 3]] * [[10] [20 30]]", BoxArray.Vector(IntArray.Vector(10).Box(), IntArray.Vector(40, 90).Box()) },
+             };
+
+         [Theory, MemberData(nameof(BoxedIntegersTestData))]
+         public void BoxedIntegers(string code, Value expected) =>
              Assert.Equal(expected, Interpreter.Evaluate(code));
     }
 
@@ -150,6 +199,17 @@ public class BinaryOperatorsTests
          [Theory, MemberData(nameof(IntegersTestData))]
          public void Integers(string code, Value expected) =>
              Assert.Equal(expected, Interpreter.Evaluate(code));
+
+         public static readonly TheoryData<string, Value> BoxedIntegersTestData =
+             new()
+             {
+                 { "[[10] [20 30]] / 10", BoxArray.Vector(IntArray.Vector(1).Box(), IntArray.Vector(2, 3).Box()) },
+                 { "[[10] [20 30]] / [[2] [4 5]]", BoxArray.Vector(IntArray.Vector(5).Box(), IntArray.Vector(5, 6).Box()) },
+             };
+
+         [Theory, MemberData(nameof(BoxedIntegersTestData))]
+         public void BoxedIntegers(string code, Value expected) =>
+             Assert.Equal(expected, Interpreter.Evaluate(code));
     }
 
     public class Modulo
@@ -168,6 +228,17 @@ public class BinaryOperatorsTests
 
         [Theory, MemberData(nameof(IntegersTestData))]
         public void Integers(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+
+        public static readonly TheoryData<string, Value> BoxedIntegersTestData =
+            new()
+            {
+                { "[[10] [21 32]] % 10", BoxArray.Vector(IntArray.Vector(0).Box(), IntArray.Vector(1, 2).Box()) },
+                { "[[10] [21 32]] % [[3] [5 7]]", BoxArray.Vector(IntArray.Vector(1).Box(), IntArray.Vector(1, 4).Box()) },
+            };
+
+        [Theory, MemberData(nameof(BoxedIntegersTestData))]
+        public void BoxedIntegers(string code, Value expected) =>
             Assert.Equal(expected, Interpreter.Evaluate(code));
     }
 
