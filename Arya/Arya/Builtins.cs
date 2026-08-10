@@ -59,18 +59,11 @@ internal static class BuiltinFunctions
                 case Array<char> charArray:
                     if (charArray.Shape.IsScalar)
                         return charArray;
-
-                    // TODO: maybe add a MapRows method?
-                    var newRows = charArray.Rows().Select(chars => Operation(chars).ToArray()).ToArray();
-                    if (newRows.Length == 0)
-                        return EmptyArray.Instance;
                     
-                    if (newRows.Any(row => row.Length != newRows[0].Length))
-                        return Array<Box>.Vector([.. newRows.Select(newRow => Array<char>.Vector(newRow).Box())]);
-                        
-                    var newElements = newRows.SelectMany(row => row);
-                    var newShape = charArray.Shape.SetFirst(newRows[0].Length);
-                    return new Array<char>(newShape, [.. newElements]);
+                    if (charArray.Shape.IsVector)
+                        return Array<char>.Vector(Operation(charArray.Elements).ToArray());
+
+                    throw new NotImplementedException();
                 case Array<Box> boxArray:
                     return boxArray.Map(box => box.Map(element => Invoke(element)));
                 default:
