@@ -46,7 +46,6 @@ public sealed record Shape(params int[] Dimensions)
         throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");
 
     public Shape Prepend(int dimension) => new([dimension, .. Dimensions]);
-    public Shape Increment(int dimension, int size) => Replace(dimension, Dimensions[dimension] + size);
     public Shape Replace(int dimension, int size) => new([.. Dimensions[..dimension], size, .. Dimensions[(dimension + 1)..]]);
     public Shape RemoveFirst() => new([.. Dimensions.Skip(1)]);
 
@@ -106,7 +105,8 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
 
         var newElements = Rows.Zip(other.Rows, (row, otherRow) => row.Concat(otherRow))
             .SelectMany(elements => elements);
-        return new Array<T>(Shape.Increment(1, other.Shape.Dimensions[1]), [.. newElements]);
+        int size = other.Shape.Dimensions[1];
+        return new Array<T>(Shape.Replace(1, Shape.Dimensions[1] + size), [.. newElements]);
     }
 
     public bool Equals(Array<T>? other) =>
