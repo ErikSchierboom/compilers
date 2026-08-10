@@ -7,7 +7,7 @@ public class IndexersTests
         [Fact]
         public void IndexesStartAtOne() =>
             Assert.Equal(Array<int>.Scalar(7), Interpreter.Evaluate("[7 8 9][1]"));
-        
+
         public static readonly TheoryData<string, Value> ScalarsTestData =
             new()
             {
@@ -20,15 +20,15 @@ public class IndexersTests
         [Theory, MemberData(nameof(ScalarsTestData))]
         public void Scalars(string code, Value expected) =>
             Assert.Equal(expected, Interpreter.Evaluate(code));
-        
+
         [Fact]
         public void VectorsCanSelectSameElementMultipleTimes() =>
             Assert.Equal(Array<int>.Vector(4, 4), Interpreter.Evaluate("[4 5 6][[1 1]]"));
-        
+
         [Fact]
         public void VectorsCanSelectElementsInAnyOrder() =>
             Assert.Equal(Array<int>.Vector(6, 4, 5), Interpreter.Evaluate("[4 5 6][[3 1 2]]"));
-        
+
         public static readonly TheoryData<string, Value> VectorsTestData =
             new()
             {
@@ -38,7 +38,7 @@ public class IndexersTests
                 { "[4 5 6][[1 2 1 3]]", Array<int>.Vector(4, 5, 4, 6) },
                 { "[[4 2] [5 1] [6 0]][[1 3]]", Array<int>.Matrix([[4, 2], [6, 0]]) },
             };
-        
+
         [Theory, MemberData(nameof(VectorsTestData))]
         public void Vectors(string code, Value expected) =>
             Assert.Equal(expected, Interpreter.Evaluate(code));

@@ -21,7 +21,7 @@ public class ValueSerializer : IXunitSerializer
         failureReason = null;
         return true;
     }
-    
+
     public object Deserialize(Type type, string serializedValue) => JsonSerializer.Deserialize<Value>(serializedValue)!;
 
     public string Serialize(object value) => JsonSerializer.Serialize(value);

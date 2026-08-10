@@ -15,13 +15,13 @@ public class BinaryOperatorsTests
                 { "[] + 2", EmptyArray.Instance },
             };
 
-         [Theory, MemberData(nameof(IntegersTestData))]
-         public void Integers(string code, Value expected) =>
-             Assert.Equal(expected, Interpreter.Evaluate(code));
-         
-         public static readonly TheoryData<string, Value> CharsTestData =
-             new()
-             {
+        [Theory, MemberData(nameof(IntegersTestData))]
+        public void Integers(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+
+        public static readonly TheoryData<string, Value> CharsTestData =
+            new()
+            {
                  { """
                    'a' + 0
                    """, Array<char>.Scalar('a') },
@@ -34,15 +34,15 @@ public class BinaryOperatorsTests
                  { """
                    [['e'] ['k'] ['g']] + 1
                    """, Array<char>.Matrix([['f'], ['l'], ['h']]) },
-             };
+            };
 
-         [Theory, MemberData(nameof(CharsTestData))]
-         public void Chars(string code, Value expected) =>
-             Assert.Equal(expected, Interpreter.Evaluate(code));
-         
-         public static readonly TheoryData<string, Value> StringsTestData =
-             new()
-             {
+        [Theory, MemberData(nameof(CharsTestData))]
+        public void Chars(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+
+        public static readonly TheoryData<string, Value> StringsTestData =
+            new()
+            {
                  { """
                    "abc" + 0
                    """, Array<char>.Vector([.."abc"]) },
@@ -55,38 +55,38 @@ public class BinaryOperatorsTests
                  { """
                    ["efg" "klm"] + 2
                    """, Array<char>.Matrix([[.."ghi"], [.."mno"]]) },
-             };
+            };
 
-         [Theory, MemberData(nameof(StringsTestData))]
-         public void Strings(string code, Value expected) =>
-             Assert.Equal(expected, Interpreter.Evaluate(code));
+        [Theory, MemberData(nameof(StringsTestData))]
+        public void Strings(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
 
-         public static readonly TheoryData<string, Value> BoxedIntegersTestData =
-             new()
-             {
+        public static readonly TheoryData<string, Value> BoxedIntegersTestData =
+            new()
+            {
                  { "[[1] [2 3]] + 10", Array<Box>.Vector(Array<int>.Vector(11).Box(), Array<int>.Vector(12, 13).Box()) },
                  { "10 + [[1] [2 3]]", Array<Box>.Vector(Array<int>.Vector(11).Box(), Array<int>.Vector(12, 13).Box()) },
                  { "[[1] [2 3]] + [[10] [20 30]]", Array<Box>.Vector(Array<int>.Vector(11).Box(), Array<int>.Vector(22, 33).Box()) },
                  { "[[1] [2 3]] + []", EmptyArray.Instance },
                  { "[] + [[1] [2 3]]", EmptyArray.Instance },
-             };
+            };
 
-         [Theory, MemberData(nameof(BoxedIntegersTestData))]
-         public void BoxedIntegers(string code, Value expected) =>
-             Assert.Equal(expected, Interpreter.Evaluate(code));
+        [Theory, MemberData(nameof(BoxedIntegersTestData))]
+        public void BoxedIntegers(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
 
-         public static readonly TheoryData<string, Value> BoxedStringsTestData =
-             new()
-             {
+        public static readonly TheoryData<string, Value> BoxedStringsTestData =
+            new()
+            {
                  { """
                    ["abc" "de"] + 1
                    """, Array<Box>.Vector(Array<char>.Vector([.."bcd"]).Box(), Array<char>.Vector([.."ef"]).Box()) },
-             };
+            };
 
-         [Theory, MemberData(nameof(BoxedStringsTestData))]
-         public void BoxedStrings(string code, Value expected) =>
-             Assert.Equal(expected, Interpreter.Evaluate(code));
-     }
+        [Theory, MemberData(nameof(BoxedStringsTestData))]
+        public void BoxedStrings(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+    }
 
     public class Subtraction
     {
@@ -102,13 +102,13 @@ public class BinaryOperatorsTests
                 { "[] - 1", EmptyArray.Instance },
             };
 
-         [Theory, MemberData(nameof(IntegersTestData))]
-         public void Integers(string code, Value expected) =>
-             Assert.Equal(expected, Interpreter.Evaluate(code));
-         
-         public static readonly TheoryData<string, Value> CharsTestData =
-             new()
-             {
+        [Theory, MemberData(nameof(IntegersTestData))]
+        public void Integers(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+
+        public static readonly TheoryData<string, Value> CharsTestData =
+            new()
+            {
                  { """
                    'a' - 0
                    """, Array<char>.Scalar('a') },
@@ -124,34 +124,34 @@ public class BinaryOperatorsTests
                  { """
                    [['e'] ['k'] ['g']] - 1
                    """, Array<char>.Matrix([[.."d"], [.."j"], [.."f"]]) },
-             };
+            };
 
-         [Theory, MemberData(nameof(CharsTestData))]
-         public void Chars(string code, Value expected) =>
-             Assert.Equal(expected, Interpreter.Evaluate(code));
+        [Theory, MemberData(nameof(CharsTestData))]
+        public void Chars(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
 
-         public static readonly TheoryData<string, Value> StringsTestData =
-             new()
-             {
+        public static readonly TheoryData<string, Value> StringsTestData =
+            new()
+            {
                  { "\"abc\" - 1", Array<char>.Vector([.."`ab"]) },
                  { "1 - \"abc\"", Array<char>.Vector([unchecked((char)(1 - 'a')), unchecked((char)(1 - 'b')), unchecked((char)(1 - 'c'))]) },
-             };
+            };
 
-         [Theory, MemberData(nameof(StringsTestData))]
-         public void Strings(string code, Value expected) =>
-             Assert.Equal(expected, Interpreter.Evaluate(code));
+        [Theory, MemberData(nameof(StringsTestData))]
+        public void Strings(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
 
-         public static readonly TheoryData<string, Value> BoxedIntegersTestData =
-             new()
-             {
+        public static readonly TheoryData<string, Value> BoxedIntegersTestData =
+            new()
+            {
                  { "[[1] [2 3]] - 10", Array<Box>.Vector(Array<int>.Vector(-9).Box(), Array<int>.Vector(-8, -7).Box()) },
                  { "10 - [[1] [2 3]]", Array<Box>.Vector(Array<int>.Vector(9).Box(), Array<int>.Vector(8, 7).Box()) },
                  { "[[10] [20 30]] - [[1] [2 3]]", Array<Box>.Vector(Array<int>.Vector(9).Box(), Array<int>.Vector(18, 27).Box()) },
-             };
+            };
 
-         [Theory, MemberData(nameof(BoxedIntegersTestData))]
-         public void BoxedIntegers(string code, Value expected) =>
-             Assert.Equal(expected, Interpreter.Evaluate(code));
+        [Theory, MemberData(nameof(BoxedIntegersTestData))]
+        public void BoxedIntegers(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
     }
 
     public class Multiplication
@@ -167,20 +167,20 @@ public class BinaryOperatorsTests
                 { "[] * 1", EmptyArray.Instance },
             };
 
-         [Theory, MemberData(nameof(IntegersTestData))]
-         public void Integers(string code, Value expected) =>
-             Assert.Equal(expected, Interpreter.Evaluate(code));
+        [Theory, MemberData(nameof(IntegersTestData))]
+        public void Integers(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
 
-         public static readonly TheoryData<string, Value> BoxedIntegersTestData =
-             new()
-             {
+        public static readonly TheoryData<string, Value> BoxedIntegersTestData =
+            new()
+            {
                  { "[[1] [2 3]] * 10", Array<Box>.Vector(Array<int>.Vector(10).Box(), Array<int>.Vector(20, 30).Box()) },
                  { "[[1] [2 3]] * [[10] [20 30]]", Array<Box>.Vector(Array<int>.Vector(10).Box(), Array<int>.Vector(40, 90).Box()) },
-             };
+            };
 
-         [Theory, MemberData(nameof(BoxedIntegersTestData))]
-         public void BoxedIntegers(string code, Value expected) =>
-             Assert.Equal(expected, Interpreter.Evaluate(code));
+        [Theory, MemberData(nameof(BoxedIntegersTestData))]
+        public void BoxedIntegers(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
     }
 
     public class Division
@@ -196,20 +196,20 @@ public class BinaryOperatorsTests
                 { "[] / 1", EmptyArray.Instance },
             };
 
-         [Theory, MemberData(nameof(IntegersTestData))]
-         public void Integers(string code, Value expected) =>
-             Assert.Equal(expected, Interpreter.Evaluate(code));
+        [Theory, MemberData(nameof(IntegersTestData))]
+        public void Integers(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
 
-         public static readonly TheoryData<string, Value> BoxedIntegersTestData =
-             new()
-             {
+        public static readonly TheoryData<string, Value> BoxedIntegersTestData =
+            new()
+            {
                  { "[[10] [20 30]] / 10", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(2, 3).Box()) },
                  { "[[10] [20 30]] / [[2] [4 5]]", Array<Box>.Vector(Array<int>.Vector(5).Box(), Array<int>.Vector(5, 6).Box()) },
-             };
+            };
 
-         [Theory, MemberData(nameof(BoxedIntegersTestData))]
-         public void BoxedIntegers(string code, Value expected) =>
-             Assert.Equal(expected, Interpreter.Evaluate(code));
+        [Theory, MemberData(nameof(BoxedIntegersTestData))]
+        public void BoxedIntegers(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
     }
 
     public class Modulo
@@ -233,11 +233,11 @@ public class BinaryOperatorsTests
             Assert.Equal(expected, Interpreter.Evaluate(code));
     }
 
-     public class Append
-     {
-         public static readonly TheoryData<string, Value> CharsTestData =
-             new()
-             {
+    public class Append
+    {
+        public static readonly TheoryData<string, Value> CharsTestData =
+            new()
+            {
                  { """
                    'a' ++ 'b'
                    """, Array<char>.Vector([.."ab"]) },
@@ -253,15 +253,15 @@ public class BinaryOperatorsTests
                  { """
                    "hel" ++ "lo"
                    """, Array<char>.Vector([.."hello"]) }
-             };
+            };
 
-         [Theory, MemberData(nameof(CharsTestData))]
-         public void Chars(string code, Value expected) =>
-             Assert.Equal(expected, Interpreter.Evaluate(code));
-         
-         public static readonly TheoryData<string, Value> ArraysTestData =
-             new()
-             {
+        [Theory, MemberData(nameof(CharsTestData))]
+        public void Chars(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+
+        public static readonly TheoryData<string, Value> ArraysTestData =
+            new()
+            {
                  { "[] ++ []", EmptyArray.Instance },
                  { "1 ++ []", Array<int>.Vector(1) },
                  { "[] ++ [1 2]", Array<int>.Vector(1, 2) },
@@ -269,21 +269,21 @@ public class BinaryOperatorsTests
                  { "[5 6] ++ 4", Array<int>.Vector(5, 6, 4) },
                  { "[] ++ [7 9]", Array<int>.Vector(7, 9) },
                  { "[[1 2] [3 4]] ++ [[5 6] [7 8]]", Array<int>.Matrix([[1, 2, 5, 6], [3, 4, 7, 8]]) },
-             };
+            };
 
-         [Theory, MemberData(nameof(ArraysTestData))]
-         public void Arrays(string code, Value expected) =>
-             Assert.Equal(expected, Interpreter.Evaluate(code));
-     }
+        [Theory, MemberData(nameof(ArraysTestData))]
+        public void Arrays(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
+    }
 
-     public static readonly TheoryData<string, Value> OperatorPrecedenceTestData =
-         new()
-         {
+    public static readonly TheoryData<string, Value> OperatorPrecedenceTestData =
+        new()
+        {
              { "2 + 3 * 4", Array<int>.Scalar(14) },
              { "(2 + 3) * 4", Array<int>.Scalar(20) },
-         };
+        };
 
-     [Theory, MemberData(nameof(OperatorPrecedenceTestData))]
-     public void OperatorPrecedence(string code, Value expected) =>
-         Assert.Equal(expected, Interpreter.Evaluate(code));
+    [Theory, MemberData(nameof(OperatorPrecedenceTestData))]
+    public void OperatorPrecedence(string code, Value expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
 }

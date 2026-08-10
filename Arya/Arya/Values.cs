@@ -40,14 +40,14 @@ public sealed record Shape(params int[] Dimensions)
     /// where a scalar operand is stretched to match the other operand.
     /// </summary>
     public Shape Broadcast(Shape other) =>
-        IsScalar       ? other :
-        other.IsScalar ? this  :
-        this == other  ? this  :
+        IsScalar ? other :
+        other.IsScalar ? this :
+        this == other ? this :
         throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");
 
-    public Shape Prepend(int dimension) => new([dimension, ..Dimensions]);
+    public Shape Prepend(int dimension) => new([dimension, .. Dimensions]);
     public Shape Increment(int dimension, int size) => Replace(dimension, Dimensions[dimension] + size);
-    public Shape Replace(int dimension, int size) => new([..Dimensions[..dimension], size, ..Dimensions[(dimension + 1)..]]);
+    public Shape Replace(int dimension, int size) => new([.. Dimensions[..dimension], size, .. Dimensions[(dimension + 1)..]]);
     public Shape RemoveFirst() => new([.. Dimensions.Skip(1)]);
 
     public bool Equals(Shape? other) =>

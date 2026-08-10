@@ -9,13 +9,13 @@ internal sealed class Scanner
     private int _position;
 
     private Scanner(string source) => _source = source;
-    
+
     public static List<Token> Scan(string source) => new Scanner(source).Scan();
 
     private List<Token> Scan()
     {
         var tokens = new List<Token>();
-        
+
         while (!IsEndOfFile)
         {
             switch (Current)
@@ -25,7 +25,7 @@ internal sealed class Scanner
                     break;
                 case '+':
                     Advance();
-                    
+
                     if (Match('+'))
                         tokens.Add(new Token(TokenType.PlusPlus, "++"));
                     else
@@ -69,7 +69,7 @@ internal sealed class Scanner
                     break;
                 case >= '0' and <= '9':
                     var numberStartPosition = _position;
-                    
+
                     while (Current is >= '0' and <= '9')
                         Advance();
 
@@ -91,7 +91,7 @@ internal sealed class Scanner
                     Advance();
 
                     var charValue = Current;
-                    
+
                     if (Match('\\'))
                     {
                         if (Match('n'))
@@ -104,7 +104,7 @@ internal sealed class Scanner
                             charValue = '\\';
                         else if (Match('\''))
                             charValue = '\'';
-                        else 
+                        else
                             throw new InvalidOperationException($"Unknown escape sequence: '\\{Current}'");
                     }
                     else
@@ -119,7 +119,7 @@ internal sealed class Scanner
                 case '"':
                     var stringStartPosition = _position;
                     Advance();
-                    
+
                     _stringValue.Clear();
                     while (!Match('"'))
                     {
@@ -130,65 +130,65 @@ internal sealed class Scanner
                                 _stringValue.Append('\n');
                                 continue;
                             }
-                    
+
                             if (Match('r'))
                             {
                                 _stringValue.Append('\r');
                                 continue;
                             }
-                        
+
                             if (Match('t'))
                             {
                                 _stringValue.Append('\t');
                                 continue;
                             }
-                        
+
                             if (Match('\\'))
                             {
                                 _stringValue.Append('\\');
                                 continue;
                             }
-                        
+
                             throw new InvalidOperationException($"Unknown escape sequence: '\\{Current}'");
                         }
-                        
+
                         _stringValue.Append(Current);
                         Advance();
                     }
-                   
+
                     tokens.Add(new Token(TokenType.String, _source[stringStartPosition.._position], _stringValue.ToString()));
                     break;
                 default:
                     throw new InvalidOperationException($"Unknown character: '{_source[_position]}'");
             }
         }
-        
+
         tokens.Add(new Token(TokenType.Eof, ""));
-        
+
         return tokens;
     }
-    
+
     private bool Match(char expected)
     {
         if (Current != expected)
             return false;
-        
+
         Advance();
         return true;
     }
-    
+
     private void Consume(char expected)
     {
         if (Current != expected)
             throw new InvalidOperationException($"Expected '{expected}' but found '{Next}'");
-        
+
         Advance();
     }
-    
+
     private void Advance() => _position++;
 
     private bool IsEndOfFile => _position >= _source.Length;
-    
+
     private char Current => _position < _source.Length ? _source[_position] : '\0';
     private char Next => _position < _source.Length - 1 ? _source[_position + 1] : '\0';
 }
@@ -202,7 +202,7 @@ internal enum TokenType
     String,
     Char,
     Identifier,
-    
+
     // Symbols
     OpenBracket,
     CloseBracket,

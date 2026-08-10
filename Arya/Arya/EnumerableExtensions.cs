@@ -15,11 +15,11 @@ public static class EnumerableExtensions
             // Prevent looping endlessly when the enumerator has no elements
             if (!enumerator.MoveNext())
                 yield break;
-            
+
             while (true)
             {
                 yield return enumerator.Current;
-                
+
                 // When we've reached the end, reset the enumerator
                 // to its initial position to keep on iterating
                 if (!enumerator.MoveNext())

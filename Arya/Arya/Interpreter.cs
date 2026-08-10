@@ -4,7 +4,7 @@ public sealed record Scope
 {
     private readonly Scope? _parent;
     private Dictionary<string, Value?> Values => field ??= new Dictionary<string, Value?>();
-    
+
     public Scope(Scope? parent = null) => _parent = parent;
 
     public Scope CreateChild() => new(this);
@@ -15,13 +15,13 @@ public sealed record Scope
         {
             if (Values.TryGetValue(key, out var result))
                 return result;
-            
+
             return _parent?[key];
         }
         set
         {
             if (!Values.TryAdd(key, value))
-                throw new InvalidOperationException("Cannot redeclare local");;
+                throw new InvalidOperationException("Cannot redeclare local"); ;
         }
     }
 }
@@ -41,7 +41,7 @@ public class Interpreter
     private Value? Evaluate()
     {
         Value? result = null;
-        
+
         var defaultScope = CreateDefaultScope();
 
         foreach (var expression in _expressions)
@@ -108,7 +108,7 @@ public class Interpreter
             (TokenType.Slash, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a / b),
 
             (TokenType.Percent, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a % b),
-            
+
             _ => throw new InvalidOperationException("Invalid binary expression")
         };
 
@@ -125,7 +125,7 @@ public class Interpreter
     {
         if (scope[call.FunctionName.Text] is not Function function)
             throw new InvalidOperationException("Can only call functions");
-                
+
         if (call.Arguments.Length != function.Arity)
             throw new InvalidOperationException("Invalid number of arguments");
 
@@ -137,11 +137,11 @@ public class Interpreter
     {
         if (array.Elements.Length == 0)
             return EmptyArray.Instance;
-                
+
         Type? elementType = null;
         Shape? shape = null;
         bool identicalShapes = true;
-                
+
         Value[] newElements = new Value[array.Elements.Length];
 
         for (var index = 0; index < array.Elements.Length; index++)
@@ -162,22 +162,22 @@ public class Interpreter
         }
 
         var newShape = shape!.Prepend(newElements.Length);
-        
+
         if (!identicalShapes)
-            return Array<Box>.Vector([..newElements.Select(element => element.Box())]);
+            return Array<Box>.Vector([.. newElements.Select(element => element.Box())]);
 
         if (elementType == typeof(Array<int>))
-            return new Array<int>(newShape, [..newElements.Cast<Array<int>>().SelectMany(array => array.Elements)]);
+            return new Array<int>(newShape, [.. newElements.Cast<Array<int>>().SelectMany(array => array.Elements)]);
 
         if (elementType == typeof(Array<char>))
-            return new Array<char>(newShape, [..newElements.Cast<Array<char>>().SelectMany(array => array.Elements)]);
-                
+            return new Array<char>(newShape, [.. newElements.Cast<Array<char>>().SelectMany(array => array.Elements)]);
+
         if (elementType == typeof(EmptyArray))
             return EmptyArray.Instance;
-                
+
         throw new InvalidOperationException("Invalid array element type");
     }
-    
+
     private Value Evaluate(IndexerExpression indexer, Scope scope)
     {
         var target = Evaluate(indexer.Target, scope);
@@ -188,13 +188,13 @@ public class Interpreter
 
         if (index is not Array<int> indexArray)
             throw new InvalidOperationException("Can only index with arrays");
-        
+
         if (indexArray.Shape.IsMatrix)
             throw new InvalidOperationException("Can only index with scalars or vectors");
 
         var newElements = indexArray.Elements
             .SelectMany(targetIndex =>
-            {   
+            {
                 var from = (targetIndex - 1) * targetArray.Shape.RowCount;
                 var until = targetIndex * targetArray.Shape.RowCount;
                 return targetArray.Elements[from..until];
@@ -202,13 +202,13 @@ public class Interpreter
         var newShape = indexArray.Shape.IsScalar
             ? targetArray.Shape.RemoveFirst()
             : targetArray.Shape.Replace(0, indexArray.Elements.Length);
-        return new Array<int>(newShape,[..newElements]);
+        return new Array<int>(newShape, [.. newElements]);
     }
 
     private static Scope CreateDefaultScope()
     {
         var scope = new Scope();
-        
+
         foreach (var builtinFunction in BuiltinFunctions.All)
             scope[builtinFunction.Name] = builtinFunction;
 

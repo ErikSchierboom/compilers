@@ -64,20 +64,20 @@ internal class Parser
         var parsePrefixFn = CurrentParseRule.Prefix ?? throw new InvalidOperationException("Expected prefix");
         Consume();
         var left = parsePrefixFn();
-        
+
         while (precedence < CurrentPrecedence)
         {
             var parseInfixFn = CurrentParseRule.Infix;
             if (parseInfixFn is null)
                 break;
-            
+
             Consume();
             left = parseInfixFn(left);
         }
 
         return left;
     }
-    
+
     private UnaryExpression ParseUnary() => new(Previous, ParseExpression(Precedence.Unary));
 
     private BinaryExpression ParseBinary(Expression left)
@@ -90,7 +90,7 @@ internal class Parser
     }
 
     private LiteralExpression ParseLiteral() => new(Previous);
-    
+
     private NameExpression ParseName() => new(Previous);
 
     private IndexerExpression ParseIndexer(Expression left)
@@ -99,25 +99,25 @@ internal class Parser
         Consume(TokenType.CloseBracket);
         return new IndexerExpression(left, index);
     }
-    
+
     private Expression ParseCall(Expression left)
     {
         if (left is not NameExpression name)
             throw new InvalidOperationException("Can only call names");
-        
+
         var arguments = new List<Expression>();
         while (!IsEndOfFile)
         {
             if (Match(TokenType.CloseParen))
                 break;
-            
+
             do
             {
                 arguments.Add(ParseExpression());
             } while (Match(TokenType.Comma));
         }
-                
-        return new CallExpression(name.Identifier, [..arguments]);
+
+        return new CallExpression(name.Identifier, [.. arguments]);
     }
 
     private ArrayExpression ParseArray()
@@ -127,10 +127,10 @@ internal class Parser
             elements.Add(ParseExpression(Precedence.Addition));
 
         Consume(TokenType.CloseBracket);
-        
-        return new([..elements]);
+
+        return new([.. elements]);
     }
-    
+
     private ParenthesizedExpression ParseParenthesized()
     {
         var expr = ParseExpression();
@@ -138,10 +138,10 @@ internal class Parser
         return new(expr);
     }
 
-    private bool IsEndOfFile => Current.Type == TokenType.Eof; 
-    
+    private bool IsEndOfFile => Current.Type == TokenType.Eof;
+
     private Token Previous => _tokens[_position - 1];
-    private Token Current  => _tokens[_position];
+    private Token Current => _tokens[_position];
 
     private ParseRule CurrentParseRule =>
         _rules.TryGetValue(Current.Type, out var parseRule)
@@ -157,13 +157,13 @@ internal class Parser
     {
         if (Current.Type != expected)
             return false;
-        
+
         _position++;
         return true;
     }
-    
+
     private void Consume() => _position++;
-    
+
     private void Consume(TokenType expected)
     {
         if (Current.Type != expected)
