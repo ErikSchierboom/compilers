@@ -69,7 +69,7 @@ internal static class BuiltinFunctions
                         return Array<Box>.Vector([.. newRows.Select(newRow => Array<char>.Vector(newRow).Box())]);
                         
                     var newElements = newRows.SelectMany(row => row);
-                    var newShape = charArray.Shape.Replace(0, newRows[0].Length);
+                    var newShape = charArray.Shape.SetFirst(newRows[0].Length);
                     return new Array<char>(newShape, [.. newElements]);
                 case Array<Box> boxArray:
                     return boxArray.Map(box => box.Map(element => Invoke(element)));

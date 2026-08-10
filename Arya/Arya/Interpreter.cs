@@ -198,7 +198,7 @@ public class Interpreter
             .SelectMany(zeroBasedIndex => targetArray.Elements.Skip(zeroBasedIndex * targetArray.Shape.RowLength).Take(targetArray.Shape.RowLength));
         var newShape = indexArray.Shape.IsScalar 
             ? targetArray.Shape.RemoveFirst() 
-            : targetArray.Shape.Replace(0, indexArray.Elements.Length);
+            : targetArray.Shape.SetFirst(indexArray.Elements.Length);
         
         return targetArray with { Shape = newShape, Elements = [..newElements] };
     }

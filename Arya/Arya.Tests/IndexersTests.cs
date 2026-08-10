@@ -35,6 +35,7 @@ public class IndexersTests
         public static readonly TheoryData<string, Value> VectorsTestData =
             new()
             {
+                { "4[[1]]", Array<int>.Vector(4) },
                 { "[4 5 6][[2]]", Array<int>.Vector(5) },
                 { "[4 5 6][[1 3]]", Array<int>.Vector(4, 6) },
                 { "[4 5 6][[1 2 3]]", Array<int>.Vector(4, 5, 6) },

@@ -49,6 +49,7 @@ public sealed record Shape(params int[] Dimensions)
     public Shape Prepend(int dimension) => new([dimension, .. Dimensions]);
     public Shape Replace(int dimension, int size) => new([.. Dimensions[..dimension], size, .. Dimensions[(dimension + 1)..]]);
     public Shape RemoveFirst() => IsScalar ? this : new([.. Dimensions.Skip(1)]);
+    public Shape SetFirst(int size) => new([size, .. Dimensions.Skip(1)]);
 
     public bool Equals(Shape? other) =>
         StructuralComparisons.StructuralEqualityComparer.Equals(Dimensions, other?.Dimensions);
