@@ -88,4 +88,40 @@ public class BuiltinFunctionsTests
     [Theory, MemberData(nameof(UppercaseTestData))]
     public void Uppercase(string code, Value expected) =>
         Assert.Equal(expected, Interpreter.Evaluate(code));
+
+    public static readonly TheoryData<string, Value> TrimTestData =
+        new()
+        {
+            { """
+              trim(' ')
+              """, Array<char>.Scalar(' ') },
+            { """
+              trim('a')
+              """, Array<char>.Scalar('a') },
+            { """
+              trim('1')
+              """, Array<char>.Scalar('1') },
+            { """
+              trim(['A' 'e' 'K' ' '])
+              """, Array<char>.Vector('A', 'e', 'K') },
+            { """
+              trim([[' ' 'A'] ['\r' 'e' ' ']])
+              """, Array<Box>.Vector(Array<char>.Vector('A').Box(), Array<char>.Vector('e').Box()) },
+            { """
+              trim("")
+              """, Array<char>.Vector([..""]) },
+            { """
+              trim(" Hi there! ")
+              """, Array<char>.Vector([.."Hi there!"]) },
+            { """
+              trim("123\r\n")
+              """, Array<char>.Vector([.."123"]) },
+            { """
+              trim(["Th\tis" "\tIs" "\tCool\t \t\r"])
+              """, Array<Box>.Vector(Array<char>.Vector([.."Th\tis"]).Box(), Array<char>.Vector([.."Is"]).Box(), Array<char>.Vector([.."Cool"]).Box()) },
+        };
+
+    [Theory, MemberData(nameof(TrimTestData))]
+    public void Trim(string code, Value expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
 }

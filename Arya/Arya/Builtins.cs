@@ -61,8 +61,16 @@ internal static class BuiltinFunctions
                         return charArray;
 
                     // TODO: maybe add a MapRows method?
-                    var newElements = charArray.Rows.SelectMany(chars => Operation(chars).ToArray());
-                    return new Array<char>(charArray.Shape, [.. newElements]);
+                    var newRows = charArray.Rows.Select(chars => Operation(chars).ToArray()).ToArray();
+                    if (newRows.Length == 0)
+                        return EmptyArray.Instance;
+                    
+                    if (newRows.Any(row => row.Length != newRows[0].Length))
+                        return Array<Box>.Vector([.. newRows.Select(newRow => Array<char>.Vector(newRow).Box())]);
+                        
+                    var newElements = newRows.SelectMany(row => row);
+                    var newShape = charArray.Shape.Replace(0, newRows[0].Length);
+                    return new Array<char>(newShape, [.. newElements]);
                 case Array<Box> boxArray:
                     return boxArray.Map(box => box.Map(element => Invoke(element)));
                 default:
