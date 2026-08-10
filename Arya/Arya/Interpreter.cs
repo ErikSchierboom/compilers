@@ -183,6 +183,7 @@ public class Interpreter
         var target = Evaluate(indexer.Target, scope);
         var index = Evaluate(indexer.Index, scope);
 
+        // TODO: support all arrays by moving functionality to array
         if (target is not Array<int> targetArray)
             throw new InvalidOperationException("Can only index into arrays");
 
@@ -193,16 +194,13 @@ public class Interpreter
             throw new InvalidOperationException("Can only index with scalars or vectors");
 
         var newElements = indexArray.Elements
-            .SelectMany(targetIndex =>
-            {
-                var from = (targetIndex - 1) * targetArray.Shape.RowCount;
-                var until = targetIndex * targetArray.Shape.RowCount;
-                return targetArray.Elements[from..until];
-            });
-        var newShape = indexArray.Shape.IsScalar
-            ? targetArray.Shape.RemoveFirst()
+            .Select(oneBasedIndex => oneBasedIndex > 0 ? oneBasedIndex - 1 : targetArray.Shape.RowCount + oneBasedIndex)
+            .SelectMany(zeroBasedIndex => targetArray.Elements.Skip(zeroBasedIndex * targetArray.Shape.RowLength).Take(targetArray.Shape.RowLength));
+        var newShape = indexArray.Shape.IsScalar 
+            ? targetArray.Shape.RemoveFirst() 
             : targetArray.Shape.Replace(0, indexArray.Elements.Length);
-        return new Array<int>(newShape, [.. newElements]);
+        
+        return targetArray with { Shape = newShape, Elements = [..newElements] };
     }
 
     private static Scope CreateDefaultScope()

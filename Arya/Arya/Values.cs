@@ -33,7 +33,8 @@ public sealed record Shape(params int[] Dimensions)
     public bool IsMatrix => Dimensions.Length == 2;
 
     public int Count => Dimensions.Aggregate(1, (count, dimension) => count * dimension);
-    public int RowCount => Dimensions.Length >= 2 ? Dimensions[1] : 1;
+    public int RowCount => Dimensions.FirstOrDefault(1);
+    public int RowLength => Dimensions.Skip(1).Aggregate(1, (count, dimension) => count * dimension);
 
     /// <summary>
     /// The shape that results from combining this shape with <paramref name="other"/>,
@@ -47,7 +48,7 @@ public sealed record Shape(params int[] Dimensions)
 
     public Shape Prepend(int dimension) => new([dimension, .. Dimensions]);
     public Shape Replace(int dimension, int size) => new([.. Dimensions[..dimension], size, .. Dimensions[(dimension + 1)..]]);
-    public Shape RemoveFirst() => new([.. Dimensions.Skip(1)]);
+    public Shape RemoveFirst() => IsScalar ? this : new([.. Dimensions.Skip(1)]);
 
     public bool Equals(Shape? other) =>
         StructuralComparisons.StructuralEqualityComparer.Equals(Dimensions, other?.Dimensions);
@@ -75,8 +76,16 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
 
     public static Array<T> Matrix(T[][] elements) => new(new Shape(elements.Length, elements[0].Length), [.. elements.SelectMany(row => row)]);
 
-    public IEnumerable<T[]> Rows =>
-        Shape.IsScalar || Shape.IsVector ? [Elements] : Elements.Chunk(Shape.Dimensions[0]);
+    public IEnumerable<T[]> Rows()
+    {
+        if (Shape.IsScalar)
+            return [Elements];
+        
+        if (Shape.IsVector)
+            return [..Elements.Chunk(1)];
+        
+        return Elements.Chunk(Shape.Dimensions[0]);
+    }
 
     public Array<T> Map(Func<T, T> operation) =>
         new(Shape, [.. Elements.Select(operation)]);
@@ -103,7 +112,7 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
         if (Shape != other.Shape)
             throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");
 
-        var newElements = Rows.Zip(other.Rows, (row, otherRow) => row.Concat(otherRow))
+        var newElements = Rows().Zip(other.Rows(), (row, otherRow) => row.Concat(otherRow))
             .SelectMany(elements => elements);
         int size = other.Shape.Dimensions[1];
         return new Array<T>(Shape.Replace(1, Shape.Dimensions[1] + size), [.. newElements]);

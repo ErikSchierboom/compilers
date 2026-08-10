@@ -61,7 +61,7 @@ internal static class BuiltinFunctions
                         return charArray;
 
                     // TODO: maybe add a MapRows method?
-                    var newRows = charArray.Rows.Select(chars => Operation(chars).ToArray()).ToArray();
+                    var newRows = charArray.Rows().Select(chars => Operation(chars).ToArray()).ToArray();
                     if (newRows.Length == 0)
                         return EmptyArray.Instance;
                     

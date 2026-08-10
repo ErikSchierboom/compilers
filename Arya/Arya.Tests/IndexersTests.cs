@@ -14,7 +14,10 @@ public class IndexersTests
                 { "4[1]", Array<int>.Scalar(4) },
                 { "[4 5 6][1]", Array<int>.Scalar(4) },
                 { "[4 5 6][3]", Array<int>.Scalar(6) },
+                { "[4 5 6][-1]", Array<int>.Scalar(6) },
+                { "[4 5 6][-2]", Array<int>.Scalar(5) },
                 { "[[4 2] [5 1]][1]", Array<int>.Vector(4, 2) },
+                { "[[4 2] [5 1] [6 7]][-2]", Array<int>.Vector(5, 1) },
             };
 
         [Theory, MemberData(nameof(ScalarsTestData))]
@@ -35,8 +38,8 @@ public class IndexersTests
                 { "[4 5 6][[2]]", Array<int>.Vector(5) },
                 { "[4 5 6][[1 3]]", Array<int>.Vector(4, 6) },
                 { "[4 5 6][[1 2 3]]", Array<int>.Vector(4, 5, 6) },
-                { "[4 5 6][[1 2 1 3]]", Array<int>.Vector(4, 5, 4, 6) },
-                { "[[4 2] [5 1] [6 0]][[1 3]]", Array<int>.Matrix([[4, 2], [6, 0]]) },
+                { "[4 5 6][[1 2 -1 3]]", Array<int>.Vector(4, 5, 6, 6) },
+                { "[[4 2] [5 1] [6 0]][[1 -2]]", Array<int>.Matrix([[4, 2], [5, 1]]) },
             };
 
         [Theory, MemberData(nameof(VectorsTestData))]
