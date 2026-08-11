@@ -46,8 +46,13 @@ internal static class BuiltinFunctions
     private sealed record LowercaseFunction() : UnaryCharFunction("lowercase", char.ToLowerInvariant);
     private sealed record UppercaseFunction() : UnaryCharFunction("uppercase", char.ToUpperInvariant);
 
-    private abstract record UnaryCharSequenceFunction(string Name, Func<ReadOnlyMemory<char>, ReadOnlyMemory<char>> Operation) : Function(Name)
+    private abstract record UnaryCharSequenceFunction(string Name, Func<char[], char[]> Operation) : Function(Name)
     {
+        protected UnaryCharSequenceFunction(string name, Func<ReadOnlyMemory<char>, ReadOnlyMemory<char>> operation) : 
+            this(name, chars => operation(chars.AsMemory()).ToArray())
+        {
+        }
+
         public override int Arity => 1;
 
         public override Value Invoke(params Value[] arguments)
@@ -57,13 +62,7 @@ internal static class BuiltinFunctions
                 case EmptyArray:
                     return EmptyArray.Instance;
                 case Array<char> charArray:
-                    if (charArray.Shape.IsScalar)
-                        return charArray;
-                    
-                    if (charArray.Shape.IsVector)
-                        return Array<char>.Vector(Operation(charArray.Elements).ToArray());
-
-                    throw new NotImplementedException();
+                    return charArray.Map(Operation);
                 case Array<Box> boxArray:
                     return boxArray.Map(box => box.Map(element => Invoke(element)));
                 default:

@@ -119,6 +119,9 @@ public class BuiltinFunctionsTests
             { """
               trim(["Th\tis" "\tIs" "\tCool\t \t\r"])
               """, Array<Box>.Vector(Array<char>.Vector([.."Th\tis"]).Box(), Array<char>.Vector([.."Is"]).Box(), Array<char>.Vector([.."Cool"]).Box()) },
+            { """
+              trim(["Ab" " c"])
+              """, Array<Box>.Vector(Array<char>.Vector([.."Ab"]).Box(), Array<char>.Vector([.."c"]).Box()) },
         };
 
     [Theory, MemberData(nameof(TrimTestData))]

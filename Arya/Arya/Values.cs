@@ -66,7 +66,7 @@ public sealed record EmptyArray : Value
 
     public override Shape Shape { get; init; } = Shape.Scalar;
 
-    public override string ToString() => "[]";
+    public override string ToString() => $"[] <{Shape}>";
 }
 
 public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
@@ -90,6 +90,22 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
 
     public Array<T> Map(Func<T, T> operation) =>
         new(Shape, [.. Elements.Select(operation)]);
+    
+    public Array<T> Map(Func<T[], T[]> operation)
+    {
+        if (Shape.IsScalar)
+            return this;
+        
+        if (Shape.IsVector)
+            return Vector(operation(Elements));
+
+        // TODO: auto promote to boxes if needed        
+        // TODO: support matrix
+        // TODO: change shape
+        var newRows = Rows().Select(operation).ToArray();
+        var newElements = newRows.SelectMany(element => element).ToArray();
+        return this with { Shape = Shape.Replace(0, newRows.Length), Elements = [..newRows.SelectMany(element => element)] };
+    }
 
     /// <summary>
     /// Applies <paramref name="operation"/> to each pair of elements, stretching whichever
@@ -133,7 +149,7 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
         {
             0 when typeof(T) == typeof(char) => '"' + string.Concat(Elements) + '"',
             0 => Elements[0]!.ToString()!,
-            1 => "[" + string.Join(" ", Elements) + "]",
+            1 => "[" + string.Join(" ", Elements) + "] ",
             2 => "[[" + string.Join("] [ ", Elements) + "]]",
             _ => base.ToString()
         };
