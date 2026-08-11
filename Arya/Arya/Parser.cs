@@ -38,6 +38,7 @@ internal class Parser
             [TokenType.String] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.Char] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.Identifier] = new(ParseName, null, Precedence.Primary),
+            [TokenType.Pipe] = new(ParseBox, null, Precedence.Array),
             [TokenType.OpenBracket] = new(ParseArray, ParseIndexer, Precedence.Array),
             [TokenType.OpenParen] = new(ParseParenthesized, ParseCall, Precedence.Call),
         };
@@ -119,6 +120,14 @@ internal class Parser
 
         return new CallExpression(name.Identifier, [.. arguments]);
     }
+    
+    private BoxExpression ParseBox()
+    {
+        var expression = ParseExpression();
+        Consume(TokenType.Pipe);
+
+        return new(expression);
+    }
 
     private ArrayExpression ParseArray()
     {
@@ -176,6 +185,7 @@ internal class Parser
 internal abstract record Expression;
 internal sealed record LiteralExpression(Token Value) : Expression;
 internal sealed record ArrayExpression(Expression[] Elements) : Expression;
+internal sealed record BoxExpression(Expression Expression) : Expression;
 internal sealed record NameExpression(Token Identifier) : Expression;
 internal sealed record CallExpression(Token FunctionName, Expression[] Arguments) : Expression;
 internal sealed record UnaryExpression(Token Operator, Expression Operand) : Expression;

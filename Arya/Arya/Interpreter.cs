@@ -57,6 +57,7 @@ public class Interpreter
             UnaryExpression unary => Evaluate(unary, scope),
             BinaryExpression binary => Evaluate(binary, scope),
             LiteralExpression literal => Evaluate(literal, scope),
+            BoxExpression box => Evaluate(box, scope),
             CallExpression call => Evaluate(call, scope),
             IndexerExpression indexer => Evaluate(indexer, scope),
             ParenthesizedExpression parenthesized => Evaluate(parenthesized.Expression, scope),
@@ -120,6 +121,12 @@ public class Interpreter
             TokenType.Char => Array<char>.Scalar((char)literal.Value.Literal!),
             _ => throw new ArgumentOutOfRangeException(nameof(literal.Value.Type))
         };
+    
+    private Value Evaluate(BoxExpression box, Scope scope)
+    {
+        var value = Evaluate(box.Expression, scope);
+        return Array<Box>.Scalar(value.Box());
+    }
 
     private Value Evaluate(CallExpression call, Scope scope)
     {
@@ -164,7 +171,7 @@ public class Interpreter
         var newShape = shape!.Prepend(newElements.Length);
 
         if (!identicalShapes)
-            return Array<Box>.Vector([.. newElements.Select(element => element.Box())]);
+            throw new InvalidOperationException("Array elements must have identical shapes.");
 
         if (elementType == typeof(Array<int>))
             return new Array<int>(newShape, [.. newElements.Cast<Array<int>>().SelectMany(array => array.Elements)]);
