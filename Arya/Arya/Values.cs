@@ -27,6 +27,7 @@ public sealed record Box(Value Value) : Value
 public sealed record Shape(params int[] Dimensions)
 {
     public static readonly Shape Scalar = new();
+    public static readonly Shape Empty = new(0);
 
     public bool IsScalar => Dimensions.Length == 0;
     public bool IsVector => Dimensions.Length == 1;
@@ -60,17 +61,10 @@ public sealed record Shape(params int[] Dimensions)
     public override string ToString() => "<" + string.Join(" ", Dimensions.Select(d => d.ToString())) + ">";
 }
 
-public sealed record EmptyArray : Value
-{
-    public static readonly EmptyArray Instance = new();
-
-    public override Shape Shape { get; init; } = Shape.Scalar;
-
-    public override string ToString() => $"[] <{Shape}>";
-}
-
 public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
 {
+    public static readonly Array<T> Empty = new(Shape.Empty);
+    
     public static Array<T> Scalar(T element) => new(Shape.Scalar, element);
 
     public static Array<T> Vector(params T[] elements) => new(new Shape(elements.Length), elements);
@@ -118,9 +112,6 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
         return new Array<T>(shape, [.. Elements.Repeat().Zip(other.Elements.Repeat(), operation).Take(shape.Count)]);
     }
 
-    public Array<T> Append(EmptyArray _) =>
-        Shape.IsScalar ? Vector(Elements) : this;
-
     public Array<T> Append(Array<T> other)
     {
         if ((Shape.IsScalar || Shape.IsVector) && (other.Shape.IsScalar || other.Shape.IsVector))
@@ -165,3 +156,8 @@ public abstract record Function(string Name) : Value
 
     public override string ToString() => Name;
 }
+
+/// <summary>
+/// This type is used as an empty array's element type, as we can't know its type.
+/// </summary>
+public sealed record Any;

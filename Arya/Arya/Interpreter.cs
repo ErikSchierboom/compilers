@@ -83,15 +83,15 @@ public class Interpreter
         (op, left, right) switch
         {
             (TokenType.PlusPlus, Array<int> l, Array<int> r) => l.Append(r),
-            (TokenType.PlusPlus, Array<int> l, EmptyArray r) => l.Append(r),
-            (TokenType.PlusPlus, EmptyArray l, Array<int> r) => r.Append(l),
+            (TokenType.PlusPlus, Array<int> l, Array<Any> r) => l,
+            (TokenType.PlusPlus, Array<Any> l, Array<int> r) => r,
             (TokenType.PlusPlus, Array<char> l, Array<char> r) => l.Append(r),
-            (TokenType.PlusPlus, Array<char> l, EmptyArray r) => l.Append(r),
-            (TokenType.PlusPlus, EmptyArray l, Array<char> r) => r.Append(l),
-            (TokenType.PlusPlus, EmptyArray, EmptyArray) => EmptyArray.Instance,
+            (TokenType.PlusPlus, Array<char> l, Array<Any>) => l,
+            (TokenType.PlusPlus, Array<Any> l, Array<char> r) => r,
+            (TokenType.PlusPlus, Array<Any>, Array<Any>) => Array<Any>.Empty,
 
-            (_, _, EmptyArray) or
-            (_, EmptyArray, _) => EmptyArray.Instance,
+            (_, _, Array<Any>) or
+            (_, Array<Any>, _) => Array<Any>.Empty,
 
             (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or TokenType.Percent, Array<Box> l, var r) => l.Zip(r.Boxes(), (a, b) => BinaryOp(op, a.Value, b.Value).Box()),
             (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or TokenType.Percent, var l, Array<Box> r) => r.Zip(l.Boxes(), (a, b) => BinaryOp(op, b.Value, a.Value).Box()),
@@ -143,7 +143,7 @@ public class Interpreter
     private Value Evaluate(ArrayExpression array, Scope scope)
     {
         if (array.Elements.Length == 0)
-            return EmptyArray.Instance;
+            return Array<Any>.Empty;
 
         Type? elementType = null;
         Shape? shape = null;
@@ -179,8 +179,8 @@ public class Interpreter
         if (elementType == typeof(Array<char>))
             return new Array<char>(newShape, [.. newElements.Cast<Array<char>>().SelectMany(array => array.Elements)]);
 
-        if (elementType == typeof(EmptyArray))
-            return EmptyArray.Instance;
+        if (elementType == typeof(Array<Any>))
+            return Array<Any>.Empty;
 
         throw new InvalidOperationException("Invalid array element type");
     }

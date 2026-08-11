@@ -12,7 +12,7 @@ public class BinaryOperatorsTests
                 { "[2 3] + [4 5]", Array<int>.Vector(6, 8) },
                 { "[[5 4] [6 7]] + 2", Array<int>.Matrix([[7, 6], [8, 9]]) },
                 { "[[1 2] [3 4]] + [[5 6] [7 8]]", Array<int>.Matrix([[6, 8], [10, 12]]) },
-                { "[] + 2", EmptyArray.Instance },
+                { "[] + 2", Array<Any>.Empty },
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]
@@ -67,8 +67,8 @@ public class BinaryOperatorsTests
                  { "[[1] [2 3]] + 10", Array<Box>.Vector(Array<int>.Vector(11).Box(), Array<int>.Vector(12, 13).Box()) },
                  { "10 + [[1] [2 3]]", Array<Box>.Vector(Array<int>.Vector(11).Box(), Array<int>.Vector(12, 13).Box()) },
                  { "[[1] [2 3]] + [[10] [20 30]]", Array<Box>.Vector(Array<int>.Vector(11).Box(), Array<int>.Vector(22, 33).Box()) },
-                 { "[[1] [2 3]] + []", EmptyArray.Instance },
-                 { "[] + [[1] [2 3]]", EmptyArray.Instance },
+                 { "[[1] [2 3]] + []", Array<Any>.Empty },
+                 { "[] + [[1] [2 3]]", Array<Any>.Empty },
             };
 
         [Theory, MemberData(nameof(BoxedIntegersTestData))]
@@ -99,7 +99,7 @@ public class BinaryOperatorsTests
                 { "[10 20] - [4 5]", Array<int>.Vector(6, 15) },
                 { "[[5 4] [6 7]] - 2", Array<int>.Matrix([[3, 2], [4, 5]]) },
                 { "[[1 2] [3 4]] - [[5 6] [7 8]]", Array<int>.Matrix([[-4, -4], [-4, -4]]) },
-                { "[] - 1", EmptyArray.Instance },
+                { "[] - 1", Array<Any>.Empty },
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]
@@ -164,7 +164,7 @@ public class BinaryOperatorsTests
                 { "[2 3] * [4 5]", Array<int>.Vector(8, 15) },
                 { "[[5 4] [6 7]] * 2", Array<int>.Matrix([[10, 8], [12, 14]]) },
                 { "[[1 2] [3 4]] * [[5 6] [7 8]]", Array<int>.Matrix([[5, 12], [21, 32]]) },
-                { "[] * 1", EmptyArray.Instance },
+                { "[] * 1", Array<Any>.Empty },
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]
@@ -193,7 +193,7 @@ public class BinaryOperatorsTests
                 { "[20 30] / [4 5]", Array<int>.Vector(5, 6) },
                 { "[[6 4] [8 2]] / 2", Array<int>.Matrix([[3, 2], [4, 1]]) },
                 { "[[10 9] [3 4]] / [[2 3] [3 2]]", Array<int>.Matrix([[5, 3], [1, 2]]) },
-                { "[] / 1", EmptyArray.Instance },
+                { "[] / 1", Array<Any>.Empty },
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]
@@ -223,7 +223,7 @@ public class BinaryOperatorsTests
                 { "[9 3] % [7 5]", Array<int>.Vector(2, 3) },
                 { "[[5 4] [6 7]] % 2", Array<int>.Matrix([[1, 0], [0, 1]]) },
                 { "[[1 2] [3 4]] % [[5 6] [7 8]]", Array<int>.Matrix([[1, 2], [3, 4]]) },
-                { "[] % 1", EmptyArray.Instance },
+                { "[] % 1", Array<Any>.Empty },
                 { "[[10] [21 32]] % 10", Array<Box>.Vector(Array<int>.Vector(0).Box(), Array<int>.Vector(1, 2).Box()) },
                 { "[[10] [21 32]] % [[3] [5 7]]", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(1, 4).Box()) },
             };
@@ -262,7 +262,7 @@ public class BinaryOperatorsTests
         public static readonly TheoryData<string, Value> ArraysTestData =
             new()
             {
-                 { "[] ++ []", EmptyArray.Instance },
+                 { "[] ++ []", Array<Any>.Empty },
                  { "1 ++ []", Array<int>.Vector(1) },
                  { "[] ++ [1 2]", Array<int>.Vector(1, 2) },
                  { "[1] ++ [2 3]", Array<int>.Vector(1, 2, 3) },

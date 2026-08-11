@@ -169,26 +169,20 @@ public class LiteralsTests
             }
         }
     }
+    
+    [Fact]
+    public void Empty() =>
+        Assert.Equal(Array<Any>.Empty, Interpreter.Evaluate("[]"));
 
-    public class Vectors
-    {
-        [Fact]
-        public void Empty() =>
-            Assert.Equal(EmptyArray.Instance, Interpreter.Evaluate("[]"));
+    public static readonly TheoryData<string, Value> BoxedTestData =
+        new()
+        {
+            { "|3|", Array<Box>.Scalar(Array<int>.Scalar(3).Box()) },
+            { "|[3 4]|", Array<Box>.Scalar(Array<int>.Vector(3, 4).Box()) },
+            { "|[[3 4] [5 6]]|", Array<Box>.Scalar(Array<int>.Matrix([[3, 4], [5, 6]]).Box()) },
+        };
 
-        public static readonly TheoryData<string, Value> BoxedTestData =
-            new()
-            {
-                { "|3|", Array<Box>.Scalar(Array<int>.Scalar(3).Box()) },
-                { "|[3 4]|", Array<Box>.Scalar(Array<int>.Vector(3, 4).Box()) },
-                // { "[[3] [4 5]]", Array<Box>.Vector(Array<int>.Vector(3).Box(), Array<int>.Vector(4, 5).Box()) },
-                // { """
-                //   ["abc" "de" "f"]
-                //   """, Array<Box>.Vector(Array<char>.Vector([.."abc"]).Box(), Array<char>.Vector([.."de"]).Box(), Array<char>.Vector([.."f"]).Box()) },
-            };
-
-        [Theory, MemberData(nameof(BoxedTestData))]
-        public void Boxed(string code, Value expected) =>
-            Assert.Equal(expected, Interpreter.Evaluate(code));
-    }
+    [Theory, MemberData(nameof(BoxedTestData))]
+    public void Boxed(string code, Value expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
 }
