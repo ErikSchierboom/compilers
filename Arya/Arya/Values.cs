@@ -127,12 +127,12 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
             return Vector([.. Elements, .. other.Elements]);
 
         if (Shape != other.Shape)
-            throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");
+            throw new InvalidOperationException("Cannot perform append on arrays with different shapes");
 
-        var newElements = Rows().Zip(other.Rows(), (row, otherRow) => row.Concat(otherRow))
+        var newElements = Rows()
+            .Zip(other.Rows(), (row, otherRow) => row.Concat(otherRow))
             .SelectMany(elements => elements);
-        int size = other.Shape.Dimensions[1];
-        return new Array<T>(Shape.Replace(1, Shape.Dimensions[1] + size), [.. newElements]);
+        return new Array<T>(Shape.Replace(1, Shape.Dimensions[1] + other.Shape.Dimensions[1]), [.. newElements]);
     }
 
     public bool Equals(Array<T>? other) =>
