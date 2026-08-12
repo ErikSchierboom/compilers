@@ -174,14 +174,17 @@ public class Interpreter
             throw new InvalidOperationException("Array elements must have identical shapes.");
 
         if (elementType == typeof(Array<int>))
-            return new Array<int>(newShape, [.. newElements.Cast<Array<int>>().SelectMany(array => array.Elements)]);
+            return new Array<int>(newShape, [.. newElements.Cast<Array<int>>().SelectMany(intArray => intArray.Elements)]);
 
         if (elementType == typeof(Array<char>))
-            return new Array<char>(newShape, [.. newElements.Cast<Array<char>>().SelectMany(array => array.Elements)]);
+            return new Array<char>(newShape, [.. newElements.Cast<Array<char>>().SelectMany(charArray => charArray.Elements)]);
+
+        if (elementType == typeof(Array<Box>))
+            return new Array<Box>(newShape, [.. newElements.Cast<Array<Box>>().SelectMany(boxArray => boxArray.Elements)]);
 
         if (elementType == typeof(Array<Any>))
             return Array<Any>.Empty;
-
+        
         throw new InvalidOperationException("Invalid array element type");
     }
 
