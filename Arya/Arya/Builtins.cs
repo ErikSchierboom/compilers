@@ -20,8 +20,8 @@ internal static class BuiltinFunctions
         public override Value Invoke(params Value[] arguments) =>
             arguments[0] switch
             {
-                Array<int> intArray => intArray.Map(Operation),
-                Array<Box> boxArray => boxArray.Map(box => box.Map(element => Invoke(element))),
+                Array<int> intArray => intArray.Unary(Operation),
+                Array<Box> boxArray => boxArray.Unary(box => box.Unary(element => Invoke(element))),
                 Array<Any> => Array<Any>.Empty,
                 _ => throw new InvalidOperationException("Invalid argument type")
             };
@@ -36,8 +36,8 @@ internal static class BuiltinFunctions
         public override Value Invoke(params Value[] arguments) =>
             arguments[0] switch
             {
-                Array<char> charArray => charArray.Map(Operation),
-                Array<Box> boxArray => boxArray.Map(box => box.Map(element => Invoke(element))),
+                Array<char> charArray => charArray.Unary(Operation),
+                Array<Box> boxArray => boxArray.Unary(box => box.Unary(element => Invoke(element))),
                 Array<Any> => Array<Any>.Empty,
                 _ => throw new InvalidOperationException("Invalid argument type")
             };
@@ -60,9 +60,9 @@ internal static class BuiltinFunctions
             switch (arguments[0])
             {
                 case Array<char> charArray:
-                    return charArray.Map(Operation);
+                    return charArray.Binary(Operation);
                 case Array<Box> boxArray:
-                    return boxArray.Map(box => box.Map(element => Invoke(element)));
+                    return boxArray.Unary(box => box.Unary(element => Invoke(element)));
                 case Array<Any>:
                     return Array<Any>.Empty;
                 default:

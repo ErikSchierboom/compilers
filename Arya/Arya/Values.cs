@@ -17,7 +17,7 @@ public abstract record Value
 
 public sealed record Box(Value Value) : Value
 {
-    public Box Map(Func<Value, Value> operation) => new(operation(Value));
+    public Box Unary(Func<Value, Value> operation) => new(operation(Value));
 
     public override Shape Shape { get; init; } = Shape.Scalar;
 
@@ -82,10 +82,10 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
         return Elements.Chunk(Shape.Dimensions[0]);
     }
 
-    public Array<T> Map(Func<T, T> operation) =>
+    public Array<T> Unary(Func<T, T> operation) =>
         new(Shape, [.. Elements.Select(operation)]);
     
-    public Array<T> Map(Func<T[], T[]> operation)
+    public Array<T> Binary(Func<T[], T[]> operation)
     {
         if (Shape.IsScalar)
             return this;

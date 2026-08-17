@@ -9,8 +9,8 @@ public class BuiltinFunctionsTests
             { "abs(-1)", Array<int>.Scalar(1) },
             { "abs([-1 -2 -3])", Array<int>.Vector(1, 2, 3) },
             { "abs([[-4 -5] [-6 -7]])", Array<int>.Matrix([[4, 5], [6, 7]]) },
-            { "abs([[-1] [-2 -3]])", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(2, 3).Box()) },
-            { "abs([[1] [-2 3]])", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(2, 3).Box()) },
+            { "abs([|[-1]| |[-2 -3]|])", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(2, 3).Box()) },
+            { "abs([|[1]| |[-2 3]|])", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(2, 3).Box()) },
         };
 
     [Theory, MemberData(nameof(AbsTestData))]
@@ -33,7 +33,7 @@ public class BuiltinFunctionsTests
             lowercase(['A' 'e' 'K'])
             """, Array<char>.Vector('a', 'e', 'k') },
             { """
-            lowercase([['A'] ['e' 'x']])
+            lowercase([|['A']| |['e' 'x']|])
             """, Array<Box>.Vector(Array<char>.Vector('a').Box(), Array<char>.Vector('e', 'x').Box()) },
             { """
             lowercase("")
@@ -45,7 +45,7 @@ public class BuiltinFunctionsTests
             lowercase("123")
             """, Array<char>.Vector([.."123"]) },
             { """
-            lowercase(["THIS" "Is" "CooL"])
+            lowercase([|"THIS"| |"Is"| |"CooL"|])
             """, Array<Box>.Vector(Array<char>.Vector([.."this"]).Box(), Array<char>.Vector([.."is"]).Box(), Array<char>.Vector([.."cool"]).Box()) },
         };
 
@@ -69,7 +69,7 @@ public class BuiltinFunctionsTests
             uppercase(['A' 'e' 'K'])
             """, Array<char>.Vector('A', 'E', 'K') },
             { """
-            uppercase([['A'] ['e' 'x']])
+            uppercase([|['A']| |['e' 'x']|])
             """, Array<Box>.Vector(Array<char>.Vector('A').Box(), Array<char>.Vector('E', 'X').Box()) },
             { """
             uppercase("")
@@ -81,7 +81,7 @@ public class BuiltinFunctionsTests
             uppercase("123")
             """, Array<char>.Vector([.."123"]) },
             { """
-            uppercase(["THIS" "Is" "CooL"])
+            uppercase([|"THIS"| |"Is"| |"CooL"|])
             """, Array<Box>.Vector(Array<char>.Vector([.."THIS"]).Box(), Array<char>.Vector([.."IS"]).Box(), Array<char>.Vector([.."COOL"]).Box()) },
         };
 
@@ -105,7 +105,7 @@ public class BuiltinFunctionsTests
               trim(['A' 'e' 'K' ' '])
               """, Array<char>.Vector('A', 'e', 'K') },
             { """
-              trim([[' ' 'A'] ['\r' 'e' ' ']])
+              trim([|[' ' 'A']| |['\r' 'e' ' ']|])
               """, Array<Box>.Vector(Array<char>.Vector('A').Box(), Array<char>.Vector('e').Box()) },
             { """
               trim("")
@@ -117,10 +117,10 @@ public class BuiltinFunctionsTests
               trim("123\r\n")
               """, Array<char>.Vector([.."123"]) },
             { """
-              trim(["Th\tis" "\tIs" "\tCool\t \t\r"])
+              trim([|"Th\tis"| |"\tIs"| |"\tCool\t \t\r"|])
               """, Array<Box>.Vector(Array<char>.Vector([.."Th\tis"]).Box(), Array<char>.Vector([.."Is"]).Box(), Array<char>.Vector([.."Cool"]).Box()) },
             { """
-              trim(["Ab" " c"])
+              trim([|"Ab"| |" c"|])
               """, Array<Box>.Vector(Array<char>.Vector([.."Ab"]).Box(), Array<char>.Vector([.."c"]).Box()) },
         };
 

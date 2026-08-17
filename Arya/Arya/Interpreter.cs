@@ -71,8 +71,8 @@ public class Interpreter
         (op, operand) switch
         {
             (TokenType.Plus, Array<int> arr) => arr,
-            (TokenType.Minus, Array<int> arr) => arr.Map(i => -i),
-            (_, Array<Box> arr) => arr.Map(box => box.Map(element => UnaryOp(op, element))),
+            (TokenType.Minus, Array<int> arr) => arr.Unary(i => -i),
+            (_, Array<Box> arr) => arr.Unary(box => box.Unary(element => UnaryOp(op, element))),
             _ => throw new InvalidOperationException("Invalid unary expression")
         };
 
@@ -83,12 +83,13 @@ public class Interpreter
         (op, left, right) switch
         {
             (TokenType.PlusPlus, Array<int> l, Array<int> r) => l.Append(r),
-            (TokenType.PlusPlus, Array<int> l, Array<Any> r) => l,
-            (TokenType.PlusPlus, Array<Any> l, Array<int> r) => r,
+            (TokenType.PlusPlus, Array<int> l, Array<Any>) => l.Append(Array<int>.Empty),
+            (TokenType.PlusPlus, Array<Any>, Array<int> r) => r.Append(Array<int>.Empty),
             (TokenType.PlusPlus, Array<char> l, Array<char> r) => l.Append(r),
-            (TokenType.PlusPlus, Array<char> l, Array<Any>) => l,
-            (TokenType.PlusPlus, Array<Any> l, Array<char> r) => r,
+            (TokenType.PlusPlus, Array<char> l, Array<Any>) => l.Append(Array<char>.Empty),
+            (TokenType.PlusPlus, Array<Any>, Array<char> r) => r.Append(Array<char>.Empty),
             (TokenType.PlusPlus, Array<Any>, Array<Any>) => Array<Any>.Empty,
+            (TokenType.PlusPlus, Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => BinaryOp(op, a.Value, b.Value).Box()),
 
             (_, _, Array<Any>) or
             (_, Array<Any>, _) => Array<Any>.Empty,
