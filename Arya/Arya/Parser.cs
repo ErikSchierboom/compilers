@@ -7,6 +7,7 @@ internal enum Precedence
     Addition,     // + -
     Product,      // *
     Unary,        // -
+    Bitwise,      // & |
     Call,         // ()
     Primary
 }
@@ -34,6 +35,7 @@ internal class Parser
             [TokenType.Star] = new(null, ParseBinary, Precedence.Product),
             [TokenType.Slash] = new(null, ParseBinary, Precedence.Product),
             [TokenType.Percent] = new(null, ParseBinary, Precedence.Product),
+            [TokenType.Ampersand] = new(null, ParseBinary, Precedence.Bitwise),
             [TokenType.Number] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.String] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.Char] = new(ParseLiteral, null, Precedence.Primary),

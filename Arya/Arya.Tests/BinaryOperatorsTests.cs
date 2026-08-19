@@ -158,6 +158,27 @@ public class BinaryOperatorsTests
 
     public class Bitwise
     {
+        public class And
+        {
+            public static readonly TheoryData<string, Value> IntegersTestData =
+                new()
+                {
+                    { "5 & 3", Array<int>.Scalar(1) },
+                    { "2 & [1 3 5]", Array<int>.Vector(0, 2, 0) },
+                    { "[1 3 5] & 2", Array<int>.Vector(0, 2, 0) },
+                    { "[9 3] & [7 5]", Array<int>.Vector(1, 1) },
+                    { "[[5 4] [6 7]] & 2", Array<int>.Matrix([[0, 0], [2, 2]]) },
+                    { "[[1 2] [3 4]] & [[5 6] [7 8]]", Array<int>.Matrix([[1, 2], [3, 0]]) },
+                    { "[] & 1", Array<Any>.Empty },
+                    { "[|[7]| |[9 4]|] & 4", Array<Box>.Vector(Array<int>.Vector(4).Box(), Array<int>.Vector(0, 4).Box()) },
+                    { "[|[6]| |[4 3]|] & [|[4]| |[2 2]|]", Array<Box>.Vector(Array<int>.Vector(4).Box(), Array<int>.Vector(0, 2).Box()) },
+                };
+
+            [Theory, MemberData(nameof(IntegersTestData))]
+            public void Integers(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+        }
+        
         public class Modulo
         {
             public static readonly TheoryData<string, Value> IntegersTestData =

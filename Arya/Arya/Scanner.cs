@@ -51,6 +51,10 @@ internal sealed class Scanner
                     Advance();
                     tokens.Add(new Token(TokenType.Percent, "%"));
                     break;
+                case '&':
+                    Advance();
+                    tokens.Add(new Token(TokenType.Ampersand, "&"));
+                    break;
                 case '|':
                     Advance();
                     tokens.Add(new Token(TokenType.Pipe, "|"));
@@ -212,6 +216,7 @@ internal enum TokenType
     CloseBracket,
     OpenParen,
     CloseParen,
+    Ampersand,
     Plus,
     PlusPlus,
     Minus,
