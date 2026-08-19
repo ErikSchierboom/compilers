@@ -6,6 +6,7 @@ internal static class BuiltinFunctions
     [
         // Unary functions
         new CountFunction(),
+        new LengthFunction(),
         
         // Unary functions - integers
         new AbsFunction(),
@@ -87,6 +88,19 @@ internal static class BuiltinFunctions
                 Array<int> intArray   => Array<int>.Scalar(intArray.Elements.Length),
                 Array<char> charArray => Array<int>.Scalar(charArray.Elements.Length),
                 Array<Box> boxArray   => Array<int>.Scalar(boxArray.Elements.Length),
+                Array<Any>            => Array<int>.Scalar(0),
+                _ => throw new InvalidOperationException("Invalid argument type")
+            };
+    }
+    
+    private sealed record LengthFunction() : UnaryFunction("length")
+    {
+        public override Value Invoke(params Value[] arguments) =>
+            arguments[0] switch
+            {
+                Array<int> intArray   => Array<int>.Scalar(intArray.Shape.RowCount),
+                Array<char> charArray => Array<int>.Scalar(charArray.Shape.RowCount),
+                Array<Box> boxArray   => Array<int>.Scalar(boxArray.Shape.RowCount),
                 Array<Any>            => Array<int>.Scalar(0),
                 _ => throw new InvalidOperationException("Invalid argument type")
             };

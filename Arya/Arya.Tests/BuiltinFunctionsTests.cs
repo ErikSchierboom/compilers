@@ -100,10 +100,25 @@ public class BuiltinFunctionsTests
     public void Trim(string code, Value expected) =>
         Assert.Equal(expected, Interpreter.Evaluate(code));
 
+    public static readonly TheoryData<string, Value> LengthTestData =
+        new()
+        {
+            { "length(2)", Array<int>.Scalar(1) },
+            { "length([])", Array<int>.Scalar(0) },
+            { "length([-1 5])", Array<int>.Scalar(2) },
+            { "length([[-4 -5] [-6 -7] [3 3]])", Array<int>.Scalar(3) },
+            { "length([|[-1]| |[-2 -3]|])", Array<int>.Scalar(2) },
+        };
+
+    [Theory, MemberData(nameof(LengthTestData))]
+    public void Length(string code, Value expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
+
     public static readonly TheoryData<string, Value> CountTestData =
         new()
         {
             { "count(2)", Array<int>.Scalar(1) },
+            { "count([])", Array<int>.Scalar(0) },
             { "count([-1 5])", Array<int>.Scalar(2) },
             { "count([[-4 -5] [-6 -7]])", Array<int>.Scalar(4) },
             { "count([|[-1]| |[-2 -3]|])", Array<int>.Scalar(2) },

@@ -34,6 +34,7 @@ public sealed record Shape(params int[] Dimensions)
     public bool IsMatrix => Dimensions.Length == 2;
 
     public int Count => Dimensions.Aggregate(1, (count, dimension) => count * dimension);
+    public int Length => Dimensions.Skip(1).FirstOrDefault(1);
     public int RowCount => Dimensions.FirstOrDefault(1);
     public int RowLength => Dimensions.Skip(1).Aggregate(1, (count, dimension) => count * dimension);
 
