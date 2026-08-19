@@ -154,4 +154,16 @@ public class BuiltinFunctionsTests
     [Theory, MemberData(nameof(ReshapeTestData))]
     public void Reshape(string code, Value expected) =>
         Assert.Equal(expected, Interpreter.Evaluate(code));
+    
+    public static readonly TheoryData<string, Value> RangeTestData =
+        new()
+        {
+            { "range(0)", Array<Any>.Empty },
+            { "range(1)", Array<int>.Vector(0) },
+            { "range(4)", Array<int>.Vector(0, 1, 2, 3) },
+        };
+
+    [Theory, MemberData(nameof(RangeTestData))]
+    public void Range(string code, Value expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
 }

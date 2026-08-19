@@ -64,8 +64,10 @@ public sealed record Shape(params int[] Dimensions)
 
 public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
 {
-    public static readonly Array<T> Empty = new(Shape.Empty);
+    public bool IsEmpty => Shape.IsScalar && Elements.Length == 0;
     
+    public static readonly Array<T> Empty = new(Shape.Empty);
+
     public static Array<T> Scalar(T element) => new(Shape.Scalar, element);
 
     public static Array<T> Vector(params T[] elements) => new(new Shape(elements.Length), elements);
