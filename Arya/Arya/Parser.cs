@@ -40,7 +40,7 @@ internal class Parser
             [TokenType.String] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.Char] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.Identifier] = new(ParseName, null, Precedence.Primary),
-            [TokenType.Pipe] = new(ParseBox, null, Precedence.Array),
+            [TokenType.Pipe] = new(ParseBox, ParseBinary, Precedence.Array),
             [TokenType.OpenBracket] = new(ParseArray, ParseIndexer, Precedence.Array),
             [TokenType.OpenParen] = new(ParseParenthesized, ParseCall, Precedence.Call),
         };
@@ -125,7 +125,7 @@ internal class Parser
     
     private BoxExpression ParseBox()
     {
-        var expression = ParseExpression();
+        var expression = ParseExpression(Precedence.Array);
         Consume(TokenType.Pipe);
 
         return new(expression);

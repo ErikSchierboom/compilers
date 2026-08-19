@@ -179,6 +179,27 @@ public class BinaryOperatorsTests
                 Assert.Equal(expected, Interpreter.Evaluate(code));
         }
         
+        public class Or
+        {
+            public static readonly TheoryData<string, Value> IntegersTestData =
+                new()
+                {
+                    { "5 | 3", Array<int>.Scalar(7) },
+                    { "2 | [1 3 5]", Array<int>.Vector(3, 3, 7) },
+                    { "[1 3 5] | 2", Array<int>.Vector(3, 3, 7) },
+                    { "[9 3] | [7 5]", Array<int>.Vector(15, 7) },
+                    { "[[5 4] [6 7]] | 2", Array<int>.Matrix([[7, 6], [6, 7]]) },
+                    { "[[1 2] [3 4]] | [[5 6] [7 8]]", Array<int>.Matrix([[5, 6], [7, 12]]) },
+                    { "[] | 1", Array<Any>.Empty },
+                    { "[|[7]| |[9 4]|] | 4", Array<Box>.Vector(Array<int>.Vector(7).Box(), Array<int>.Vector(13, 4).Box()) },
+                    { "[|[6]| |[4 3]|] | [|[4]| |[2 2]|]", Array<Box>.Vector(Array<int>.Vector(6).Box(), Array<int>.Vector(6, 3).Box()) },
+                };
+
+            [Theory, MemberData(nameof(IntegersTestData))]
+            public void Integers(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+        }
+        
         public class Modulo
         {
             public static readonly TheoryData<string, Value> IntegersTestData =
