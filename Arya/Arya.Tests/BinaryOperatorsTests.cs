@@ -199,6 +199,48 @@ public class BinaryOperatorsTests
             public void Integers(string code, Value expected) =>
                 Assert.Equal(expected, Interpreter.Evaluate(code));
         }
+
+        public class ShiftLeft
+        {
+            public static readonly TheoryData<string, Value> IntegersTestData =
+                new()
+                {
+                    { "1 << 3", Array<int>.Scalar(8) },
+                    { "2 << [1 3 5]", Array<int>.Vector(4, 16, 64) },
+                    { "[1 3 5] << 2", Array<int>.Vector(4, 12, 20) },
+                    { "[9 3] << [7 5]", Array<int>.Vector(1152, 96) },
+                    { "[[5 4] [6 7]] << 2", Array<int>.Matrix([[20, 16], [24, 28]]) },
+                    { "[[1 2] [3 4]] << [[5 6] [7 8]]", Array<int>.Matrix([[32, 128], [384, 1024]]) },
+                    { "[] << 1", Array<Any>.Empty },
+                    { "[|[7]| |[9 4]|] << 4", Array<Box>.Vector(Array<int>.Vector(112).Box(), Array<int>.Vector(144, 64).Box()) },
+                    { "[|[6]| |[4 3]|] << [|[4]| |[2 2]|]", Array<Box>.Vector(Array<int>.Vector(96).Box(), Array<int>.Vector(16, 12).Box()) },
+                };
+
+            [Theory, MemberData(nameof(IntegersTestData))]
+            public void Integers(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+        }
+
+        public class ShiftRight
+        {
+            public static readonly TheoryData<string, Value> IntegersTestData =
+                new()
+                {
+                    { "8 >> 2", Array<int>.Scalar(2) },
+                    { "120 >> [1 3 5]", Array<int>.Vector(60, 15, 3) },
+                    { "[11 13 15] >> 2", Array<int>.Vector(2, 3, 3) },
+                    { "[9 3] >> [2 1]", Array<int>.Vector(2, 1) },
+                    { "[[5 4] [6 7]] >> 2", Array<int>.Matrix([[1, 1], [1, 1]]) },
+                    { "[[1 2] [3 4]] >> [[5 6] [7 8]]", Array<int>.Matrix([[0, 0], [0, 0]]) },
+                    { "[] >> 1", Array<Any>.Empty },
+                    { "[|[7]| |[9 4]|] >> 1", Array<Box>.Vector(Array<int>.Vector(3).Box(), Array<int>.Vector(4, 2).Box()) },
+                    { "[|[6]| |[10 3]|] >> [|[1]| |[2 2]|]", Array<Box>.Vector(Array<int>.Vector(3).Box(), Array<int>.Vector(2, 0).Box()) },
+                };
+
+            [Theory, MemberData(nameof(IntegersTestData))]
+            public void Integers(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+        }
         
         public class Modulo
         {

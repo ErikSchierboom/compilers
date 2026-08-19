@@ -59,6 +59,26 @@ internal sealed class Scanner
                     Advance();
                     tokens.Add(new Token(TokenType.Pipe, "|"));
                     break;
+                case '<':
+                    Advance();
+
+                    if (Match('<'))
+                        tokens.Add(new Token(TokenType.LessLess, "<<"));
+                    else if (Match('='))
+                        tokens.Add(new Token(TokenType.LessEqual, "<="));
+                    else
+                        tokens.Add(new Token(TokenType.Less, "<"));
+                    break;
+                case '>':
+                    Advance();
+
+                    if (Match('>'))
+                        tokens.Add(new Token(TokenType.GreaterGreater, ">>"));
+                    else if (Match('='))
+                        tokens.Add(new Token(TokenType.GreaterEqual, ">>"));
+                    else
+                        tokens.Add(new Token(TokenType.Greater, ">"));
+                    break;
                 case '[':
                     Advance();
                     tokens.Add(new Token(TokenType.OpenBracket, "["));
@@ -225,6 +245,12 @@ internal enum TokenType
     Percent,
     Pipe,
     Comma,
+    Less,
+    LessLess,
+    LessEqual,
+    Greater,
+    GreaterGreater,
+    GreaterEqual,
 
     // Synthetic
     Eof,

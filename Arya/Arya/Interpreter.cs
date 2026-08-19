@@ -95,9 +95,11 @@ public class Interpreter
             (_, Array<Any>, _) => Array<Any>.Empty,
 
             (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or 
-             TokenType.Percent or TokenType.Ampersand or TokenType.Pipe, Array<Box> l, var r) => l.Zip(r.Boxes(), (a, b) => BinaryOp(op, a.Value, b.Value).Box()),
+             TokenType.Percent or TokenType.Ampersand or TokenType.Pipe or
+             TokenType.GreaterGreater or TokenType.LessLess, Array<Box> l, var r) => l.Zip(r.Boxes(), (a, b) => BinaryOp(op, a.Value, b.Value).Box()),
             (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or 
-             TokenType.Percent or TokenType.Ampersand or TokenType.Pipe, var l, Array<Box> r) => r.Zip(l.Boxes(), (a, b) => BinaryOp(op, b.Value, a.Value).Box()),
+             TokenType.Percent or TokenType.Ampersand or TokenType.Pipe or
+             TokenType.GreaterGreater or TokenType.LessLess, var l, Array<Box> r) => r.Zip(l.Boxes(), (a, b) => BinaryOp(op, b.Value, a.Value).Box()),
 
             (TokenType.Plus, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a + b),
             (TokenType.Plus, Array<char> l, Array<int> r) => l.Zip(r, (a, b) => (char)(a + b)),
@@ -108,14 +110,12 @@ public class Interpreter
             (TokenType.Minus, Array<int> l, Array<char> r) => r.Zip(l, (a, b) => (char)(b - a)),
 
             (TokenType.Star, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a * b),
-
             (TokenType.Slash, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a / b),
-
             (TokenType.Percent, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a % b),
-            
             (TokenType.Ampersand, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a & b),
-            
             (TokenType.Pipe, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a | b),
+            (TokenType.GreaterGreater, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a >> b),
+            (TokenType.LessLess, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a << b),
 
             _ => throw new InvalidOperationException("Invalid binary expression")
         };
