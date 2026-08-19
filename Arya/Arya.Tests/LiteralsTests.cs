@@ -45,18 +45,10 @@ public class LiteralsTests
             public static readonly TheoryData<string, Value> UnescapedTestData =
                 new()
                 {
-                    { """
-                      ' '
-                      """, Array<char>.Scalar(' ') },
-                    { """
-                      'a'
-                      """, Array<char>.Scalar('a') },
-                    { """
-                      '2'
-                      """, Array<char>.Scalar('2') },
-                    { """
-                      '@'
-                      """, Array<char>.Scalar('@') }
+                    { "' '", Array<char>.Scalar(' ') },
+                    { "'a'", Array<char>.Scalar('a') },
+                    { "'2'", Array<char>.Scalar('2') },
+                    { "'@'", Array<char>.Scalar('@') }
                 };
 
             [Theory, MemberData(nameof(UnescapedTestData))]
@@ -93,12 +85,8 @@ public class LiteralsTests
             public static readonly TheoryData<string, Value> UnescapedTestData =
                 new()
                 {
-                    { """
-                      ['a']
-                      """, Array<char>.Vector('a') },
-                    { """
-                      ['h' ' ' 'i']
-                      """, Array<char>.Vector('h', ' ', 'i') },
+                    { "['a']", Array<char>.Vector('a') },
+                    { "['h' ' ' 'i']", Array<char>.Vector('h', ' ', 'i') },
                 };
 
             [Theory, MemberData(nameof(UnescapedTestData))]

@@ -20,21 +20,11 @@ public class BuiltinFunctionsTests
     public static readonly TheoryData<string, Value> LowercaseTestData =
         new()
         {
-            { """
-            lowercase('Y')
-            """, Array<char>.Scalar('y') },
-            { """
-            lowercase('d')
-            """, Array<char>.Scalar('d') },
-            { """
-            lowercase('1')
-            """, Array<char>.Scalar('1') },
-            { """
-            lowercase(['A' 'e' 'K'])
-            """, Array<char>.Vector('a', 'e', 'k') },
-            { """
-            lowercase([|['A']| |['e' 'x']|])
-            """, Array<Box>.Vector(Array<char>.Vector('a').Box(), Array<char>.Vector('e', 'x').Box()) },
+            { "lowercase('Y')", Array<char>.Scalar('y') },
+            { "lowercase('d')", Array<char>.Scalar('d') },
+            { "lowercase('1')", Array<char>.Scalar('1') },
+            { "lowercase(['A' 'e' 'K'])", Array<char>.Vector('a', 'e', 'k') },
+            { "lowercase([|['A']| |['e' 'x']|])", Array<Box>.Vector(Array<char>.Vector('a').Box(), Array<char>.Vector('e', 'x').Box()) },
             { """
             lowercase("")
             """, Array<char>.Vector([..""]) },
@@ -56,21 +46,11 @@ public class BuiltinFunctionsTests
     public static readonly TheoryData<string, Value> UppercaseTestData =
         new()
         {
-            { """
-            uppercase('Y')
-            """, Array<char>.Scalar('Y') },
-            { """
-            uppercase('d')
-            """, Array<char>.Scalar('D') },
-            { """
-            uppercase('1')
-            """, Array<char>.Scalar('1') },
-            { """
-            uppercase(['A' 'e' 'K'])
-            """, Array<char>.Vector('A', 'E', 'K') },
-            { """
-            uppercase([|['A']| |['e' 'x']|])
-            """, Array<Box>.Vector(Array<char>.Vector('A').Box(), Array<char>.Vector('E', 'X').Box()) },
+            { "uppercase('Y')", Array<char>.Scalar('Y') },
+            { "uppercase('d')", Array<char>.Scalar('D') },
+            { "uppercase('1')", Array<char>.Scalar('1') },
+            { "uppercase(['A' 'e' 'K'])", Array<char>.Vector('A', 'E', 'K') },
+            { "uppercase([|['A']| |['e' 'x']|])", Array<Box>.Vector(Array<char>.Vector('A').Box(), Array<char>.Vector('E', 'X').Box()) },
             { """
             uppercase("")
             """, Array<char>.Vector([..""]) },
@@ -92,18 +72,10 @@ public class BuiltinFunctionsTests
     public static readonly TheoryData<string, Value> TrimTestData =
         new()
         {
-            { """
-              trim(' ')
-              """, Array<char>.Scalar(' ') },
-            { """
-              trim('a')
-              """, Array<char>.Scalar('a') },
-            { """
-              trim('1')
-              """, Array<char>.Scalar('1') },
-            { """
-              trim(['A' 'e' 'K' ' '])
-              """, Array<char>.Vector('A', 'e', 'K') },
+            { "trim(' ')", Array<char>.Scalar(' ') },
+            { "trim('a')", Array<char>.Scalar('a') },
+            { "trim('1')", Array<char>.Scalar('1') },
+            { "trim(['A' 'e' 'K' ' '])", Array<char>.Vector('A', 'e', 'K') },
             { """
               trim([|[' ' 'A']| |['\r' 'e' ' ']|])
               """, Array<Box>.Vector(Array<char>.Vector('A').Box(), Array<char>.Vector('e').Box()) },

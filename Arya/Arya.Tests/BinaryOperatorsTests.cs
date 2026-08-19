@@ -27,21 +27,11 @@ public class BinaryOperatorsTests
         public static readonly TheoryData<string, Value> CharsTestData =
             new()
             {
-                 { """
-                   'a' + 0
-                   """, Array<char>.Scalar('a') },
-                 { """
-                   'a' + 1
-                   """, Array<char>.Scalar('b') },
-                 { """
-                   ['d' 'g' 'i'] + 11
-                   """, Array<char>.Vector('o', 'r', 't') },
-                 { """
-                   [['e'] ['k'] ['g']] + 1
-                   """, Array<char>.Matrix([['f'], ['l'], ['h']]) },
-                 { """
-                   [|['a' 'b' 'c']| |['d' 'e']|] + 1
-                   """, Array<Box>.Vector(Array<char>.Vector('b', 'c', 'd').Box(), Array<char>.Vector('e', 'f').Box()) },
+                 { "'a' + 0", Array<char>.Scalar('a') },
+                 { "'a' + 1", Array<char>.Scalar('b') },
+                 { "['d' 'g' 'i'] + 11", Array<char>.Vector('o', 'r', 't') },
+                 { "[['e'] ['k'] ['g']] + 1", Array<char>.Matrix([['f'], ['l'], ['h']]) },
+                 { "[|['a' 'b' 'c']| |['d' 'e']|] + 1", Array<Box>.Vector(Array<char>.Vector('b', 'c', 'd').Box(), Array<char>.Vector('e', 'f').Box()) },
             };
 
         [Theory, MemberData(nameof(CharsTestData))]
@@ -98,21 +88,11 @@ public class BinaryOperatorsTests
         public static readonly TheoryData<string, Value> CharsTestData =
             new()
             {
-                 { """
-                   'a' - 0
-                   """, Array<char>.Scalar('a') },
-                 { """
-                   'z' - 2
-                   """, Array<char>.Scalar('x') },
-                 { """
-                   ['p' 'o' 'y'] - 11
-                   """, Array<char>.Vector('e', 'd', 'n') },
-                 { """
-                   [['e' 'f' 'g'] ['k' 'l' 'm']] - 2
-                   """, Array<char>.Matrix([[.."cde"], [.."ijk"]]) },
-                 { """
-                   [['e'] ['k'] ['g']] - 1
-                   """, Array<char>.Matrix([[.."d"], [.."j"], [.."f"]]) },
+                 { "'a' - 0", Array<char>.Scalar('a') },
+                 { "'z' - 2", Array<char>.Scalar('x') },
+                 { "['p' 'o' 'y'] - 11", Array<char>.Vector('e', 'd', 'n') },
+                 { "[['e' 'f' 'g'] ['k' 'l' 'm']] - 2", Array<char>.Matrix([[.."cde"], [.."ijk"]]) },
+                 { "[['e'] ['k'] ['g']] - 1", Array<char>.Matrix([[.."d"], [.."j"], [.."f"]]) },
             };
 
         [Theory, MemberData(nameof(CharsTestData))]
@@ -199,9 +179,7 @@ public class BinaryOperatorsTests
         public static readonly TheoryData<string, Value> CharsTestData =
             new()
             {
-                 { """
-                   'a' ++ 'b'
-                   """, Array<char>.Vector([.."ab"]) },
+                 { "'a' ++ 'b'", Array<char>.Vector([.."ab"]) },
                  { """
                    "abc" ++ 'd'
                    """, Array<char>.Vector([.."abcd"]) },
