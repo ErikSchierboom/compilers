@@ -83,6 +83,21 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
         return Elements.Chunk(Shape.Dimensions[0]);
     }
 
+    public Array<T> Transpose()
+    {
+        if (Shape.IsScalar || Shape.IsVector)
+            return this;
+        
+        var newShape = new Shape([Shape.Dimensions[^1], ..Shape.Dimensions[..^1]]);
+        var newElements = new T[Elements.Length];
+        
+        for (var y = 0; y < Shape.Dimensions[^1]; y++)
+            for (var x = 0; x < Shape.Dimensions[0]; x++)
+                newElements[y * Shape.Dimensions[0] + x] = Elements[x * Shape.Dimensions[^1] + y];
+        
+        return this with { Shape = newShape, Elements = [..newElements] };
+    }
+
     public Array<T> Unary(Func<T, T> operation) =>
         new(Shape, [.. Elements.Select(operation)]);
     
@@ -94,12 +109,10 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
         if (Shape.IsVector)
             return Vector(operation(Elements));
 
-        // TODO: auto promote to boxes if needed        
-        // TODO: support matrix
-        // TODO: change shape
         var newRows = Rows().Select(operation).ToArray();
         var newElements = newRows.SelectMany(element => element).ToArray();
-        return this with { Shape = Shape.Replace(0, newRows.Length), Elements = [..newRows.SelectMany(element => element)] };
+        var newShape = Shape.Replace(0, newRows.Length);
+        return this with { Shape = newShape, Elements = newElements };
     }
 
     /// <summary>

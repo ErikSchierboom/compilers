@@ -127,4 +127,18 @@ public class BuiltinFunctionsTests
     [Theory, MemberData(nameof(CountTestData))]
     public void Count(string code, Value expected) =>
         Assert.Equal(expected, Interpreter.Evaluate(code));
+
+    public static readonly TheoryData<string, Value> TransposeTestData =
+        new()
+        {
+            { "transpose(2)", Array<int>.Scalar(2) },
+            { "transpose([])", Array<Any>.Vector() },
+            { "transpose([-1 5])", Array<int>.Vector(-1, 5) },
+            { "transpose([[-4 -5 -6] [-6 -7 -8]])", Array<int>.Matrix([[-4, -6], [-5, -7], [-6, -8]]) },
+            { "transpose([|[-1]| |[-2 -3]|])", Array<Box>.Vector(Array<int>.Vector(-1).Box(), Array<int>.Vector(-2, -3).Box()) },
+        };
+
+    [Theory, MemberData(nameof(TransposeTestData))]
+    public void Transpose(string code, Value expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
 }

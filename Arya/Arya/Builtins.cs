@@ -7,6 +7,7 @@ internal static class BuiltinFunctions
         // Unary functions
         new CountFunction(),
         new LengthFunction(),
+        new TransposeFunction(),
         
         // Unary functions - integers
         new AbsFunction(),
@@ -102,6 +103,19 @@ internal static class BuiltinFunctions
                 Array<char> charArray => Array<int>.Scalar(charArray.Shape.RowCount),
                 Array<Box> boxArray   => Array<int>.Scalar(boxArray.Shape.RowCount),
                 Array<Any>            => Array<int>.Scalar(0),
+                _ => throw new InvalidOperationException("Invalid argument type")
+            };
+    }
+
+    private sealed record TransposeFunction() : UnaryFunction("transpose")
+    {
+        public override Value Invoke(params Value[] arguments) =>
+            arguments[0] switch
+            {
+                Array<int> intArray   => intArray.Transpose(),
+                Array<char> charArray => charArray.Transpose(),
+                Array<Box> boxArray   => boxArray.Transpose(),
+                Array<Any> anyArray   => anyArray,
                 _ => throw new InvalidOperationException("Invalid argument type")
             };
     }
