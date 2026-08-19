@@ -98,6 +98,15 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
         return this with { Shape = newShape, Elements = [..newElements] };
     }
 
+    public Value Reshape(Array<int> newDimensions)
+    {
+        var newShape = new Shape(newDimensions.Elements);
+        if (newShape.Count != Shape.Count)
+            throw new InvalidOperationException("Invalid reshape dimensions");
+
+        return this with { Shape = newShape };
+    }
+
     public Array<T> Unary(Func<T, T> operation) =>
         new(Shape, [.. Elements.Select(operation)]);
     

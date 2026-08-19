@@ -8,6 +8,7 @@ internal static class BuiltinFunctions
         new CountFunction(),
         new LengthFunction(),
         new TransposeFunction(),
+        new ReshapeFunction(),
         
         // Unary functions - integers
         new AbsFunction(),
@@ -33,6 +34,11 @@ internal static class BuiltinFunctions
     }
 
     private sealed record AbsFunction() : UnaryIntegerFunction("abs", Math.Abs);
+    
+    private abstract record BinaryFunction(string Name) : Function(Name)
+    {
+        public override int Arity => 2;
+    }
     
     private abstract record UnaryFunction(string Name) : Function(Name)
     {
@@ -116,6 +122,19 @@ internal static class BuiltinFunctions
                 Array<char> charArray => charArray.Transpose(),
                 Array<Box> boxArray   => boxArray.Transpose(),
                 Array<Any> anyArray   => anyArray,
+                _ => throw new InvalidOperationException("Invalid argument type")
+            };
+    }
+
+    private sealed record ReshapeFunction() : BinaryFunction("reshape")
+    {
+        public override Value Invoke(params Value[] arguments) =>
+            (arguments[0], arguments[1]) switch
+            {
+                (Array<int> intArray, Array<int> newDimensions) => intArray.Reshape(newDimensions),
+                (Array<char> charArray, Array<int> newDimensions) => charArray.Reshape(newDimensions),
+                (Array<Box> boxArray, Array<int> newDimensions) => boxArray.Reshape(newDimensions),
+                (Array<Any> anyArray, Array<int>)   => anyArray,
                 _ => throw new InvalidOperationException("Invalid argument type")
             };
     }
