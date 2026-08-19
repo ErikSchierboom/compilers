@@ -4,6 +4,9 @@ internal static class BuiltinFunctions
 {
     public static readonly Function[] All =
     [
+        // Unary functions
+        new CountFunction(),
+        
         // Unary functions - integers
         new AbsFunction(),
         
@@ -28,11 +31,14 @@ internal static class BuiltinFunctions
     }
 
     private sealed record AbsFunction() : UnaryIntegerFunction("abs", Math.Abs);
-
-    private abstract record UnaryCharFunction(string Name, Func<char, char> Operation) : Function(Name)
+    
+    private abstract record UnaryFunction(string Name) : Function(Name)
     {
         public override int Arity => 1;
+    }
 
+    private abstract record UnaryCharFunction(string Name, Func<char, char> Operation) : UnaryFunction(Name)
+    {
         public override Value Invoke(params Value[] arguments) =>
             arguments[0] switch
             {
@@ -72,4 +78,17 @@ internal static class BuiltinFunctions
     }
 
     private sealed record TrimFunction() : UnaryCharSequenceFunction("trim", str => str.Trim());
+
+    private sealed record CountFunction() : UnaryFunction("count")
+    {
+        public override Value Invoke(params Value[] arguments) =>
+            arguments[0] switch
+            {
+                Array<int> intArray   => Array<int>.Scalar(intArray.Elements.Length),
+                Array<char> charArray => Array<int>.Scalar(charArray.Elements.Length),
+                Array<Box> boxArray   => Array<int>.Scalar(boxArray.Elements.Length),
+                Array<Any>            => Array<int>.Scalar(0),
+                _ => throw new InvalidOperationException("Invalid argument type")
+            };
+    }
 }

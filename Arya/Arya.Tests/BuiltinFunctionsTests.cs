@@ -99,4 +99,17 @@ public class BuiltinFunctionsTests
     [Theory, MemberData(nameof(TrimTestData))]
     public void Trim(string code, Value expected) =>
         Assert.Equal(expected, Interpreter.Evaluate(code));
+
+    public static readonly TheoryData<string, Value> CountTestData =
+        new()
+        {
+            { "count(2)", Array<int>.Scalar(1) },
+            { "count([-1 5])", Array<int>.Scalar(2) },
+            { "count([[-4 -5] [-6 -7]])", Array<int>.Scalar(4) },
+            { "count([|[-1]| |[-2 -3]|])", Array<int>.Scalar(2) },
+        };
+
+    [Theory, MemberData(nameof(CountTestData))]
+    public void Count(string code, Value expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
 }
