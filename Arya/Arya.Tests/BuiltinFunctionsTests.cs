@@ -166,4 +166,17 @@ public class BuiltinFunctionsTests
     [Theory, MemberData(nameof(RangeTestData))]
     public void Range(string code, Value expected) =>
         Assert.Equal(expected, Interpreter.Evaluate(code));
+
+    public static readonly TheoryData<string, Value> ReverseTestData =
+        new()
+        {
+            { "reverse([])", Array<Any>.Empty },
+            { "reverse(1)", Array<int>.Scalar(1) },
+            { "reverse([4 5])", Array<int>.Vector(5, 4) },
+            { "reverse([[7 2] [9 3]])", Array<int>.Matrix([[9, 3], [7, 2]]) },
+        };
+
+    [Theory, MemberData(nameof(ReverseTestData))]
+    public void Reverse(string code, Value expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
 }

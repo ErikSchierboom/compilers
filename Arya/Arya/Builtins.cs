@@ -12,6 +12,7 @@ internal static class BuiltinFunctions
         new Unary.LowercaseFunction(),
         new Unary.UppercaseFunction(),
         new Unary.TrimFunction(),
+        new Unary.ReverseFunction(),
 
         new Binary.ReshapeFunction(),
     ];
@@ -139,6 +140,19 @@ internal static class BuiltinFunctions
                 
                 return Array<int>.Vector([.. Enumerable.Range(0, numberOfElements)]);
             }
+        }
+
+        internal sealed record ReverseFunction() : UnaryFunction("reverse")
+        {
+            public override Value Invoke(params Value[] arguments) =>
+                arguments[0] switch
+                {
+                    Array<int> intArray   => intArray.Reverse(),
+                    Array<char> charArray => charArray.Reverse(),
+                    Array<Box> boxArray   => boxArray.Reverse(),
+                    Array<Any> anyArray   => anyArray,
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
         }
     }
 

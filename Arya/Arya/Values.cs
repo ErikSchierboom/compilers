@@ -85,6 +85,18 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
         return Elements.Chunk(Shape.Dimensions[0]);
     }
 
+    public Array<T> Reverse()
+    {
+        if (Shape.IsScalar)
+            return this;
+
+        if (Shape.IsVector)
+            return Vector([.. Elements.Reverse()]);
+
+        var newElements = Rows().Reverse().SelectMany(element => element);
+        return this with { Elements = [..newElements] };
+    }
+
     public Array<T> Transpose()
     {
         if (Shape.IsScalar || Shape.IsVector)
