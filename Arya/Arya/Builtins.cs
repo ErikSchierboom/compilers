@@ -50,7 +50,7 @@ internal static class BuiltinFunctions
                 arguments[0] switch
                 {
                     Array<char> charArray => charArray.Unary(Operation),
-                    Array<Box> boxArray => boxArray.Unary(box => new(((Func<Value, Value>)(element => Invoke(element)))(box.Value))),
+                    Array<Box> boxArray => boxArray.Unary(box => Invoke(box.Value).Box()),
                     Array<Any> => Array<Any>.Empty,
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
@@ -75,7 +75,7 @@ internal static class BuiltinFunctions
                     case Array<char> charArray:
                         return charArray.Binary(Operation);
                     case Array<Box> boxArray:
-                        return boxArray.Unary(box => new(((Func<Value, Value>)(element => Invoke(element)))(box.Value)));
+                        return boxArray.Unary(box => Invoke(box.Value).Box());
                     case Array<Any>:
                         return Array<Any>.Empty;
                     default:
@@ -218,8 +218,8 @@ internal static class BuiltinFunctions
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> intArray, Array<int> otherIntArray) => intArray.Zip(otherIntArray, Math.Max),
                     (Array<char> charArray, Array<char> otherCharArray) => charArray.Zip(otherCharArray, (a, b) => a >= b ? a : b),
-                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => new(((Func<Value, Value, Value>)((x, y) => Invoke(x, y)))(a.Value, b.Value))),
-                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => new(((Func<Value, Value, Value>)((x, y) => Invoke(y, x)))(a.Value, b.Value))),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke(a.Value, b.Value).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke(b.Value, a.Value).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
