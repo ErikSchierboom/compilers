@@ -197,19 +197,6 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
             _ => base.ToString()
         };
 
-    public Array<T> Index(Array<int> indexArray)
-    {
-        var newElements = indexArray.Elements
-            .Select(oneBasedIndex => oneBasedIndex > 0 ? oneBasedIndex - 1 : Shape.RowCount + oneBasedIndex)
-            .SelectMany(zeroBasedIndex => Elements.Skip(zeroBasedIndex * Shape.RowLength).Take(Shape.RowLength));
-
-        var newShape = indexArray.Shape.IsScalar
-            ? Shape.RemoveFirst()
-            : Shape.SetFirst(indexArray.Elements.Length);
-
-        return this with { Shape = newShape, Elements = [..newElements] };
-    }
-
     public Array<int> Indices() => Array<int>.Vector([..Enumerable.Range(1, Shape.RowCount)]);
 }
 

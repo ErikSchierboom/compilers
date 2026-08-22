@@ -3,16 +3,15 @@ namespace Arya;
 internal enum Precedence
 {
     None,         // =
-    Array,        // []
     Addition,     // + -
     Product,      // *
-    Unary,        // + - !
+    Unary,        // + - ! @
     BitwiseShift, // << >>
     Comparison,   // < <= > >=
     Equality,     // == !=
     BitwiseOr,    // |
     BitwiseAnd,   // &
-    Call,         // ()
+    Call,         // () []
     Primary
 }
 
@@ -48,9 +47,9 @@ internal class Parser
             [TokenType.Boolean] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.Char] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.Identifier] = new(ParseName, null, Precedence.Primary),
-            [TokenType.Pipe] = new(null, ParseBinary, Precedence.Array),
-            [TokenType.At] = new(ParseBox, null, Precedence.Array),
-            [TokenType.OpenBracket] = new(ParseArray, ParseIndexer, Precedence.Array),
+            [TokenType.Pipe] = new(null, ParseBinary, Precedence.BitwiseOr),
+            [TokenType.At] = new(ParseBox, null, Precedence.Unary),
+            [TokenType.OpenBracket] = new(ParseArray, null, Precedence.Call),
             [TokenType.OpenParen] = new(ParseParenthesized, ParseCall, Precedence.Call),
         };
     }
@@ -104,13 +103,6 @@ internal class Parser
     private LiteralExpression ParseLiteral() => new(Previous);
 
     private NameExpression ParseName() => new(Previous);
-
-    private IndexerExpression ParseIndexer(Expression left)
-    {
-        var index = ParseExpression();
-        Consume(TokenType.CloseBracket);
-        return new IndexerExpression(left, index);
-    }
 
     private Expression ParseCall(Expression left)
     {
@@ -201,4 +193,3 @@ internal sealed record CallExpression(Token FunctionName, Expression[] Arguments
 internal sealed record UnaryExpression(Token Operator, Expression Operand) : Expression;
 internal sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
 internal sealed record ParenthesizedExpression(Expression Expression) : Expression;
-internal sealed record IndexerExpression(Expression Target, Expression Index) : Expression;

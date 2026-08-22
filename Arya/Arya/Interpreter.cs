@@ -59,7 +59,6 @@ public class Interpreter
             LiteralExpression literal => Evaluate(literal, scope),
             BoxExpression box => Evaluate(box, scope),
             CallExpression call => Evaluate(call, scope),
-            IndexerExpression indexer => Evaluate(indexer, scope),
             ParenthesizedExpression parenthesized => Evaluate(parenthesized.Expression, scope),
             _ => throw new ArgumentOutOfRangeException(nameof(expression))
         };
@@ -169,27 +168,6 @@ public class Interpreter
             Array<Box> => new Array<Box>(newShape, [.. elements.Cast<Array<Box>>().SelectMany(boxArray => boxArray.Elements)]),
             Array<Any> => Array<Any>.Empty,
             _ => throw new InvalidOperationException("Invalid array element type")
-        };
-    }
-
-    private Value Evaluate(IndexerExpression indexer, Scope scope)
-    {
-        var target = Evaluate(indexer.Target, scope);
-        var index = Evaluate(indexer.Index, scope);
-
-        if (index is not Array<int> indexArray)
-            throw new InvalidOperationException("Can only index with arrays");
-
-        if (indexArray.Shape.IsMatrix)
-            throw new InvalidOperationException("Can only index with scalars or vectors");
-
-        return target switch
-        {
-            Array<int> intArray => intArray.Index(indexArray),
-            Array<char> charArray => charArray.Index(indexArray),
-            Array<bool> boolArray => boolArray.Index(indexArray),
-            Array<Box> boxArray => boxArray.Index(indexArray),
-            _ => throw new InvalidOperationException("Can only index into arrays")
         };
     }
 
