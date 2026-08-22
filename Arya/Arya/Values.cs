@@ -10,7 +10,7 @@ public abstract record Value
 
     /// <summary>
     /// Views this value as an array of boxes. A box array already is one; anything else becomes
-    /// a scalar array holding a single box, so that it broadcasts like any other scalar.
+    /// a scalar array holding a single box so that it broadcasts like any other scalar.
     /// </summary>
     public Array<Box> Boxes() => this as Array<Box> ?? new Array<Box>(Shape.Scalar, Box());
 }
