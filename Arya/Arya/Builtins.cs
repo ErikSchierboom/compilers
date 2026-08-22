@@ -1,6 +1,6 @@
 namespace Arya;
 
-internal static class UnaryBuiltinFunctions
+internal static class BuiltinFunctions
 {
     public static readonly Function[] All =
     [
@@ -13,6 +13,7 @@ internal static class UnaryBuiltinFunctions
         new Unary.UppercaseFunction(),
         new Unary.TrimFunction(),
         new Unary.ReverseFunction(),
+        new Unary.IndicesFunction(),
 
         new Binary.ReshapeFunction(),
     ];
@@ -151,6 +152,19 @@ internal static class UnaryBuiltinFunctions
                     Array<char> charArray => charArray.Reverse(),
                     Array<Box> boxArray   => boxArray.Reverse(),
                     Array<Any> anyArray   => anyArray,
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+        }
+
+        internal sealed record IndicesFunction() : UnaryFunction("indices")
+        {
+            public override Value Invoke(params Value[] arguments) =>
+                arguments[0] switch
+                {
+                    Array<int> intArray   => intArray.Indices(),
+                    Array<char> charArray => charArray.Indices(),
+                    Array<Box> boxArray   => boxArray.Indices(),
+                    Array<Any> anyArray   => anyArray.Indices(),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }

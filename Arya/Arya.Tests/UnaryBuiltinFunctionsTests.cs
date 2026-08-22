@@ -166,4 +166,17 @@ public class UnaryBuiltinFunctionsTests
     [Theory, MemberData(nameof(ReverseTestData))]
     public void Reverse(string code, Value expected) =>
         Assert.Equal(expected, Interpreter.Evaluate(code));
+
+    public static readonly TheoryData<string, Value> IndicesTestData =
+        new()
+        {
+            { "indices([])", Array<int>.Vector() },
+            { "indices(1)", Array<int>.Vector(1) },
+            { "indices([4 5])", Array<int>.Vector(1, 2) },
+            { "indices([[7] [2] [9] [3]])", Array<int>.Vector(1, 2, 3, 4) },
+        };
+
+    [Theory, MemberData(nameof(IndicesTestData))]
+    public void Indices(string code, Value expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
 }

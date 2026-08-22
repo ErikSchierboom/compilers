@@ -192,6 +192,8 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
 
         return this with { Shape = newShape, Elements = [..newElements] };
     }
+
+    public Array<int> Indices() => Array<int>.Vector([..Enumerable.Range(1, Shape.RowCount)]);
 }
 
 public abstract record Function(string Name) : Value

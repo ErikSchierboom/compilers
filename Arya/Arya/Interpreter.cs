@@ -231,7 +231,7 @@ public class Interpreter
     {
         var scope = new Scope();
 
-        foreach (var builtinFunction in UnaryBuiltinFunctions.All)
+        foreach (var builtinFunction in BuiltinFunctions.All)
             scope[builtinFunction.Name] = builtinFunction;
 
         return scope;
