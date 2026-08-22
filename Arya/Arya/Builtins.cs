@@ -92,6 +92,7 @@ internal static class BuiltinFunctions
                 arguments[0] switch
                 {
                     Array<int> intArray   => Array<int>.Scalar(intArray.Elements.Length),
+                    Array<bool> boolArray => Array<int>.Scalar(boolArray.Elements.Length),
                     Array<char> charArray => Array<int>.Scalar(charArray.Elements.Length),
                     Array<Box> boxArray   => Array<int>.Scalar(boxArray.Elements.Length),
                     Array<Any>            => Array<int>.Scalar(0),
@@ -105,6 +106,7 @@ internal static class BuiltinFunctions
                 arguments[0] switch
                 {
                     Array<int> intArray   => Array<int>.Scalar(intArray.Shape.RowCount),
+                    Array<bool> boolArray => Array<int>.Scalar(boolArray.Shape.RowCount),
                     Array<char> charArray => Array<int>.Scalar(charArray.Shape.RowCount),
                     Array<Box> boxArray   => Array<int>.Scalar(boxArray.Shape.RowCount),
                     Array<Any>            => Array<int>.Scalar(0),
@@ -118,6 +120,7 @@ internal static class BuiltinFunctions
                 arguments[0] switch
                 {
                     Array<int> intArray   => intArray.Transpose(),
+                    Array<bool> boolArray => boolArray.Transpose(),
                     Array<char> charArray => charArray.Transpose(),
                     Array<Box> boxArray   => boxArray.Transpose(),
                     Array<Any> anyArray   => anyArray,

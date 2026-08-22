@@ -108,6 +108,8 @@ public class UnaryBuiltinFunctionsTests
             { "length([-1 5])", Array<int>.Scalar(2) },
             { "length([[-4 -5] [-6 -7] [3 3]])", Array<int>.Scalar(3) },
             { "length([@[-1] @[-2 -3]])", Array<int>.Scalar(2) },
+            { "length(true)", Array<int>.Scalar(1) },
+            { "length([true false])", Array<int>.Scalar(2) },
         };
 
     [Theory, MemberData(nameof(LengthTestData))]
@@ -122,6 +124,8 @@ public class UnaryBuiltinFunctionsTests
             { "count([-1 5])", Array<int>.Scalar(2) },
             { "count([[-4 -5] [-6 -7]])", Array<int>.Scalar(4) },
             { "count([@[-1] @[-2 -3]])", Array<int>.Scalar(2) },
+            { "count(true)", Array<int>.Scalar(1) },
+            { "count([true false])", Array<int>.Scalar(2) },
         };
 
     [Theory, MemberData(nameof(CountTestData))]
@@ -136,6 +140,9 @@ public class UnaryBuiltinFunctionsTests
             { "transpose([-1 5])", Array<int>.Vector(-1, 5) },
             { "transpose([[-4 -5 -6] [-6 -7 -8]])", Array<int>.Matrix([[-4, -6], [-5, -7], [-6, -8]]) },
             { "transpose([@[-1] @[-2 -3]])", Array<Box>.Vector(Array<int>.Vector(-1).Box(), Array<int>.Vector(-2, -3).Box()) },
+            { "transpose(true)", Array<bool>.Scalar(true) },
+            { "transpose([true false])", Array<bool>.Vector(true, false) },
+            { "transpose([[true false true] [false true false]])", Array<bool>.Matrix([[true, false], [false, true], [true, false]]) },
         };
 
     [Theory, MemberData(nameof(TransposeTestData))]
