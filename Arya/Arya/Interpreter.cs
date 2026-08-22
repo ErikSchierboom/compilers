@@ -155,50 +155,25 @@ public class Interpreter
         if (array.Elements.Length == 0)
             return Array<Any>.Empty;
 
-        Type? elementType = null;
-        Shape? shape = null;
-        bool identicalShapes = true;
+        var elements = array.Elements.Select(element => Evaluate(element, scope)).ToArray();
 
-        Value[] newElements = new Value[array.Elements.Length];
+        if (elements.Select(element => element.GetType()).Distinct().Count() > 1)
+            throw new InvalidOperationException("Array elements must be of the same type.");
 
-        for (var index = 0; index < array.Elements.Length; index++)
-        {
-            var evaluatedElement = Evaluate(array.Elements[index], scope);
-
-            if (elementType is null)
-                elementType = evaluatedElement.GetType();
-            else if (elementType != evaluatedElement.GetType())
-                throw new InvalidOperationException("Array elements must be of the same type.");
-
-            if (shape is null)
-                shape = evaluatedElement.Shape;
-            else if (shape != evaluatedElement.Shape)
-                identicalShapes = false;
-
-            newElements[index] = evaluatedElement;
-        }
-
-        var newShape = shape!.Prepend(newElements.Length);
-
-        if (!identicalShapes)
+        if (elements.Select(element => element.Shape).Distinct().Count() > 1)
             throw new InvalidOperationException("Array elements must have identical shapes.");
 
-        if (elementType == typeof(Array<int>))
-            return new Array<int>(newShape, [.. newElements.Cast<Array<int>>().SelectMany(intArray => intArray.Elements)]);
+        var newShape = elements[0].Shape.Prepend(elements.Length);
 
-        if (elementType == typeof(Array<char>))
-            return new Array<char>(newShape, [.. newElements.Cast<Array<char>>().SelectMany(charArray => charArray.Elements)]);
-
-        if (elementType == typeof(Array<bool>))
-            return new Array<bool>(newShape, [.. newElements.Cast<Array<bool>>().SelectMany(boolArray => boolArray.Elements)]);
-
-        if (elementType == typeof(Array<Box>))
-            return new Array<Box>(newShape, [.. newElements.Cast<Array<Box>>().SelectMany(boxArray => boxArray.Elements)]);
-
-        if (elementType == typeof(Array<Any>))
-            return Array<Any>.Empty;
-        
-        throw new InvalidOperationException("Invalid array element type");
+        return elements[0] switch
+        {
+            Array<int> => new Array<int>(newShape, [.. elements.Cast<Array<int>>().SelectMany(intArray => intArray.Elements)]),
+            Array<char> => new Array<char>(newShape, [.. elements.Cast<Array<char>>().SelectMany(charArray => charArray.Elements)]),
+            Array<bool> => new Array<bool>(newShape, [.. elements.Cast<Array<bool>>().SelectMany(boolArray => boolArray.Elements)]),
+            Array<Box> => new Array<Box>(newShape, [.. elements.Cast<Array<Box>>().SelectMany(boxArray => boxArray.Elements)]),
+            Array<Any> => Array<Any>.Empty,
+            _ => throw new InvalidOperationException("Invalid array element type")
+        };
     }
 
     private Value Evaluate(IndexerExpression indexer, Scope scope)
@@ -212,19 +187,14 @@ public class Interpreter
         if (indexArray.Shape.IsMatrix)
             throw new InvalidOperationException("Can only index with scalars or vectors");
 
-        if (target is Array<int> intArray)
-            return intArray.Index(indexArray);
-
-        if (target is Array<char> charArray)
-            return charArray.Index(indexArray);
-
-        if (target is Array<bool> boolArray)
-            return boolArray.Index(indexArray);
-
-        if (target is Array<Box> boxArray)
-            return boxArray.Index(indexArray);
-
-        throw new InvalidOperationException("Can only index into arrays");
+        return target switch
+        {
+            Array<int> intArray => intArray.Index(indexArray),
+            Array<char> charArray => charArray.Index(indexArray),
+            Array<bool> boolArray => boolArray.Index(indexArray),
+            Array<Box> boxArray => boxArray.Index(indexArray),
+            _ => throw new InvalidOperationException("Can only index into arrays")
+        };
     }
 
     private static Scope CreateDefaultScope()
