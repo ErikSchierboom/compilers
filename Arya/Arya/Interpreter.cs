@@ -18,11 +18,7 @@ public sealed record Scope
 
             return _parent?[key];
         }
-        set
-        {
-            if (!Values.TryAdd(key, value))
-                throw new InvalidOperationException("Cannot redeclare local"); ;
-        }
+        set => Values[key] = value;
     }
 }
 
@@ -61,6 +57,7 @@ public class Interpreter
             CallExpression call => Evaluate(call, scope),
             ParenthesizedExpression parenthesized => Evaluate(parenthesized.Expression, scope),
             AssignmentExpression assignment => Evaluate(assignment, scope),
+            NameExpression name => Evaluate(name, scope),
             _ => throw new ArgumentOutOfRangeException(nameof(expression))
         };
 
@@ -145,6 +142,9 @@ public class Interpreter
         var arguments = call.Arguments.Select(arg => Evaluate(arg, scope)).ToArray();
         return function.Invoke(arguments);
     }
+
+    private Value Evaluate(NameExpression call, Scope scope) =>
+        scope[call.Identifier.Text] ?? throw new InvalidOperationException("Variable not found");
 
     private Value Evaluate(AssignmentExpression call, Scope scope)
     {
