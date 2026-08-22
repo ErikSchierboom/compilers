@@ -60,6 +60,7 @@ public class Interpreter
             BoxExpression box => Evaluate(box, scope),
             CallExpression call => Evaluate(call, scope),
             ParenthesizedExpression parenthesized => Evaluate(parenthesized.Expression, scope),
+            AssignmentExpression assignment => Evaluate(assignment, scope),
             _ => throw new ArgumentOutOfRangeException(nameof(expression))
         };
 
@@ -143,6 +144,13 @@ public class Interpreter
 
         var arguments = call.Arguments.Select(arg => Evaluate(arg, scope)).ToArray();
         return function.Invoke(arguments);
+    }
+
+    private Value Evaluate(AssignmentExpression call, Scope scope)
+    {
+        var value = Evaluate(call.Value, scope);
+        scope[call.Identifier.Identifier.Text] = value;
+        return value;
     }
 
     private Value Evaluate(ArrayExpression array, Scope scope)

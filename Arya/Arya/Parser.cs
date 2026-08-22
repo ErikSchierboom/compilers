@@ -2,7 +2,8 @@ namespace Arya;
 
 internal enum Precedence
 {
-    None,         // =
+    None,
+    Assignment,   // =
     Addition,     // + -
     Product,      // *
     Unary,        // + - ! @
@@ -51,6 +52,13 @@ internal class Parser
             [TokenType.At] = new(ParseBox, null, Precedence.Unary),
             [TokenType.OpenBracket] = new(ParseArray, null, Precedence.Call),
             [TokenType.OpenParen] = new(ParseParenthesized, ParseCall, Precedence.Call),
+            [TokenType.Equal] = new(null, ParseAssignment, Precedence.Assignment),
+            [TokenType.EqualEqual] = new(null, ParseBinary, Precedence.Equality),
+            [TokenType.ExclamationEqual] = new(null, ParseBinary, Precedence.Equality),
+            [TokenType.Greater] = new(null, ParseBinary, Precedence.Comparison),
+            [TokenType.GreaterEqual] = new(null, ParseBinary, Precedence.Comparison),
+            [TokenType.Less] = new(null, ParseBinary, Precedence.Comparison),
+            [TokenType.LessEqual] = new(null, ParseBinary, Precedence.Comparison),
         };
     }
 
@@ -104,7 +112,16 @@ internal class Parser
 
     private NameExpression ParseName() => new(Previous);
 
-    private Expression ParseCall(Expression left)
+    private AssignmentExpression ParseAssignment(Expression left)
+    {
+        if (left is not NameExpression name)
+            throw new InvalidOperationException("Can only call names");
+
+        var value = ParseExpression();
+        return new AssignmentExpression(name, value);
+    }
+
+    private CallExpression ParseCall(Expression left)
     {
         if (left is not NameExpression name)
             throw new InvalidOperationException("Can only call names");
@@ -193,3 +210,4 @@ internal sealed record CallExpression(Token FunctionName, Expression[] Arguments
 internal sealed record UnaryExpression(Token Operator, Expression Operand) : Expression;
 internal sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
 internal sealed record ParenthesizedExpression(Expression Expression) : Expression;
+internal sealed record AssignmentExpression(NameExpression Identifier, Expression Value) : Expression;

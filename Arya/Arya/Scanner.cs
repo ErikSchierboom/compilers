@@ -57,7 +57,10 @@ internal sealed class Scanner
                     break;
                 case '!':
                     Advance();
-                    tokens.Add(new Token(TokenType.Exclamation, "1"));
+                    if (Match('='))
+                        tokens.Add(new Token(TokenType.ExclamationEqual, "!="));
+                    else
+                        tokens.Add(new Token(TokenType.Exclamation, "!"));
                     break;
                 case '|':
                     Advance();
@@ -66,6 +69,13 @@ internal sealed class Scanner
                 case '@':
                     Advance();
                     tokens.Add(new Token(TokenType.At, "@"));
+                    break;
+                case '=':
+                    Advance();
+                    if (Match('='))
+                        tokens.Add(new Token(TokenType.EqualEqual, "=="));
+                    else
+                        tokens.Add(new Token(TokenType.Equal, "="));
                     break;
                 case '<':
                     Advance();
@@ -258,6 +268,7 @@ internal enum TokenType
     CloseParen,
     Ampersand,
     Exclamation,
+    ExclamationEqual,
     Plus,
     PlusPlus,
     Minus,
@@ -273,6 +284,8 @@ internal enum TokenType
     Greater,
     GreaterGreater,
     GreaterEqual,
+    Equal,
+    EqualEqual,
 
     // Synthetic
     Eof,
