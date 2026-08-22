@@ -59,5 +59,17 @@ public class VariablesTests
             var expected = Array<int>.Scalar(3);
             Assert.Equal(expected, Interpreter.Evaluate(code));
         }
+
+        [Fact]
+        public void Function()
+        {
+            const string code =
+                """
+                a = max
+                """;
+            var function = Assert.IsType<Function>(Interpreter.Evaluate(code), exactMatch: false);
+            Assert.Equal("max", function.Name);
+            Assert.Equal(2, function.Arity);
+        }
     }
 }
