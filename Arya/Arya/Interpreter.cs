@@ -96,12 +96,8 @@ public class Interpreter
             (_, _, Array<Any>) or
             (_, Array<Any>, _) => Array<Any>.Empty,
 
-            (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or 
-             TokenType.Percent or TokenType.Ampersand or TokenType.Pipe or
-             TokenType.GreaterGreater or TokenType.LessLess, Array<Box> l, var r) => l.Zip(r.Boxes(), (a, b) => BinaryOp(op, a.Value, b.Value).Box()),
-            (TokenType.Plus or TokenType.Minus or TokenType.Star or TokenType.Slash or 
-             TokenType.Percent or TokenType.Ampersand or TokenType.Pipe or
-             TokenType.GreaterGreater or TokenType.LessLess, var l, Array<Box> r) => r.Zip(l.Boxes(), (a, b) => BinaryOp(op, b.Value, a.Value).Box()),
+            (_, Array<Box> l, var r) => l.Zip(r.Boxes(), (a, b) => BinaryOp(op, a.Value, b.Value).Box()),
+            (_, var l, Array<Box> r) => r.Zip(l.Boxes(), (a, b) => BinaryOp(op, b.Value, a.Value).Box()),
 
             (TokenType.Plus, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a + b),
             (TokenType.Plus, Array<char> l, Array<int> r) => l.Zip(r, (a, b) => (char)(a + b)),
