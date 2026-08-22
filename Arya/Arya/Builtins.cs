@@ -233,7 +233,7 @@ internal static class BuiltinFunctions
                     (Array<int> intArray, Array<int> otherIntArray) => intArray.Zip(otherIntArray, Math.Min),
                     (Array<char> charArray, Array<char> otherCharArray) => charArray.Zip(otherCharArray, (a, b) => a <= b ? a : b),
                     (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke(a.Value, b.Value).Box()),
-                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke(a.Value, b.Value).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke(b.Value, a.Value).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
