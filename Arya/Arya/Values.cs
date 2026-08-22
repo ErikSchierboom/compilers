@@ -18,6 +18,7 @@ public abstract record Value
 public sealed record Box(Value Value) : Value
 {
     public Box Unary(Func<Value, Value> operation) => new(operation(Value));
+    public Box Binary(Value other, Func<Value, Value, Value> operation) => new(operation(Value, other));
 
     public override Shape Shape { get; init; } = Shape.Scalar;
 
@@ -36,7 +37,6 @@ public sealed record Shape(params int[] Dimensions)
     public int Rank => Dimensions.Length;
 
     public int Count => Dimensions.Aggregate(1, (count, dimension) => count * dimension);
-    public int Length => Dimensions.Skip(1).FirstOrDefault(1);
     public int RowCount => Dimensions.FirstOrDefault(1);
     public int RowLength => Dimensions.Skip(1).Aggregate(1, (count, dimension) => count * dimension);
 
@@ -126,7 +126,7 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
         if (replications.Elements.Any(replication => replication < 0))
             throw new InvalidOperationException("Replication amount must be >= 0");
 
-        if (Shape.Rank != replications.Shape.Rank)
+        if (replications.Shape.Rank > 1)
             throw new InvalidOperationException("Invalid replication dimensions");
 
         var newRows = Rows()

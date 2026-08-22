@@ -17,6 +17,7 @@ internal static class BuiltinFunctions
 
         new Binary.ReshapeFunction(),
         new Binary.ReplicateFunction(),
+        new Binary.MaxFunction(),
     ];
 
     private static class Unary
@@ -204,6 +205,19 @@ internal static class BuiltinFunctions
                     (Array<bool> boolArray, Array<int> replications) => boolArray.Replicate(replications),
                     (Array<char> charArray, Array<int> replications) => charArray.Replicate(replications),
                     (Array<Box> boxArray, Array<int> replications) => boxArray.Replicate(replications),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+        }
+
+        internal sealed record MaxFunction() : BinaryFunction("max")
+        {
+            public override Value Invoke(params Value[] arguments) =>
+                (arguments[0], arguments[1]) switch
+                {
+                    (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
+                    (Array<int> intArray, Array<int> otherIntArray) => intArray.Zip(otherIntArray, Math.Max),
+                    (Array<char> charArray, Array<char> otherCharArray) => charArray.Zip(otherCharArray, (a, b) => a >= b ? a : b),
+                    (Array<Box> boxArray, Array<Box> otherBoxArray) => boxArray.Zip(otherBoxArray, (a, b) => a.Binary(b.Value, (x, y) => Invoke(x, y))),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
