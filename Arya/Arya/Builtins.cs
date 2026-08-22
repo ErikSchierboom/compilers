@@ -217,7 +217,8 @@ internal static class BuiltinFunctions
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> intArray, Array<int> otherIntArray) => intArray.Zip(otherIntArray, Math.Max),
                     (Array<char> charArray, Array<char> otherCharArray) => charArray.Zip(otherCharArray, (a, b) => a >= b ? a : b),
-                    (Array<Box> boxArray, Array<Box> otherBoxArray) => boxArray.Zip(otherBoxArray, (a, b) => a.Binary(b.Value, (x, y) => Invoke(x, y))),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => a.Binary(b.Value, (x, y) => Invoke(x, y))),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => a.Binary(b.Value, (x, y) => Invoke(y, x))),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
