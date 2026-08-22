@@ -1,6 +1,6 @@
 namespace Arya;
 
-internal static class BuiltinFunctions
+internal static class UnaryBuiltinFunctions
 {
     public static readonly Function[] All =
     [
