@@ -19,7 +19,7 @@ public sealed record Box(Value Value) : Value
 {
     public override Shape Shape { get; init; } = Shape.Scalar;
 
-    public override string ToString() => $"|{Value}|";
+    public override string ToString() => $"@{Value}";
 }
 
 public sealed record Shape(params int[] Dimensions)
