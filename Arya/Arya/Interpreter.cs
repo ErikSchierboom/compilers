@@ -206,24 +206,25 @@ public class Interpreter
         var target = Evaluate(indexer.Target, scope);
         var index = Evaluate(indexer.Index, scope);
 
-        // TODO: support all arrays by moving functionality to array
-        if (target is not Array<int> targetArray)
-            throw new InvalidOperationException("Can only index into arrays");
-
         if (index is not Array<int> indexArray)
             throw new InvalidOperationException("Can only index with arrays");
 
         if (indexArray.Shape.IsMatrix)
             throw new InvalidOperationException("Can only index with scalars or vectors");
 
-        var newElements = indexArray.Elements
-            .Select(oneBasedIndex => oneBasedIndex > 0 ? oneBasedIndex - 1 : targetArray.Shape.RowCount + oneBasedIndex)
-            .SelectMany(zeroBasedIndex => targetArray.Elements.Skip(zeroBasedIndex * targetArray.Shape.RowLength).Take(targetArray.Shape.RowLength));
-        var newShape = indexArray.Shape.IsScalar 
-            ? targetArray.Shape.RemoveFirst() 
-            : targetArray.Shape.SetFirst(indexArray.Elements.Length);
-        
-        return targetArray with { Shape = newShape, Elements = [..newElements] };
+        if (target is Array<int> intArray)
+            return intArray.Index(indexArray);
+
+        if (target is Array<char> charArray)
+            return charArray.Index(indexArray);
+
+        if (target is Array<bool> boolArray)
+            return boolArray.Index(indexArray);
+
+        if (target is Array<Box> boxArray)
+            return boxArray.Index(indexArray);
+
+        throw new InvalidOperationException("Can only index into arrays");
     }
 
     private static Scope CreateDefaultScope()

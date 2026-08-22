@@ -64,8 +64,6 @@ public sealed record Shape(params int[] Dimensions)
 
 public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
 {
-    public bool IsEmpty => Shape.IsScalar && Elements.Length == 0;
-    
     public static readonly Array<T> Empty = new(Shape.Empty);
 
     public static Array<T> Scalar(T element) => new(Shape.Scalar, element);
@@ -181,6 +179,19 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
             2 => "[[" + string.Join("] [ ", Elements) + "]]",
             _ => base.ToString()
         };
+
+    public Array<T> Index(Array<int> indexArray)
+    {
+        var newElements = indexArray.Elements
+            .Select(oneBasedIndex => oneBasedIndex > 0 ? oneBasedIndex - 1 : Shape.RowCount + oneBasedIndex)
+            .SelectMany(zeroBasedIndex => Elements.Skip(zeroBasedIndex * Shape.RowLength).Take(Shape.RowLength));
+
+        var newShape = indexArray.Shape.IsScalar
+            ? Shape.RemoveFirst()
+            : Shape.SetFirst(indexArray.Elements.Length);
+
+        return this with { Shape = newShape, Elements = [..newElements] };
+    }
 }
 
 public abstract record Function(string Name) : Value
