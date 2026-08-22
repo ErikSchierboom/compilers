@@ -55,6 +55,10 @@ internal sealed class Scanner
                     Advance();
                     tokens.Add(new Token(TokenType.Ampersand, "&"));
                     break;
+                case '!':
+                    Advance();
+                    tokens.Add(new Token(TokenType.Exclamation, "1"));
+                    break;
                 case '|':
                     Advance();
                     tokens.Add(new Token(TokenType.Pipe, "|"));
@@ -112,7 +116,18 @@ internal sealed class Scanner
                         Advance();
 
                     var text = _source[identifierStartPosition.._position];
-                    tokens.Add(new Token(TokenType.Identifier, text));
+                    switch (text)
+                    {
+                        case "true":
+                            tokens.Add(new Token(TokenType.Boolean, text, true));
+                            break;
+                        case "false":
+                            tokens.Add(new Token(TokenType.Boolean, text, false));
+                            break;
+                        default:
+                            tokens.Add(new Token(TokenType.Identifier, text));
+                            break;
+                    }
                     break;
                 case '\'':
                     var charStartPosition = _position;
@@ -229,6 +244,7 @@ internal enum TokenType
     Number,
     String,
     Char,
+    Boolean,
     Identifier,
 
     // Symbols
@@ -237,6 +253,7 @@ internal enum TokenType
     OpenParen,
     CloseParen,
     Ampersand,
+    Exclamation,
     Plus,
     PlusPlus,
     Minus,

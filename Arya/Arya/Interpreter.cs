@@ -72,6 +72,8 @@ public class Interpreter
         {
             (TokenType.Plus, Array<int> arr) => arr,
             (TokenType.Minus, Array<int> arr) => arr.Unary(i => -i),
+            (TokenType.Exclamation, Array<int> arr) => arr.Unary(i => ~i),
+            (TokenType.Exclamation, Array<bool> arr) => arr.Unary(b => !b),
             (_, Array<Box> arr) => arr.Unary(box => box.Unary(element => UnaryOp(op, element))),
             _ => throw new InvalidOperationException("Invalid unary expression")
         };
@@ -126,6 +128,7 @@ public class Interpreter
             TokenType.String => Array<char>.Vector(((string)literal.Value.Literal!).ToCharArray()),
             TokenType.Number => Array<int>.Scalar((int)literal.Value.Literal!),
             TokenType.Char => Array<char>.Scalar((char)literal.Value.Literal!),
+            TokenType.Boolean => Array<bool>.Scalar((bool)literal.Value.Literal!),
             _ => throw new ArgumentOutOfRangeException(nameof(literal.Value.Type))
         };
     
@@ -185,6 +188,9 @@ public class Interpreter
 
         if (elementType == typeof(Array<char>))
             return new Array<char>(newShape, [.. newElements.Cast<Array<char>>().SelectMany(charArray => charArray.Elements)]);
+
+        if (elementType == typeof(Array<bool>))
+            return new Array<bool>(newShape, [.. newElements.Cast<Array<bool>>().SelectMany(boolArray => boolArray.Elements)]);
 
         if (elementType == typeof(Array<Box>))
             return new Array<Box>(newShape, [.. newElements.Cast<Array<Box>>().SelectMany(boxArray => boxArray.Elements)]);

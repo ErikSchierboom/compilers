@@ -6,7 +6,7 @@ internal enum Precedence
     Array,        // []
     Addition,     // + -
     Product,      // *
-    Unary,        // -
+    Unary,        // + - !
     BitwiseShift, // << >>
     Comparison,   // < <= > >=
     Equality,     // == !=
@@ -42,8 +42,10 @@ internal class Parser
             [TokenType.Ampersand] = new(null, ParseBinary, Precedence.BitwiseAnd),
             [TokenType.GreaterGreater] = new(null, ParseBinary, Precedence.BitwiseShift),
             [TokenType.LessLess] = new(null, ParseBinary, Precedence.BitwiseShift),
+            [TokenType.Exclamation] = new(ParseUnary, null, Precedence.Unary),
             [TokenType.Number] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.String] = new(ParseLiteral, null, Precedence.Primary),
+            [TokenType.Boolean] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.Char] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.Identifier] = new(ParseName, null, Precedence.Primary),
             [TokenType.Pipe] = new(ParseBox, ParseBinary, Precedence.Array),
