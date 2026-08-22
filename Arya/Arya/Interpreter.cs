@@ -74,7 +74,7 @@ public class Interpreter
             (TokenType.Minus, Array<int> arr) => arr.Unary(i => -i),
             (TokenType.Exclamation, Array<int> arr) => arr.Unary(i => ~i),
             (TokenType.Exclamation, Array<bool> arr) => arr.Unary(b => !b),
-            (_, Array<Box> arr) => arr.Unary(box => box.Unary(element => UnaryOp(op, element))),
+            (_, Array<Box> arr) => arr.Unary(box => new(((Func<Value, Value>)(element => UnaryOp(op, element)))(box.Value))),
             _ => throw new InvalidOperationException("Invalid unary expression")
         };
 

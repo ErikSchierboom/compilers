@@ -17,9 +17,6 @@ public abstract record Value
 
 public sealed record Box(Value Value) : Value
 {
-    public Box Unary(Func<Value, Value> operation) => new(operation(Value));
-    public Box Binary(Value other, Func<Value, Value, Value> operation) => new(operation(Value, other));
-
     public override Shape Shape { get; init; } = Shape.Scalar;
 
     public override string ToString() => $"|{Value}|";

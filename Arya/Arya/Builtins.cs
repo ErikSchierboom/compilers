@@ -36,7 +36,7 @@ internal static class BuiltinFunctions
                 arguments[0] switch
                 {
                     Array<int> intArray => intArray.Unary(Operation),
-                    Array<Box> boxArray => boxArray.Unary(box => box.Unary(element => Invoke(element))),
+                    Array<Box> boxArray => boxArray.Unary(box => Invoke(box.Value).Box()),
                     Array<Any> => Array<Any>.Empty,
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
@@ -50,7 +50,7 @@ internal static class BuiltinFunctions
                 arguments[0] switch
                 {
                     Array<char> charArray => charArray.Unary(Operation),
-                    Array<Box> boxArray => boxArray.Unary(box => box.Unary(element => Invoke(element))),
+                    Array<Box> boxArray => boxArray.Unary(box => new(((Func<Value, Value>)(element => Invoke(element)))(box.Value))),
                     Array<Any> => Array<Any>.Empty,
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
@@ -75,7 +75,7 @@ internal static class BuiltinFunctions
                     case Array<char> charArray:
                         return charArray.Binary(Operation);
                     case Array<Box> boxArray:
-                        return boxArray.Unary(box => box.Unary(element => Invoke(element)));
+                        return boxArray.Unary(box => new(((Func<Value, Value>)(element => Invoke(element)))(box.Value)));
                     case Array<Any>:
                         return Array<Any>.Empty;
                     default:
@@ -218,8 +218,8 @@ internal static class BuiltinFunctions
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> intArray, Array<int> otherIntArray) => intArray.Zip(otherIntArray, Math.Max),
                     (Array<char> charArray, Array<char> otherCharArray) => charArray.Zip(otherCharArray, (a, b) => a >= b ? a : b),
-                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => a.Binary(b.Value, (x, y) => Invoke(x, y))),
-                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => a.Binary(b.Value, (x, y) => Invoke(y, x))),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => new(((Func<Value, Value, Value>)((x, y) => Invoke(x, y)))(a.Value, b.Value))),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => new(((Func<Value, Value, Value>)((x, y) => Invoke(y, x)))(a.Value, b.Value))),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
@@ -232,8 +232,8 @@ internal static class BuiltinFunctions
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> intArray, Array<int> otherIntArray) => intArray.Zip(otherIntArray, Math.Min),
                     (Array<char> charArray, Array<char> otherCharArray) => charArray.Zip(otherCharArray, (a, b) => a <= b ? a : b),
-                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => a.Binary(b.Value, (x, y) => Invoke(x, y))),
-                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => a.Binary(b.Value, (x, y) => Invoke(y, x))),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke(a.Value, b.Value).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke(a.Value, b.Value).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
