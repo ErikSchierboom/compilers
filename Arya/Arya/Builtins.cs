@@ -16,6 +16,7 @@ internal static class BuiltinFunctions
         new Unary.IndicesFunction(),
 
         new Binary.ReshapeFunction(),
+        new Binary.ReplicateFunction(),
     ];
 
     private static class Unary
@@ -149,6 +150,7 @@ internal static class BuiltinFunctions
                 arguments[0] switch
                 {
                     Array<int> intArray   => intArray.Reverse(),
+                    Array<bool> boolArray => boolArray.Reverse(),
                     Array<char> charArray => charArray.Reverse(),
                     Array<Box> boxArray   => boxArray.Reverse(),
                     Array<Any> anyArray   => anyArray,
@@ -162,6 +164,7 @@ internal static class BuiltinFunctions
                 arguments[0] switch
                 {
                     Array<int> intArray   => intArray.Indices(),
+                    Array<bool> boolArray => boolArray.Indices(),
                     Array<char> charArray => charArray.Indices(),
                     Array<Box> boxArray   => boxArray.Indices(),
                     Array<Any> anyArray   => anyArray.Indices(),
@@ -183,9 +186,24 @@ internal static class BuiltinFunctions
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<int> intArray, Array<int> newDimensions) => intArray.Reshape(newDimensions),
+                    (Array<bool> boolArray, Array<int> newDimensions) => boolArray.Reshape(newDimensions),
                     (Array<char> charArray, Array<int> newDimensions) => charArray.Reshape(newDimensions),
                     (Array<Box> boxArray, Array<int> newDimensions) => boxArray.Reshape(newDimensions),
-                    (Array<Any> anyArray, Array<int>)   => anyArray,
+                    (Array<Any> anyArray, Array<int>) => anyArray,
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+        }
+
+        internal sealed record ReplicateFunction() : BinaryFunction("replicate")
+        {
+            public override Value Invoke(params Value[] arguments) =>
+                (arguments[0], arguments[1]) switch
+                {
+                    (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
+                    (Array<int> intArray, Array<int> replications) => intArray.Replicate(replications),
+                    (Array<bool> boolArray, Array<int> replications) => boolArray.Replicate(replications),
+                    (Array<char> charArray, Array<int> replications) => charArray.Replicate(replications),
+                    (Array<Box> boxArray, Array<int> replications) => boxArray.Replicate(replications),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }

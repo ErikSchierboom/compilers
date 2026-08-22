@@ -33,6 +33,8 @@ public sealed record Shape(params int[] Dimensions)
     public bool IsVector => Dimensions.Length == 1;
     public bool IsMatrix => Dimensions.Length == 2;
 
+    public int Rank => Dimensions.Length;
+
     public int Count => Dimensions.Aggregate(1, (count, dimension) => count * dimension);
     public int Length => Dimensions.Skip(1).FirstOrDefault(1);
     public int RowCount => Dimensions.FirstOrDefault(1);
@@ -117,6 +119,24 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
             throw new InvalidOperationException("Invalid reshape dimensions");
 
         return this with { Shape = newShape };
+    }
+
+    public Value Replicate(Array<int> replications)
+    {
+        if (replications.Elements.Any(replication => replication < 0))
+            throw new InvalidOperationException("Replication amount must be >= 0");
+
+        if (Shape.Rank != replications.Shape.Rank)
+            throw new InvalidOperationException("Invalid replication dimensions");
+
+        var newRows = Rows()
+            .Zip(replications.Elements.Repeat(), Enumerable.Repeat)
+            .SelectMany(newRow => newRow)
+            .ToArray();
+        var newElements = newRows.SelectMany(newRow => newRow).ToArray();
+        var newShape = Shape.SetFirst(newRows.Length);
+
+        return this with { Shape = newShape, Elements = newElements };
     }
 
     public Array<T> Unary(Func<T, T> operation) =>
