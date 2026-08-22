@@ -10,7 +10,7 @@ public static class UnaryOperatorsTests
                 { "+1", Array<int>.Scalar(1) },
                 { "+[1 2 3]", Array<int>.Vector(1, 2, 3) },
                 { "+[[4 5] [6 7]]", Array<int>.Matrix([[4, 5], [6, 7]]) },
-                { "+[|[1]| |[2 3]|]", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(2, 3).Box()) },
+                { "+[@[1] @[2 3]]", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(2, 3).Box()) },
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]
@@ -28,9 +28,9 @@ public static class UnaryOperatorsTests
                 { "[-1 -2 -3]", Array<int>.Vector(-1, -2, -3) },
                 { "-[[4 5] [6 7]]", Array<int>.Matrix([[-4, -5], [-6, -7]]) },
                 { "[[-4] [-5] [-6] [-7]]", Array<int>.Matrix([[-4], [-5], [-6], [-7]]) },
-                { "-[|[1]| |[2 3]|]", Array<Box>.Vector(Array<int>.Vector(-1).Box(), Array<int>.Vector(-2, -3).Box()) },
-                { "-[|[-1]| |[2 -3]|]", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(-2, 3).Box()) },
-                { "-[|[1]| |[2 3]| |[4 5 6]|]", Array<Box>.Vector(Array<int>.Vector(-1).Box(), Array<int>.Vector(-2, -3).Box(), Array<int>.Vector(-4, -5, -6).Box()) },
+                { "-[@[1] @[2 3]]", Array<Box>.Vector(Array<int>.Vector(-1).Box(), Array<int>.Vector(-2, -3).Box()) },
+                { "-[@[-1] @[2 -3]]", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(-2, 3).Box()) },
+                { "-[@[1] @[2 3] @[4 5 6]]", Array<Box>.Vector(Array<int>.Vector(-1).Box(), Array<int>.Vector(-2, -3).Box(), Array<int>.Vector(-4, -5, -6).Box()) },
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]
@@ -46,7 +46,7 @@ public static class UnaryOperatorsTests
                 { "!1", Array<int>.Scalar(-2) },
                 { "![1 2 3]", Array<int>.Vector(-2, -3, -4) },
                 { "![[4 5] [6 7]]", Array<int>.Matrix([[-5, -6], [-7, -8]]) },
-                { "![|[1]| |[2 3]|]", Array<Box>.Vector(Array<int>.Vector(-2).Box(), Array<int>.Vector(-3, -4).Box()) },
+                { "![@[1] @[2 3]]", Array<Box>.Vector(Array<int>.Vector(-2).Box(), Array<int>.Vector(-3, -4).Box()) },
             };
 
         [Theory, MemberData(nameof(IntegersTestData))]
@@ -59,7 +59,7 @@ public static class UnaryOperatorsTests
                 { "!true", Array<bool>.Scalar(false) },
                 { "![true false false]", Array<bool>.Vector(false, true, true) },
                 { "![[true false] [false true]]", Array<bool>.Matrix([[false, true], [true, false]]) },
-                { "![|[true]| |[false true]|]", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(true, false).Box()) },
+                { "![@[true] @[false true]]", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(true, false).Box()) },
             };
 
         [Theory, MemberData(nameof(BooleansTestData))]

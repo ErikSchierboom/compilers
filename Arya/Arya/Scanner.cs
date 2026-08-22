@@ -63,6 +63,10 @@ internal sealed class Scanner
                     Advance();
                     tokens.Add(new Token(TokenType.Pipe, "|"));
                     break;
+                case '@':
+                    Advance();
+                    tokens.Add(new Token(TokenType.At, "@"));
+                    break;
                 case '<':
                     Advance();
 
@@ -261,6 +265,7 @@ internal enum TokenType
     Slash,
     Percent,
     Pipe,
+    At,
     Comma,
     Less,
     LessLess,

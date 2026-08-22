@@ -165,9 +165,9 @@ public class LiteralsTests
     public static readonly TheoryData<string, Value> BoxedTestData =
         new()
         {
-            { "|3|", Array<Box>.Scalar(Array<int>.Scalar(3).Box()) },
-            { "|[3 4]|", Array<Box>.Scalar(Array<int>.Vector(3, 4).Box()) },
-            { "[|[3 4]| |[5 6]|]", Array<Box>.Vector(Array<int>.Vector(3, 4).Box(), Array<int>.Vector(5, 6).Box()) },
+            { "@3", Array<Box>.Scalar(Array<int>.Scalar(3).Box()) },
+            { "@[3 4]", Array<Box>.Scalar(Array<int>.Vector(3, 4).Box()) },
+            { "[@[3 4] @[5 6]]", Array<Box>.Vector(Array<int>.Vector(3, 4).Box(), Array<int>.Vector(5, 6).Box()) },
         };
 
     [Theory, MemberData(nameof(BoxedTestData))]
