@@ -47,8 +47,6 @@ public class Interpreter
     private static Value UnaryOp(TokenType op, Value operand) =>
         (op, operand) switch
         {
-            (TokenType.Plus, Array<int> arr) => arr,
-            (TokenType.Minus, Array<int> arr) => arr.Unary(i => -i),
             (TokenType.Exclamation, Array<int> arr) => arr.Unary(i => ~i),
             (TokenType.Exclamation, Array<bool> arr) => arr.Unary(b => !b),
             (_, Array<Box> arr) => arr.Unary(box => UnaryOp(op, box.Value).Box()),
@@ -75,14 +73,6 @@ public class Interpreter
 
             (_, Array<Box> l, var r) => l.Zip(r.Boxes(), (a, b) => BinaryOp(op, a.Value, b.Value).Box()),
             (_, var l, Array<Box> r) => r.Zip(l.Boxes(), (a, b) => BinaryOp(op, b.Value, a.Value).Box()),
-
-            (TokenType.Plus, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a + b),
-            (TokenType.Plus, Array<char> l, Array<int> r) => l.Zip(r, (a, b) => (char)(a + b)),
-            (TokenType.Plus, Array<int> l, Array<char> r) => r.Zip(l, (a, b) => (char)(a + b)),
-
-            (TokenType.Minus, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a - b),
-            (TokenType.Minus, Array<char> l, Array<int> r) => l.Zip(r, (a, b) => (char)(a - b)),
-            (TokenType.Minus, Array<int> l, Array<char> r) => r.Zip(l, (a, b) => (char)(b - a)),
 
             (TokenType.Star, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a * b),
             (TokenType.Slash, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a / b),

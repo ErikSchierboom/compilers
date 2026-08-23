@@ -60,11 +60,41 @@ internal static class Lowerer
 {
     private static readonly ExpressionRewriter[] _lowerers =
     [
-        new ConstantFoldingLowerer()
+        new ConstantFoldingLowerer(),
+        new OperatorToFunctionLowerer(),
     ];
 
     public static Expression Lower(Expression expression) =>
         _lowerers.Aggregate(expression, (loweredExpression, lowerer) => lowerer.Rewrite(loweredExpression));
+
+    private class OperatorToFunctionLowerer : ExpressionRewriter
+    {
+        protected override Expression RewriteUnary(UnaryExpression unaryExpression)
+        {
+            switch (unaryExpression.Operator.Type)
+            {
+                case TokenType.Plus:
+                    return new CallExpression(new Token(TokenType.Identifier, "plus"), [unaryExpression.Operand]);
+                case TokenType.Minus:
+                    return new CallExpression(new Token(TokenType.Identifier, "minus"), [unaryExpression.Operand]);
+            }
+
+            return base.RewriteUnary(unaryExpression);
+        }
+
+        protected override Expression RewriteBinary(BinaryExpression binaryExpression)
+        {
+            switch (binaryExpression.Operator.Type)
+            {
+                case TokenType.Plus:
+                    return new CallExpression(new Token(TokenType.Identifier, "add"), [binaryExpression.Left, binaryExpression.Right]);
+                case TokenType.Minus:
+                    return new CallExpression(new Token(TokenType.Identifier, "subtract"), [binaryExpression.Left, binaryExpression.Right]);
+            }
+
+            return base.RewriteBinary(binaryExpression);
+        }
+    }
 
     private class ConstantFoldingLowerer : ExpressionRewriter
     {

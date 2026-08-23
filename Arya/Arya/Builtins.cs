@@ -14,14 +14,16 @@ internal static class BuiltinFunctions
         new Unary.TrimFunction(),
         new Unary.ReverseFunction(),
         new Unary.IndicesFunction(),
+        new Unary.PlusFunction(),
+        new Unary.MinusFunction(),
 
         new Binary.ReshapeFunction(),
         new Binary.ReplicateFunction(),
         new Binary.MaxFunction(),
         new Binary.MinFunction(),
         new Binary.ReduceFunction(),
-        new Binary.PlusFunction(),
-        new Binary.MinusFunction(),
+        new Binary.AddFunction(),
+        new Binary.SubtractFunction(),
         new Binary.MultiplyFunction(),
         new Binary.DivideFunction()
     ];
@@ -48,6 +50,8 @@ internal static class BuiltinFunctions
         }
 
         internal sealed record AbsFunction() : UnaryIntegerFunction("abs", Math.Abs);
+        internal sealed record PlusFunction() : UnaryIntegerFunction("plus", x => x);
+        internal sealed record MinusFunction() : UnaryIntegerFunction("minus", x => -x);
 
         internal abstract record UnaryCharFunction(string Name, Func<char, char> Operation) : UnaryFunction(Name)
         {
@@ -334,15 +338,15 @@ internal static class BuiltinFunctions
                     (Array<Any>, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> l, Array<int> r) => l.Zip(r, Operation),
                     (Array<char> l, Array<int> r) => l.Zip(r, (a, b) => (char)(Operation(a, b))),
-                    (Array<int> l, Array<char> r) => r.Zip(l, (a, b) => (char)(Operation(a, b))),
+                    (Array<int> l, Array<char> r) => r.Zip(l, (a, b) => (char)(Operation(b, a))),
                     (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
                     (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
 
-        internal sealed record PlusFunction() : BinaryIntegerAndCharFunction("plus", (a, b) => a + b);
-        internal sealed record MinusFunction() : BinaryIntegerAndCharFunction("minus", (a, b) => a - b);
+        internal sealed record AddFunction() : BinaryIntegerAndCharFunction("add", (a, b) => a + b);
+        internal sealed record SubtractFunction() : BinaryIntegerAndCharFunction("subtract", (a, b) => a - b);
 
         internal abstract record BinaryIntegerFunction(string Name, Func<int, int, int> Operation) : BinaryFunction(Name)
         {
