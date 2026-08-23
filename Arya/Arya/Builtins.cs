@@ -120,13 +120,28 @@ internal static class BuiltinFunctions
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
-                    Array<int> intArray   => intArray.Transpose(),
-                    Array<bool> boolArray => boolArray.Transpose(),
-                    Array<char> charArray => charArray.Transpose(),
-                    Array<Box> boxArray   => boxArray.Transpose(),
+                    Array<int> intArray   => Transpose(intArray),
+                    Array<bool> boolArray => Transpose(boolArray),
+                    Array<char> charArray => Transpose(charArray),
+                    Array<Box> boxArray   => Transpose(boxArray),
                     Array<Any> anyArray   => anyArray,
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
+
+            private static Array<T> Transpose<T>(Array<T> array)
+            {
+                if (array.Shape.IsScalar || array.Shape.IsVector)
+                    return array;
+
+                var newShape = new Shape([array.Shape.Dimensions[^1], ..array.Shape.Dimensions[..^1]]);
+                var newElements = new T[array.Elements.Length];
+
+                for (var y = 0; y < array.Shape.Dimensions[^1]; y++)
+                for (var x = 0; x < array.Shape.Dimensions[0]; x++)
+                    newElements[y * array.Shape.Dimensions[0] + x] = array.Elements[x * array.Shape.Dimensions[^1] + y];
+
+                return array with { Shape = newShape, Elements = [..newElements] };
+            }
         }
 
         internal sealed record RangeFunction() : UnaryFunction("range")
@@ -155,13 +170,25 @@ internal static class BuiltinFunctions
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
-                    Array<int> intArray   => intArray.Reverse(),
-                    Array<bool> boolArray => boolArray.Reverse(),
-                    Array<char> charArray => charArray.Reverse(),
-                    Array<Box> boxArray   => boxArray.Reverse(),
+                    Array<int> intArray   => Reverse(intArray),
+                    Array<bool> boolArray => Reverse(boolArray),
+                    Array<char> charArray => Reverse(charArray),
+                    Array<Box> boxArray   => Reverse(boxArray),
                     Array<Any> anyArray   => anyArray,
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
+
+            private static Array<T> Reverse<T>(Array<T> array)
+            {
+                if (array.Shape.IsScalar)
+                    return array;
+
+                if (array.Shape.IsVector)
+                    return Array<T>.Vector([.. array.Elements.Reverse()]);
+
+                var newElements = array.Rows().Reverse().SelectMany(element => element);
+                return array with { Elements = [..newElements] };
+            }
         }
 
         internal sealed record IndicesFunction() : UnaryFunction("indices")
@@ -191,13 +218,22 @@ internal static class BuiltinFunctions
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
-                    (Array<int> intArray, Array<int> newDimensions) => intArray.Reshape(newDimensions),
-                    (Array<bool> boolArray, Array<int> newDimensions) => boolArray.Reshape(newDimensions),
-                    (Array<char> charArray, Array<int> newDimensions) => charArray.Reshape(newDimensions),
-                    (Array<Box> boxArray, Array<int> newDimensions) => boxArray.Reshape(newDimensions),
+                    (Array<int> intArray, Array<int> newDimensions) => Reshape(intArray, newDimensions),
+                    (Array<bool> boolArray, Array<int> newDimensions) => Reshape(boolArray, newDimensions),
+                    (Array<char> charArray, Array<int> newDimensions) => Reshape(charArray, newDimensions),
+                    (Array<Box> boxArray, Array<int> newDimensions) => Reshape(boxArray, newDimensions),
                     (Array<Any> anyArray, Array<int>) => anyArray,
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
+
+            private static Array<T> Reshape<T>(Array<T> array, Array<int> newDimensions)
+            {
+                var newShape = new Shape(newDimensions.Elements);
+                if (newShape.Count != array.Shape.Count)
+                    throw new InvalidOperationException("Invalid reshape dimensions");
+
+                return array with { Shape = newShape };
+            }
         }
 
         internal sealed record ReplicateFunction() : BinaryFunction("replicate")
@@ -213,7 +249,7 @@ internal static class BuiltinFunctions
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
 
-            private Array<T> Replicate<T>(Array<T> array, Array<int> replications)
+            private static Array<T> Replicate<T>(Array<T> array, Array<int> replications)
             {
                 if (replications.Elements.Any(replication => replication < 0))
                     throw new InvalidOperationException("Replication amount must be >= 0");
@@ -226,7 +262,7 @@ internal static class BuiltinFunctions
                     .SelectMany(newRow => newRow)
                     .ToArray();
                 var newElements = newRows.SelectMany(newRow => newRow).ToArray();
-                var newShape = Shape.SetFirst(newRows.Length);
+                var newShape = array.Shape.SetFirst(newRows.Length);
 
                 return array with { Shape = newShape, Elements = newElements };
             }

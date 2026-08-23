@@ -82,42 +82,6 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
         return Elements.Chunk(Shape.Dimensions[0]);
     }
 
-    public Array<T> Reverse()
-    {
-        if (Shape.IsScalar)
-            return this;
-
-        if (Shape.IsVector)
-            return Vector([.. Elements.Reverse()]);
-
-        var newElements = Rows().Reverse().SelectMany(element => element);
-        return this with { Elements = [..newElements] };
-    }
-
-    public Array<T> Transpose()
-    {
-        if (Shape.IsScalar || Shape.IsVector)
-            return this;
-        
-        var newShape = new Shape([Shape.Dimensions[^1], ..Shape.Dimensions[..^1]]);
-        var newElements = new T[Elements.Length];
-        
-        for (var y = 0; y < Shape.Dimensions[^1]; y++)
-            for (var x = 0; x < Shape.Dimensions[0]; x++)
-                newElements[y * Shape.Dimensions[0] + x] = Elements[x * Shape.Dimensions[^1] + y];
-        
-        return this with { Shape = newShape, Elements = [..newElements] };
-    }
-
-    public Value Reshape(Array<int> newDimensions)
-    {
-        var newShape = new Shape(newDimensions.Elements);
-        if (newShape.Count != Shape.Count)
-            throw new InvalidOperationException("Invalid reshape dimensions");
-
-        return this with { Shape = newShape };
-    }
-
     public Array<T> Unary(Func<T, T> operation) =>
         new(Shape, [.. Elements.Select(operation)]);
     
