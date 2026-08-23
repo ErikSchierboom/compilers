@@ -1,0 +1,137 @@
+namespace Arya;
+
+internal abstract class ExpressionRewriter
+{
+    public Expression Rewrite(Expression expression) =>
+        expression switch
+        {
+            ArrayExpression arrayExpression => RewriteArray(arrayExpression),
+            AssignmentExpression assignmentExpression => RewriteAssignment(assignmentExpression),
+            BinaryExpression binaryExpression => RewriteBinary(binaryExpression),
+            BlockExpression blockExpression => RewriteBlock(blockExpression),
+            BoxExpression boxExpression => RewriteBox(boxExpression),
+            CallExpression callExpression => RewriteCall(callExpression),
+            LiteralExpression literalExpression => RewriteLiteral(literalExpression),
+            NameExpression nameExpression => RewriteName(nameExpression),
+            ParenthesizedExpression parenthesizedExpression => RewriteParenthesized(parenthesizedExpression),
+            UnaryExpression unaryExpression => RewriteUnary(unaryExpression),
+            _ => throw new ArgumentOutOfRangeException(nameof(expression))
+        };
+
+    protected virtual Expression RewriteArray(ArrayExpression arrayExpression) =>
+        new ArrayExpression([..arrayExpression.Elements.Select(Rewrite)]);
+
+    protected virtual Expression RewriteAssignment(AssignmentExpression assignmentExpression)
+    {
+        var rewrittenIdentifier = RewriteName(assignmentExpression.Identifier);
+        if (rewrittenIdentifier is not NameExpression rewrittenIdentifierName)
+            throw new InvalidOperationException("Assignment expression's identifier must be a name expressions");
+
+        return new AssignmentExpression(rewrittenIdentifierName, Rewrite(assignmentExpression.Value));
+    }
+
+    protected virtual Expression RewriteBinary(BinaryExpression binaryExpression) =>
+        new BinaryExpression(
+            Rewrite(binaryExpression.Left),
+            binaryExpression.Operator,
+            Rewrite(binaryExpression.Right));
+
+    protected virtual Expression RewriteBlock(BlockExpression blockExpression) =>
+        new BlockExpression([..blockExpression.Expressions.Select(Rewrite)]);
+
+    protected virtual Expression RewriteBox(BoxExpression boxExpression) =>
+        new BoxExpression(Rewrite(boxExpression.Expression));
+
+    protected virtual Expression RewriteCall(CallExpression callExpression) =>
+        new CallExpression(callExpression.FunctionName, [..callExpression.Arguments.Select(Rewrite)]);
+
+    protected virtual Expression RewriteLiteral(LiteralExpression literalExpression) => literalExpression;
+
+    protected virtual Expression RewriteName(NameExpression nameExpression) => nameExpression;
+
+    protected virtual Expression RewriteParenthesized(ParenthesizedExpression parenthesizedExpression) =>
+        new ParenthesizedExpression(Rewrite(parenthesizedExpression.Expression));
+
+    protected virtual Expression RewriteUnary(UnaryExpression unaryExpression) =>
+        new UnaryExpression(unaryExpression.Operator, Rewrite(unaryExpression.Operand));
+}
+
+internal static class Lowerer
+{
+    private static readonly ExpressionRewriter[] _lowerers =
+    [
+        new ConstantFoldingLowerer()
+    ];
+
+    public static Expression Lower(Expression expression) =>
+        _lowerers.Aggregate(expression, (loweredExpression, lowerer) => lowerer.Rewrite(loweredExpression));
+
+    private class ConstantFoldingLowerer : ExpressionRewriter
+    {
+        protected override Expression RewriteUnary(UnaryExpression unaryExpression)
+        {
+            switch (unaryExpression.Operator.Type, unaryExpression.Operand)
+            {
+                case (TokenType.Plus, LiteralExpression { Value.Literal: int }):
+                    return unaryExpression.Operand;
+                case (TokenType.Minus, LiteralExpression { Value.Literal: int intVal }):
+                    return new LiteralExpression(new Token(TokenType.Number, $"-{intVal}", -intVal));
+            }
+
+            return base.RewriteUnary(unaryExpression);
+        }
+
+        protected override Expression RewriteBinary(BinaryExpression binaryExpression)
+        {
+            switch (binaryExpression.Left, binaryExpression.Operator.Type, binaryExpression.Right)
+            {
+                case (LiteralExpression left, TokenType.Plus, LiteralExpression right):
+                    switch (left.Value.Literal, right.Value.Literal)
+                    {
+                        case (0, _):
+                            return right;
+                        case (_, 0):
+                            return left;
+                        case (int leftInt, int rightInt):
+                            return new LiteralExpression(new Token(TokenType.Number, $"{leftInt + rightInt}", leftInt + rightInt));
+                    }
+                    break;
+                case (LiteralExpression left, TokenType.Minus, LiteralExpression right):
+                    switch (left.Value.Literal, right.Value.Literal)
+                    {
+                        case (0, int rightVal):
+                            return new LiteralExpression(new Token(TokenType.Number, $"-{rightVal}", -rightVal));
+                        case (_, 0):
+                            return left;
+                        case (int leftInt, int rightInt):
+                            return new LiteralExpression(new Token(TokenType.Number, $"{leftInt - rightInt}", leftInt - rightInt));
+                    }
+                    break;
+                case (LiteralExpression left, TokenType.Star, LiteralExpression right):
+                    switch (left.Value.Literal, right.Value.Literal)
+                    {
+                        case (0, _) or (_, 0):
+                            return new LiteralExpression(new Token(TokenType.Number, "0", 0));
+                        case (1, _):
+                            return right;
+                        case (_, 1):
+                            return left;
+                        case (int leftInt, int rightInt):
+                            return new LiteralExpression(new Token(TokenType.Number, $"{leftInt * rightInt}", leftInt * rightInt));
+                    }
+                    break;
+                case (LiteralExpression left, TokenType.Slash, LiteralExpression right):
+                    switch (left.Value.Literal, right.Value.Literal)
+                    {
+                        case (_, 1):
+                            return left;
+                        case (int leftInt, int rightInt):
+                            return new LiteralExpression(new Token(TokenType.Number, $"{leftInt / rightInt}", leftInt / rightInt));
+                    }
+                    break;
+            }
+
+            return base.RewriteBinary(binaryExpression);
+        }
+    }
+}

@@ -1,40 +1,19 @@
 namespace Arya;
 
-public sealed record Scope
-{
-    private readonly Scope? _parent;
-    private Dictionary<string, Value?> Values => field ??= new Dictionary<string, Value?>();
-
-    public Scope(Scope? parent = null) => _parent = parent;
-
-    public Scope CreateChild() => new(this);
-
-    public Value? this[string key]
-    {
-        get
-        {
-            if (Values.TryGetValue(key, out var result))
-                return result;
-
-            return _parent?[key];
-        }
-        set => Values[key] = value;
-    }
-}
-
 public class Interpreter
 {
-    private readonly BlockExpression _blockExpression;
+    private readonly Expression _expression;
 
-    private Interpreter(BlockExpression blockExpression) => _blockExpression = blockExpression;
+    private Interpreter(Expression expression) => _expression = expression;
 
     public static Value? Evaluate(string code)
     {
-        var expressions = Parser.Parse(code);
-        return new Interpreter(expressions).Evaluate();
+        var expression = Parser.Parse(code);
+        var loweredExpression = Lowerer.Lower(expression);
+        return new Interpreter(loweredExpression).Evaluate();
     }
 
-    private Value Evaluate() => Evaluate(_blockExpression, CreateDefaultScope());
+    private Value Evaluate() => Evaluate(_expression, CreateDefaultScope());
 
     private Value Evaluate(Expression expression, Scope scope) =>
         expression switch
@@ -188,5 +167,27 @@ public class Interpreter
             scope[builtinFunction.Name] = builtinFunction;
 
         return scope;
+    }
+}
+
+public sealed record Scope
+{
+    private readonly Scope? _parent;
+    private Dictionary<string, Value?> Values => field ??= new Dictionary<string, Value?>();
+
+    public Scope(Scope? parent = null) => _parent = parent;
+
+    public Scope CreateChild() => new(this);
+
+    public Value? this[string key]
+    {
+        get
+        {
+            if (Values.TryGetValue(key, out var result))
+                return result;
+
+            return _parent?[key];
+        }
+        set => Values[key] = value;
     }
 }
