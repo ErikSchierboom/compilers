@@ -361,7 +361,7 @@ internal static class BuiltinFunctions
                 };
         }
 
-        internal sealed record MultiplyFunction() : BinaryIntegerAndCharFunction("multiply", (a, b) => a * b);
-        internal sealed record DivideFunction() : BinaryIntegerAndCharFunction("divide", (a, b) => a / b);
+        internal sealed record MultiplyFunction() : BinaryIntegerFunction("multiply", (a, b) => a * b);
+        internal sealed record DivideFunction() : BinaryIntegerFunction("divide", (a, b) => a / b);
     }
 }
