@@ -86,4 +86,31 @@ public class BinaryBuiltinFunctionsTests
     [Theory, MemberData(nameof(MinTestData))]
     public void Min(string code, Value expected) =>
         Assert.Equal(expected, Interpreter.Evaluate(code));
+
+    public static readonly TheoryData<string, Value> ReduceTestData =
+        new()
+        {
+            { "reduce(1, max)", Array<int>.Scalar(1) },
+            { "reduce([3], max)", Array<int>.Scalar(3) },
+            { "reduce([2 3 4], max)", Array<int>.Scalar(4) },
+            { "reduce([2 3 4], min)", Array<int>.Scalar(2) },
+            // { "min([2 5], [4 3])", Array<int>.Vector(2, 3) },
+            // { "min([[5 4] [6 7]], 6)", Array<int>.Matrix([[5, 4], [6, 6]]) },
+            // { "min([[1 5] [3 2]], [[4 1] [2 2]]", Array<int>.Matrix([[1, 1], [2, 2]]) },
+            // { "min([], 2)", Array<Any>.Empty },
+            // { "min([@[1] @[2 3]], 2)", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(2, 2).Box()) },
+            // { "min(2, [@[1] @[2 3]])", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(2, 2).Box()) },
+            // { "min([@[1] @[2 3]], [@[2] @[20 30]])", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(2, 3).Box()) },
+            // { "min([@[1] @[2 3]], [])", Array<Any>.Empty },
+            // { "min([], [@[1] @[2 3]])", Array<Any>.Empty },
+            // { "min('a', 'b')", Array<char>.Scalar('a') },
+            // { "min('c', 'b')", Array<char>.Scalar('b') },
+            // { "min(['d' 'g' 'i'], 'h')", Array<char>.Vector('d', 'g', 'h') },
+            // { "min([['e'] ['k'] ['g']], 'f')", Array<char>.Matrix([['e'], ['f'], ['f']]) },
+            // { "min([@['a' 'b' 'c'] @['d' 'e']], 'c')", Array<Box>.Vector(Array<char>.Vector('a', 'b', 'c').Box(), Array<char>.Vector('c', 'c').Box()) },
+        };
+
+    [Theory, MemberData(nameof(ReduceTestData))]
+    public void Reduce(string code, Value expected) =>
+        Assert.Equal(expected, Interpreter.Evaluate(code));
 }

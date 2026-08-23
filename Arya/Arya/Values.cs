@@ -180,11 +180,6 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
         };
 
     public Array<int> Indices() => Array<int>.Vector([..Enumerable.Range(1, Shape.RowCount)]);
-
-    public Array<T> Reduce(Function reducer)
-    {
-        throw new NotImplementedException();
-    }
 }
 
 public abstract record Function(string Name) : Value
@@ -193,7 +188,7 @@ public abstract record Function(string Name) : Value
 
     public abstract int Arity { get; }
 
-    public abstract Value Invoke(params Value[] arguments);
+    public abstract Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope);
 
     public override string ToString() => Name;
 }

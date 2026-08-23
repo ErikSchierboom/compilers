@@ -140,7 +140,7 @@ public class Interpreter
             throw new InvalidOperationException("Invalid number of arguments");
 
         var arguments = call.Arguments.Select(arg => Evaluate(arg, scope)).ToArray();
-        return function.Invoke(arguments);
+        return function.Invoke(arguments, this, scope);
     }
 
     private Value Evaluate(NameExpression call, Scope scope) =>

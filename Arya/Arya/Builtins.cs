@@ -19,6 +19,7 @@ internal static class BuiltinFunctions
         new Binary.ReplicateFunction(),
         new Binary.MaxFunction(),
         new Binary.MinFunction(),
+        new Binary.ReduceFunction(),
     ];
 
     private static class Unary
@@ -32,11 +33,11 @@ internal static class BuiltinFunctions
         {
             public override int Arity => 1;
 
-            public override Value Invoke(params Value[] arguments) =>
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<int> intArray => intArray.Unary(Operation),
-                    Array<Box> boxArray => boxArray.Unary(box => Invoke(box.Value).Box()),
+                    Array<Box> boxArray => boxArray.Unary(box => Invoke([box.Value], interpreter, scope).Box()),
                     Array<Any> => Array<Any>.Empty,
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
@@ -46,11 +47,11 @@ internal static class BuiltinFunctions
 
         internal abstract record UnaryCharFunction(string Name, Func<char, char> Operation) : UnaryFunction(Name)
         {
-            public override Value Invoke(params Value[] arguments) =>
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<char> charArray => charArray.Unary(Operation),
-                    Array<Box> boxArray => boxArray.Unary(box => Invoke(box.Value).Box()),
+                    Array<Box> boxArray => boxArray.Unary(box => Invoke([box.Value], interpreter, scope).Box()),
                     Array<Any> => Array<Any>.Empty,
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
@@ -68,14 +69,14 @@ internal static class BuiltinFunctions
 
             public override int Arity => 1;
 
-            public override Value Invoke(params Value[] arguments)
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope)
             {
                 switch (arguments[0])
                 {
                     case Array<char> charArray:
                         return charArray.Binary(Operation);
                     case Array<Box> boxArray:
-                        return boxArray.Unary(box => Invoke(box.Value).Box());
+                        return boxArray.Unary(box => Invoke([box.Value], interpreter, scope).Box());
                     case Array<Any>:
                         return Array<Any>.Empty;
                     default:
@@ -88,7 +89,7 @@ internal static class BuiltinFunctions
 
         internal sealed record CountFunction() : UnaryFunction("count")
         {
-            public override Value Invoke(params Value[] arguments) =>
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<int> intArray   => Array<int>.Scalar(intArray.Elements.Length),
@@ -102,7 +103,7 @@ internal static class BuiltinFunctions
         
         internal sealed record LengthFunction() : UnaryFunction("length")
         {
-            public override Value Invoke(params Value[] arguments) =>
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<int> intArray   => Array<int>.Scalar(intArray.Shape.RowCount),
@@ -116,7 +117,7 @@ internal static class BuiltinFunctions
 
         internal sealed record TransposeFunction() : UnaryFunction("transpose")
         {
-            public override Value Invoke(params Value[] arguments) =>
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<int> intArray   => intArray.Transpose(),
@@ -130,7 +131,7 @@ internal static class BuiltinFunctions
 
         internal sealed record RangeFunction() : UnaryFunction("range")
         {
-            public override Value Invoke(params Value[] arguments)
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope)
             {
                 if (arguments[0] is not Array<int> intArray)
                     throw new InvalidOperationException("Invalid argument type");
@@ -151,7 +152,7 @@ internal static class BuiltinFunctions
 
         internal sealed record ReverseFunction() : UnaryFunction("reverse")
         {
-            public override Value Invoke(params Value[] arguments) =>
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<int> intArray   => intArray.Reverse(),
@@ -165,7 +166,7 @@ internal static class BuiltinFunctions
 
         internal sealed record IndicesFunction() : UnaryFunction("indices")
         {
-            public override Value Invoke(params Value[] arguments) =>
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<int> intArray   => intArray.Indices(),
@@ -187,7 +188,7 @@ internal static class BuiltinFunctions
         
         internal sealed record ReshapeFunction() : BinaryFunction("reshape")
         {
-            public override Value Invoke(params Value[] arguments) =>
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<int> intArray, Array<int> newDimensions) => intArray.Reshape(newDimensions),
@@ -201,7 +202,7 @@ internal static class BuiltinFunctions
 
         internal sealed record ReplicateFunction() : BinaryFunction("replicate")
         {
-            public override Value Invoke(params Value[] arguments) =>
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
@@ -233,30 +234,56 @@ internal static class BuiltinFunctions
 
         internal sealed record MaxFunction() : BinaryFunction("max")
         {
-            public override Value Invoke(params Value[] arguments) =>
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> intArray, Array<int> otherIntArray) => intArray.Zip(otherIntArray, Math.Max),
                     (Array<char> charArray, Array<char> otherCharArray) => charArray.Zip(otherCharArray, (a, b) => a >= b ? a : b),
-                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke(a.Value, b.Value).Box()),
-                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke(b.Value, a.Value).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
 
         internal sealed record MinFunction() : BinaryFunction("min")
         {
-            public override Value Invoke(params Value[] arguments) =>
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> intArray, Array<int> otherIntArray) => intArray.Zip(otherIntArray, Math.Min),
                     (Array<char> charArray, Array<char> otherCharArray) => charArray.Zip(otherCharArray, (a, b) => a <= b ? a : b),
-                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke(a.Value, b.Value).Box()),
-                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke(b.Value, a.Value).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
+        }
+
+        internal sealed record ReduceFunction() : BinaryFunction("reduce")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                (arguments[0], arguments[1]) switch
+                {
+                    (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
+                    (Array<int> intArray, Function reducer) => Reduce(intArray, reducer, interpreter, scope),
+                    (Array<char> charArray, Function reducer) => Reduce(charArray, reducer, interpreter, scope),
+                    (Array<Box> boxArray, Function reducer) => Reduce(boxArray, reducer, interpreter, scope),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+
+            private Value Reduce<T>(Array<T> array, Function reducer, Interpreter interpreter, Scope scope)
+            {
+                if (array.Shape.IsScalar)
+                    return array;
+
+                var newElements = array
+                    .Rows()
+                    .Select(Array<T>.Vector)
+                    .Aggregate((a, b) => (Array<T>)reducer.Invoke([a, b], interpreter, scope));
+                var newShape = newElements.Shape.RemoveFirst();
+                return newElements with { Shape = newShape };
+            }
         }
     }
 }
