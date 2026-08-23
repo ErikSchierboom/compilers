@@ -93,7 +93,7 @@ public class BinaryBuiltinFunctionsTests
             { "reduce(1, max)", Array<int>.Scalar(1) },
             { "reduce([3], max)", Array<int>.Scalar(3) },
             { "reduce([2 3 4], max)", Array<int>.Scalar(4) },
-            { "reduce([2 3 4], min)", Array<int>.Scalar(2) },
+            { "reduce([2 3 4], multiply)", Array<int>.Scalar(24) },
             // { "min([2 5], [4 3])", Array<int>.Vector(2, 3) },
             // { "min([[5 4] [6 7]], 6)", Array<int>.Matrix([[5, 4], [6, 6]]) },
             // { "min([[1 5] [3 2]], [[4 1] [2 2]]", Array<int>.Matrix([[1, 1], [2, 2]]) },

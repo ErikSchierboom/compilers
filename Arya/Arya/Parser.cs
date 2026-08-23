@@ -62,20 +62,20 @@ internal class Parser
         };
     }
 
-    public static List<Expression> Parse(string source)
+    public static BlockExpression Parse(string source)
     {
         var tokens = Scanner.Scan(source);
         return new Parser(tokens).Parse();
     }
 
-    private List<Expression> Parse()
+    private BlockExpression Parse()
     {
         var expressions = new List<Expression>();
 
         while (!IsEndOfFile)
             expressions.Add(ParseExpression());
 
-        return expressions;
+        return new BlockExpression(expressions);
     }
 
     private Expression ParseExpression(Precedence precedence = Precedence.None)
@@ -202,6 +202,7 @@ internal class Parser
 }
 
 internal abstract record Expression;
+internal sealed record BlockExpression(List<Expression> Expressions) : Expression;
 internal sealed record LiteralExpression(Token Value) : Expression;
 internal sealed record ArrayExpression(Expression[] Elements) : Expression;
 internal sealed record BoxExpression(Expression Expression) : Expression;

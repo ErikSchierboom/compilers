@@ -24,9 +24,9 @@ public sealed record Scope
 
 public class Interpreter
 {
-    private readonly List<Expression> _expressions;
+    private readonly BlockExpression _blockExpression;
 
-    private Interpreter(List<Expression> expressions) => _expressions = expressions;
+    private Interpreter(BlockExpression blockExpression) => _blockExpression = blockExpression;
 
     public static Value? Evaluate(string code)
     {
@@ -34,17 +34,7 @@ public class Interpreter
         return new Interpreter(expressions).Evaluate();
     }
 
-    private Value? Evaluate()
-    {
-        Value? result = null;
-
-        var defaultScope = CreateDefaultScope();
-
-        foreach (var expression in _expressions)
-            result = Evaluate(expression, defaultScope);
-
-        return result;
-    }
+    private Value Evaluate() => Evaluate(_blockExpression, CreateDefaultScope());
 
     private Value Evaluate(Expression expression, Scope scope) =>
         expression switch
@@ -58,8 +48,19 @@ public class Interpreter
             ParenthesizedExpression parenthesized => Evaluate(parenthesized.Expression, scope),
             AssignmentExpression assignment => Evaluate(assignment, scope),
             NameExpression name => Evaluate(name, scope),
+            BlockExpression block => Evaluate(block, scope),
             _ => throw new ArgumentOutOfRangeException(nameof(expression))
         };
+
+    private Value Evaluate(BlockExpression block, Scope scope)
+    {
+        Value? result = null;
+
+        foreach (var expression in block.Expressions)
+            result = Evaluate(expression, scope);
+
+        return result ?? throw new InvalidOperationException("Empty block expression");
+    }
 
     private Value Evaluate(UnaryExpression unary, Scope scope) =>
         UnaryOp(unary.Operator.Type, Evaluate(unary.Operand, scope));

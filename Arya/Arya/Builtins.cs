@@ -20,6 +20,10 @@ internal static class BuiltinFunctions
         new Binary.MaxFunction(),
         new Binary.MinFunction(),
         new Binary.ReduceFunction(),
+        new Binary.PlusFunction(),
+        new Binary.MinusFunction(),
+        new Binary.MultiplyFunction(),
+        new Binary.DivideFunction()
     ];
 
     private static class Unary
@@ -321,5 +325,39 @@ internal static class BuiltinFunctions
                 return newElements with { Shape = newShape };
             }
         }
+
+        internal abstract record BinaryIntegerAndCharFunction(string Name, Func<int, int, int> Operation) : BinaryFunction(Name)
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                (arguments[0], arguments[1]) switch
+                {
+                    (Array<Any>, _) or (_, Array<Any>) => Array<Any>.Empty,
+                    (Array<int> l, Array<int> r) => l.Zip(r, Operation),
+                    (Array<char> l, Array<int> r) => l.Zip(r, (a, b) => (char)(Operation(a, b))),
+                    (Array<int> l, Array<char> r) => r.Zip(l, (a, b) => (char)(Operation(a, b))),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+        }
+
+        internal sealed record PlusFunction() : BinaryIntegerAndCharFunction("plus", (a, b) => a + b);
+        internal sealed record MinusFunction() : BinaryIntegerAndCharFunction("minus", (a, b) => a - b);
+
+        internal abstract record BinaryIntegerFunction(string Name, Func<int, int, int> Operation) : BinaryFunction(Name)
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                (arguments[0], arguments[1]) switch
+                {
+                    (Array<Any>, _) or (_, Array<Any>) => Array<Any>.Empty,
+                    (Array<int> l, Array<int> r) => l.Zip(r, Operation),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+        }
+
+        internal sealed record MultiplyFunction() : BinaryIntegerAndCharFunction("multiply", (a, b) => a * b);
+        internal sealed record DivideFunction() : BinaryIntegerAndCharFunction("divide", (a, b) => a / b);
     }
 }
