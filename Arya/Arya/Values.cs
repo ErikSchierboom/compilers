@@ -118,24 +118,6 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
         return this with { Shape = newShape };
     }
 
-    public Value Replicate(Array<int> replications)
-    {
-        if (replications.Elements.Any(replication => replication < 0))
-            throw new InvalidOperationException("Replication amount must be >= 0");
-
-        if (replications.Shape.Rank > 1)
-            throw new InvalidOperationException("Invalid replication dimensions");
-
-        var newRows = Rows()
-            .Zip(replications.Elements.Repeat(), Enumerable.Repeat)
-            .SelectMany(newRow => newRow)
-            .ToArray();
-        var newElements = newRows.SelectMany(newRow => newRow).ToArray();
-        var newShape = Shape.SetFirst(newRows.Length);
-
-        return this with { Shape = newShape, Elements = newElements };
-    }
-
     public Array<T> Unary(Func<T, T> operation) =>
         new(Shape, [.. Elements.Select(operation)]);
     
@@ -198,6 +180,11 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
         };
 
     public Array<int> Indices() => Array<int>.Vector([..Enumerable.Range(1, Shape.RowCount)]);
+
+    public Array<T> Reduce(Function reducer)
+    {
+        throw new NotImplementedException();
+    }
 }
 
 public abstract record Function(string Name) : Value

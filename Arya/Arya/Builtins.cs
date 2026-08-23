@@ -205,12 +205,30 @@ internal static class BuiltinFunctions
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
-                    (Array<int> intArray, Array<int> replications) => intArray.Replicate(replications),
-                    (Array<bool> boolArray, Array<int> replications) => boolArray.Replicate(replications),
-                    (Array<char> charArray, Array<int> replications) => charArray.Replicate(replications),
-                    (Array<Box> boxArray, Array<int> replications) => boxArray.Replicate(replications),
+                    (Array<int> intArray, Array<int> replications) => Replicate(intArray, replications),
+                    (Array<bool> boolArray, Array<int> replications) => Replicate(boolArray, replications),
+                    (Array<char> charArray, Array<int> replications) => Replicate(charArray, replications),
+                    (Array<Box> boxArray, Array<int> replications) => Replicate(boxArray, replications),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
+
+            private Array<T> Replicate<T>(Array<T> array, Array<int> replications)
+            {
+                if (replications.Elements.Any(replication => replication < 0))
+                    throw new InvalidOperationException("Replication amount must be >= 0");
+
+                if (replications.Shape.Rank > 1)
+                    throw new InvalidOperationException("Invalid replication dimensions");
+
+                var newRows = array.Rows()
+                    .Zip(replications.Elements.Repeat(), Enumerable.Repeat)
+                    .SelectMany(newRow => newRow)
+                    .ToArray();
+                var newElements = newRows.SelectMany(newRow => newRow).ToArray();
+                var newShape = Shape.SetFirst(newRows.Length);
+
+                return array with { Shape = newShape, Elements = newElements };
+            }
         }
 
         internal sealed record MaxFunction() : BinaryFunction("max")
