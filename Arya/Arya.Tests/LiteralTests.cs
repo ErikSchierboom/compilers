@@ -1,6 +1,6 @@
 namespace Arya.Tests;
 
-public class LiteralsTests
+public class LiteralTests
 {
     public class Integers
     {
