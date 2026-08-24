@@ -77,6 +77,8 @@ internal static class Lowerer
                     return new CallExpression(new Token(TokenType.Identifier, "plus"), [unaryExpression.Operand]);
                 case TokenType.Minus:
                     return new CallExpression(new Token(TokenType.Identifier, "minus"), [unaryExpression.Operand]);
+                case TokenType.Exclamation:
+                    return new CallExpression(new Token(TokenType.Identifier, "not"), [unaryExpression.Operand]);
             }
 
             return base.RewriteUnary(unaryExpression);
@@ -90,6 +92,22 @@ internal static class Lowerer
                     return new CallExpression(new Token(TokenType.Identifier, "add"), [binaryExpression.Left, binaryExpression.Right]);
                 case TokenType.Minus:
                     return new CallExpression(new Token(TokenType.Identifier, "subtract"), [binaryExpression.Left, binaryExpression.Right]);
+                case TokenType.Star:
+                    return new CallExpression(new Token(TokenType.Identifier, "multiply"), [binaryExpression.Left, binaryExpression.Right]);
+                case TokenType.Slash:
+                    return new CallExpression(new Token(TokenType.Identifier, "divide"), [binaryExpression.Left, binaryExpression.Right]);
+                case TokenType.Percent:
+                    return new CallExpression(new Token(TokenType.Identifier, "modulo"), [binaryExpression.Left, binaryExpression.Right]);
+                case TokenType.Ampersand:
+                    return new CallExpression(new Token(TokenType.Identifier, "and"), [binaryExpression.Left, binaryExpression.Right]);
+                case TokenType.Pipe:
+                    return new CallExpression(new Token(TokenType.Identifier, "or"), [binaryExpression.Left, binaryExpression.Right]);
+                case TokenType.GreaterGreater:
+                    return new CallExpression(new Token(TokenType.Identifier, "shiftRight"), [binaryExpression.Left, binaryExpression.Right]);
+                case TokenType.LessLess:
+                    return new CallExpression(new Token(TokenType.Identifier, "shiftLeft"), [binaryExpression.Left, binaryExpression.Right]);
+                case TokenType.PlusPlus:
+                    return new CallExpression(new Token(TokenType.Identifier, "append"), [binaryExpression.Left, binaryExpression.Right]);
             }
 
             return base.RewriteBinary(binaryExpression);

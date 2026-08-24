@@ -42,48 +42,10 @@ public class Interpreter
     }
 
     private Value Evaluate(UnaryExpression unary, Scope scope) =>
-        UnaryOp(unary.Operator.Type, Evaluate(unary.Operand, scope));
-
-    private static Value UnaryOp(TokenType op, Value operand) =>
-        (op, operand) switch
-        {
-            (TokenType.Exclamation, Array<int> arr) => arr.Unary(i => ~i),
-            (TokenType.Exclamation, Array<bool> arr) => arr.Unary(b => !b),
-            (_, Array<Box> arr) => arr.Unary(box => UnaryOp(op, box.Value).Box()),
-            _ => throw new InvalidOperationException("Invalid unary expression")
-        };
+        throw new InvalidOperationException("Unary expressions should have been rewritten");
 
     private Value Evaluate(BinaryExpression binary, Scope scope) =>
-        BinaryOp(binary.Operator.Type, Evaluate(binary.Left, scope), Evaluate(binary.Right, scope));
-
-    private static Value BinaryOp(TokenType op, Value left, Value right) =>
-        (op, left, right) switch
-        {
-            (TokenType.PlusPlus, Array<int> l, Array<int> r) => l.Append(r),
-            (TokenType.PlusPlus, Array<int> l, Array<Any>) => l.Append(Array<int>.Empty),
-            (TokenType.PlusPlus, Array<Any>, Array<int> r) => r.Append(Array<int>.Empty),
-            (TokenType.PlusPlus, Array<char> l, Array<char> r) => l.Append(r),
-            (TokenType.PlusPlus, Array<char> l, Array<Any>) => l.Append(Array<char>.Empty),
-            (TokenType.PlusPlus, Array<Any>, Array<char> r) => r.Append(Array<char>.Empty),
-            (TokenType.PlusPlus, Array<Any>, Array<Any>) => Array<Any>.Empty,
-            (TokenType.PlusPlus, Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => BinaryOp(op, a.Value, b.Value).Box()),
-
-            (_, _, Array<Any>) or
-            (_, Array<Any>, _) => Array<Any>.Empty,
-
-            (_, Array<Box> l, var r) => l.Zip(r.Boxes(), (a, b) => BinaryOp(op, a.Value, b.Value).Box()),
-            (_, var l, Array<Box> r) => r.Zip(l.Boxes(), (a, b) => BinaryOp(op, b.Value, a.Value).Box()),
-
-            (TokenType.Star, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a * b),
-            (TokenType.Slash, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a / b),
-            (TokenType.Percent, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a % b),
-            (TokenType.Ampersand, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a & b),
-            (TokenType.Pipe, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a | b),
-            (TokenType.GreaterGreater, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a >> b),
-            (TokenType.LessLess, Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a << b),
-
-            _ => throw new InvalidOperationException("Invalid binary expression")
-        };
+        throw new InvalidOperationException("Binary expressions should have been rewritten");
 
     private static Value Evaluate(LiteralExpression literal, Scope scope) =>
         literal.Value.Type switch

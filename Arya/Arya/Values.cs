@@ -110,20 +110,6 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
         return new Array<T>(shape, [.. Elements.Repeat().Zip(other.Elements.Repeat(), operation).Take(shape.Count)]);
     }
 
-    public Array<T> Append(Array<T> other)
-    {
-        if ((Shape.IsScalar || Shape.IsVector) && (other.Shape.IsScalar || other.Shape.IsVector))
-            return Vector([.. Elements, .. other.Elements]);
-
-        if (Shape != other.Shape)
-            throw new InvalidOperationException("Cannot perform append on arrays with different shapes");
-
-        var newElements = Rows()
-            .Zip(other.Rows(), (row, otherRow) => row.Concat(otherRow))
-            .SelectMany(elements => elements);
-        return new Array<T>(Shape.Replace(1, Shape.Dimensions[1] + other.Shape.Dimensions[1]), [.. newElements]);
-    }
-
     public bool Equals(Array<T>? other) =>
         StructuralComparisons.StructuralEqualityComparer.Equals(Elements, other?.Elements) &&
         Shape.Equals(other?.Shape);

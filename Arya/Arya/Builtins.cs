@@ -16,7 +16,9 @@ internal static class BuiltinFunctions
         new Unary.IndicesFunction(),
         new Unary.PlusFunction(),
         new Unary.MinusFunction(),
+        new Unary.NotFunction(),
 
+        new Binary.AppendFunction(),
         new Binary.ReshapeFunction(),
         new Binary.ReplicateFunction(),
         new Binary.MaxFunction(),
@@ -25,7 +27,12 @@ internal static class BuiltinFunctions
         new Binary.AddFunction(),
         new Binary.SubtractFunction(),
         new Binary.MultiplyFunction(),
-        new Binary.DivideFunction()
+        new Binary.DivideFunction(),
+        new Binary.ModuloFunction(),
+        new Binary.BitwiseAndFunction(),
+        new Binary.BitwiseOrFunction(),
+        new Binary.BitwiseShiftLeftFunction(),
+        new Binary.BitwiseShiftRightFunction(),
     ];
 
     private static class Unary
@@ -33,6 +40,137 @@ internal static class BuiltinFunctions
         internal abstract record UnaryFunction(string Name) : Function(Name)
         {
             public override int Arity => 1;
+        }
+
+        internal sealed record CountFunction() : UnaryFunction("count")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                arguments[0] switch
+                {
+                    Array<int> intArray   => Array<int>.Scalar(intArray.Elements.Length),
+                    Array<bool> boolArray => Array<int>.Scalar(boolArray.Elements.Length),
+                    Array<char> charArray => Array<int>.Scalar(charArray.Elements.Length),
+                    Array<Box> boxArray   => Array<int>.Scalar(boxArray.Elements.Length),
+                    Array<Any>            => Array<int>.Scalar(0),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+        }
+
+        internal sealed record LengthFunction() : UnaryFunction("length")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                arguments[0] switch
+                {
+                    Array<int> intArray   => Array<int>.Scalar(intArray.Shape.RowCount),
+                    Array<bool> boolArray => Array<int>.Scalar(boolArray.Shape.RowCount),
+                    Array<char> charArray => Array<int>.Scalar(charArray.Shape.RowCount),
+                    Array<Box> boxArray   => Array<int>.Scalar(boxArray.Shape.RowCount),
+                    Array<Any>            => Array<int>.Scalar(0),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+        }
+
+        internal sealed record TransposeFunction() : UnaryFunction("transpose")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                arguments[0] switch
+                {
+                    Array<int> intArray   => Transpose(intArray),
+                    Array<bool> boolArray => Transpose(boolArray),
+                    Array<char> charArray => Transpose(charArray),
+                    Array<Box> boxArray   => Transpose(boxArray),
+                    Array<Any> anyArray   => anyArray,
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+
+            private static Array<T> Transpose<T>(Array<T> array)
+            {
+                if (array.Shape.IsScalar || array.Shape.IsVector)
+                    return array;
+
+                var newShape = new Shape([array.Shape.Dimensions[^1], ..array.Shape.Dimensions[..^1]]);
+                var newElements = new T[array.Elements.Length];
+
+                for (var y = 0; y < array.Shape.Dimensions[^1]; y++)
+                for (var x = 0; x < array.Shape.Dimensions[0]; x++)
+                    newElements[y * array.Shape.Dimensions[0] + x] = array.Elements[x * array.Shape.Dimensions[^1] + y];
+
+                return array with { Shape = newShape, Elements = [..newElements] };
+            }
+        }
+
+        internal sealed record RangeFunction() : UnaryFunction("range")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope)
+            {
+                if (arguments[0] is not Array<int> intArray)
+                    throw new InvalidOperationException("Invalid argument type");
+
+                if (!intArray.Shape.IsScalar)
+                    throw new InvalidOperationException("Invalid argument type");
+
+                var numberOfElements = intArray.Elements[0];
+                if (numberOfElements < 0)
+                    throw new InvalidOperationException("Invalid argument type");
+
+                if (numberOfElements == 0)
+                    return Array<Any>.Empty;
+
+                return Array<int>.Vector([.. Enumerable.Range(0, numberOfElements)]);
+            }
+        }
+
+        internal sealed record ReverseFunction() : UnaryFunction("reverse")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                arguments[0] switch
+                {
+                    Array<int> intArray   => Reverse(intArray),
+                    Array<bool> boolArray => Reverse(boolArray),
+                    Array<char> charArray => Reverse(charArray),
+                    Array<Box> boxArray   => Reverse(boxArray),
+                    Array<Any> anyArray   => anyArray,
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+
+            private static Array<T> Reverse<T>(Array<T> array)
+            {
+                if (array.Shape.IsScalar)
+                    return array;
+
+                if (array.Shape.IsVector)
+                    return Array<T>.Vector([.. array.Elements.Reverse()]);
+
+                var newElements = array.Rows().Reverse().SelectMany(element => element);
+                return array with { Elements = [..newElements] };
+            }
+        }
+
+        internal sealed record IndicesFunction() : UnaryFunction("indices")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                arguments[0] switch
+                {
+                    Array<int> intArray   => intArray.Indices(),
+                    Array<bool> boolArray => boolArray.Indices(),
+                    Array<char> charArray => charArray.Indices(),
+                    Array<Box> boxArray   => boxArray.Indices(),
+                    Array<Any> anyArray   => anyArray.Indices(),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+        }
+
+        internal sealed record NotFunction() : UnaryFunction("not")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                arguments[0] switch
+                {
+                    Array<int> intArray   => intArray.Unary(i => ~i),
+                    Array<bool> boolArray => boolArray.Unary(b => !b),
+                    Array<Box> boxArray   => boxArray.Unary(box => Invoke([box.Value], interpreter, scope).Box()),
+                    Array<Any> => Array<Any>.Empty,
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
         }
 
         internal abstract record UnaryIntegerFunction(string Name, Func<int, int> Operation) : Function(Name)
@@ -94,124 +232,6 @@ internal static class BuiltinFunctions
         }
 
         internal sealed record TrimFunction() : UnaryCharSequenceFunction("trim", str => str.Trim());
-
-        internal sealed record CountFunction() : UnaryFunction("count")
-        {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
-                arguments[0] switch
-                {
-                    Array<int> intArray   => Array<int>.Scalar(intArray.Elements.Length),
-                    Array<bool> boolArray => Array<int>.Scalar(boolArray.Elements.Length),
-                    Array<char> charArray => Array<int>.Scalar(charArray.Elements.Length),
-                    Array<Box> boxArray   => Array<int>.Scalar(boxArray.Elements.Length),
-                    Array<Any>            => Array<int>.Scalar(0),
-                    _ => throw new InvalidOperationException("Invalid argument type")
-                };
-        }
-        
-        internal sealed record LengthFunction() : UnaryFunction("length")
-        {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
-                arguments[0] switch
-                {
-                    Array<int> intArray   => Array<int>.Scalar(intArray.Shape.RowCount),
-                    Array<bool> boolArray => Array<int>.Scalar(boolArray.Shape.RowCount),
-                    Array<char> charArray => Array<int>.Scalar(charArray.Shape.RowCount),
-                    Array<Box> boxArray   => Array<int>.Scalar(boxArray.Shape.RowCount),
-                    Array<Any>            => Array<int>.Scalar(0),
-                    _ => throw new InvalidOperationException("Invalid argument type")
-                };
-        }
-
-        internal sealed record TransposeFunction() : UnaryFunction("transpose")
-        {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
-                arguments[0] switch
-                {
-                    Array<int> intArray   => Transpose(intArray),
-                    Array<bool> boolArray => Transpose(boolArray),
-                    Array<char> charArray => Transpose(charArray),
-                    Array<Box> boxArray   => Transpose(boxArray),
-                    Array<Any> anyArray   => anyArray,
-                    _ => throw new InvalidOperationException("Invalid argument type")
-                };
-
-            private static Array<T> Transpose<T>(Array<T> array)
-            {
-                if (array.Shape.IsScalar || array.Shape.IsVector)
-                    return array;
-
-                var newShape = new Shape([array.Shape.Dimensions[^1], ..array.Shape.Dimensions[..^1]]);
-                var newElements = new T[array.Elements.Length];
-
-                for (var y = 0; y < array.Shape.Dimensions[^1]; y++)
-                for (var x = 0; x < array.Shape.Dimensions[0]; x++)
-                    newElements[y * array.Shape.Dimensions[0] + x] = array.Elements[x * array.Shape.Dimensions[^1] + y];
-
-                return array with { Shape = newShape, Elements = [..newElements] };
-            }
-        }
-
-        internal sealed record RangeFunction() : UnaryFunction("range")
-        {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope)
-            {
-                if (arguments[0] is not Array<int> intArray)
-                    throw new InvalidOperationException("Invalid argument type");
-
-                if (!intArray.Shape.IsScalar)
-                    throw new InvalidOperationException("Invalid argument type");
-
-                var numberOfElements = intArray.Elements[0];
-                if (numberOfElements < 0)
-                    throw new InvalidOperationException("Invalid argument type");
-
-                if (numberOfElements == 0)
-                    return Array<Any>.Empty;
-                
-                return Array<int>.Vector([.. Enumerable.Range(0, numberOfElements)]);
-            }
-        }
-
-        internal sealed record ReverseFunction() : UnaryFunction("reverse")
-        {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
-                arguments[0] switch
-                {
-                    Array<int> intArray   => Reverse(intArray),
-                    Array<bool> boolArray => Reverse(boolArray),
-                    Array<char> charArray => Reverse(charArray),
-                    Array<Box> boxArray   => Reverse(boxArray),
-                    Array<Any> anyArray   => anyArray,
-                    _ => throw new InvalidOperationException("Invalid argument type")
-                };
-
-            private static Array<T> Reverse<T>(Array<T> array)
-            {
-                if (array.Shape.IsScalar)
-                    return array;
-
-                if (array.Shape.IsVector)
-                    return Array<T>.Vector([.. array.Elements.Reverse()]);
-
-                var newElements = array.Rows().Reverse().SelectMany(element => element);
-                return array with { Elements = [..newElements] };
-            }
-        }
-
-        internal sealed record IndicesFunction() : UnaryFunction("indices")
-        {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
-                arguments[0] switch
-                {
-                    Array<int> intArray   => intArray.Indices(),
-                    Array<bool> boolArray => boolArray.Indices(),
-                    Array<char> charArray => charArray.Indices(),
-                    Array<Box> boxArray   => boxArray.Indices(),
-                    Array<Any> anyArray   => anyArray.Indices(),
-                    _ => throw new InvalidOperationException("Invalid argument type")
-                };
-        }
     }
 
     private static class Binary
@@ -219,6 +239,40 @@ internal static class BuiltinFunctions
         internal abstract record BinaryFunction(string Name) : Function(Name)
         {
             public override int Arity => 2;
+        }
+
+        internal sealed record AppendFunction() : BinaryFunction("append")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                (arguments[0], arguments[1]) switch
+                {
+                    (Array<int> l, Array<int> r) => Append(l, r),
+                    (Array<int> l, Array<Any>) => Append(l, Array<int>.Empty),
+                    (Array<Any>, Array<int> r) => Append(Array<int>.Empty, r),
+                    (Array<char> l, Array<char> r) => Append(l, r),
+                    (Array<char> l, Array<Any>) => Append(l, Array<char>.Empty),
+                    (Array<Any>, Array<char> r) => Append(Array<char>.Empty, r),
+                    (Array<bool> l, Array<bool> r) => Append(l, r),
+                    (Array<bool> l, Array<Any>) => Append(l, Array<bool>.Empty),
+                    (Array<Any>, Array<bool> r) => Append(Array<bool>.Empty, r),
+                    (Array<Any>, Array<Any>) => Array<Any>.Empty,
+                    (Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+
+            private static Array<T> Append<T>(Array<T> array, Array<T> other)
+            {
+                if ((array.Shape.IsScalar || array.Shape.IsVector) && (other.Shape.IsScalar || other.Shape.IsVector))
+                    return Array<T>.Vector([.. array.Elements, .. other.Elements]);
+
+                if (array.Shape != other.Shape)
+                    throw new InvalidOperationException("Cannot perform append on arrays with different shapes");
+
+                var newElements = array.Rows()
+                    .Zip(other.Rows(), (row, otherRow) => row.Concat(otherRow))
+                    .SelectMany(elements => elements);
+                return new Array<T>(array.Shape.Replace(1, array.Shape.Dimensions[1] + other.Shape.Dimensions[1]), [.. newElements]);
+            }
         }
         
         internal sealed record ReshapeFunction() : BinaryFunction("reshape")
@@ -363,5 +417,10 @@ internal static class BuiltinFunctions
 
         internal sealed record MultiplyFunction() : BinaryIntegerFunction("multiply", (a, b) => a * b);
         internal sealed record DivideFunction() : BinaryIntegerFunction("divide", (a, b) => a / b);
+        internal sealed record ModuloFunction() : BinaryIntegerFunction("modulo", (a, b) => a % b);
+        internal sealed record BitwiseAndFunction() : BinaryIntegerFunction("and", (a, b) => a & b);
+        internal sealed record BitwiseOrFunction() : BinaryIntegerFunction("or", (a, b) => a | b);
+        internal sealed record BitwiseShiftLeftFunction() : BinaryIntegerFunction("shiftLeft", (a, b) => a << b);
+        internal sealed record BitwiseShiftRightFunction() : BinaryIntegerFunction("shiftRight", (a, b) => a >> b);
     }
 }
