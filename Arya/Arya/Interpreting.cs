@@ -3,7 +3,6 @@ namespace Arya;
 public class Interpreter
 {
     private readonly Expression _expression;
-    private LambdaArityInferenceVisitor LambdaArityInferer => field ??= new();
 
     private Interpreter(Expression expression) => _expression = expression;
 
@@ -92,8 +91,8 @@ public class Interpreter
 
     private Value Evaluate(LambdaExpression lambda, Scope scope)
     {
-        var arity = LambdaArityInferer.Infer(lambda);
-        return new LambdaFunction(arity, lambda.Body);
+        var parameterNames = lambda.Parameters.Select(parameter => parameter.Identifier.Text);
+        return new LambdaFunction([..parameterNames], lambda.Body);
     }
 
     private Value Evaluate(NameExpression call, Scope scope) =>
@@ -143,23 +142,6 @@ public class Interpreter
             scope[builtinFunction.Name] = builtinFunction;
 
         return scope;
-    }
-
-    private sealed class LambdaArityInferenceVisitor : ExpressionVisitor
-    {
-        private int _arity;
-
-        public int Infer(LambdaExpression lambda)
-        {
-            _arity = 0;
-            VisitLambda(lambda);
-            return _arity;
-        }
-
-        protected override void VisitPlaceholder(PlaceholderExpression placeholderExpression)
-        {
-            _arity = Math.Max(_arity, (int)placeholderExpression.Identifier.Literal!);
-        }
     }
 }
 

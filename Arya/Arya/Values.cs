@@ -141,29 +141,18 @@ public abstract record Function : Value
     public abstract Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope);
 }
 
-public sealed record LambdaFunction : Function
+public sealed record LambdaFunction(string[] Parameters, Expression Body) : Function
 {
-    private readonly Expression _body;
-
-    public LambdaFunction(int arity, Expression body)
-    {
-        Arity = arity;
-        _body = body;
-    }
-
-    public override int Arity { get; }
+    public override int Arity => Parameters.Length;
 
     public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope)
     {
         var functionScope = scope.CreateChild();
 
-        for (var i = 0; i < Arity; i++)
-            functionScope[$"#{i+1}"] = arguments[i];
+        foreach (var (parameter, argument) in Parameters.Zip(arguments))
+            functionScope[parameter] = argument;
 
-        if (arguments.Length > 0)
-            functionScope["#"] = arguments[0];
-
-        return interpreter.Evaluate(_body, functionScope);
+        return interpreter.Evaluate(Body, functionScope);
     }
 }
 

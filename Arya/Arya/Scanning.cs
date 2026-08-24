@@ -33,7 +33,11 @@ public sealed class Scanner
                     break;
                 case '-':
                     Advance();
-                    tokens.Add(new Token(TokenType.Minus, "-"));
+
+                    if (Match('>'))
+                        tokens.Add(new Token(TokenType.MinusGreater, "->"));
+                    else
+                        tokens.Add(new Token(TokenType.Minus, "-"));
                     break;
                 case ',':
                     Advance();
@@ -131,7 +135,7 @@ public sealed class Scanner
                     var placeholderString = _source[placeholderStartPosition.._position];
                     var placeholderIndex = placeholderString.Length > 1
                         ? int.Parse(placeholderString[1..])
-                        : 1;
+                        : 0;
 
                     tokens.Add(new Token(TokenType.Placeholder, placeholderString, placeholderIndex));
                     break;
@@ -297,6 +301,7 @@ public enum TokenType
     Plus,
     PlusPlus,
     Minus,
+    MinusGreater,
     Star,
     Slash,
     Percent,

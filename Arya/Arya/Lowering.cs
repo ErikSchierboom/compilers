@@ -6,10 +6,44 @@ internal static class Lowerer
     [
         new ConstantFoldingLowerer(),
         new OperatorToFunctionLowerer(),
+        new LambdaPlaceholderLowerer(),
     ];
 
     public static Expression Lower(Expression expression) =>
         _lowerers.Aggregate(expression, (loweredExpression, lowerer) => lowerer.Rewrite(loweredExpression));
+
+    private class LambdaPlaceholderLowerer : ExpressionRewriter
+    {
+        private readonly SortedSet<int> _placeholders = new();
+
+        protected override Expression RewriteLambda(LambdaExpression lambdaExpression)
+        {
+            _placeholders.Clear();
+
+            base.RewriteLambda(lambdaExpression);
+
+            if (_placeholders.Count == 0)
+                return lambdaExpression;
+
+            if (lambdaExpression.Parameters.Length > 0)
+                throw new InvalidOperationException("Lambda placeholder lowerer should not be used on lambda expressions with parameters");
+
+            if (_placeholders.Count > 1 && _placeholders.Contains(0))
+                throw new InvalidOperationException("Lambda placeholder lowerer should not be used on lambda expressions with multiple placeholders");
+
+            if (_placeholders.Count == 1 && _placeholders.Contains(0))
+                return lambdaExpression with { Parameters = [new NameExpression(new Token(TokenType.Identifier, "#"))] };
+
+            var parameters = _placeholders.Select(index => new NameExpression(new Token(TokenType.Identifier, $"#{index}")));
+            return lambdaExpression with { Parameters = [.. parameters] };
+        }
+
+        protected override Expression RewritePlaceholder(PlaceholderExpression placeholderExpression)
+        {
+            _placeholders.Add((int)placeholderExpression.Identifier.Literal!);
+            return placeholderExpression;
+        }
+    }
 
     private class OperatorToFunctionLowerer : ExpressionRewriter
     {

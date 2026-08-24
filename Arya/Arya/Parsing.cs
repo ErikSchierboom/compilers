@@ -165,16 +165,36 @@ internal class Parser
 
     private LambdaExpression ParseLambda()
     {
+        var parameters = new List<NameExpression>();
         var body = new List<Expression>();
+
         while (!IsEndOfFile && Current.Type != TokenType.CloseBrace)
+        {
+            if (Match(TokenType.MinusGreater))
+            {
+                if (body.Count == 0)
+                    throw new InvalidOperationException("Lambda expression with named parameter must have at least one parameter.");
+
+                parameters.AddRange(body.OfType<NameExpression>());
+
+                if (parameters.Count != body.Count)
+                    throw new InvalidOperationException("Lambda expression parameters must be names.");
+
+                body.Clear();
+            }
+
             body.Add(ParseExpression(Precedence.Assignment));
+        }
 
         Consume(TokenType.CloseBrace);
 
-        if (body.Count == 1)
-            return new(body[0]);
+        if (body.Count == 0)
+            throw new InvalidOperationException("Lambda expression must have a body.");
 
-        return new(new BlockExpression([.. body]));
+        if (body.Count == 1)
+            return new(body[0], [..parameters]);
+
+        return new(new BlockExpression([.. body]), [..parameters]);
     }
 
     private ParenthesizedExpression ParseParenthesized()
@@ -223,7 +243,7 @@ public abstract record Expression;
 public sealed record BlockExpression(List<Expression> Expressions) : Expression;
 public sealed record LiteralExpression(Token Value) : Expression;
 public sealed record ArrayExpression(Expression[] Elements) : Expression;
-public sealed record LambdaExpression(Expression Body) : Expression;
+public sealed record LambdaExpression(Expression Body, NameExpression[] Parameters) : Expression;
 public sealed record BoxExpression(Expression Expression) : Expression;
 public sealed record NameExpression(Token Identifier) : Expression;
 public sealed record PlaceholderExpression(Token Identifier) : Expression;

@@ -36,6 +36,32 @@ public static partial class FunctionTests
             }
         }
 
+        public class NamedParameters
+        {
+            [Fact]
+            public void WithoutIndexCorrespondToSingleArgument()
+            {
+                const string code =
+                    """
+                    double = { x -> x * 2 }
+                    double(3)
+                    """;
+                Assert.Equal(Array<int>.Scalar(6), Interpreter.Evaluate(code));
+            }
+
+            public static readonly TheoryData<string, Value> WithIndexTestData =
+                new()
+                {
+                    { "{ x -> x + 1 }(3)", Array<int>.Scalar(4) },
+                    { "{ x y -> x + y }(3, 4)", Array<int>.Scalar(7) },
+                    { "{ x y z -> x + y * z }(3, 4, 5)", Array<int>.Scalar(23) },
+                };
+
+            [Theory, MemberData(nameof(WithIndexTestData))]
+            public void WithIndexCorrespondToNthArgument(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+        }
+
         public class Placeholders
         {
             [Fact]

@@ -53,8 +53,13 @@ public abstract class ExpressionVisitor
             Visit(element);
     }
 
-    protected virtual void VisitLambda(LambdaExpression lambdaExpression) =>
+    protected virtual void VisitLambda(LambdaExpression lambdaExpression)
+    {
+        foreach (var parameter in lambdaExpression.Parameters)
+            Visit(parameter);
+
         Visit(lambdaExpression.Body);
+    }
 
     protected virtual void VisitAssignment(AssignmentExpression assignmentExpression)
     {
@@ -127,8 +132,19 @@ public abstract class ExpressionRewriter
     protected virtual Expression RewriteArray(ArrayExpression arrayExpression) =>
         new ArrayExpression([..arrayExpression.Elements.Select(Rewrite)]);
 
-    protected virtual Expression RewriteLambda(LambdaExpression lambdaExpression) =>
-        new LambdaExpression(Rewrite(lambdaExpression.Body));
+    protected virtual Expression RewriteLambda(LambdaExpression lambdaExpression)
+    {
+        var rewritterParameters = new List<NameExpression>(capacity: lambdaExpression.Parameters.Length);
+        foreach (var parameter in lambdaExpression.Parameters)
+        {
+            if (Rewrite(parameter) is not NameExpression rewrittenParameter)
+                throw new InvalidOperationException("Lambda expression's parameter must be a name expressions");
+
+            rewritterParameters.Add(rewrittenParameter);
+        }
+
+        return new LambdaExpression(Rewrite(lambdaExpression.Body), [..rewritterParameters]);
+    }
 
     protected virtual Expression RewriteAssignment(AssignmentExpression assignmentExpression)
     {
