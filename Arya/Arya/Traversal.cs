@@ -79,6 +79,8 @@ public abstract class ExpressionVisitor
 
     protected virtual void VisitCall(CallExpression callExpression)
     {
+        Visit(callExpression.Target);
+
         foreach (var arg in callExpression.Arguments)
             Visit(arg);
     }
@@ -150,7 +152,7 @@ public abstract class ExpressionRewriter
         new BoxExpression(Rewrite(boxExpression.Expression));
 
     protected virtual Expression RewriteCall(CallExpression callExpression) =>
-        new CallExpression(callExpression.FunctionName, [..callExpression.Arguments.Select(Rewrite)]);
+        new CallExpression(Rewrite(callExpression.Target), [..callExpression.Arguments.Select(Rewrite)]);
 
     protected virtual Expression RewriteLiteral(LiteralExpression literalExpression) => literalExpression;
 

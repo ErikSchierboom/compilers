@@ -127,7 +127,7 @@ internal class Parser
 
     private CallExpression ParseCall(Expression left)
     {
-        if (left is not NameExpression name)
+        if (left is not (NameExpression or LambdaExpression))
             throw new InvalidOperationException("Can only call names");
 
         var arguments = new List<Expression>();
@@ -142,7 +142,7 @@ internal class Parser
             } while (Match(TokenType.Comma));
         }
 
-        return new CallExpression(name.Identifier, [.. arguments]);
+        return new CallExpression(left, [.. arguments]);
     }
     
     private BoxExpression ParseBox()
@@ -167,7 +167,7 @@ internal class Parser
     {
         var body = new List<Expression>();
         while (!IsEndOfFile && Current.Type != TokenType.CloseBrace)
-            body.Add(ParseExpression(Precedence.Addition));
+            body.Add(ParseExpression(Precedence.Assignment));
 
         Consume(TokenType.CloseBrace);
 
@@ -227,7 +227,7 @@ public sealed record LambdaExpression(Expression Body) : Expression;
 public sealed record BoxExpression(Expression Expression) : Expression;
 public sealed record NameExpression(Token Identifier) : Expression;
 public sealed record PlaceholderExpression(Token Identifier) : Expression;
-public sealed record CallExpression(Token FunctionName, Expression[] Arguments) : Expression;
+public sealed record CallExpression(Expression Target, Expression[] Arguments) : Expression;
 public sealed record UnaryExpression(Token Operator, Expression Operand) : Expression;
 public sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
 public sealed record ParenthesizedExpression(Expression Expression) : Expression;

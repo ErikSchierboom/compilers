@@ -78,7 +78,7 @@ public class VariablesTests
                 """
                 a = { #1 + #2 }
                 """;
-            var function = Assert.IsType<UserDefinedFunction>(Interpreter.Evaluate(code), exactMatch: false);
+            var function = Assert.IsType<LambdaFunction>(Interpreter.Evaluate(code), exactMatch: false);
             Assert.Equal(2, function.Arity);
         }
     }

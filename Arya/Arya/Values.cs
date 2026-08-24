@@ -141,11 +141,11 @@ public abstract record Function : Value
     public abstract Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope);
 }
 
-public sealed record UserDefinedFunction : Function
+public sealed record LambdaFunction : Function
 {
     private readonly Expression _body;
 
-    public UserDefinedFunction(int arity, Expression body)
+    public LambdaFunction(int arity, Expression body)
     {
         Arity = arity;
         _body = body;
@@ -159,6 +159,9 @@ public sealed record UserDefinedFunction : Function
 
         for (var i = 0; i < Arity; i++)
             functionScope[$"#{i+1}"] = arguments[i];
+
+        if (arguments.Length > 0)
+            functionScope["#"] = arguments[0];
 
         return interpreter.Evaluate(_body, functionScope);
     }

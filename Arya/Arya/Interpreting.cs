@@ -68,7 +68,19 @@ public class Interpreter
 
     private Value Evaluate(CallExpression call, Scope scope)
     {
-        if (scope[call.FunctionName.Text] is not Function function)
+        Function? function = null;
+
+        switch (call.Target)
+        {
+            case NameExpression nameExpression:
+                function = scope[nameExpression.Identifier.Text] as Function;
+                break;
+            case LambdaExpression lambdaExpression:
+                function = Evaluate(lambdaExpression, scope) as LambdaFunction;
+                break;
+        }
+
+        if (function is null)
             throw new InvalidOperationException("Can only call functions");
 
         if (call.Arguments.Length != function.Arity)
@@ -81,7 +93,7 @@ public class Interpreter
     private Value Evaluate(LambdaExpression lambda, Scope scope)
     {
         var arity = LambdaArityInferer.Infer(lambda);
-        return new UserDefinedFunction(arity, lambda.Body);
+        return new LambdaFunction(arity, lambda.Body);
     }
 
     private Value Evaluate(NameExpression call, Scope scope) =>
