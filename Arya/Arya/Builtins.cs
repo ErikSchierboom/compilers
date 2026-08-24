@@ -1,8 +1,8 @@
 namespace Arya;
 
-internal static class BuiltinFunctions
+public static class BuiltinFunctions
 {
-    public static readonly Function[] All =
+    public static readonly BuiltinFunction[] All =
     [
         new Unary.CountFunction(),
         new Unary.LengthFunction(),
@@ -35,14 +35,19 @@ internal static class BuiltinFunctions
         new Binary.BitwiseShiftRightFunction(),
     ];
 
-    private static class Unary
+    public abstract record BuiltinFunction(string Name) : Function
     {
-        internal abstract record UnaryFunction(string Name) : Function(Name)
+        public override string ToString() => Name;
+    }
+
+    public static class Unary
+    {
+        public abstract record UnaryFunction(string Name) : BuiltinFunction(Name)
         {
             public override int Arity => 1;
         }
 
-        internal sealed record CountFunction() : UnaryFunction("count")
+        public sealed record CountFunction() : UnaryFunction("count")
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
@@ -56,7 +61,7 @@ internal static class BuiltinFunctions
                 };
         }
 
-        internal sealed record LengthFunction() : UnaryFunction("length")
+        public sealed record LengthFunction() : UnaryFunction("length")
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
@@ -70,7 +75,7 @@ internal static class BuiltinFunctions
                 };
         }
 
-        internal sealed record TransposeFunction() : UnaryFunction("transpose")
+        public sealed record TransposeFunction() : UnaryFunction("transpose")
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
@@ -83,7 +88,7 @@ internal static class BuiltinFunctions
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
 
-            private static Array<T> Transpose<T>(Array<T> array)
+            public static Array<T> Transpose<T>(Array<T> array)
             {
                 if (array.Shape.IsScalar || array.Shape.IsVector)
                     return array;
@@ -99,7 +104,7 @@ internal static class BuiltinFunctions
             }
         }
 
-        internal sealed record RangeFunction() : UnaryFunction("range")
+        public sealed record RangeFunction() : UnaryFunction("range")
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope)
             {
@@ -120,7 +125,7 @@ internal static class BuiltinFunctions
             }
         }
 
-        internal sealed record ReverseFunction() : UnaryFunction("reverse")
+        public sealed record ReverseFunction() : UnaryFunction("reverse")
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
@@ -133,7 +138,7 @@ internal static class BuiltinFunctions
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
 
-            private static Array<T> Reverse<T>(Array<T> array)
+            public static Array<T> Reverse<T>(Array<T> array)
             {
                 if (array.Shape.IsScalar)
                     return array;
@@ -146,7 +151,7 @@ internal static class BuiltinFunctions
             }
         }
 
-        internal sealed record IndicesFunction() : UnaryFunction("indices")
+        public sealed record IndicesFunction() : UnaryFunction("indices")
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
@@ -160,7 +165,7 @@ internal static class BuiltinFunctions
                 };
         }
 
-        internal sealed record NotFunction() : UnaryFunction("not")
+        public sealed record NotFunction() : UnaryFunction("not")
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
@@ -173,7 +178,7 @@ internal static class BuiltinFunctions
                 };
         }
 
-        internal abstract record UnaryIntegerFunction(string Name, Func<int, int> Operation) : Function(Name)
+        public abstract record UnaryIntegerFunction(string Name, Func<int, int> Operation) : BuiltinFunction(Name)
         {
             public override int Arity => 1;
 
@@ -187,11 +192,11 @@ internal static class BuiltinFunctions
                 };
         }
 
-        internal sealed record AbsFunction() : UnaryIntegerFunction("abs", Math.Abs);
-        internal sealed record PlusFunction() : UnaryIntegerFunction("plus", x => x);
-        internal sealed record MinusFunction() : UnaryIntegerFunction("minus", x => -x);
+        public sealed record AbsFunction() : UnaryIntegerFunction("abs", Math.Abs);
+        public sealed record PlusFunction() : UnaryIntegerFunction("plus", x => x);
+        public sealed record MinusFunction() : UnaryIntegerFunction("minus", x => -x);
 
-        internal abstract record UnaryCharFunction(string Name, Func<char, char> Operation) : UnaryFunction(Name)
+        public abstract record UnaryCharFunction(string Name, Func<char, char> Operation) : UnaryFunction(Name)
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
@@ -203,10 +208,10 @@ internal static class BuiltinFunctions
                 };
         }
 
-        internal sealed record LowercaseFunction() : UnaryCharFunction("lowercase", char.ToLowerInvariant);
-        internal sealed record UppercaseFunction() : UnaryCharFunction("uppercase", char.ToUpperInvariant);
+        public sealed record LowercaseFunction() : UnaryCharFunction("lowercase", char.ToLowerInvariant);
+        public sealed record UppercaseFunction() : UnaryCharFunction("uppercase", char.ToUpperInvariant);
 
-        internal abstract record UnaryCharSequenceFunction(string Name, Func<char[], char[]> Operation) : Function(Name)
+        public abstract record UnaryCharSequenceFunction(string Name, Func<char[], char[]> Operation) : BuiltinFunction(Name)
         {
             protected UnaryCharSequenceFunction(string name, Func<ReadOnlyMemory<char>, ReadOnlyMemory<char>> operation) : 
                 this(name, chars => operation(chars.AsMemory()).ToArray())
@@ -231,17 +236,17 @@ internal static class BuiltinFunctions
             }
         }
 
-        internal sealed record TrimFunction() : UnaryCharSequenceFunction("trim", str => str.Trim());
+        public sealed record TrimFunction() : UnaryCharSequenceFunction("trim", str => str.Trim());
     }
 
-    private static class Binary
+    public static class Binary
     {
-        internal abstract record BinaryFunction(string Name) : Function(Name)
+        public abstract record BinaryFunction(string Name) : BuiltinFunction(Name)
         {
             public override int Arity => 2;
         }
 
-        internal sealed record AppendFunction() : BinaryFunction("append")
+        public sealed record AppendFunction() : BinaryFunction("append")
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
@@ -260,7 +265,7 @@ internal static class BuiltinFunctions
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
 
-            private static Array<T> Append<T>(Array<T> array, Array<T> other)
+            public static Array<T> Append<T>(Array<T> array, Array<T> other)
             {
                 if ((array.Shape.IsScalar || array.Shape.IsVector) && (other.Shape.IsScalar || other.Shape.IsVector))
                     return Array<T>.Vector([.. array.Elements, .. other.Elements]);
@@ -275,7 +280,7 @@ internal static class BuiltinFunctions
             }
         }
         
-        internal sealed record ReshapeFunction() : BinaryFunction("reshape")
+        public sealed record ReshapeFunction() : BinaryFunction("reshape")
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
@@ -288,7 +293,7 @@ internal static class BuiltinFunctions
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
 
-            private static Array<T> Reshape<T>(Array<T> array, Array<int> newDimensions)
+            public static Array<T> Reshape<T>(Array<T> array, Array<int> newDimensions)
             {
                 var newShape = new Shape(newDimensions.Elements);
                 if (newShape.Count != array.Shape.Count)
@@ -298,7 +303,7 @@ internal static class BuiltinFunctions
             }
         }
 
-        internal sealed record ReplicateFunction() : BinaryFunction("replicate")
+        public sealed record ReplicateFunction() : BinaryFunction("replicate")
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
@@ -311,7 +316,7 @@ internal static class BuiltinFunctions
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
 
-            private static Array<T> Replicate<T>(Array<T> array, Array<int> replications)
+            public static Array<T> Replicate<T>(Array<T> array, Array<int> replications)
             {
                 if (replications.Elements.Any(replication => replication < 0))
                     throw new InvalidOperationException("Replication amount must be >= 0");
@@ -330,7 +335,7 @@ internal static class BuiltinFunctions
             }
         }
 
-        internal sealed record MaxFunction() : BinaryFunction("max")
+        public sealed record MaxFunction() : BinaryFunction("max")
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
@@ -344,7 +349,7 @@ internal static class BuiltinFunctions
                 };
         }
 
-        internal sealed record MinFunction() : BinaryFunction("min")
+        public sealed record MinFunction() : BinaryFunction("min")
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
@@ -358,7 +363,7 @@ internal static class BuiltinFunctions
                 };
         }
 
-        internal sealed record ReduceFunction() : BinaryFunction("reduce")
+        public sealed record ReduceFunction() : BinaryFunction("reduce")
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
@@ -384,7 +389,7 @@ internal static class BuiltinFunctions
             }
         }
 
-        internal abstract record BinaryIntegerAndCharFunction(string Name, Func<int, int, int> Operation) : BinaryFunction(Name)
+        public abstract record BinaryIntegerAndCharFunction(string Name, Func<int, int, int> Operation) : BinaryFunction(Name)
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
@@ -399,10 +404,10 @@ internal static class BuiltinFunctions
                 };
         }
 
-        internal sealed record AddFunction() : BinaryIntegerAndCharFunction("add", (a, b) => a + b);
-        internal sealed record SubtractFunction() : BinaryIntegerAndCharFunction("subtract", (a, b) => a - b);
+        public sealed record AddFunction() : BinaryIntegerAndCharFunction("add", (a, b) => a + b);
+        public sealed record SubtractFunction() : BinaryIntegerAndCharFunction("subtract", (a, b) => a - b);
 
-        internal abstract record BinaryIntegerFunction(string Name, Func<int, int, int> Operation) : BinaryFunction(Name)
+        public abstract record BinaryIntegerFunction(string Name, Func<int, int, int> Operation) : BinaryFunction(Name)
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
@@ -415,12 +420,12 @@ internal static class BuiltinFunctions
                 };
         }
 
-        internal sealed record MultiplyFunction() : BinaryIntegerFunction("multiply", (a, b) => a * b);
-        internal sealed record DivideFunction() : BinaryIntegerFunction("divide", (a, b) => a / b);
-        internal sealed record ModuloFunction() : BinaryIntegerFunction("modulo", (a, b) => a % b);
-        internal sealed record BitwiseAndFunction() : BinaryIntegerFunction("and", (a, b) => a & b);
-        internal sealed record BitwiseOrFunction() : BinaryIntegerFunction("or", (a, b) => a | b);
-        internal sealed record BitwiseShiftLeftFunction() : BinaryIntegerFunction("shiftLeft", (a, b) => a << b);
-        internal sealed record BitwiseShiftRightFunction() : BinaryIntegerFunction("shiftRight", (a, b) => a >> b);
+        public sealed record MultiplyFunction() : BinaryIntegerFunction("multiply", (a, b) => a * b);
+        public sealed record DivideFunction() : BinaryIntegerFunction("divide", (a, b) => a / b);
+        public sealed record ModuloFunction() : BinaryIntegerFunction("modulo", (a, b) => a % b);
+        public sealed record BitwiseAndFunction() : BinaryIntegerFunction("and", (a, b) => a & b);
+        public sealed record BitwiseOrFunction() : BinaryIntegerFunction("or", (a, b) => a | b);
+        public sealed record BitwiseShiftLeftFunction() : BinaryIntegerFunction("shiftLeft", (a, b) => a << b);
+        public sealed record BitwiseShiftRightFunction() : BinaryIntegerFunction("shiftRight", (a, b) => a >> b);
     }
 }

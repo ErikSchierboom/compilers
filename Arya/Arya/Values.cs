@@ -132,15 +132,36 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
     public Array<int> Indices() => Array<int>.Vector([..Enumerable.Range(1, Shape.RowCount)]);
 }
 
-public abstract record Function(string Name) : Value
+public abstract record Function : Value
 {
     public override Shape Shape { get; init; } = Shape.Scalar;
 
     public abstract int Arity { get; }
 
     public abstract Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope);
+}
 
-    public override string ToString() => Name;
+public sealed record UserDefinedFunction : Function
+{
+    private readonly Expression _body;
+
+    public UserDefinedFunction(int arity, Expression body)
+    {
+        Arity = arity;
+        _body = body;
+    }
+
+    public override int Arity { get; }
+
+    public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope)
+    {
+        var functionScope = scope.CreateChild();
+
+        for (var i = 0; i < Arity; i++)
+            functionScope[$"#{i+1}"] = arguments[i];
+
+        return interpreter.Evaluate(_body, functionScope);
+    }
 }
 
 /// <summary>

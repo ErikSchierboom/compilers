@@ -2,7 +2,7 @@
 
 namespace Arya;
 
-internal sealed class Scanner
+public sealed class Scanner
 {
     private readonly string _source;
     private readonly StringBuilder _stringValue = new();
@@ -112,6 +112,28 @@ internal sealed class Scanner
                 case ')':
                     Advance();
                     tokens.Add(new Token(TokenType.CloseParen, ")"));
+                    break;
+                case '{':
+                    Advance();
+                    tokens.Add(new Token(TokenType.OpenBrace, "{"));
+                    break;
+                case '}':
+                    Advance();
+                    tokens.Add(new Token(TokenType.CloseBrace, "}"));
+                    break;
+                case '#':
+                    var placeholderStartPosition = _position;
+                    Advance();
+
+                    while (Current is >= '0' and <= '9')
+                        Advance();
+
+                    var placeholderString = _source[placeholderStartPosition.._position];
+                    var placeholderIndex = placeholderString.Length > 1
+                        ? int.Parse(placeholderString[1..])
+                        : 1;
+
+                    tokens.Add(new Token(TokenType.Placeholder, placeholderString, placeholderIndex));
                     break;
                 case >= '0' and <= '9':
                     var numberStartPosition = _position;
@@ -250,9 +272,9 @@ internal sealed class Scanner
     private char Next => _position < _source.Length - 1 ? _source[_position + 1] : '\0';
 }
 
-internal sealed record Token(TokenType Type, string Text, object? Literal = null);
+public sealed record Token(TokenType Type, string Text, object? Literal = null);
 
-internal enum TokenType
+public enum TokenType
 {
     // Literals
     Number,
@@ -260,12 +282,15 @@ internal enum TokenType
     Char,
     Boolean,
     Identifier,
+    Placeholder,
 
     // Symbols
     OpenBracket,
     CloseBracket,
     OpenParen,
     CloseParen,
+    OpenBrace,
+    CloseBrace,
     Ampersand,
     Exclamation,
     ExclamationEqual,

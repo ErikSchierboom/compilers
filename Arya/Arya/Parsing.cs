@@ -12,7 +12,7 @@ internal enum Precedence
     Equality,     // == !=
     BitwiseOr,    // |
     BitwiseAnd,   // &
-    Call,         // () []
+    Call,         // () [] { }
     Primary
 }
 
@@ -48,10 +48,12 @@ internal class Parser
             [TokenType.Boolean] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.Char] = new(ParseLiteral, null, Precedence.Primary),
             [TokenType.Identifier] = new(ParseName, null, Precedence.Primary),
+            [TokenType.Placeholder] = new(ParsePlaceholder, null, Precedence.Primary),
             [TokenType.Pipe] = new(null, ParseBinary, Precedence.BitwiseOr),
             [TokenType.At] = new(ParseBox, null, Precedence.Unary),
             [TokenType.OpenBracket] = new(ParseArray, null, Precedence.Call),
             [TokenType.OpenParen] = new(ParseParenthesized, ParseCall, Precedence.Call),
+            [TokenType.OpenBrace] = new(ParseLambda, null, Precedence.Call),
             [TokenType.Equal] = new(null, ParseAssignment, Precedence.Assignment),
             [TokenType.EqualEqual] = new(null, ParseBinary, Precedence.Equality),
             [TokenType.ExclamationEqual] = new(null, ParseBinary, Precedence.Equality),
@@ -112,6 +114,8 @@ internal class Parser
 
     private NameExpression ParseName() => new(Previous);
 
+    private PlaceholderExpression ParsePlaceholder() => new(Previous);
+
     private AssignmentExpression ParseAssignment(Expression left)
     {
         if (left is not NameExpression name)
@@ -159,6 +163,20 @@ internal class Parser
         return new([.. elements]);
     }
 
+    private LambdaExpression ParseLambda()
+    {
+        var body = new List<Expression>();
+        while (!IsEndOfFile && Current.Type != TokenType.CloseBrace)
+            body.Add(ParseExpression(Precedence.Addition));
+
+        Consume(TokenType.CloseBrace);
+
+        if (body.Count == 1)
+            return new(body[0]);
+
+        return new(new BlockExpression([.. body]));
+    }
+
     private ParenthesizedExpression ParseParenthesized()
     {
         var expr = ParseExpression();
@@ -201,14 +219,16 @@ internal class Parser
     }
 }
 
-internal abstract record Expression;
-internal sealed record BlockExpression(List<Expression> Expressions) : Expression;
-internal sealed record LiteralExpression(Token Value) : Expression;
-internal sealed record ArrayExpression(Expression[] Elements) : Expression;
-internal sealed record BoxExpression(Expression Expression) : Expression;
-internal sealed record NameExpression(Token Identifier) : Expression;
-internal sealed record CallExpression(Token FunctionName, Expression[] Arguments) : Expression;
-internal sealed record UnaryExpression(Token Operator, Expression Operand) : Expression;
-internal sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
-internal sealed record ParenthesizedExpression(Expression Expression) : Expression;
-internal sealed record AssignmentExpression(NameExpression Identifier, Expression Value) : Expression;
+public abstract record Expression;
+public sealed record BlockExpression(List<Expression> Expressions) : Expression;
+public sealed record LiteralExpression(Token Value) : Expression;
+public sealed record ArrayExpression(Expression[] Elements) : Expression;
+public sealed record LambdaExpression(Expression Body) : Expression;
+public sealed record BoxExpression(Expression Expression) : Expression;
+public sealed record NameExpression(Token Identifier) : Expression;
+public sealed record PlaceholderExpression(Token Identifier) : Expression;
+public sealed record CallExpression(Token FunctionName, Expression[] Arguments) : Expression;
+public sealed record UnaryExpression(Token Operator, Expression Operand) : Expression;
+public sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
+public sealed record ParenthesizedExpression(Expression Expression) : Expression;
+public sealed record AssignmentExpression(NameExpression Identifier, Expression Value) : Expression;

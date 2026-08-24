@@ -61,14 +61,24 @@ public class VariablesTests
         }
 
         [Fact]
-        public void Function()
+        public void BuiltinFunction()
         {
             const string code =
                 """
                 a = max
                 """;
-            var function = Assert.IsType<Function>(Interpreter.Evaluate(code), exactMatch: false);
-            Assert.Equal("max", function.Name);
+            var function = Assert.IsType<BuiltinFunctions.BuiltinFunction>(Interpreter.Evaluate(code), exactMatch: false);
+            Assert.Equal(2, function.Arity);
+        }
+
+        [Fact]
+        public void UserDefinedFunction()
+        {
+            const string code =
+                """
+                a = { #1 + #2 }
+                """;
+            var function = Assert.IsType<UserDefinedFunction>(Interpreter.Evaluate(code), exactMatch: false);
             Assert.Equal(2, function.Arity);
         }
     }

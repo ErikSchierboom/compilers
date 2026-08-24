@@ -3,6 +3,7 @@ namespace Arya;
 public class Interpreter
 {
     private readonly Expression _expression;
+    private LambdaArityInferenceVisitor LambdaArityInferer => field ??= new();
 
     private Interpreter(Expression expression) => _expression = expression;
 
@@ -15,7 +16,7 @@ public class Interpreter
 
     private Value Evaluate() => Evaluate(_expression, CreateDefaultScope());
 
-    private Value Evaluate(Expression expression, Scope scope) =>
+    public Value Evaluate(Expression expression, Scope scope) =>
         expression switch
         {
             ArrayExpression array => Evaluate(array, scope),
@@ -27,7 +28,9 @@ public class Interpreter
             ParenthesizedExpression parenthesized => Evaluate(parenthesized.Expression, scope),
             AssignmentExpression assignment => Evaluate(assignment, scope),
             NameExpression name => Evaluate(name, scope),
+            PlaceholderExpression name => Evaluate(name, scope),
             BlockExpression block => Evaluate(block, scope),
+            LambdaExpression block => Evaluate(block, scope),
             _ => throw new ArgumentOutOfRangeException(nameof(expression))
         };
 
@@ -47,7 +50,7 @@ public class Interpreter
     private Value Evaluate(BinaryExpression binary, Scope scope) =>
         throw new InvalidOperationException("Binary expressions should have been rewritten");
 
-    private static Value Evaluate(LiteralExpression literal, Scope scope) =>
+    private Value Evaluate(LiteralExpression literal, Scope scope) =>
         literal.Value.Type switch
         {
             TokenType.String => Array<char>.Vector(((string)literal.Value.Literal!).ToCharArray()),
@@ -56,7 +59,7 @@ public class Interpreter
             TokenType.Boolean => Array<bool>.Scalar((bool)literal.Value.Literal!),
             _ => throw new ArgumentOutOfRangeException(nameof(literal.Value.Type))
         };
-    
+
     private Value Evaluate(BoxExpression box, Scope scope)
     {
         var value = Evaluate(box.Expression, scope);
@@ -75,8 +78,17 @@ public class Interpreter
         return function.Invoke(arguments, this, scope);
     }
 
+    private Value Evaluate(LambdaExpression lambda, Scope scope)
+    {
+        var arity = LambdaArityInferer.Infer(lambda);
+        return new UserDefinedFunction(arity, lambda.Body);
+    }
+
     private Value Evaluate(NameExpression call, Scope scope) =>
         scope[call.Identifier.Text] ?? throw new InvalidOperationException("Variable not found");
+
+    private Value Evaluate(PlaceholderExpression call, Scope scope) =>
+        scope[call.Identifier.Text] ?? throw new InvalidOperationException("Placeholder not found");
 
     private Value Evaluate(AssignmentExpression call, Scope scope)
     {
@@ -111,7 +123,7 @@ public class Interpreter
         };
     }
 
-    private static Scope CreateDefaultScope()
+    public static Scope CreateDefaultScope()
     {
         var scope = new Scope();
 
@@ -119,6 +131,23 @@ public class Interpreter
             scope[builtinFunction.Name] = builtinFunction;
 
         return scope;
+    }
+
+    private sealed class LambdaArityInferenceVisitor : ExpressionVisitor
+    {
+        private int _arity;
+
+        public int Infer(LambdaExpression lambda)
+        {
+            _arity = 0;
+            VisitLambda(lambda);
+            return _arity;
+        }
+
+        protected override void VisitPlaceholder(PlaceholderExpression placeholderExpression)
+        {
+            _arity = Math.Max(_arity, (int)placeholderExpression.Identifier.Literal!);
+        }
     }
 }
 
