@@ -1,11 +1,114 @@
 namespace Arya;
 
-internal abstract class ExpressionRewriter
+public abstract class ExpressionVisitor
+{
+    public void Visit(Expression expression)
+    {
+        switch (expression)
+        {
+            case ArrayExpression arrayExpression:
+                VisitArray(arrayExpression);
+                break;
+            case LambdaExpression lambdaExpression:
+                VisitLambda(lambdaExpression);
+                break;
+            case AssignmentExpression assignmentExpression:
+                VisitAssignment(assignmentExpression);
+                break;
+            case BinaryExpression binaryExpression:
+                VisitBinary(binaryExpression);
+                break;
+            case BlockExpression blockExpression:
+                VisitBlock(blockExpression);
+                break;
+            case BoxExpression boxExpression:
+                VisitBox(boxExpression);
+                break;
+            case CallExpression callExpression:
+                VisitCall(callExpression);
+                break;
+            case LiteralExpression literalExpression:
+                VisitLiteral(literalExpression);
+                break;
+            case NameExpression nameExpression:
+                VisitName(nameExpression);
+                break;
+            case PlaceholderExpression nameExpression:
+                VisitPlaceholder(nameExpression);
+                break;
+            case ParenthesizedExpression parenthesizedExpression:
+                VisitParenthesized(parenthesizedExpression);
+                break;
+            case UnaryExpression unaryExpression:
+                VisitUnary(unaryExpression);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(expression));
+        }
+    }
+
+    protected virtual void VisitArray(ArrayExpression arrayExpression)
+    {
+        foreach (var element in arrayExpression.Elements)
+            Visit(element);
+    }
+
+    protected virtual void VisitLambda(LambdaExpression lambdaExpression) =>
+        Visit(lambdaExpression.Body);
+
+    protected virtual void VisitAssignment(AssignmentExpression assignmentExpression)
+    {
+        VisitName(assignmentExpression.Identifier);
+        Visit(assignmentExpression.Value);
+    }
+
+    protected virtual void VisitBinary(BinaryExpression binaryExpression)
+    {
+        Visit(binaryExpression.Left);
+        Visit(binaryExpression.Right);
+    }
+
+    protected virtual void VisitBlock(BlockExpression blockExpression)
+    {
+        foreach (var expression in blockExpression.Expressions)
+            Visit(expression);
+    }
+
+    protected virtual void VisitBox(BoxExpression boxExpression) =>
+        Visit(boxExpression.Expression);
+
+    protected virtual void VisitCall(CallExpression callExpression)
+    {
+        foreach (var arg in callExpression.Arguments)
+            Visit(arg);
+    }
+
+    protected virtual void VisitLiteral(LiteralExpression literalExpression)
+    {
+    }
+
+    protected virtual void VisitName(NameExpression nameExpression)
+    {
+    }
+
+    protected virtual void VisitPlaceholder(PlaceholderExpression placeholderExpression)
+    {
+    }
+
+    protected virtual void VisitParenthesized(ParenthesizedExpression parenthesizedExpression) =>
+        Visit(parenthesizedExpression.Expression);
+
+    protected virtual void VisitUnary(UnaryExpression unaryExpression) =>
+        Visit(unaryExpression.Operand);
+}
+
+public abstract class ExpressionRewriter
 {
     public Expression Rewrite(Expression expression) =>
         expression switch
         {
             ArrayExpression arrayExpression => RewriteArray(arrayExpression),
+            LambdaExpression lambdaExpression => RewriteLambda(lambdaExpression),
             AssignmentExpression assignmentExpression => RewriteAssignment(assignmentExpression),
             BinaryExpression binaryExpression => RewriteBinary(binaryExpression),
             BlockExpression blockExpression => RewriteBlock(blockExpression),
@@ -13,6 +116,7 @@ internal abstract class ExpressionRewriter
             CallExpression callExpression => RewriteCall(callExpression),
             LiteralExpression literalExpression => RewriteLiteral(literalExpression),
             NameExpression nameExpression => RewriteName(nameExpression),
+            PlaceholderExpression nameExpression => RewritePlaceholder(nameExpression),
             ParenthesizedExpression parenthesizedExpression => RewriteParenthesized(parenthesizedExpression),
             UnaryExpression unaryExpression => RewriteUnary(unaryExpression),
             _ => throw new ArgumentOutOfRangeException(nameof(expression))
@@ -20,6 +124,9 @@ internal abstract class ExpressionRewriter
 
     protected virtual Expression RewriteArray(ArrayExpression arrayExpression) =>
         new ArrayExpression([..arrayExpression.Elements.Select(Rewrite)]);
+
+    protected virtual Expression RewriteLambda(LambdaExpression lambdaExpression) =>
+        new LambdaExpression(Rewrite(lambdaExpression.Body));
 
     protected virtual Expression RewriteAssignment(AssignmentExpression assignmentExpression)
     {
@@ -49,6 +156,8 @@ internal abstract class ExpressionRewriter
 
     protected virtual Expression RewriteName(NameExpression nameExpression) => nameExpression;
 
+    protected virtual Expression RewritePlaceholder(PlaceholderExpression placeholderExpression) => placeholderExpression;
+
     protected virtual Expression RewriteParenthesized(ParenthesizedExpression parenthesizedExpression) =>
         new ParenthesizedExpression(Rewrite(parenthesizedExpression.Expression));
 
@@ -58,7 +167,7 @@ internal abstract class ExpressionRewriter
 
 internal static class Lowerer
 {
-    private static readonly ExpressionRewriter[] _lowerers =
+    public static readonly ExpressionRewriter[] _lowerers =
     [
         new ConstantFoldingLowerer(),
         new OperatorToFunctionLowerer(),
