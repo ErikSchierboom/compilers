@@ -232,6 +232,19 @@ public static partial class FunctionTests
             [Theory, MemberData(nameof(IndicesTestData))]
             public void Indices(string code, Value expected) =>
                 Assert.Equal(expected, Interpreter.Evaluate(code));
+
+            public static readonly TheoryData<string, Value> FlattenTestData =
+                new()
+                {
+                    { "flatten([])", Array<Any>.Empty },
+                    { "flatten(1)", Array<int>.Vector(1) },
+                    { "flatten([4 5])", Array<int>.Vector(4, 5) },
+                    { "flatten([[7] [2] [9] [3]])", Array<int>.Vector(7, 2, 9, 3) },
+                };
+
+            [Theory, MemberData(nameof(FlattenTestData))]
+            public void Flatten(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
         }
     }
 }

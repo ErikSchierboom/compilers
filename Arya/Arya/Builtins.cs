@@ -13,6 +13,7 @@ public static class BuiltinFunctions
         new Unary.UppercaseFunction(),
         new Unary.TrimFunction(),
         new Unary.ReverseFunction(),
+        new Unary.FlattenFunction(),
         new Unary.IndicesFunction(),
         new Unary.PlusFunction(),
         new Unary.MinusFunction(),
@@ -138,7 +139,7 @@ public static class BuiltinFunctions
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
 
-            public static Array<T> Reverse<T>(Array<T> array)
+            private static Array<T> Reverse<T>(Array<T> array)
             {
                 if (array.Shape.IsScalar)
                     return array;
@@ -149,6 +150,22 @@ public static class BuiltinFunctions
                 var newElements = array.Rows().Reverse().SelectMany(element => element);
                 return array with { Elements = [..newElements] };
             }
+        }
+
+        public sealed record FlattenFunction() : UnaryFunction("flatten")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                arguments[0] switch
+                {
+                    Array<int> intArray   => Flatten(intArray),
+                    Array<bool> boolArray => Flatten(boolArray),
+                    Array<char> charArray => Flatten(charArray),
+                    Array<Box> boxArray   => Flatten(boxArray),
+                    Array<Any> anyArray   => anyArray,
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+
+            private static Array<T> Flatten<T>(Array<T> array) => Array<T>.Vector([.. array.Elements]);
         }
 
         public sealed record IndicesFunction() : UnaryFunction("indices")
