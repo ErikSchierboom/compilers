@@ -9,33 +9,35 @@ internal static class Lowerer
 
     private class LambdaPlaceholderLowerer : ExpressionRewriter
     {
-        private readonly SortedSet<int> _placeholders = new();
+        private readonly Stack<SortedSet<int>> _placeholdersStack = new();
 
         protected override Expression RewriteLambda(LambdaExpression lambdaExpression)
         {
-            _placeholders.Clear();
+            _placeholdersStack.Push([]);
 
             base.RewriteLambda(lambdaExpression);
 
-            if (_placeholders.Count == 0)
+            var placeholders = _placeholdersStack.Pop();
+
+            if (placeholders.Count == 0)
                 return lambdaExpression;
 
             if (lambdaExpression.Parameters.Length > 0)
                 throw new InvalidOperationException("Lambda placeholder lowerer should not be used on lambda expressions with parameters");
 
-            if (_placeholders.Count > 1 && _placeholders.Contains(0))
+            if (placeholders.Count > 1 && placeholders.Contains(0))
                 throw new InvalidOperationException("Lambda placeholder lowerer should not be used on lambda expressions with multiple placeholders");
 
-            if (_placeholders.Count == 1 && _placeholders.Contains(0))
+            if (placeholders.Count == 1 && placeholders.Contains(0))
                 return lambdaExpression with { Parameters = [new NameExpression(new Token(TokenType.Identifier, "#"))] };
 
-            var parameters = _placeholders.Select(index => new NameExpression(new Token(TokenType.Identifier, $"#{index}")));
+            var parameters = placeholders.Select(index => new NameExpression(new Token(TokenType.Identifier, $"#{index}")));
             return lambdaExpression with { Parameters = [.. parameters] };
         }
 
         protected override Expression RewritePlaceholder(PlaceholderExpression placeholderExpression)
         {
-            _placeholders.Add((int)placeholderExpression.Identifier.Literal!);
+            _placeholdersStack.Peek().Add((int)placeholderExpression.Identifier.Literal!);
             return placeholderExpression;
         }
     }
