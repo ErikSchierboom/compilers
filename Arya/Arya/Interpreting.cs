@@ -6,7 +6,7 @@ public class Interpreter
 
     private Interpreter(Expression expression) => _expression = expression;
 
-    public static Value? Evaluate(string code)
+    public static Value Evaluate(string code)
     {
         var expression = Parser.Parse(code);
         var loweredExpression = Lowerer.Lower(expression);
