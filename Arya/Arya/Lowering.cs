@@ -2,15 +2,10 @@ namespace Arya;
 
 internal static class Lowerer
 {
-    private static readonly ExpressionRewriter[] _lowerers =
-    [
-        new ConstantFoldingLowerer(),
-        new OperatorToFunctionLowerer(),
-        new LambdaPlaceholderLowerer(),
-    ];
+    private static ExpressionRewriter[] Lowerers => [new ConstantFoldingLowerer(), new OperatorToFunctionLowerer(), new LambdaPlaceholderLowerer()];
 
     public static Expression Lower(Expression expression) =>
-        _lowerers.Aggregate(expression, (loweredExpression, lowerer) => lowerer.Rewrite(loweredExpression));
+        Lowerers.Aggregate(expression, (loweredExpression, lowerer) => lowerer.Rewrite(loweredExpression));
 
     private class LambdaPlaceholderLowerer : ExpressionRewriter
     {
