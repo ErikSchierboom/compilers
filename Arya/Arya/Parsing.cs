@@ -183,7 +183,7 @@ internal class Parser
                 body.Clear();
             }
 
-            body.Add(ParseExpression(Precedence.Assignment));
+            body.Add(ParseExpression());
         }
 
         Consume(TokenType.CloseBrace);

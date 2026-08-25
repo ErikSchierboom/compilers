@@ -87,5 +87,20 @@ public static partial class FunctionTests
             public void WithIndexCorrespondToNthArgument(string code, Value expected) =>
                 Assert.Equal(expected, Interpreter.Evaluate(code));
         }
+
+        [Fact]
+        public void Multiline()
+        {
+            const string code =
+                """
+                double = { 
+                    a = # * 2
+                    b = a + 3
+                    b * 4
+                }
+                double(5)
+                """;
+            Assert.Equal(Array<int>.Scalar(52), Interpreter.Evaluate(code));
+        }
     }
 }
