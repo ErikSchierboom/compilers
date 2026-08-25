@@ -397,12 +397,15 @@ public static class BuiltinFunctions
                 if (array.Shape.IsScalar)
                     return array;
 
-                var newElements = array
+                var reducedArray = array
                     .Rows()
                     .Select(Array<T>.Vector)
                     .Aggregate((a, b) => (Array<T>)reducer.Invoke([a, b], interpreter, scope));
-                var newShape = newElements.Shape.RemoveFirst();
-                return newElements with { Shape = newShape };
+
+                if (array.Shape.Rank == reducedArray.Shape.Rank && reducedArray.Elements.Length == 1)
+                    return reducedArray with { Shape = reducedArray.Shape.RemoveFirst() };
+
+                return reducedArray;
             }
         }
 
