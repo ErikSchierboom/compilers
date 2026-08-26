@@ -87,7 +87,7 @@ public abstract record BuiltinFunction(string Name) : Function
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
 
-            public static Array<T> Transpose<T>(Array<T> array)
+            private static Array<T> Transpose<T>(Array<T> array)
             {
                 if (array.Shape.IsScalar || array.Shape.IsVector)
                     return array;
@@ -286,7 +286,7 @@ public abstract record BuiltinFunction(string Name) : Function
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
 
-            public static Array<T> Append<T>(Array<T> array, Array<T> other)
+            private static Array<T> Append<T>(Array<T> array, Array<T> other)
             {
                 if ((array.Shape.IsScalar || array.Shape.IsVector) && (other.Shape.IsScalar || other.Shape.IsVector))
                     return Array<T>.Vector([.. array.Elements, .. other.Elements]);
@@ -314,7 +314,7 @@ public abstract record BuiltinFunction(string Name) : Function
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
 
-            public static Array<T> Reshape<T>(Array<T> array, Array<int> newDimensions)
+            private static Array<T> Reshape<T>(Array<T> array, Array<int> newDimensions)
             {
                 var newShape = new Shape(newDimensions.Elements);
                 if (newShape.Count != array.Shape.Count)
@@ -337,7 +337,7 @@ public abstract record BuiltinFunction(string Name) : Function
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
 
-            public static Array<T> Replicate<T>(Array<T> array, Array<int> replications)
+            private static Array<T> Replicate<T>(Array<T> array, Array<int> replications)
             {
                 if (replications.Elements.Any(replication => replication < 0))
                     throw new InvalidOperationException("Replication amount must be >= 0");

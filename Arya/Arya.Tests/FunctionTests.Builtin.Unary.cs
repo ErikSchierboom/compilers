@@ -253,10 +253,15 @@ public static partial class FunctionTests
                     { "string(1)", Array<char>.Vector([.."1"]) },
                     { "string(true)", Array<char>.Vector([.."true"]) },
                     { "string('a')", Array<char>.Vector([.."'a'"]) },
+                    { "string(@1)", Array<char>.Vector([.."@1"]) },
                     { "string([4 5])", Array<char>.Vector([.."[4 5]"]) },
                     { "string([true false])", Array<char>.Vector([.."[true false]"]) },
                     { "string(\"abc\")", Array<char>.Vector([.."\"abc\""]) },
+                    { "string(@[4 5])", Array<char>.Vector([.."@[4 5]"]) },
                     { "string([[7] [2] [9] [3]])", Array<char>.Vector([.."[[7] [2] [9] [3]]"]) },
+                    { "string([[true] [false]])", Array<char>.Vector([.."[[true] [false]]"]) },
+                    { "string([\"ab\" \"cd\"])", Array<char>.Vector([.."[\"ab\" \"cd\"]"]) },
+                    { "string([@[1 2] @[3 4]])", Array<char>.Vector([.."[@[1 2] @[3 4]]"]) },
                 };
 
             [Theory, MemberData(nameof(StringTestData))]

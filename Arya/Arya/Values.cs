@@ -172,22 +172,47 @@ internal sealed class ValueRenderer
 
     private static string Render(Array<char> array)
     {
+        if (array.Shape.IsScalar)
+            return Render(array.Elements[0]);
+
+        var sb = new StringBuilder();
+
         if (array.Shape.IsVector)
         {
-            var sb = new StringBuilder();
             sb.Append('"');
             sb.Append(array.Elements);
             sb.Append('"');
             return sb.ToString();
         }
 
-        return Render<char>(array);
+        for (var index = 0; index < array.Shape.Dimensions.Length - 1; index++)
+            sb.Append('[');
+
+        sb.Append('"');
+
+        var chunkSize = array.Shape.Dimensions[^1];
+        var numberOfChunks = array.Elements.Length / chunkSize;
+
+        for (var i = 0; i < numberOfChunks; i++)
+        {
+            sb.Append(array.Elements[(i * chunkSize)..((i + 1) * chunkSize)]);
+
+            if (i < numberOfChunks - 1)
+                sb.Append("\" \"");
+        }
+
+        sb.Append('"');
+
+        for (var index = 0; index < array.Shape.Dimensions.Length - 1; index++)
+            sb.Append(']');
+
+        return sb.ToString();
     }
 
     private static string Render<T>(Array<T> array)
     {
         if (array.Shape.IsScalar)
-            return Render(array.Elements[0]!);
+            return Render(array.Elements[0]);
 
         var sb = new StringBuilder();
 
