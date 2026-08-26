@@ -67,7 +67,7 @@ public class VariablesTests
                 """
                 a = max
                 """;
-            var function = Assert.IsType<BuiltinFunctions.BuiltinFunction>(Interpreter.Evaluate(code), exactMatch: false);
+            var function = Assert.IsType<BuiltinFunction>(Interpreter.Evaluate(code), exactMatch: false);
             Assert.Equal(2, function.Arity);
         }
 

@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Text;
 
 namespace Arya;
 
@@ -19,7 +20,7 @@ public sealed record Box(Value Value) : Value
 {
     public override Shape Shape { get; init; } = Shape.Scalar;
 
-    public override string ToString() => $"@{Value}";
+    public override string ToString() => ValueRenderer.Render(this);
 }
 
 public sealed record Shape(params int[] Dimensions)
@@ -119,15 +120,7 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
             StructuralComparisons.StructuralEqualityComparer.GetHashCode(Elements),
             Shape.GetHashCode());
 
-    public override string ToString() =>
-        Shape.Dimensions.Length switch
-        {
-            0 when typeof(T) == typeof(char) => '"' + string.Concat(Elements) + '"',
-            0 => Elements[0]!.ToString()!,
-            1 => "[" + string.Join(" ", Elements) + "] ",
-            2 => "[[" + string.Join("] [ ", Elements) + "]]",
-            _ => base.ToString()
-        };
+    public override string ToString() => ValueRenderer.Render(this);
 
     public Array<int> Indices() => Array<int>.Vector([..Enumerable.Range(1, Shape.RowCount)]);
 }
@@ -160,3 +153,78 @@ public sealed record LambdaFunction(string[] Parameters, Expression Body) : Func
 /// This type is used as an empty array's element type, as we can't know its type.
 /// </summary>
 public sealed record Any;
+
+internal sealed class ValueRenderer
+{
+    public static string Render(Value value) =>
+        value switch
+        {
+            Box box => $"@{Render(box.Value)}",
+            BuiltinFunction builtinFunction => $"{builtinFunction.Name}/{builtinFunction.Arity}",
+            LambdaFunction lambdaFunction => $"{lambdaFunction.GetHashCode()}/{lambdaFunction.Arity}",
+            Array<int> intArray => Render(intArray),
+            Array<char> charArray => Render(charArray),
+            Array<bool> boolArray => Render(boolArray),
+            Array<Box> boxArray => Render(boxArray),
+            Array<Any> => "[]",
+            _ => throw new ArgumentOutOfRangeException(nameof(value))
+        };
+
+    private static string Render(Array<char> array)
+    {
+        if (array.Shape.IsVector)
+        {
+            var sb = new StringBuilder();
+            sb.Append('"');
+            sb.Append(array.Elements);
+            sb.Append('"');
+            return sb.ToString();
+        }
+
+        return Render<char>(array);
+    }
+
+    private static string Render<T>(Array<T> array)
+    {
+        if (array.Shape.IsScalar)
+            return Render(array.Elements[0]!);
+
+        var sb = new StringBuilder();
+
+        for (var index = 0; index < array.Shape.Dimensions.Length; index++)
+            sb.Append('[');
+
+        var chunkSize = array.Shape.Dimensions[^1];
+        var numberOfChunks = array.Elements.Length / chunkSize;
+
+        for (var i = 0; i < numberOfChunks; i++)
+        {
+            for (var j = 0; j < chunkSize; j++)
+            {
+                sb.Append(Render(array.Elements[i * chunkSize + j]!));
+
+                if (j < chunkSize - 1)
+                    sb.Append(' ');
+            }
+
+            if (i < numberOfChunks - 1)
+                sb.Append("] [");
+        }
+
+        for (var index = 0; index < array.Shape.Dimensions.Length; index++)
+            sb.Append(']');
+
+        return sb.ToString();
+    }
+
+    private static string Render<T>(T obj)
+    {
+        if (obj is bool b)
+            return b ? "true" : "false";
+
+        if (obj is char c)
+            return $"'{c}'";
+
+        return obj!.ToString()!;
+    }
+}

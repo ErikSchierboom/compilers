@@ -1,7 +1,9 @@
 namespace Arya;
 
-public static class BuiltinFunctions
+public abstract record BuiltinFunction(string Name) : Function
 {
+    public override string ToString() => Name;
+
     public static readonly BuiltinFunction[] All =
     [
         new Unary.CountFunction(),
@@ -18,6 +20,7 @@ public static class BuiltinFunctions
         new Unary.PlusFunction(),
         new Unary.MinusFunction(),
         new Unary.NotFunction(),
+        new Unary.StringFunction(),
 
         new Binary.AppendFunction(),
         new Binary.ReshapeFunction(),
@@ -36,12 +39,7 @@ public static class BuiltinFunctions
         new Binary.BitwiseShiftRightFunction(),
     ];
 
-    public abstract record BuiltinFunction(string Name) : Function
-    {
-        public override string ToString() => Name;
-    }
-
-    public static class Unary
+    private static class Unary
     {
         public abstract record UnaryFunction(string Name) : BuiltinFunction(Name)
         {
@@ -195,6 +193,12 @@ public static class BuiltinFunctions
                 };
         }
 
+        public sealed record StringFunction() : UnaryFunction("string")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                Array<char>.Vector([..arguments[0].ToString()]);
+        }
+
         public abstract record UnaryIntegerFunction(string Name, Func<int, int> Operation) : BuiltinFunction(Name)
         {
             public override int Arity => 1;
@@ -230,7 +234,7 @@ public static class BuiltinFunctions
 
         public abstract record UnaryCharSequenceFunction(string Name, Func<char[], char[]> Operation) : BuiltinFunction(Name)
         {
-            protected UnaryCharSequenceFunction(string name, Func<ReadOnlyMemory<char>, ReadOnlyMemory<char>> operation) : 
+            protected UnaryCharSequenceFunction(string name, Func<ReadOnlyMemory<char>, ReadOnlyMemory<char>> operation) :
                 this(name, chars => operation(chars.AsMemory()).ToArray())
             {
             }
@@ -256,7 +260,7 @@ public static class BuiltinFunctions
         public sealed record TrimFunction() : UnaryCharSequenceFunction("trim", str => str.Trim());
     }
 
-    public static class Binary
+    private static class Binary
     {
         public abstract record BinaryFunction(string Name) : BuiltinFunction(Name)
         {
@@ -296,7 +300,7 @@ public static class BuiltinFunctions
                 return new Array<T>(array.Shape.Replace(1, array.Shape.Dimensions[1] + other.Shape.Dimensions[1]), [.. newElements]);
             }
         }
-        
+
         public sealed record ReshapeFunction() : BinaryFunction("reshape")
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>

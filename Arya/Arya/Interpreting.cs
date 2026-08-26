@@ -134,11 +134,11 @@ public class Interpreter
         };
     }
 
-    public static Scope CreateDefaultScope()
+    private static Scope CreateDefaultScope()
     {
         var scope = new Scope();
 
-        foreach (var builtinFunction in BuiltinFunctions.All)
+        foreach (var builtinFunction in BuiltinFunction.All)
             scope[builtinFunction.Name] = builtinFunction;
 
         return scope;

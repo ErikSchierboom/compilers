@@ -245,6 +245,23 @@ public static partial class FunctionTests
             [Theory, MemberData(nameof(FlattenTestData))]
             public void Flatten(string code, Value expected) =>
                 Assert.Equal(expected, Interpreter.Evaluate(code));
+
+            public static readonly TheoryData<string, Value> StringTestData =
+                new()
+                {
+                    { "string([])", Array<char>.Vector([.."[]"]) },
+                    { "string(1)", Array<char>.Vector([.."1"]) },
+                    { "string(true)", Array<char>.Vector([.."true"]) },
+                    { "string('a')", Array<char>.Vector([.."'a'"]) },
+                    { "string([4 5])", Array<char>.Vector([.."[4 5]"]) },
+                    { "string([true false])", Array<char>.Vector([.."[true false]"]) },
+                    { "string(\"abc\")", Array<char>.Vector([.."\"abc\""]) },
+                    { "string([[7] [2] [9] [3]])", Array<char>.Vector([.."[[7] [2] [9] [3]]"]) },
+                };
+
+            [Theory, MemberData(nameof(StringTestData))]
+            public void String(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
         }
     }
 }
