@@ -37,6 +37,12 @@ public abstract record BuiltinFunction(string Name) : Function
         new Binary.BitwiseOrFunction(),
         new Binary.BitwiseShiftLeftFunction(),
         new Binary.BitwiseShiftRightFunction(),
+        new Binary.LessFunction(),
+        new Binary.LessEqualFunction(),
+        new Binary.GreaterFunction(),
+        new Binary.GreaterEqualFunction(),
+        new Binary.EqualFunction(),
+        new Binary.NotEqualFunction(),
     ];
 
     private static class Unary
@@ -232,32 +238,27 @@ public abstract record BuiltinFunction(string Name) : Function
         public sealed record LowercaseFunction() : UnaryCharFunction("lowercase", char.ToLowerInvariant);
         public sealed record UppercaseFunction() : UnaryCharFunction("uppercase", char.ToUpperInvariant);
 
-        public abstract record UnaryCharSequenceFunction(string Name, Func<char[], char[]> Operation) : BuiltinFunction(Name)
+        public sealed record TrimFunction() : UnaryFunction("trim")
         {
-            protected UnaryCharSequenceFunction(string name, Func<ReadOnlyMemory<char>, ReadOnlyMemory<char>> operation) :
-                this(name, chars => operation(chars.AsMemory()).ToArray())
-            {
-            }
-
             public override int Arity => 1;
 
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope)
-            {
-                switch (arguments[0])
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                arguments[0] switch
                 {
-                    case Array<char> charArray:
-                        return charArray.Binary(Operation);
-                    case Array<Box> boxArray:
-                        return boxArray.Unary(box => Invoke([box.Value], interpreter, scope).Box());
-                    case Array<Any>:
-                        return Array<Any>.Empty;
-                    default:
-                        throw new InvalidOperationException("Invalid argument type");
-                }
+                    Array<char> charArray => Trim(charArray) ,
+                    Array<Box> boxArray => boxArray.Unary(box => Invoke([box.Value], interpreter, scope).Box()),
+                    Array<Any> => Array<Any>.Empty,
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+
+            private static Value Trim(Array<char> charArray)
+            {
+                if (charArray.Shape.IsScalar && char.IsWhiteSpace(charArray.Elements[0]))
+                    return Array<char>.Empty;
+
+                return charArray.Binary(str => str.Trim().ToArray());
             }
         }
-
-        public sealed record TrimFunction() : UnaryCharSequenceFunction("trim", str => str.Trim());
     }
 
     private static class Binary
@@ -451,5 +452,84 @@ public abstract record BuiltinFunction(string Name) : Function
         public sealed record BitwiseOrFunction() : BinaryIntegerFunction("or", (a, b) => a | b);
         public sealed record BitwiseShiftLeftFunction() : BinaryIntegerFunction("shiftLeft", (a, b) => a << b);
         public sealed record BitwiseShiftRightFunction() : BinaryIntegerFunction("shiftRight", (a, b) => a >> b);
+
+        public sealed record EqualFunction() : BinaryFunction("equal")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                (arguments[0], arguments[1]) switch
+                {
+                    (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
+                    (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a == b),
+                    (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a == b),
+                    (Array<bool> l, Array<bool> r) => l.Zip(r, (a, b) => a == b),
+                    (Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+        }
+
+        public sealed record NotEqualFunction() : BinaryFunction("notEqual")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                (arguments[0], arguments[1]) switch
+                {
+                    (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
+                    (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a != b),
+                    (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a != b),
+                    (Array<bool> l, Array<bool> r) => l.Zip(r, (a, b) => a != b),
+                    (Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+        }
+
+        public sealed record LessFunction() : BinaryFunction("less")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                (arguments[0], arguments[1]) switch
+                {
+                    (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
+                    (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a < b),
+                    (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a < b),
+                    (Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+        }
+
+        public sealed record LessEqualFunction() : BinaryFunction("lessEqual")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                (arguments[0], arguments[1]) switch
+                {
+                    (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
+                    (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a <= b),
+                    (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a <= b),
+                    (Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+        }
+
+        public sealed record GreaterFunction() : BinaryFunction("greater")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                (arguments[0], arguments[1]) switch
+                {
+                    (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
+                    (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a > b),
+                    (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a > b),
+                    (Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+        }
+        public sealed record GreaterEqualFunction() : BinaryFunction("greaterEqual")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                (arguments[0], arguments[1]) switch
+                {
+                    (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
+                    (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a >= b),
+                    (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a >= b),
+                    (Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+        }
     }
 }

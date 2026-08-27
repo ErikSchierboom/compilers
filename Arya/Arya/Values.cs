@@ -86,18 +86,18 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
     public Array<T> Unary(Func<T, T> operation) =>
         new(Shape, [.. Elements.Select(operation)]);
     
-    public Array<T> Binary(Func<T[], T[]> operation)
+    public Array<TOut> Binary<TOut>(Func<T[], TOut[]> operation)
     {
         if (Shape.IsScalar)
-            return this;
+            return Array<TOut>.Scalar(operation(Elements)[0]);
         
         if (Shape.IsVector)
-            return Vector(operation(Elements));
+            return Array<TOut>.Vector(operation(Elements));
 
         var newRows = Rows().Select(operation).ToArray();
         var newElements = newRows.SelectMany(element => element).ToArray();
         var newShape = Shape.Replace(0, newRows.Length);
-        return this with { Shape = newShape, Elements = newElements };
+        return new Array<TOut>(newShape, newElements);
     }
 
     /// <summary>
@@ -105,10 +105,10 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
     /// operand is a scalar. Repeating both sides makes the stretch fall out of taking exactly
     /// as many elements as the resulting shape holds.
     /// </summary>
-    public Array<T> Zip<TOther>(Array<TOther> other, Func<T, TOther, T> operation)
+    public Array<TOut> Zip<TOther, TOut>(Array<TOther> other, Func<T, TOther, TOut> operation)
     {
         var shape = Shape.Broadcast(other.Shape);
-        return new Array<T>(shape, [.. Elements.Repeat().Zip(other.Elements.Repeat(), operation).Take(shape.Count)]);
+        return new Array<TOut>(shape, [.. Elements.Repeat().Zip(other.Elements.Repeat(), operation).Take(shape.Count)]);
     }
 
     public bool Equals(Array<T>? other) =>

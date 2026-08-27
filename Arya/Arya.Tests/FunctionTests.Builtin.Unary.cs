@@ -100,7 +100,7 @@ public static partial class FunctionTests
             public static readonly TheoryData<string, Value> TrimTestData =
                 new()
                 {
-                    { "trim(' ')", Array<char>.Scalar(' ') },
+                    { "trim(' ')", Array<char>.Empty },
                     { "trim('a')", Array<char>.Scalar('a') },
                     { "trim('1')", Array<char>.Scalar('1') },
                     { "trim(['A' 'e' 'K' ' '])", Array<char>.Vector('A', 'e', 'K') },
