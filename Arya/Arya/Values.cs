@@ -107,6 +107,9 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
     /// </summary>
     public Array<TOut> Zip<TOther, TOut>(Array<TOther> other, Func<T, TOther, TOut> operation)
     {
+        if (Shape != other.Shape && !Shape.IsScalar && !other.Shape.IsScalar)
+            throw new InvalidOperationException("Cannot compare arrays of different shapes");
+
         var shape = Shape.Broadcast(other.Shape);
         return new Array<TOut>(shape, [.. Elements.Repeat().Zip(other.Elements.Repeat(), operation).Take(shape.Count)]);
     }
