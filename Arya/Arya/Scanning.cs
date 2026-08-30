@@ -62,9 +62,9 @@ public sealed class Scanner
                 case '!':
                     Advance();
                     if (Match('='))
-                        tokens.Add(new Token(TokenType.ExclamationEqual, "!="));
+                        tokens.Add(new Token(TokenType.BangEqual, "!="));
                     else
-                        tokens.Add(new Token(TokenType.Exclamation, "!"));
+                        tokens.Add(new Token(TokenType.Bang, "!"));
                     break;
                 case '|':
                     Advance();
@@ -296,8 +296,8 @@ public enum TokenType
     OpenBrace,
     CloseBrace,
     Ampersand,
-    Exclamation,
-    ExclamationEqual,
+    Bang,
+    BangEqual,
     Plus,
     PlusPlus,
     Minus,

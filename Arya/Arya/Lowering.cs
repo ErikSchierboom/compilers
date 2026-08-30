@@ -44,19 +44,39 @@ internal static class Lowerer
 
     private class OperatorToFunctionLowerer : ExpressionRewriter
     {
+        private static readonly Dictionary<TokenType, string> _unaryTokenTypeToFunctionName = new()
+        {
+            [TokenType.Plus] = "plus",
+            [TokenType.Minus] = "minus",
+            [TokenType.Bang] = "not"
+        };
+
+        private static readonly Dictionary<TokenType, string> _binaryTokenTypeToFunctionName = new()
+        {
+            [TokenType.Plus] = "add",
+            [TokenType.Minus] = "subtract",
+            [TokenType.Star] = "multiply",
+            [TokenType.Slash] = "divide",
+            [TokenType.Percent] = "modulo",
+            [TokenType.Ampersand] = "and",
+            [TokenType.Pipe] = "or",
+            [TokenType.Greater] = "greater",
+            [TokenType.GreaterEqual] = "greaterEqual",
+            [TokenType.GreaterGreater] = "shiftRight",
+            [TokenType.Less] = "less",
+            [TokenType.LessEqual] = "lessEqual",
+            [TokenType.LessLess] = "shiftLeft",
+            [TokenType.EqualEqual] = "equal",
+            [TokenType.BangEqual] = "notEqual",
+            [TokenType.PlusPlus] = "append"
+        };
+
         protected override Expression RewriteUnary(UnaryExpression unaryExpression)
         {
             var operand = Rewrite(unaryExpression.Operand);
 
-            switch (unaryExpression.Operator.Type)
-            {
-                case TokenType.Plus:
-                    return new CallExpression(new NameExpression(new Token(TokenType.Identifier, "plus")), [operand]);
-                case TokenType.Minus:
-                    return new CallExpression(new NameExpression(new Token(TokenType.Identifier, "minus")), [operand]);
-                case TokenType.Exclamation:
-                    return new CallExpression(new NameExpression(new Token(TokenType.Identifier, "not")), [operand]);
-            }
+            if (_unaryTokenTypeToFunctionName.TryGetValue(unaryExpression.Operator.Type, out var functionName))
+                return new CallExpression(new NameExpression(new Token(TokenType.Identifier, functionName)), [operand]);
 
             return base.RewriteUnary(unaryExpression);
         }
@@ -66,29 +86,8 @@ internal static class Lowerer
             var left = Rewrite(binaryExpression.Left);
             var right = Rewrite(binaryExpression.Right);
 
-            switch (binaryExpression.Operator.Type)
-            {
-                case TokenType.Plus:
-                    return new CallExpression(new NameExpression(new Token(TokenType.Identifier, "add")), [left, right]);
-                case TokenType.Minus:
-                    return new CallExpression(new NameExpression(new Token(TokenType.Identifier, "subtract")), [left, right]);
-                case TokenType.Star:
-                    return new CallExpression(new NameExpression(new Token(TokenType.Identifier, "multiply")), [left, right]);
-                case TokenType.Slash:
-                    return new CallExpression(new NameExpression(new Token(TokenType.Identifier, "divide")), [left, right]);
-                case TokenType.Percent:
-                    return new CallExpression(new NameExpression(new Token(TokenType.Identifier, "modulo")), [left, right]);
-                case TokenType.Ampersand:
-                    return new CallExpression(new NameExpression(new Token(TokenType.Identifier, "and")), [left, right]);
-                case TokenType.Pipe:
-                    return new CallExpression(new NameExpression(new Token(TokenType.Identifier, "or")), [left, right]);
-                case TokenType.GreaterGreater:
-                    return new CallExpression(new NameExpression(new Token(TokenType.Identifier, "shiftRight")), [left, right]);
-                case TokenType.LessLess:
-                    return new CallExpression(new NameExpression(new Token(TokenType.Identifier, "shiftLeft")), [left, right]);
-                case TokenType.PlusPlus:
-                    return new CallExpression(new NameExpression(new Token(TokenType.Identifier, "append")), [left, right]);
-            }
+            if (_binaryTokenTypeToFunctionName.TryGetValue(binaryExpression.Operator.Type, out var functionName))
+                return new CallExpression(new NameExpression(new Token(TokenType.Identifier, functionName)), [left, right]);
 
             return base.RewriteBinary(binaryExpression);
         }
@@ -96,70 +95,46 @@ internal static class Lowerer
 
     private class ConstantFoldingLowerer : ExpressionRewriter
     {
-        protected override Expression RewriteUnary(UnaryExpression unaryExpression)
-        {
-            switch (unaryExpression.Operator.Type, unaryExpression.Operand)
+        protected override Expression RewriteUnary(UnaryExpression unaryExpression) =>
+            (unaryExpression.Operator.Type, unaryExpression.Operand) switch
             {
-                case (TokenType.Plus, LiteralExpression { Value.Literal: int }):
-                    return unaryExpression.Operand;
-                case (TokenType.Minus, LiteralExpression { Value.Literal: int intVal }):
-                    return new LiteralExpression(new Token(TokenType.Number, $"-{intVal}", -intVal));
-            }
+                (TokenType.Plus, LiteralExpression { Value.Literal: int }) => unaryExpression.Operand,
+                (TokenType.Minus, LiteralExpression { Value.Literal: int intVal }) => new LiteralExpression(new Token(TokenType.Number, $"-{intVal}", -intVal)),
+                _ => base.RewriteUnary(unaryExpression)
+            };
 
-            return base.RewriteUnary(unaryExpression);
-        }
-
-        protected override Expression RewriteBinary(BinaryExpression binaryExpression)
-        {
-            switch (binaryExpression.Left, binaryExpression.Operator.Type, binaryExpression.Right)
+        protected override Expression RewriteBinary(BinaryExpression binaryExpression) =>
+            (binaryExpression.Left, binaryExpression.Operator.Type, binaryExpression.Right) switch
             {
-                case (LiteralExpression left, TokenType.Plus, LiteralExpression right):
-                    switch (left.Value.Literal, right.Value.Literal)
-                    {
-                        case (0, _):
-                            return right;
-                        case (_, 0):
-                            return left;
-                        case (int leftInt, int rightInt):
-                            return new LiteralExpression(new Token(TokenType.Number, $"{leftInt + rightInt}", leftInt + rightInt));
-                    }
-                    break;
-                case (LiteralExpression left, TokenType.Minus, LiteralExpression right):
-                    switch (left.Value.Literal, right.Value.Literal)
-                    {
-                        case (0, int rightVal):
-                            return new LiteralExpression(new Token(TokenType.Number, $"-{rightVal}", -rightVal));
-                        case (_, 0):
-                            return left;
-                        case (int leftInt, int rightInt):
-                            return new LiteralExpression(new Token(TokenType.Number, $"{leftInt - rightInt}", leftInt - rightInt));
-                    }
-                    break;
-                case (LiteralExpression left, TokenType.Star, LiteralExpression right):
-                    switch (left.Value.Literal, right.Value.Literal)
-                    {
-                        case (0, _) or (_, 0):
-                            return new LiteralExpression(new Token(TokenType.Number, "0", 0));
-                        case (1, _):
-                            return right;
-                        case (_, 1):
-                            return left;
-                        case (int leftInt, int rightInt):
-                            return new LiteralExpression(new Token(TokenType.Number, $"{leftInt * rightInt}", leftInt * rightInt));
-                    }
-                    break;
-                case (LiteralExpression left, TokenType.Slash, LiteralExpression right):
-                    switch (left.Value.Literal, right.Value.Literal)
-                    {
-                        case (_, 1):
-                            return left;
-                        case (int leftInt, int rightInt):
-                            return new LiteralExpression(new Token(TokenType.Number, $"{leftInt / rightInt}", leftInt / rightInt));
-                    }
-                    break;
-            }
-
-            return base.RewriteBinary(binaryExpression);
-        }
+                (LiteralExpression left, TokenType.Plus, LiteralExpression right) => (left.Value.Literal, right.Value.Literal) switch
+                {
+                    (0, _) => right,
+                    (_, 0) => left,
+                    (int leftInt, int rightInt) => new LiteralExpression(new Token(TokenType.Number, $"{leftInt + rightInt}", leftInt + rightInt)),
+                    _ => base.RewriteBinary(binaryExpression)
+                },
+                (LiteralExpression left, TokenType.Minus, LiteralExpression right) => (left.Value.Literal, right.Value.Literal) switch
+                {
+                    (0, int rightVal) => new LiteralExpression(new Token(TokenType.Number, $"-{rightVal}", -rightVal)),
+                    (_, 0) => left,
+                    (int leftInt, int rightInt) => new LiteralExpression(new Token(TokenType.Number, $"{leftInt - rightInt}", leftInt - rightInt)),
+                    _ => base.RewriteBinary(binaryExpression)
+                },
+                (LiteralExpression left, TokenType.Star, LiteralExpression right) => (left.Value.Literal, right.Value.Literal) switch
+                {
+                    (0, _) or (_, 0) => new LiteralExpression(new Token(TokenType.Number, "0", 0)),
+                    (1, _) => right,
+                    (_, 1) => left,
+                    (int leftInt, int rightInt) => new LiteralExpression(new Token(TokenType.Number, $"{leftInt * rightInt}", leftInt * rightInt)),
+                    _ => base.RewriteBinary(binaryExpression)
+                },
+                (LiteralExpression left, TokenType.Slash, LiteralExpression right) => (left.Value.Literal, right.Value.Literal) switch
+                {
+                    (_, 1) => left,
+                    (int leftInt, int rightInt) => new LiteralExpression(new Token(TokenType.Number, $"{leftInt / rightInt}", leftInt / rightInt)),
+                    _ => base.RewriteBinary(binaryExpression)
+                },
+                _ => base.RewriteBinary(binaryExpression)
+            };
     }
 }
