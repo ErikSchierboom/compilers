@@ -462,7 +462,8 @@ public abstract record BuiltinFunction(string Name) : Function
                     (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a == b),
                     (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a == b),
                     (Array<bool> l, Array<bool> r) => l.Zip(r, (a, b) => a == b),
-                    (Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
@@ -476,7 +477,8 @@ public abstract record BuiltinFunction(string Name) : Function
                     (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a != b),
                     (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a != b),
                     (Array<bool> l, Array<bool> r) => l.Zip(r, (a, b) => a != b),
-                    (Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
@@ -489,7 +491,8 @@ public abstract record BuiltinFunction(string Name) : Function
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a < b),
                     (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a < b),
-                    (Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
@@ -502,7 +505,8 @@ public abstract record BuiltinFunction(string Name) : Function
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a <= b),
                     (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a <= b),
-                    (Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
@@ -515,7 +519,8 @@ public abstract record BuiltinFunction(string Name) : Function
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a > b),
                     (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a > b),
-                    (Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
@@ -527,7 +532,8 @@ public abstract record BuiltinFunction(string Name) : Function
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a >= b),
                     (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a >= b),
-                    (Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }

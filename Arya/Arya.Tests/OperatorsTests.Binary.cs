@@ -296,6 +296,322 @@ public static partial class OperatorTests
                 Assert.Equal(expected, Interpreter.Evaluate(code));
         }
 
+        public class Equal
+        {
+            public static readonly TheoryData<string, Value> IntegersTestData =
+                new()
+                {
+                    { "1 == 1", Array<bool>.Scalar(true) },
+                    { "1 == 2", Array<bool>.Scalar(false) },
+                    { "2 == [2 3 4]", Array<bool>.Vector(true, false, false) },
+                    { "[2 3] == [4 2]", Array<bool>.Vector(false, false) },
+                    { "[[5 2] [6 7]] == 2", Array<bool>.Matrix([[false, true], [false, false]]) },
+                    { "[[1 2] [3 4]] == [[1 6] [3 8]]", Array<bool>.Matrix([[true, false], [true, false]]) },
+                    { "[] == 2", Array<Any>.Empty },
+                    { "[@[1] @[2 3]] == 2", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(true, false).Box()) },
+                    { "3 == [@[1] @[2 3]]", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(false, true).Box()) },
+                    { "[@[1] @[2 3]] == [@[1] @[2 3]]", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(true, true).Box()) },
+                    { "[@[1] @[2 3]] == []", Array<Any>.Empty },
+                    { "[] == [@[1] @[2 3]]", Array<Any>.Empty },
+                };
+
+            [Theory, MemberData(nameof(IntegersTestData))]
+            public void Integers(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+
+            public static readonly TheoryData<string, Value> CharsTestData =
+                new()
+                {
+                    { "'a' == 'a'", Array<bool>.Scalar(true) },
+                    { "'a' == 'b'", Array<bool>.Scalar(false) },
+                    { "'a' == ['a' 'b' 'c']", Array<bool>.Vector(true, false, false) },
+                    { "['a' 'b'] == ['c' 'a']", Array<bool>.Vector(false, false) },
+                    { "[['e' 'a'] ['z' 'h']] == 'a'", Array<bool>.Matrix([[false, true], [false, false]]) },
+                    { "[['a' 'b'] ['c' 'd']] == [['a' 'f'] ['c' 'h']]", Array<bool>.Matrix([[true, false], [true, false]]) },
+                    { "[] == 'a'", Array<Any>.Empty },
+                    { "[@['a'] @['b' 'c']] == 'b'", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(true, false).Box()) },
+                    { "'c' == [@['a'] @['b' 'c']]", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(false, true).Box()) },
+                    { "[@['a'] @['b' 'c']] == [@['a'] @['b' 'c']]", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(true, true).Box()) },
+                    { "[@['a'] @['b' 'c']] == []", Array<Any>.Empty },
+                    { "[] == [@['a'] @['b' 'c']]", Array<Any>.Empty },
+                };
+
+            [Theory, MemberData(nameof(CharsTestData))]
+            public void Chars(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+
+            public static readonly TheoryData<string, Value> BooleansTestData =
+                new()
+                {
+                    { "true == true", Array<bool>.Scalar(true) },
+                    { "true == false", Array<bool>.Scalar(false) },
+                    { "false == [false true true]", Array<bool>.Vector(true, false, false) },
+                    { "[false true] == [true false]", Array<bool>.Vector(false, false) },
+                    { "[[true false] [true true]] == false", Array<bool>.Matrix([[false, true], [false, false]]) },
+                    { "[[true false] [true true]] == [[true true] [true true]]", Array<bool>.Matrix([[true, false], [true, true]]) },
+                    { "[] == false", Array<Any>.Empty },
+                    { "[@[true] @[false true]] == false", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(true, false).Box()) },
+                    { "false == [@[true] @[false true]]", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(true, false).Box()) },
+                    { "[@[true] @[false true]] == [@[true] @[false true]]", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(true, true).Box()) },
+                    { "[@[true] @[false true]] == []", Array<Any>.Empty },
+                    { "[] == [@[true] @[false true]]", Array<Any>.Empty },
+                };
+
+            [Theory, MemberData(nameof(BooleansTestData))]
+            public void Booleans(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+        }
+
+        public class NotEqual
+        {
+            public static readonly TheoryData<string, Value> IntegersTestData =
+                new()
+                {
+                    { "1 != 1", Array<bool>.Scalar(false) },
+                    { "1 != 2", Array<bool>.Scalar(true) },
+                    { "2 != [2 3 4]", Array<bool>.Vector(false, true, true) },
+                    { "[2 3] != [4 2]", Array<bool>.Vector(true, true) },
+                    { "[[5 2] [6 7]] != 2", Array<bool>.Matrix([[true, false], [true, true]]) },
+                    { "[[1 2] [3 4]] != [[1 6] [3 8]]", Array<bool>.Matrix([[false, true], [false, true]]) },
+                    { "[] != 2", Array<Any>.Empty },
+                    { "[@[1] @[2 3]] != 2", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(false, true).Box()) },
+                    { "3 != [@[1] @[2 3]]", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(true, false).Box()) },
+                    { "[@[1] @[2 3]] != [@[1] @[2 3]]", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(false, false).Box()) },
+                    { "[@[1] @[2 3]] != []", Array<Any>.Empty },
+                    { "[] != [@[1] @[2 3]]", Array<Any>.Empty },
+                };
+
+            [Theory, MemberData(nameof(IntegersTestData))]
+            public void Integers(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+
+            public static readonly TheoryData<string, Value> CharsTestData =
+                new()
+                {
+                    { "'a' != 'a'", Array<bool>.Scalar(false) },
+                    { "'a' != 'b'", Array<bool>.Scalar(true) },
+                    { "'a' != ['a' 'b' 'c']", Array<bool>.Vector(false, true, true) },
+                    { "['a' 'b'] != ['c' 'a']", Array<bool>.Vector(true, true) },
+                    { "[['e' 'a'] ['z' 'h']] != 'a'", Array<bool>.Matrix([[true, false], [true, true]]) },
+                    { "[['a' 'b'] ['c' 'd']] != [['a' 'f'] ['c' 'h']]", Array<bool>.Matrix([[false, true], [false, true]]) },
+                    { "[] != 'a'", Array<Any>.Empty },
+                    { "[@['a'] @['b' 'c']] != 'b'", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(false, true).Box()) },
+                    { "'c' != [@['a'] @['b' 'c']]", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(true, false).Box()) },
+                    { "[@['a'] @['b' 'c']] != [@['a'] @['b' 'c']]", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(false, false).Box()) },
+                    { "[@['a'] @['b' 'c']] != []", Array<Any>.Empty },
+                    { "[] != [@['a'] @['b' 'c']]", Array<Any>.Empty },
+                };
+
+            [Theory, MemberData(nameof(CharsTestData))]
+            public void Chars(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+
+            public static readonly TheoryData<string, Value> BooleansTestData =
+                new()
+                {
+                    { "true != true", Array<bool>.Scalar(false) },
+                    { "true != false", Array<bool>.Scalar(true) },
+                    { "false != [false true true]", Array<bool>.Vector(false, true, true) },
+                    { "[false true] != [true false]", Array<bool>.Vector(true, true) },
+                    { "[[true false] [true true]] != false", Array<bool>.Matrix([[true, false], [true, true]]) },
+                    { "[[true false] [true true]] != [[true true] [true true]]", Array<bool>.Matrix([[false, true], [false, false]]) },
+                    { "[] != false", Array<Any>.Empty },
+                    { "[@[true] @[false true]] != false", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(false, true).Box()) },
+                    { "false != [@[true] @[false true]]", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(false, true).Box()) },
+                    { "[@[true] @[false true]] != [@[true] @[false true]]", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(false, false).Box()) },
+                    { "[@[true] @[false true]] != []", Array<Any>.Empty },
+                    { "[] != [@[true] @[false true]]", Array<Any>.Empty },
+                };
+
+            [Theory, MemberData(nameof(BooleansTestData))]
+            public void Booleans(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+        }
+
+        public class Less
+        {
+            public static readonly TheoryData<string, Value> IntegersTestData =
+                new()
+                {
+                    { "1 < 1", Array<bool>.Scalar(false) },
+                    { "1 < 2", Array<bool>.Scalar(true) },
+                    { "2 < [2 3 4]", Array<bool>.Vector(false, true, true) },
+                    { "[2 3] < [4 2]", Array<bool>.Vector(true, false) },
+                    { "[[5 2] [6 7]] < 2", Array<bool>.Matrix([[false, false], [false, false]]) },
+                    { "[[1 2] [3 4]] < [[1 6] [3 8]]", Array<bool>.Matrix([[false, true], [false, true]]) },
+                    { "[] < 2", Array<Any>.Empty },
+                    { "[@[1] @[2 3]] < 2", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(false, false).Box()) },
+                    { "3 < [@[1] @[2 3]]", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(false, false).Box()) },
+                    { "[@[1] @[2 3]] < [@[1] @[2 3]]", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(false, false).Box()) },
+                    { "[@[1] @[2 3]] < []", Array<Any>.Empty },
+                    { "[] < [@[1] @[2 3]]", Array<Any>.Empty },
+                };
+
+            [Theory, MemberData(nameof(IntegersTestData))]
+            public void Integers(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+
+            public static readonly TheoryData<string, Value> CharsTestData =
+                new()
+                {
+                    { "'a' < 'a'", Array<bool>.Scalar(false) },
+                    { "'a' < 'b'", Array<bool>.Scalar(true) },
+                    { "'a' < ['a' 'b' 'c']", Array<bool>.Vector(false, true, true) },
+                    { "['a' 'b'] < ['c' 'a']", Array<bool>.Vector(true, false) },
+                    { "[['e' 'a'] ['z' 'h']] < 'a'", Array<bool>.Matrix([[false, false], [false, false]]) },
+                    { "[['a' 'b'] ['c' 'd']] < [['a' 'f'] ['c' 'h']]", Array<bool>.Matrix([[false, true], [false, true]]) },
+                    { "[] < 'a'", Array<Any>.Empty },
+                    { "[@['a'] @['b' 'c']] < 'b'", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(false, false).Box()) },
+                    { "'c' < [@['a'] @['b' 'c']]", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(false, false).Box()) },
+                    { "[@['a'] @['b' 'c']] < [@['a'] @['b' 'c']]", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(false, false).Box()) },
+                    { "[@['a'] @['b' 'c']] < []", Array<Any>.Empty },
+                    { "[] < [@['a'] @['b' 'c']]", Array<Any>.Empty },
+                };
+
+            [Theory, MemberData(nameof(CharsTestData))]
+            public void Chars(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+        }
+
+        public class LessEqual
+        {
+            public static readonly TheoryData<string, Value> IntegersTestData =
+                new()
+                {
+                    { "1 <= 0", Array<bool>.Scalar(false) },
+                    { "1 <= 1", Array<bool>.Scalar(true) },
+                    { "1 <= 2", Array<bool>.Scalar(true) },
+                    { "2 <= [2 3 4]", Array<bool>.Vector(true, true, true) },
+                    { "[2 3] <= [4 2]", Array<bool>.Vector(true, false) },
+                    { "[[5 2] [6 7]] <= 2", Array<bool>.Matrix([[false, true], [false, false]]) },
+                    { "[[1 2] [3 4]] <= [[1 6] [3 8]]", Array<bool>.Matrix([[true, true], [true, true]]) },
+                    { "[] <= 2", Array<Any>.Empty },
+                    { "[@[1] @[2 3]] <= 2", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(true, false).Box()) },
+                    { "3 <= [@[1] @[2 3]]", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(false, true).Box()) },
+                    { "[@[1] @[2 3]] <= [@[1] @[2 3]]", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(true, true).Box()) },
+                    { "[@[1] @[2 3]] <= []", Array<Any>.Empty },
+                    { "[] <= [@[1] @[2 3]]", Array<Any>.Empty },
+                };
+
+            [Theory, MemberData(nameof(IntegersTestData))]
+            public void Integers(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+
+            public static readonly TheoryData<string, Value> CharsTestData =
+                new()
+                {
+                    { "'a' <= '.'", Array<bool>.Scalar(false) },
+                    { "'a' <= 'a'", Array<bool>.Scalar(true) },
+                    { "'a' <= 'b'", Array<bool>.Scalar(true) },
+                    { "'a' <= ['a' 'b' 'c']", Array<bool>.Vector(true, true, true) },
+                    { "['a' 'b'] <= ['c' 'a']", Array<bool>.Vector(true, false) },
+                    { "[['e' 'a'] ['z' 'h']] <= 'a'", Array<bool>.Matrix([[false, true], [false, false]]) },
+                    { "[['a' 'b'] ['c' 'd']] <= [['a' 'f'] ['c' 'h']]", Array<bool>.Matrix([[true, true], [true, true]]) },
+                    { "[] <= 'a'", Array<Any>.Empty },
+                    { "[@['a'] @['b' 'c']] <= 'b'", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(true, false).Box()) },
+                    { "'c' <= [@['a'] @['b' 'c']]", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(false, true).Box()) },
+                    { "[@['a'] @['b' 'c']] <= [@['a'] @['b' 'c']]", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(true, true).Box()) },
+                    { "[@['a'] @['b' 'c']] <= []", Array<Any>.Empty },
+                    { "[] <= [@['a'] @['b' 'c']]", Array<Any>.Empty },
+                };
+
+            [Theory, MemberData(nameof(CharsTestData))]
+            public void Chars(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+        }
+
+        public class Greater
+        {
+            public static readonly TheoryData<string, Value> IntegersTestData =
+                new()
+                {
+                    { "1 > 1", Array<bool>.Scalar(false) },
+                    { "2 > 1", Array<bool>.Scalar(true) },
+                    { "2 > [2 3 4]", Array<bool>.Vector(false, false, false) },
+                    { "[2 3] > [4 2]", Array<bool>.Vector(false, true) },
+                    { "[[5 2] [6 7]] > 2", Array<bool>.Matrix([[true, false], [true, true]]) },
+                    { "[[1 2] [3 4]] > [[1 6] [3 8]]", Array<bool>.Matrix([[false, false], [false, false]]) },
+                    { "[] > 2", Array<Any>.Empty },
+                    { "[@[1] @[2 3]] > 2", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(false, true).Box()) },
+                    { "3 > [@[1] @[2 3]]", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(true, false).Box()) },
+                    { "[@[1] @[2 3]] > [@[1] @[2 3]]", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(false, false).Box()) },
+                    { "[@[1] @[2 3]] > []", Array<Any>.Empty },
+                    { "[] > [@[1] @[2 3]]", Array<Any>.Empty },
+                };
+
+            [Theory, MemberData(nameof(IntegersTestData))]
+            public void Integers(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+
+            public static readonly TheoryData<string, Value> CharsTestData =
+                new()
+                {
+                    { "'a' > '.'", Array<bool>.Scalar(true) },
+                    { "'a' > 'b'", Array<bool>.Scalar(false) },
+                    { "'a' > ['a' 'b' 'c']", Array<bool>.Vector(false, false, false) },
+                    { "['a' 'b'] > ['c' 'a']", Array<bool>.Vector(false, true) },
+                    { "[['e' 'a'] ['z' 'h']] > 'a'", Array<bool>.Matrix([[true, false], [true, true]]) },
+                    { "[['a' 'b'] ['c' 'd']] > [['a' 'f'] ['c' 'h']]", Array<bool>.Matrix([[false, false], [false, false]]) },
+                    { "[] > 'a'", Array<Any>.Empty },
+                    { "[@['a'] @['b' 'c']] > 'b'", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(false, true).Box()) },
+                    { "'c' > [@['a'] @['b' 'c']]", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(true, false).Box()) },
+                    { "[@['a'] @['b' 'c']] > [@['a'] @['b' 'c']]", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(false, false).Box()) },
+                    { "[@['a'] @['b' 'c']] > []", Array<Any>.Empty },
+                    { "[] > [@['a'] @['b' 'c']]", Array<Any>.Empty },
+                };
+
+            [Theory, MemberData(nameof(CharsTestData))]
+            public void Chars(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+        }
+
+        public class GreaterEqual
+        {
+            public static readonly TheoryData<string, Value> IntegersTestData =
+                new()
+                {
+                    { "1 >= 0", Array<bool>.Scalar(true) },
+                    { "1 >= 1", Array<bool>.Scalar(true) },
+                    { "1 >= 2", Array<bool>.Scalar(false) },
+                    { "2 >= [2 3 4]", Array<bool>.Vector(true, false, false) },
+                    { "[2 3] >= [4 2]", Array<bool>.Vector(false, true) },
+                    { "[[5 2] [6 7]] >= 2", Array<bool>.Matrix([[true, true], [true, true]]) },
+                    { "[[1 2] [3 4]] >= [[1 6] [3 8]]", Array<bool>.Matrix([[true, false], [true, false]]) },
+                    { "[] >= 2", Array<Any>.Empty },
+                    { "[@[1] @[2 3]] >= 2", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(true, true).Box()) },
+                    { "3 >= [@[1] @[2 3]]", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(true, true).Box()) },
+                    { "[@[1] @[2 3]] >= [@[1] @[2 3]]", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(true, true).Box()) },
+                    { "[@[1] @[2 3]] >= []", Array<Any>.Empty },
+                    { "[] >= [@[1] @[2 3]]", Array<Any>.Empty },
+                };
+
+            [Theory, MemberData(nameof(IntegersTestData))]
+            public void Integers(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+
+            public static readonly TheoryData<string, Value> CharsTestData =
+                new()
+                {
+                    { "'a' >= '.'", Array<bool>.Scalar(true) },
+                    { "'a' >= 'a'", Array<bool>.Scalar(true) },
+                    { "'a' >= 'b'", Array<bool>.Scalar(false) },
+                    { "'a' >= ['a' 'b' 'c']", Array<bool>.Vector(true, false, false) },
+                    { "['a' 'b'] >= ['c' 'a']", Array<bool>.Vector(false, true) },
+                    { "[['e' 'a'] ['z' 'h']] >= 'a'", Array<bool>.Matrix([[true, true], [true, true]]) },
+                    { "[['a' 'b'] ['c' 'd']] >= [['a' 'f'] ['c' 'h']]", Array<bool>.Matrix([[true, false], [true, false]]) },
+                    { "[] >= 'a'", Array<Any>.Empty },
+                    { "[@['a'] @['b' 'c']] >= 'b'", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(true, true).Box()) },
+                    { "'c' >= [@['a'] @['b' 'c']]", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(true, true).Box()) },
+                    { "[@['a'] @['b' 'c']] >= [@['a'] @['b' 'c']]", Array<Box>.Vector(Array<bool>.Vector(true).Box(), Array<bool>.Vector(true, true).Box()) },
+                    { "[@['a'] @['b' 'c']] >= []", Array<Any>.Empty },
+                    { "[] >= [@['a'] @['b' 'c']]", Array<Any>.Empty },
+                };
+
+            [Theory, MemberData(nameof(CharsTestData))]
+            public void Chars(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+        }
+
         public static readonly TheoryData<string, Value> OperatorPrecedenceTestData =
             new()
             {
