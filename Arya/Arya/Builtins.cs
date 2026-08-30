@@ -43,6 +43,7 @@ public abstract record BuiltinFunction(string Name) : Function
         new Binary.GreaterEqualFunction(),
         new Binary.EqualFunction(),
         new Binary.NotEqualFunction(),
+        new Binary.ChunkFunction(),
     ];
 
     private static class Unary
@@ -524,6 +525,7 @@ public abstract record BuiltinFunction(string Name) : Function
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
+
         public sealed record GreaterEqualFunction() : BinaryFunction("greaterEqual")
         {
             public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
@@ -536,6 +538,40 @@ public abstract record BuiltinFunction(string Name) : Function
                     (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
+        }
+
+        public sealed record ChunkFunction() : BinaryFunction("chunk")
+        {
+            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+                (arguments[0], arguments[1]) switch
+                {
+                    (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
+                    (Array<int> intArray, Array<int> chunkSize) => Chunk(intArray, chunkSize),
+                    (Array<bool> boolArray, Array<int> chunkSize) => Chunk(boolArray, chunkSize),
+                    (Array<char> charArray, Array<int> chunkSize) => Chunk(charArray, chunkSize),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+
+            private static Value Chunk<T>(Array<T> array, Array<int> chunkSizeArray)
+            {
+                if (!chunkSizeArray.Shape.IsScalar)
+                    throw new InvalidOperationException("Chunk size must be a scalar");
+
+                var chunkSize = chunkSizeArray.Elements[0];
+
+                if (array.Shape.RowCount % chunkSize != 0)
+                    throw new InvalidOperationException("Chunk size must divide array length");
+
+                if (array.Shape.IsScalar)
+                    return array with { Shape = new Shape(1, 1) };
+
+                var newRowCount = array.Shape.RowCount / chunkSize;
+                var newShape = array.Shape
+                    .Prepend(newRowCount)
+                    .Replace(1, array.Shape.RowCount / newRowCount);
+                return array with { Shape = newShape };
+            }
         }
     }
 }
