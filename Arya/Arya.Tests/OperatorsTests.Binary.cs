@@ -113,152 +113,131 @@ public static partial class OperatorTests
                 Assert.Equal(expected, Interpreter.Evaluate(code));
         }
 
-        public class Multiplication
-        {
-            public static readonly TheoryData<string, Value> IntegersTestData =
-                new()
-                {
-                    { "2 * 3", Array<int>.Scalar(6) },
-                    { "2 * [3 4 5]", Array<int>.Vector(6, 8, 10) },
-                    { "[2 3] * [4 5]", Array<int>.Vector(8, 15) },
-                    { "[[5 4] [6 7]] * 2", Array<int>.Matrix([[10, 8], [12, 14]]) },
-                    { "[[1 2] [3 4]] * [[5 6] [7 8]]", Array<int>.Matrix([[5, 12], [21, 32]]) },
-                    { "[] * 1", Array<Any>.Empty },
-                    { "5 * @6", Array<Box>.Scalar(Array<int>.Scalar(30).Box()) },
-                    { "[@[1] @[2 3]] * 10", Array<Box>.Vector(Array<int>.Vector(10).Box(), Array<int>.Vector(20, 30).Box()) },
-                    { "[@[1] @[2 3]] * [@[10] @[20 30]]", Array<Box>.Vector(Array<int>.Vector(10).Box(), Array<int>.Vector(40, 90).Box()) },
-                };
+        public static readonly TheoryData<string, Value> MultiplicationTestData =
+            new()
+            {
+                { "2 * 3", Array<int>.Scalar(6) },
+                { "2 * [3 4 5]", Array<int>.Vector(6, 8, 10) },
+                { "[2 3] * [4 5]", Array<int>.Vector(8, 15) },
+                { "[[5 4] [6 7]] * 2", Array<int>.Matrix([[10, 8], [12, 14]]) },
+                { "[[1 2] [3 4]] * [[5 6] [7 8]]", Array<int>.Matrix([[5, 12], [21, 32]]) },
+                { "[] * 1", Array<Any>.Empty },
+                { "5 * @6", Array<Box>.Scalar(Array<int>.Scalar(30).Box()) },
+                { "[@[1] @[2 3]] * 10", Array<Box>.Vector(Array<int>.Vector(10).Box(), Array<int>.Vector(20, 30).Box()) },
+                { "[@[1] @[2 3]] * [@[10] @[20 30]]", Array<Box>.Vector(Array<int>.Vector(10).Box(), Array<int>.Vector(40, 90).Box()) },
+            };
 
-            [Theory, MemberData(nameof(IntegersTestData))]
-            public void Integers(string code, Value expected) =>
-                Assert.Equal(expected, Interpreter.Evaluate(code));
-        }
+        [Theory, MemberData(nameof(MultiplicationTestData))]
+        public void Multiplication(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
 
-        public class Division
-        {
-            public static readonly TheoryData<string, Value> IntegersTestData =
-                new()
-                {
-                    { "6 / 2", Array<int>.Scalar(3) },
-                    { "10 / [2 5]", Array<int>.Vector(5, 2) },
-                    { "[20 30] / [4 5]", Array<int>.Vector(5, 6) },
-                    { "[[6 4] [8 2]] / 2", Array<int>.Matrix([[3, 2], [4, 1]]) },
-                    { "[[10 9] [3 4]] / [[2 3] [3 2]]", Array<int>.Matrix([[5, 3], [1, 2]]) },
-                    { "[] / 1", Array<Any>.Empty },
-                    { "50 / @5", Array<Box>.Scalar(Array<int>.Scalar(10).Box()) },
-                    { "[@[10] @[20 30]] / 10", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(2, 3).Box()) },
-                    { "[@[10] @[20 30]] / [@[2] @[4 5]]", Array<Box>.Vector(Array<int>.Vector(5).Box(), Array<int>.Vector(5, 6).Box()) },
-                };
+        public static readonly TheoryData<string, Value> DivisionTestData =
+            new()
+            {
+                { "6 / 2", Array<int>.Scalar(3) },
+                { "10 / [2 5]", Array<int>.Vector(5, 2) },
+                { "[20 30] / [4 5]", Array<int>.Vector(5, 6) },
+                { "[[6 4] [8 2]] / 2", Array<int>.Matrix([[3, 2], [4, 1]]) },
+                { "[[10 9] [3 4]] / [[2 3] [3 2]]", Array<int>.Matrix([[5, 3], [1, 2]]) },
+                { "[] / 1", Array<Any>.Empty },
+                { "50 / @5", Array<Box>.Scalar(Array<int>.Scalar(10).Box()) },
+                { "[@[10] @[20 30]] / 10", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(2, 3).Box()) },
+                { "[@[10] @[20 30]] / [@[2] @[4 5]]", Array<Box>.Vector(Array<int>.Vector(5).Box(), Array<int>.Vector(5, 6).Box()) },
+            };
 
-            [Theory, MemberData(nameof(IntegersTestData))]
-            public void Integers(string code, Value expected) =>
-                Assert.Equal(expected, Interpreter.Evaluate(code));
-        }
+        [Theory, MemberData(nameof(DivisionTestData))]
+        public void Division(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
 
-        public class And
-        {
-            public static readonly TheoryData<string, Value> IntegersTestData =
-                new()
-                {
-                    { "5 & 3", Array<int>.Scalar(1) },
-                    { "2 & [1 3 5]", Array<int>.Vector(0, 2, 0) },
-                    { "[1 3 5] & 2", Array<int>.Vector(0, 2, 0) },
-                    { "[9 3] & [7 5]", Array<int>.Vector(1, 1) },
-                    { "[[5 4] [6 7]] & 2", Array<int>.Matrix([[0, 0], [2, 2]]) },
-                    { "[[1 2] [3 4]] & [[5 6] [7 8]]", Array<int>.Matrix([[1, 2], [3, 0]]) },
-                    { "[] & 1", Array<Any>.Empty },
-                    { "[@[7] @[9 4]] & 4", Array<Box>.Vector(Array<int>.Vector(4).Box(), Array<int>.Vector(0, 4).Box()) },
-                    { "[@[6] @[4 3]] & [@[4] @[2 2]]", Array<Box>.Vector(Array<int>.Vector(4).Box(), Array<int>.Vector(0, 2).Box()) },
-                };
+        public static readonly TheoryData<string, Value> AndTestData =
+            new()
+            {
+                { "5 & 3", Array<int>.Scalar(1) },
+                { "2 & [1 3 5]", Array<int>.Vector(0, 2, 0) },
+                { "[1 3 5] & 2", Array<int>.Vector(0, 2, 0) },
+                { "[9 3] & [7 5]", Array<int>.Vector(1, 1) },
+                { "[[5 4] [6 7]] & 2", Array<int>.Matrix([[0, 0], [2, 2]]) },
+                { "[[1 2] [3 4]] & [[5 6] [7 8]]", Array<int>.Matrix([[1, 2], [3, 0]]) },
+                { "[] & 1", Array<Any>.Empty },
+                { "[@[7] @[9 4]] & 4", Array<Box>.Vector(Array<int>.Vector(4).Box(), Array<int>.Vector(0, 4).Box()) },
+                { "[@[6] @[4 3]] & [@[4] @[2 2]]", Array<Box>.Vector(Array<int>.Vector(4).Box(), Array<int>.Vector(0, 2).Box()) },
+            };
 
-            [Theory, MemberData(nameof(IntegersTestData))]
-            public void Integers(string code, Value expected) =>
-                Assert.Equal(expected, Interpreter.Evaluate(code));
-        }
+        [Theory, MemberData(nameof(AndTestData))]
+        public void And(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
 
-        public class Or
-        {
-            public static readonly TheoryData<string, Value> IntegersTestData =
-                new()
-                {
-                    { "5 | 3", Array<int>.Scalar(7) },
-                    { "2 | [1 3 5]", Array<int>.Vector(3, 3, 7) },
-                    { "[1 3 5] | 2", Array<int>.Vector(3, 3, 7) },
-                    { "[9 3] | [7 5]", Array<int>.Vector(15, 7) },
-                    { "[[5 4] [6 7]] | 2", Array<int>.Matrix([[7, 6], [6, 7]]) },
-                    { "[[1 2] [3 4]] | [[5 6] [7 8]]", Array<int>.Matrix([[5, 6], [7, 12]]) },
-                    { "[] | 1", Array<Any>.Empty },
-                    { "[@[7] @[9 4]] | 4", Array<Box>.Vector(Array<int>.Vector(7).Box(), Array<int>.Vector(13, 4).Box()) },
-                    { "[@[6] @[4 3]] | [@[4] @[2 2]]", Array<Box>.Vector(Array<int>.Vector(6).Box(), Array<int>.Vector(6, 3).Box()) },
-                };
+        public static readonly TheoryData<string, Value> OrTestData =
+            new()
+            {
+                { "5 | 3", Array<int>.Scalar(7) },
+                { "2 | [1 3 5]", Array<int>.Vector(3, 3, 7) },
+                { "[1 3 5] | 2", Array<int>.Vector(3, 3, 7) },
+                { "[9 3] | [7 5]", Array<int>.Vector(15, 7) },
+                { "[[5 4] [6 7]] | 2", Array<int>.Matrix([[7, 6], [6, 7]]) },
+                { "[[1 2] [3 4]] | [[5 6] [7 8]]", Array<int>.Matrix([[5, 6], [7, 12]]) },
+                { "[] | 1", Array<Any>.Empty },
+                { "[@[7] @[9 4]] | 4", Array<Box>.Vector(Array<int>.Vector(7).Box(), Array<int>.Vector(13, 4).Box()) },
+                { "[@[6] @[4 3]] | [@[4] @[2 2]]", Array<Box>.Vector(Array<int>.Vector(6).Box(), Array<int>.Vector(6, 3).Box()) },
+            };
 
-            [Theory, MemberData(nameof(IntegersTestData))]
-            public void Integers(string code, Value expected) =>
-                Assert.Equal(expected, Interpreter.Evaluate(code));
-        }
+        [Theory, MemberData(nameof(OrTestData))]
+        public void Or(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
 
-        public class ShiftLeft
-        {
-            public static readonly TheoryData<string, Value> IntegersTestData =
-                new()
-                {
-                    { "1 << 3", Array<int>.Scalar(8) },
-                    { "2 << [1 3 5]", Array<int>.Vector(4, 16, 64) },
-                    { "[1 3 5] << 2", Array<int>.Vector(4, 12, 20) },
-                    { "[9 3] << [7 5]", Array<int>.Vector(1152, 96) },
-                    { "[[5 4] [6 7]] << 2", Array<int>.Matrix([[20, 16], [24, 28]]) },
-                    { "[[1 2] [3 4]] << [[5 6] [7 8]]", Array<int>.Matrix([[32, 128], [384, 1024]]) },
-                    { "[] << 1", Array<Any>.Empty },
-                    { "[@[7] @[9 4]] << 4", Array<Box>.Vector(Array<int>.Vector(112).Box(), Array<int>.Vector(144, 64).Box()) },
-                    { "[@[6] @[4 3]] << [@[4] @[2 2]]", Array<Box>.Vector(Array<int>.Vector(96).Box(), Array<int>.Vector(16, 12).Box()) },
-                };
+        public static readonly TheoryData<string, Value> ShiftLeftTestData =
+            new()
+            {
+                { "1 << 3", Array<int>.Scalar(8) },
+                { "2 << [1 3 5]", Array<int>.Vector(4, 16, 64) },
+                { "[1 3 5] << 2", Array<int>.Vector(4, 12, 20) },
+                { "[9 3] << [7 5]", Array<int>.Vector(1152, 96) },
+                { "[[5 4] [6 7]] << 2", Array<int>.Matrix([[20, 16], [24, 28]]) },
+                { "[[1 2] [3 4]] << [[5 6] [7 8]]", Array<int>.Matrix([[32, 128], [384, 1024]]) },
+                { "[] << 1", Array<Any>.Empty },
+                { "[@[7] @[9 4]] << 4", Array<Box>.Vector(Array<int>.Vector(112).Box(), Array<int>.Vector(144, 64).Box()) },
+                { "[@[6] @[4 3]] << [@[4] @[2 2]]", Array<Box>.Vector(Array<int>.Vector(96).Box(), Array<int>.Vector(16, 12).Box()) },
+            };
 
-            [Theory, MemberData(nameof(IntegersTestData))]
-            public void Integers(string code, Value expected) =>
-                Assert.Equal(expected, Interpreter.Evaluate(code));
-        }
+        [Theory, MemberData(nameof(ShiftLeftTestData))]
+        public void ShiftLeft(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
 
-        public class ShiftRight
-        {
-            public static readonly TheoryData<string, Value> IntegersTestData =
-                new()
-                {
-                    { "8 >> 2", Array<int>.Scalar(2) },
-                    { "120 >> [1 3 5]", Array<int>.Vector(60, 15, 3) },
-                    { "[11 13 15] >> 2", Array<int>.Vector(2, 3, 3) },
-                    { "[9 3] >> [2 1]", Array<int>.Vector(2, 1) },
-                    { "[[5 4] [6 7]] >> 2", Array<int>.Matrix([[1, 1], [1, 1]]) },
-                    { "[[1 2] [3 4]] >> [[5 6] [7 8]]", Array<int>.Matrix([[0, 0], [0, 0]]) },
-                    { "[] >> 1", Array<Any>.Empty },
-                    { "[@[7] @[9 4]] >> 1", Array<Box>.Vector(Array<int>.Vector(3).Box(), Array<int>.Vector(4, 2).Box()) },
-                    { "[@[6] @[10 3]] >> [@[1] @[2 2]]", Array<Box>.Vector(Array<int>.Vector(3).Box(), Array<int>.Vector(2, 0).Box()) },
-                };
+        public static readonly TheoryData<string, Value> ShiftRightTestData =
+            new()
+            {
+                { "8 >> 2", Array<int>.Scalar(2) },
+                { "120 >> [1 3 5]", Array<int>.Vector(60, 15, 3) },
+                { "[11 13 15] >> 2", Array<int>.Vector(2, 3, 3) },
+                { "[9 3] >> [2 1]", Array<int>.Vector(2, 1) },
+                { "[[5 4] [6 7]] >> 2", Array<int>.Matrix([[1, 1], [1, 1]]) },
+                { "[[1 2] [3 4]] >> [[5 6] [7 8]]", Array<int>.Matrix([[0, 0], [0, 0]]) },
+                { "[] >> 1", Array<Any>.Empty },
+                { "[@[7] @[9 4]] >> 1", Array<Box>.Vector(Array<int>.Vector(3).Box(), Array<int>.Vector(4, 2).Box()) },
+                { "[@[6] @[10 3]] >> [@[1] @[2 2]]", Array<Box>.Vector(Array<int>.Vector(3).Box(), Array<int>.Vector(2, 0).Box()) },
+            };
 
-            [Theory, MemberData(nameof(IntegersTestData))]
-            public void Integers(string code, Value expected) =>
-                Assert.Equal(expected, Interpreter.Evaluate(code));
-        }
+        [Theory, MemberData(nameof(ShiftRightTestData))]
+        public void ShiftRight(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
 
-        public class Modulo
-        {
-            public static readonly TheoryData<string, Value> IntegersTestData =
-                new()
-                {
-                    { "5 % 3", Array<int>.Scalar(2) },
-                    { "2 % [1 3 5]", Array<int>.Vector(0, 2, 2) },
-                    { "[1 3 5] % 2", Array<int>.Vector(1, 1, 1) },
-                    { "[9 3] % [7 5]", Array<int>.Vector(2, 3) },
-                    { "[[5 4] [6 7]] % 2", Array<int>.Matrix([[1, 0], [0, 1]]) },
-                    { "[[1 2] [3 4]] % [[5 6] [7 8]]", Array<int>.Matrix([[1, 2], [3, 4]]) },
-                    { "[] % 1", Array<Any>.Empty },
-                    { "[@[10] @[21 32]] % 10", Array<Box>.Vector(Array<int>.Vector(0).Box(), Array<int>.Vector(1, 2).Box()) },
-                    { "[@[10] @[21 32]] % [@[3] @[5 7]]", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(1, 4).Box()) },
-                };
+        public static readonly TheoryData<string, Value> ModuloTestData =
+            new()
+            {
+                { "5 % 3", Array<int>.Scalar(2) },
+                { "2 % [1 3 5]", Array<int>.Vector(0, 2, 2) },
+                { "[1 3 5] % 2", Array<int>.Vector(1, 1, 1) },
+                { "[9 3] % [7 5]", Array<int>.Vector(2, 3) },
+                { "[[5 4] [6 7]] % 2", Array<int>.Matrix([[1, 0], [0, 1]]) },
+                { "[[1 2] [3 4]] % [[5 6] [7 8]]", Array<int>.Matrix([[1, 2], [3, 4]]) },
+                { "[] % 1", Array<Any>.Empty },
+                { "[@[10] @[21 32]] % 10", Array<Box>.Vector(Array<int>.Vector(0).Box(), Array<int>.Vector(1, 2).Box()) },
+                { "[@[10] @[21 32]] % [@[3] @[5 7]]", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(1, 4).Box()) },
+            };
 
-            [Theory, MemberData(nameof(IntegersTestData))]
-            public void Integers(string code, Value expected) =>
-                Assert.Equal(expected, Interpreter.Evaluate(code));
-        }
+        [Theory, MemberData(nameof(ModuloTestData))]
+        public void Modulo(string code, Value expected) =>
+            Assert.Equal(expected, Interpreter.Evaluate(code));
 
         public class Append
         {
@@ -284,20 +263,36 @@ public static partial class OperatorTests
             public void Chars(string code, Value expected) =>
                 Assert.Equal(expected, Interpreter.Evaluate(code));
 
-            public static readonly TheoryData<string, Value> ArraysTestData =
+            public static readonly TheoryData<string, Value> IntegersTestData =
+                new()
+                {
+                    { "[] ++ []", Array<Any>.Empty },
+                    { "1 ++ []", Array<int>.Vector(1) },
+                    { "[] ++ [1 2]", Array<int>.Vector(1, 2) },
+                    { "[1] ++ [2 3]", Array<int>.Vector(1, 2, 3) },
+                    { "[5 6] ++ 4", Array<int>.Vector(5, 6, 4) },
+                    { "[] ++ [7 9]", Array<int>.Vector(7, 9) },
+                    { "[[1 2] [3 4]] ++ [[5 6] [7 8]]", Array<int>.Matrix([[1, 2, 5, 6], [3, 4, 7, 8]]) },
+                };
+
+            [Theory, MemberData(nameof(IntegersTestData))]
+            public void Integers(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+
+            public static readonly TheoryData<string, Value> BooleansTestData =
                 new()
                 {
                      { "[] ++ []", Array<Any>.Empty },
-                     { "1 ++ []", Array<int>.Vector(1) },
-                     { "[] ++ [1 2]", Array<int>.Vector(1, 2) },
-                     { "[1] ++ [2 3]", Array<int>.Vector(1, 2, 3) },
-                     { "[5 6] ++ 4", Array<int>.Vector(5, 6, 4) },
-                     { "[] ++ [7 9]", Array<int>.Vector(7, 9) },
-                     { "[[1 2] [3 4]] ++ [[5 6] [7 8]]", Array<int>.Matrix([[1, 2, 5, 6], [3, 4, 7, 8]]) },
+                     { "true ++ []", Array<bool>.Vector(true) },
+                     { "[] ++ [false true]", Array<bool>.Vector(false, true) },
+                     { "[true] ++ [false true]", Array<bool>.Vector(true, false, true) },
+                     { "[true false] ++ true", Array<bool>.Vector(true, false, true) },
+                     { "[] ++ [true false]", Array<bool>.Vector(true, false) },
+                     { "[[true false] [false true]] ++ [[true false] [false true]]", Array<bool>.Matrix([[true, false, true, false], [false, true, false, true]]) },
                 };
 
-            [Theory, MemberData(nameof(ArraysTestData))]
-            public void Arrays(string code, Value expected) =>
+            [Theory, MemberData(nameof(BooleansTestData))]
+            public void Booleans(string code, Value expected) =>
                 Assert.Equal(expected, Interpreter.Evaluate(code));
         }
 
