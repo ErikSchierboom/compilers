@@ -21,6 +21,56 @@ public static partial class FunctionTests
             public void Abs(string code, Value expected) =>
                 Assert.Equal(expected, Interpreter.Evaluate(code));
 
+            public static readonly TheoryData<string, Value> PlusTestData =
+                new()
+                {
+                    { "plus(2)", Array<int>.Scalar(2) },
+                    { "plus(-1)", Array<int>.Scalar(-1) },
+                    { "plus([-1 -2 -3])", Array<int>.Vector(-1, -2, -3) },
+                    { "plus([[-4 -5] [6 7]])", Array<int>.Matrix([[-4, -5], [6, 7]]) },
+                    { "plus([@[-1] @[2 -3]])", Array<Box>.Vector(Array<int>.Vector(-1).Box(), Array<int>.Vector(2, -3).Box()) },
+                    { "plus([@[1] @[-2 3]])", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(-2, 3).Box()) },
+                };
+
+            [Theory, MemberData(nameof(PlusTestData))]
+            public void Plus(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+
+            public static readonly TheoryData<string, Value> MinusTestData =
+                new()
+                {
+                    { "minus(2)", Array<int>.Scalar(-2) },
+                    { "minus(-1)", Array<int>.Scalar(1) },
+                    { "minus([-1 2 -3])", Array<int>.Vector(1, -2, 3) },
+                    { "minus([[-4 -5] [6 7]])", Array<int>.Matrix([[4, 5], [-6, -7]]) },
+                    { "minus([@[-1] @[2 -3]])", Array<Box>.Vector(Array<int>.Vector(1).Box(), Array<int>.Vector(-2, 3).Box()) },
+                    { "minus([@[1] @[-2 3]])", Array<Box>.Vector(Array<int>.Vector(-1).Box(), Array<int>.Vector(2, -3).Box()) },
+                };
+
+            [Theory, MemberData(nameof(MinusTestData))]
+            public void Minus(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+
+            public static readonly TheoryData<string, Value> NotTestData =
+                new()
+                {
+                    { "not(2)", Array<int>.Scalar(-3) },
+                    { "not(0)", Array<int>.Scalar(-1) },
+                    { "not(true)", Array<bool>.Scalar(false) },
+                    { "not(false)", Array<bool>.Scalar(true) },
+                    { "not([-1 2 -3])", Array<int>.Vector(0, -3, 2) },
+                    { "not([true false true])", Array<bool>.Vector(false, true, false) },
+                    { "not([[-4 -5] [6 7]])", Array<int>.Matrix([[3, 4], [-7, -8]]) },
+                    { "not([[true false] [false false]])", Array<bool>.Matrix([[false, true], [true, true]]) },
+                    { "not([@[-1] @[2 -3]])", Array<Box>.Vector(Array<int>.Vector(0).Box(), Array<int>.Vector(-3, 2).Box()) },
+                    { "not([@[1] @[-2 3]])", Array<Box>.Vector(Array<int>.Vector(-2).Box(), Array<int>.Vector(1, -4).Box()) },
+                    { "not([@[true] @[false true]])", Array<Box>.Vector(Array<bool>.Vector(false).Box(), Array<bool>.Vector(true, false).Box()) },
+                };
+
+            [Theory, MemberData(nameof(NotTestData))]
+            public void Not(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+
             public static readonly TheoryData<string, Value> LowercaseTestData =
                 new()
                 {
