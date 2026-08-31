@@ -44,6 +44,7 @@ public abstract record BuiltinFunction(string Name) : Function
         new Binary.EqualFunction(),
         new Binary.NotEqualFunction(),
         new Binary.ChunkFunction(),
+        new Binary.PartitionFunction(),
     ];
 
     private static class Unary
@@ -619,6 +620,59 @@ public abstract record BuiltinFunction(string Name) : Function
                     .Replace(1, chunkSize);
 
                 return new Array<T>(newShape, newElements);
+            }
+        }
+
+        public sealed record PartitionFunction() : BinaryFunction("partition")
+        {
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
+                (arguments[0], arguments[1]) switch
+                {
+                    (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
+                    (Array<int> intArray, Array<int> partitionArray) => Partition(intArray, partitionArray, keywords),
+                    (Array<bool> boolArray, Array<int> partitionArray) => Partition(boolArray, partitionArray, keywords),
+                    (Array<char> charArray, Array<int> partitionArray) => Partition(charArray, partitionArray, keywords),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], keywords, interpreter, scope).Box()),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+
+            private static Value Partition<T>(Array<T> array, Array<int> partitionArray, Dictionary<string, Value> keywords)
+            {
+                if (!partitionArray.Shape.IsVector)
+                    throw new InvalidOperationException("Partition must be a vector");
+
+                if (partitionArray.Elements.Length != array.Shape.RowCount)
+                    throw new InvalidOperationException("Partition length must match array length");
+
+                var partitions = 0;
+                var newElements = new List<T>();
+
+                int? currentPartitionValue = null;
+
+                for (var i = 0; i < partitionArray.Elements.Length; i++)
+                {
+                    var partitionValue = partitionArray.Elements[i];
+                    currentPartitionValue ??= partitionValue;
+
+                    if (partitionValue == 0)
+                        continue;
+
+                    newElements.Add(array.Elements[i]);
+
+                    if (currentPartitionValue == partitionValue)
+                        continue;
+
+                    partitions++;
+                    currentPartitionValue = partitionValue;
+                }
+
+                partitions++;
+
+                var newShape = array.Shape
+                    .Prepend(partitions)
+                    .Replace(1, array.Shape.Count / partitions);
+
+                return new Array<T>(newShape, [..newElements]);
             }
         }
     }
