@@ -150,7 +150,6 @@ internal class Parser
     private BoxExpression ParseBox()
     {
         var expression = ParseExpression(Precedence.Unary);
-
         return new(expression);
     }
 
