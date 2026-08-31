@@ -55,7 +55,7 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public sealed record CountFunction() : UnaryFunction("count")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<int> intArray   => Array<int>.Scalar(intArray.Elements.Length),
@@ -69,7 +69,7 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public sealed record LengthFunction() : UnaryFunction("length")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<int> intArray   => Array<int>.Scalar(intArray.Shape.RowCount),
@@ -83,7 +83,7 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public sealed record TransposeFunction() : UnaryFunction("transpose")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<int> intArray   => Transpose(intArray),
@@ -112,7 +112,7 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public sealed record RangeFunction() : UnaryFunction("range")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope)
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope)
             {
                 if (arguments[0] is not Array<int> intArray)
                     throw new InvalidOperationException("Invalid argument type");
@@ -133,7 +133,7 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public sealed record ReverseFunction() : UnaryFunction("reverse")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<int> intArray   => Reverse(intArray),
@@ -159,7 +159,7 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public sealed record FlattenFunction() : UnaryFunction("flatten")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<int> intArray   => Flatten(intArray),
@@ -175,7 +175,7 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public sealed record IndicesFunction() : UnaryFunction("indices")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<int> intArray   => intArray.Indices(),
@@ -189,12 +189,12 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public sealed record NotFunction() : UnaryFunction("not")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<int> intArray   => intArray.Unary(i => ~i),
                     Array<bool> boolArray => boolArray.Unary(b => !b),
-                    Array<Box> boxArray   => boxArray.Unary(box => Invoke([box.Value], interpreter, scope).Box()),
+                    Array<Box> boxArray   => boxArray.Unary(box => Invoke([box.Value], keywords, interpreter, scope).Box()),
                     Array<Any> => Array<Any>.Empty,
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
@@ -202,7 +202,7 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public sealed record StringFunction() : UnaryFunction("string")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 Array<char>.Vector([..arguments[0].ToString()]);
         }
 
@@ -210,11 +210,11 @@ public abstract record BuiltinFunction(string Name) : Function
         {
             public override int Arity => 1;
 
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<int> intArray => intArray.Unary(Operation),
-                    Array<Box> boxArray => boxArray.Unary(box => Invoke([box.Value], interpreter, scope).Box()),
+                    Array<Box> boxArray => boxArray.Unary(box => Invoke([box.Value], keywords, interpreter, scope).Box()),
                     Array<Any> => Array<Any>.Empty,
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
@@ -226,11 +226,11 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public abstract record UnaryCharFunction(string Name, Func<char, char> Operation) : UnaryFunction(Name)
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<char> charArray => charArray.Unary(Operation),
-                    Array<Box> boxArray => boxArray.Unary(box => Invoke([box.Value], interpreter, scope).Box()),
+                    Array<Box> boxArray => boxArray.Unary(box => Invoke([box.Value], keywords, interpreter, scope).Box()),
                     Array<Any> => Array<Any>.Empty,
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
@@ -243,11 +243,11 @@ public abstract record BuiltinFunction(string Name) : Function
         {
             public override int Arity => 1;
 
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
                     Array<char> charArray => Trim(charArray) ,
-                    Array<Box> boxArray => boxArray.Unary(box => Invoke([box.Value], interpreter, scope).Box()),
+                    Array<Box> boxArray => boxArray.Unary(box => Invoke([box.Value], keywords, interpreter, scope).Box()),
                     Array<Any> => Array<Any>.Empty,
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
@@ -271,7 +271,7 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public sealed record AppendFunction() : BinaryFunction("append")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<int> l, Array<int> r) => Append(l, r),
@@ -284,7 +284,7 @@ public abstract record BuiltinFunction(string Name) : Function
                     (Array<bool> l, Array<Any>) => Append(l, Array<bool>.Empty),
                     (Array<Any>, Array<bool> r) => Append(Array<bool>.Empty, r),
                     (Array<Any>, Array<Any>) => Array<Any>.Empty,
-                    (Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (Array<Box> l, Array<Box> r) => l.Zip(r, (a, b) => Invoke([a.Value, b.Value], keywords, interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
 
@@ -305,7 +305,7 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public sealed record ReshapeFunction() : BinaryFunction("reshape")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<int> intArray, Array<int> newDimensions) => Reshape(intArray, newDimensions),
@@ -328,7 +328,7 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public sealed record ReplicateFunction() : BinaryFunction("replicate")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
@@ -360,45 +360,45 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public sealed record MaxFunction() : BinaryFunction("max")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> intArray, Array<int> otherIntArray) => intArray.Zip(otherIntArray, Math.Max),
                     (Array<char> charArray, Array<char> otherCharArray) => charArray.Zip(otherCharArray, (a, b) => a >= b ? a : b),
-                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
-                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], keywords, interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], keywords, interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
 
         public sealed record MinFunction() : BinaryFunction("min")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> intArray, Array<int> otherIntArray) => intArray.Zip(otherIntArray, Math.Min),
                     (Array<char> charArray, Array<char> otherCharArray) => charArray.Zip(otherCharArray, (a, b) => a <= b ? a : b),
-                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
-                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], keywords, interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], keywords, interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
 
         public sealed record ReduceFunction() : BinaryFunction("reduce")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
-                    (Array<int> intArray, Function reducer) => Reduce(intArray, reducer, interpreter, scope),
-                    (Array<char> charArray, Function reducer) => Reduce(charArray, reducer, interpreter, scope),
-                    (Array<Box> boxArray, Function reducer) => Reduce(boxArray, reducer, interpreter, scope),
+                    (Array<int> intArray, Function reducer) => Reduce(intArray, reducer, keywords, interpreter, scope),
+                    (Array<char> charArray, Function reducer) => Reduce(charArray, reducer, keywords, interpreter, scope),
+                    (Array<Box> boxArray, Function reducer) => Reduce(boxArray, reducer, keywords, interpreter, scope),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
 
-            private Value Reduce<T>(Array<T> array, Function reducer, Interpreter interpreter, Scope scope)
+            private Value Reduce<T>(Array<T> array, Function reducer, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope)
             {
                 if (array.Shape.IsScalar)
                     return array;
@@ -406,7 +406,7 @@ public abstract record BuiltinFunction(string Name) : Function
                 var reducedArray = array
                     .Rows()
                     .Select(Array<T>.Vector)
-                    .Aggregate((a, b) => (Array<T>)reducer.Invoke([a, b], interpreter, scope));
+                    .Aggregate((a, b) => (Array<T>)reducer.Invoke([a, b], keywords, interpreter, scope));
 
                 if (array.Shape.Rank == reducedArray.Shape.Rank && reducedArray.Elements.Length == 1)
                     return reducedArray with { Shape = reducedArray.Shape.RemoveFirst() };
@@ -417,15 +417,15 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public abstract record BinaryIntegerAndCharFunction(string Name, Func<int, int, int> Operation) : BinaryFunction(Name)
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any>, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> l, Array<int> r) => l.Zip(r, Operation),
                     (Array<char> l, Array<int> r) => l.Zip(r, (a, b) => (char)(Operation(a, b))),
                     (Array<int> l, Array<char> r) => r.Zip(l, (a, b) => (char)(Operation(b, a))),
-                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
-                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], keywords, interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], keywords, interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
@@ -435,13 +435,13 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public abstract record BinaryIntegerFunction(string Name, Func<int, int, int> Operation) : BinaryFunction(Name)
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any>, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> l, Array<int> r) => l.Zip(r, Operation),
-                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
-                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], keywords, interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], keywords, interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
@@ -456,100 +456,100 @@ public abstract record BuiltinFunction(string Name) : Function
 
         public sealed record EqualFunction() : BinaryFunction("equal")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a == b),
                     (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a == b),
                     (Array<bool> l, Array<bool> r) => l.Zip(r, (a, b) => a == b),
-                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
-                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], keywords, interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], keywords, interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
 
         public sealed record NotEqualFunction() : BinaryFunction("notEqual")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a != b),
                     (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a != b),
                     (Array<bool> l, Array<bool> r) => l.Zip(r, (a, b) => a != b),
-                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
-                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], keywords, interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], keywords, interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
 
         public sealed record LessFunction() : BinaryFunction("less")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a < b),
                     (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a < b),
-                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
-                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], keywords, interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], keywords, interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
 
         public sealed record LessEqualFunction() : BinaryFunction("lessEqual")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a <= b),
                     (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a <= b),
-                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
-                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], keywords, interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], keywords, interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
 
         public sealed record GreaterFunction() : BinaryFunction("greater")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a > b),
                     (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a > b),
-                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
-                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], keywords, interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], keywords, interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
 
         public sealed record GreaterEqualFunction() : BinaryFunction("greaterEqual")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> l, Array<int> r) => l.Zip(r, (a, b) => a >= b),
                     (Array<char> l, Array<char> r) => l.Zip(r, (a, b) => a >= b),
-                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
-                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], keywords, interpreter, scope).Box()),
+                    (var left, Array<Box> boxArray) => boxArray.Zip(left.Boxes(), (a, b) => Invoke([b.Value, a.Value], keywords, interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
         }
 
         public sealed record ChunkFunction() : BinaryFunction("chunk")
         {
-            public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope) =>
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
                     (Array<int> intArray, Array<int> chunkSize) => Chunk(intArray, chunkSize),
                     (Array<bool> boolArray, Array<int> chunkSize) => Chunk(boolArray, chunkSize),
                     (Array<char> charArray, Array<int> chunkSize) => Chunk(charArray, chunkSize),
-                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], interpreter, scope).Box()),
+                    (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], keywords, interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
 

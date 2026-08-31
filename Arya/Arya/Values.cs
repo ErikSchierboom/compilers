@@ -134,14 +134,14 @@ public abstract record Function : Value
 
     public abstract int Arity { get; }
 
-    public abstract Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope);
+    public abstract Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope);
 }
 
 public sealed record LambdaFunction(string[] Parameters, Expression Body) : Function
 {
     public override int Arity => Parameters.Length;
 
-    public override Value Invoke(Value[] arguments, Interpreter interpreter, Scope scope)
+    public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope)
     {
         var functionScope = scope.CreateChild();
 

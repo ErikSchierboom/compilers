@@ -86,7 +86,9 @@ public class Interpreter
             throw new InvalidOperationException("Invalid number of arguments");
 
         var arguments = call.Arguments.Select(arg => Evaluate(arg, scope)).ToArray();
-        return function.Invoke(arguments, this, scope);
+        var keywords = new Dictionary<string, Value>();
+        // TODO: select keywords
+        return function.Invoke(arguments, keywords, this, scope);
     }
 
     private Value Evaluate(LambdaExpression lambda, Scope scope)
