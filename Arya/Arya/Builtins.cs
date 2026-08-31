@@ -546,31 +546,51 @@ public abstract record BuiltinFunction(string Name) : Function
                 (arguments[0], arguments[1]) switch
                 {
                     (Array<Any> _, _) or (_, Array<Any>) => Array<Any>.Empty,
-                    (Array<int> intArray, Array<int> chunkSize) => Chunk(intArray, chunkSize),
-                    (Array<bool> boolArray, Array<int> chunkSize) => Chunk(boolArray, chunkSize),
-                    (Array<char> charArray, Array<int> chunkSize) => Chunk(charArray, chunkSize),
+                    (Array<int> intArray, Array<int> chunkSize) => Chunk(intArray, chunkSize, keywords),
+                    (Array<bool> boolArray, Array<int> chunkSize) => Chunk(boolArray, chunkSize, keywords),
+                    (Array<char> charArray, Array<int> chunkSize) => Chunk(charArray, chunkSize, keywords),
                     (Array<Box> boxArray, var right) => boxArray.Zip(right.Boxes(), (a, b) => Invoke([a.Value, b.Value], keywords, interpreter, scope).Box()),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
 
-            private static Value Chunk<T>(Array<T> array, Array<int> chunkSizeArray)
+            private static Value Chunk<T>(Array<T> array, Array<int> chunkSizeArray, Dictionary<string, Value> keywords)
             {
                 if (!chunkSizeArray.Shape.IsScalar)
                     throw new InvalidOperationException("Chunk size must be a scalar");
 
                 var chunkSize = chunkSizeArray.Elements[0];
 
-                if (array.Shape.RowCount % chunkSize != 0)
-                    throw new InvalidOperationException("Chunk size must divide array length");
-
-                if (array.Shape.IsScalar)
+                if (array.Shape.IsScalar && chunkSize == 1)
                     return array with { Shape = new Shape(1, 1) };
 
-                var newRowCount = array.Shape.RowCount / chunkSize;
+                T[] newElements;
+
+                if (keywords.TryGetValue("fill", out var fillValue))
+                {
+                    if (fillValue is not Array<T> fill)
+                        throw new InvalidOperationException("Fill value must be an array");
+
+                    if (!fill.Shape.IsScalar)
+                        throw new InvalidOperationException("Fill value must be scalar");
+
+                    newElements = new T[array.Elements.Length + chunkSize - array.Elements.Length % chunkSize];
+                    Array.Copy(array.Elements, newElements, array.Elements.Length);
+                    Array.Fill(newElements, fill.Elements[0], array.Elements.Length, newElements.Length - array.Elements.Length);
+                }
+                else
+                {
+                    if (array.Shape.RowCount % chunkSize != 0)
+                        throw new InvalidOperationException("Chunk size must divide array length");
+
+                    newElements = new T[array.Elements.Length];
+                    Array.Copy(array.Elements, newElements, array.Elements.Length);
+                }
+
                 var newShape = array.Shape
-                    .Prepend(newRowCount)
-                    .Replace(1, array.Shape.RowCount / newRowCount);
-                return array with { Shape = newShape };
+                    .Prepend(chunkSize)
+                    .Replace(1, (int)Math.Ceiling(array.Shape.RowCount / (float)chunkSize));
+
+                return new Array<T>(newShape, newElements);
             }
         }
     }

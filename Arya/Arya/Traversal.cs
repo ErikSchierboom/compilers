@@ -42,6 +42,9 @@ public abstract class ExpressionVisitor
             case UnaryExpression unaryExpression:
                 VisitUnary(unaryExpression);
                 break;
+            case KeywordExpression keywordExpression:
+                VisitKeyword(keywordExpression);
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }
@@ -107,6 +110,12 @@ public abstract class ExpressionVisitor
 
     protected virtual void VisitUnary(UnaryExpression unaryExpression) =>
         Visit(unaryExpression.Operand);
+
+    protected virtual void VisitKeyword(KeywordExpression keywordExpression)
+    {
+        VisitName(keywordExpression.Identifier);
+        Visit(keywordExpression.Value);
+    }
 }
 
 public abstract class ExpressionRewriter
@@ -126,6 +135,7 @@ public abstract class ExpressionRewriter
             PlaceholderExpression nameExpression => RewritePlaceholder(nameExpression),
             ParenthesizedExpression parenthesizedExpression => RewriteParenthesized(parenthesizedExpression),
             UnaryExpression unaryExpression => RewriteUnary(unaryExpression),
+            KeywordExpression keywordExpression => RewriteKeyword(keywordExpression),
             _ => throw new ArgumentOutOfRangeException(nameof(expression))
         };
 
@@ -134,16 +144,17 @@ public abstract class ExpressionRewriter
 
     protected virtual Expression RewriteLambda(LambdaExpression lambdaExpression)
     {
-        var rewritterParameters = new List<NameExpression>(capacity: lambdaExpression.Parameters.Length);
+        // TODO: use .Cast()
+        var rewrittenParameters = new List<NameExpression>(capacity: lambdaExpression.Parameters.Length);
         foreach (var parameter in lambdaExpression.Parameters)
         {
             if (Rewrite(parameter) is not NameExpression rewrittenParameter)
                 throw new InvalidOperationException("Lambda expression's parameter must be a name expressions");
 
-            rewritterParameters.Add(rewrittenParameter);
+            rewrittenParameters.Add(rewrittenParameter);
         }
 
-        return new LambdaExpression(Rewrite(lambdaExpression.Body), [..rewritterParameters]);
+        return new LambdaExpression(Rewrite(lambdaExpression.Body), [..rewrittenParameters]);
     }
 
     protected virtual Expression RewriteAssignment(AssignmentExpression assignmentExpression)
@@ -167,8 +178,31 @@ public abstract class ExpressionRewriter
     protected virtual Expression RewriteBox(BoxExpression boxExpression) =>
         new BoxExpression(Rewrite(boxExpression.Expression));
 
-    protected virtual Expression RewriteCall(CallExpression callExpression) =>
-        new CallExpression(Rewrite(callExpression.Target), [..callExpression.Arguments.Select(Rewrite)]);
+    protected virtual Expression RewriteCall(CallExpression callExpression)
+    {
+        var rewrittenKeywords = new List<KeywordExpression>(capacity: callExpression.Keywords.Length);
+        foreach (var keyword in callExpression.Keywords)
+        {
+            if (Rewrite(keyword) is not KeywordExpression rewrittenKeyword)
+                throw new InvalidOperationException("Call expression's keyword must be a keyword expressions");
+
+            rewrittenKeywords.Add(rewrittenKeyword);
+        }
+
+        return new CallExpression(
+            Rewrite(callExpression.Target),
+            [.. callExpression.Arguments.Select(Rewrite)],
+            [.. rewrittenKeywords]);
+    }
+
+    protected virtual Expression RewriteKeyword(KeywordExpression keywordExpression)
+    {
+        var rewrittenIdentifier = RewriteName(keywordExpression.Identifier);
+        if (rewrittenIdentifier is not NameExpression rewrittenIdentifierName)
+            throw new InvalidOperationException("Assignment expression's identifier must be a name expressions");
+
+        return new KeywordExpression(rewrittenIdentifierName, Rewrite(keywordExpression.Value));
+    }
 
     protected virtual Expression RewriteLiteral(LiteralExpression literalExpression) => literalExpression;
 

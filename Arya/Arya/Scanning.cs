@@ -74,6 +74,14 @@ public sealed class Scanner
                     Advance();
                     tokens.Add(new Token(TokenType.At, "@"));
                     break;
+                case ';':
+                    Advance();
+                    tokens.Add(new Token(TokenType.SemiColon, ";"));
+                    break;
+                case ':':
+                    Advance();
+                    tokens.Add(new Token(TokenType.Colon, ":"));
+                    break;
                 case '=':
                     Advance();
                     if (Match('='))
@@ -308,6 +316,8 @@ public enum TokenType
     Pipe,
     At,
     Comma,
+    Colon,
+    SemiColon,
     Less,
     LessLess,
     LessEqual,

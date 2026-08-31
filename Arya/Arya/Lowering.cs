@@ -76,7 +76,7 @@ internal static class Lowerer
             var operand = Rewrite(unaryExpression.Operand);
 
             if (_unaryTokenTypeToFunctionName.TryGetValue(unaryExpression.Operator.Type, out var functionName))
-                return new CallExpression(new NameExpression(new Token(TokenType.Identifier, functionName)), [operand]);
+                return new CallExpression(new NameExpression(new Token(TokenType.Identifier, functionName)), [operand], []);
 
             return base.RewriteUnary(unaryExpression);
         }
@@ -87,7 +87,7 @@ internal static class Lowerer
             var right = Rewrite(binaryExpression.Right);
 
             if (_binaryTokenTypeToFunctionName.TryGetValue(binaryExpression.Operator.Type, out var functionName))
-                return new CallExpression(new NameExpression(new Token(TokenType.Identifier, functionName)), [left, right]);
+                return new CallExpression(new NameExpression(new Token(TokenType.Identifier, functionName)), [left, right], []);
 
             return base.RewriteBinary(binaryExpression);
         }

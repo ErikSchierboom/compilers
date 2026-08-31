@@ -3,7 +3,7 @@ namespace Arya;
 internal enum Precedence
 {
     None,
-    Assignment,   // =
+    Assignment,   // = ; :
     Addition,     // + -
     Product,      // *
     Unary,        // + - ! @
@@ -50,6 +50,7 @@ internal class Parser
             [TokenType.Identifier] = new(ParseName, null, Precedence.Primary),
             [TokenType.Placeholder] = new(ParsePlaceholder, null, Precedence.Primary),
             [TokenType.Pipe] = new(null, ParseBinary, Precedence.BitwiseOr),
+            [TokenType.Colon] = new(null, ParseKeyword, Precedence.Assignment),
             [TokenType.At] = new(ParseBox, null, Precedence.Unary),
             [TokenType.OpenBracket] = new(ParseArray, null, Precedence.Call),
             [TokenType.OpenParen] = new(ParseParenthesized, ParseCall, Precedence.Call),
@@ -125,12 +126,23 @@ internal class Parser
         return new AssignmentExpression(name, value);
     }
 
+    private KeywordExpression ParseKeyword(Expression left)
+    {
+        if (left is not NameExpression name)
+            throw new InvalidOperationException("Expected name");
+
+        var value = ParseExpression();
+        return new KeywordExpression(name, value);
+    }
+
     private CallExpression ParseCall(Expression left)
     {
         if (left is not (NameExpression or LambdaExpression))
             throw new InvalidOperationException("Can only call names");
 
         var arguments = new List<Expression>();
+        var keywords = new List<KeywordExpression>();
+
         while (!IsEndOfFile)
         {
             if (Match(TokenType.CloseParen))
@@ -140,9 +152,20 @@ internal class Parser
             {
                 arguments.Add(ParseExpression());
             } while (Match(TokenType.Comma));
+
+            if (!Match(TokenType.SemiColon))
+                continue;
+
+            do
+            {
+                if (ParseExpression() is not KeywordExpression keyword)
+                    throw new InvalidOperationException("Expected keyword expression");
+
+                keywords.Add(keyword);
+            } while (Match(TokenType.Comma));
         }
 
-        return new CallExpression(left, [.. arguments]);
+        return new CallExpression(left, [.. arguments], [.. keywords]);
     }
     
     private BoxExpression ParseBox()
@@ -247,8 +270,9 @@ public sealed record LambdaExpression(Expression Body, NameExpression[] Paramete
 public sealed record BoxExpression(Expression Expression) : Expression;
 public sealed record NameExpression(Token Identifier) : Expression;
 public sealed record PlaceholderExpression(Token Identifier) : Expression;
-public sealed record CallExpression(Expression Target, Expression[] Arguments) : Expression;
+public sealed record CallExpression(Expression Target, Expression[] Arguments, KeywordExpression[] Keywords) : Expression;
 public sealed record UnaryExpression(Token Operator, Expression Operand) : Expression;
 public sealed record BinaryExpression(Expression Left, Token Operator, Expression Right) : Expression;
 public sealed record ParenthesizedExpression(Expression Expression) : Expression;
 public sealed record AssignmentExpression(NameExpression Identifier, Expression Value) : Expression;
+public sealed record KeywordExpression(NameExpression Identifier, Expression Value) : Expression;
