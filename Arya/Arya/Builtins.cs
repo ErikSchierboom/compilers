@@ -558,12 +558,14 @@ public abstract record BuiltinFunction(string Name) : Function
                 if (!chunkSizeArray.Shape.IsScalar)
                     throw new InvalidOperationException("Chunk size must be a scalar");
 
-                var chunkSize = chunkSizeArray.Elements[0];
+                var chunkSizeValue = chunkSizeArray.Elements[0];
 
-                if (array.Shape.IsScalar && chunkSize == 1)
+                if (array.Shape.IsScalar && chunkSizeValue == 1)
                     return array with { Shape = new Shape(1, 1) };
 
                 T[] newElements;
+                int numberOfChunks;
+                int chunkSize;
 
                 if (keywords.TryGetValue("fill", out var fillValue))
                 {
@@ -573,22 +575,28 @@ public abstract record BuiltinFunction(string Name) : Function
                     if (!fill.Shape.IsScalar)
                         throw new InvalidOperationException("Fill value must be scalar");
 
-                    newElements = new T[array.Elements.Length + chunkSize - array.Elements.Length % chunkSize];
+                    numberOfChunks = chunkSizeValue;
+                    chunkSize = (int)Math.Ceiling(array.Shape.RowCount / (float)numberOfChunks);
+
+                    newElements = new T[numberOfChunks * chunkSize];
                     Array.Copy(array.Elements, newElements, array.Elements.Length);
                     Array.Fill(newElements, fill.Elements[0], array.Elements.Length, newElements.Length - array.Elements.Length);
                 }
                 else
                 {
+                    chunkSize = chunkSizeValue;
+
                     if (array.Shape.RowCount % chunkSize != 0)
                         throw new InvalidOperationException("Chunk size must divide array length");
 
+                    numberOfChunks = array.Shape.RowCount / chunkSize;
                     newElements = new T[array.Elements.Length];
                     Array.Copy(array.Elements, newElements, array.Elements.Length);
                 }
 
                 var newShape = array.Shape
-                    .Prepend(chunkSize)
-                    .Replace(1, (int)Math.Ceiling(array.Shape.RowCount / (float)chunkSize));
+                    .Prepend(numberOfChunks)
+                    .Replace(1, chunkSize);
 
                 return new Array<T>(newShape, newElements);
             }
