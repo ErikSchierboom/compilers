@@ -582,6 +582,26 @@ public abstract record BuiltinFunction(string Name) : Function
                     Array.Copy(array.Elements, newElements, array.Elements.Length);
                     Array.Fill(newElements, fill.Elements[0], array.Elements.Length, newElements.Length - array.Elements.Length);
                 }
+                else if (keywords.TryGetValue("box", out var boxValue))
+                {
+                    if (boxValue is not Array<bool> box || !box.Shape.IsScalar)
+                        throw new InvalidOperationException("Box value must be a boolean scalar");
+
+                    if (!box.Elements[0])
+                        throw new InvalidOperationException("Box value must be true");
+
+                    numberOfChunks = chunkSizeValue;
+                    chunkSize = (int)Math.Ceiling(array.Shape.RowCount / (float)numberOfChunks);
+
+                    var chunkedRows = array
+                        .Elements
+                        .Chunk(chunkSizeValue)
+                        .Select(chunk => Array<T>.Vector(chunk).Box());
+
+                    var newBoxShape = array.Shape.Replace(0, chunkSize);
+
+                    return new Array<Box>(newBoxShape, [..chunkedRows]);
+                }
                 else
                 {
                     chunkSize = chunkSizeValue;

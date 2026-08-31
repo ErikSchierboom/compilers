@@ -114,6 +114,7 @@ public static partial class FunctionTests
                     { "chunk([3 2], 1)", Array<int>.Matrix([[3], [2]]) },
                     { "chunk([2 3 4 5], 2)", Array<int>.Matrix([[2, 3], [4, 5]]) },
                     { "chunk([2 3 4 5 6], 3; fill: 0)", Array<int>.Matrix([[2, 3], [4, 5], [6, 0]]) },
+                    { "chunk([2 3 4 5 6], 3; box: true)", Array<Box>.Vector(Array<int>.Vector(2, 3, 4).Box(), Array<int>.Vector(5, 6).Box()) },
                     { "chunk([1 2 3 4 5 6 7 8 9], 3)", Array<int>.Matrix([[1, 2, 3], [4, 5, 6], [7, 8, 9]]) },
                     { "chunk([[2 3 4] [4 5 6] [6 7 8] [7 8 9]], 2)", new Array<int>(new Shape(2, 2, 3), 2, 3, 4, 4, 5, 6, 6, 7, 8, 7, 8, 9) },
                 };
