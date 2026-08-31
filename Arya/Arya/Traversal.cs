@@ -142,29 +142,11 @@ public abstract class ExpressionRewriter
     protected virtual Expression RewriteArray(ArrayExpression arrayExpression) =>
         new ArrayExpression([..arrayExpression.Elements.Select(Rewrite)]);
 
-    protected virtual Expression RewriteLambda(LambdaExpression lambdaExpression)
-    {
-        // TODO: use .Cast()
-        var rewrittenParameters = new List<NameExpression>(capacity: lambdaExpression.Parameters.Length);
-        foreach (var parameter in lambdaExpression.Parameters)
-        {
-            if (Rewrite(parameter) is not NameExpression rewrittenParameter)
-                throw new InvalidOperationException("Lambda expression's parameter must be a name expressions");
+    protected virtual Expression RewriteLambda(LambdaExpression lambdaExpression) =>
+        new LambdaExpression(Rewrite(lambdaExpression.Body), [..lambdaExpression.Parameters.Select(Rewrite).Cast<NameExpression>()]);
 
-            rewrittenParameters.Add(rewrittenParameter);
-        }
-
-        return new LambdaExpression(Rewrite(lambdaExpression.Body), [..rewrittenParameters]);
-    }
-
-    protected virtual Expression RewriteAssignment(AssignmentExpression assignmentExpression)
-    {
-        var rewrittenIdentifier = RewriteName(assignmentExpression.Identifier);
-        if (rewrittenIdentifier is not NameExpression rewrittenIdentifierName)
-            throw new InvalidOperationException("Assignment expression's identifier must be a name expressions");
-
-        return new AssignmentExpression(rewrittenIdentifierName, Rewrite(assignmentExpression.Value));
-    }
+    protected virtual Expression RewriteAssignment(AssignmentExpression assignmentExpression) =>
+        new AssignmentExpression((NameExpression)RewriteName(assignmentExpression.Identifier), Rewrite(assignmentExpression.Value));
 
     protected virtual Expression RewriteBinary(BinaryExpression binaryExpression) =>
         new BinaryExpression(
@@ -178,31 +160,14 @@ public abstract class ExpressionRewriter
     protected virtual Expression RewriteBox(BoxExpression boxExpression) =>
         new BoxExpression(Rewrite(boxExpression.Expression));
 
-    protected virtual Expression RewriteCall(CallExpression callExpression)
-    {
-        var rewrittenKeywords = new List<KeywordExpression>(capacity: callExpression.Keywords.Length);
-        foreach (var keyword in callExpression.Keywords)
-        {
-            if (Rewrite(keyword) is not KeywordExpression rewrittenKeyword)
-                throw new InvalidOperationException("Call expression's keyword must be a keyword expressions");
-
-            rewrittenKeywords.Add(rewrittenKeyword);
-        }
-
-        return new CallExpression(
+    protected virtual Expression RewriteCall(CallExpression callExpression) =>
+        new CallExpression(
             Rewrite(callExpression.Target),
             [.. callExpression.Arguments.Select(Rewrite)],
-            [.. rewrittenKeywords]);
-    }
+            [.. callExpression.Keywords.Select(Rewrite).Cast<KeywordExpression>()]);
 
-    protected virtual Expression RewriteKeyword(KeywordExpression keywordExpression)
-    {
-        var rewrittenIdentifier = RewriteName(keywordExpression.Identifier);
-        if (rewrittenIdentifier is not NameExpression rewrittenIdentifierName)
-            throw new InvalidOperationException("Assignment expression's identifier must be a name expressions");
-
-        return new KeywordExpression(rewrittenIdentifierName, Rewrite(keywordExpression.Value));
-    }
+    protected virtual Expression RewriteKeyword(KeywordExpression keywordExpression) =>
+        new KeywordExpression((NameExpression)RewriteName(keywordExpression.Identifier), Rewrite(keywordExpression.Value));
 
     protected virtual Expression RewriteLiteral(LiteralExpression literalExpression) => literalExpression;
 
