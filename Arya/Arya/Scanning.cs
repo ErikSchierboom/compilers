@@ -25,7 +25,6 @@ public sealed class Scanner
                     break;
                 case '+':
                     Advance();
-
                     if (Match('+'))
                         tokens.Add(new Token(TokenType.PlusPlus, "++"));
                     else
@@ -33,7 +32,6 @@ public sealed class Scanner
                     break;
                 case '-':
                     Advance();
-
                     if (Match('>'))
                         tokens.Add(new Token(TokenType.MinusGreater, "->"));
                     else
@@ -91,7 +89,6 @@ public sealed class Scanner
                     break;
                 case '<':
                     Advance();
-
                     if (Match('<'))
                         tokens.Add(new Token(TokenType.LessLess, "<<"));
                     else if (Match('='))
@@ -101,7 +98,6 @@ public sealed class Scanner
                     break;
                 case '>':
                     Advance();
-
                     if (Match('>'))
                         tokens.Add(new Token(TokenType.GreaterGreater, ">>"));
                     else if (Match('='))
@@ -181,7 +177,7 @@ public sealed class Scanner
                     var charStartPosition = _position;
                     Advance();
 
-                    var charValue = Current;
+                    char charValue;
 
                     if (Match('\\'))
                     {
@@ -200,6 +196,7 @@ public sealed class Scanner
                     }
                     else
                     {
+                        charValue = Current;
                         Advance();
                     }
 
