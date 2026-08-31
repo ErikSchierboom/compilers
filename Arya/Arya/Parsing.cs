@@ -1,26 +1,5 @@
 namespace Arya;
 
-internal enum Precedence
-{
-    None,
-    Assignment,   // = ; :
-    Addition,     // + -
-    Product,      // *
-    Unary,        // + - ! @
-    BitwiseShift, // << >>
-    Comparison,   // < <= > >=
-    Equality,     // == !=
-    BitwiseOr,    // |
-    BitwiseAnd,   // &
-    Call,         // () [] { }
-    Primary
-}
-
-internal delegate Expression ParsePrefix();
-internal delegate Expression ParseInfix(Expression left);
-
-internal record ParseRule(ParsePrefix? Prefix, ParseInfix? Infix, Precedence Precedence);
-
 internal class Parser
 {
     private readonly Dictionary<TokenType, ParseRule> _rules;
@@ -260,6 +239,26 @@ internal class Parser
 
         _position++;
     }
+
+    private enum Precedence
+    {
+        None,
+        Assignment,   // = ; :
+        Addition,     // + -
+        Product,      // *
+        Unary,        // + - ! @
+        BitwiseShift, // << >>
+        Comparison,   // < <= > >=
+        Equality,     // == !=
+        BitwiseOr,    // |
+        BitwiseAnd,   // &
+        Call,         // () [] { }
+        Primary
+    }
+
+    private delegate Expression ParsePrefix();
+    private delegate Expression ParseInfix(Expression left);
+    private record ParseRule(ParsePrefix? Prefix, ParseInfix? Infix, Precedence Precedence);
 }
 
 public abstract record Expression;
