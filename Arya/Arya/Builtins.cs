@@ -644,33 +644,39 @@ public abstract record BuiltinFunction(string Name) : Function
                 if (partitionArray.Elements.Length != array.Shape.RowCount)
                     throw new InvalidOperationException("Partition length must match array length");
 
-                var partitions = 0;
                 var newElements = new List<T>();
-
-                int? currentPartitionValue = null;
+                var newRows = 0;
+                var previousPartitionValue = -1;
 
                 for (var i = 0; i < partitionArray.Elements.Length; i++)
                 {
                     var partitionValue = partitionArray.Elements[i];
-                    currentPartitionValue ??= partitionValue;
+                    if (previousPartitionValue == -1 && partitionValue == 0)
+                    {
+                        previousPartitionValue = partitionValue;
+                        continue;
+                    }
 
                     if (partitionValue == 0)
+                    {
+                        previousPartitionValue = partitionValue;
                         continue;
+                    }
+
+                    if (previousPartitionValue != partitionValue)
+                        newRows++;
 
                     newElements.Add(array.Elements[i]);
 
-                    if (currentPartitionValue == partitionValue)
-                        continue;
-
-                    partitions++;
-                    currentPartitionValue = partitionValue;
+                    previousPartitionValue = partitionValue;
                 }
 
-                partitions++;
+                if (newRows == 0)
+                    return Array<T>.Empty;
 
                 var newShape = array.Shape
-                    .Prepend(partitions)
-                    .Replace(1, array.Shape.Count / partitions);
+                    .SetFirst(newElements.Count / newRows)
+                    .Prepend(newRows);
 
                 return new Array<T>(newShape, [..newElements]);
             }

@@ -126,14 +126,14 @@ public static partial class FunctionTests
             public static readonly TheoryData<string, Value> PartitionTestData =
                 new()
                 {
-                    // { "partition([], [])", Array<Any>.Empty },
-                    // { "partition([], [1 2])", Array<Any>.Empty },
-                    // { "partition(1, [1])", Array<int>.Matrix([[1]]) },
-                    // { "partition([3 2], [1 0])", Array<int>.Matrix([[3]]) },
-                    // { "partition([2 3 4 5], [1 1 2 2])", Array<int>.Matrix([[2, 3], [4, 5]]) },
+                    { "partition([], [])", Array<Any>.Empty },
+                    { "partition([], [1 2])", Array<Any>.Empty },
+                    { "partition(1, [1])", Array<int>.Matrix([[1]]) },
+                    { "partition([3 2], [1 0])", Array<int>.Matrix([[3]]) },
+                    { "partition([2 3 4 5], [1 1 2 2])", Array<int>.Matrix([[2, 3], [4, 5]]) },
                     { "partition([2 3 4 5], [0 0 1 1])", Array<int>.Matrix([[4, 5]]) },
-                    // { "partition([2 3 4 5 6 7], [1 1 0 0 1 1])", Array<int>.Matrix([[2, 3], [6, 7]]) },
-                    // { "partition([2 3 4 5 6], 3; fill: 0)", Array<int>.Matrix([[2, 3], [4, 5], [6, 0]]) },
+                    { "partition([2 3 4 5 6 7], [1 1 0 0 1 1])", Array<int>.Matrix([[2, 3], [6, 7]]) },
+                    // { "partition([2 3 4 5 6], [1 1 2 2 3]; fill: 0)", Array<int>.Matrix([[2, 3], [4, 5], [6, 0]]) },
                     // { "partition([2 3 4 5 6], 3; box: true)", Array<Box>.Vector(Array<int>.Vector(2, 3, 4).Box(), Array<int>.Vector(5, 6).Box()) },
                     // { "partition([1 2 3 4 5 6 7 8 9], 3)", Array<int>.Matrix([[1, 2, 3], [4, 5, 6], [7, 8, 9]]) },
                     // { "partition([[2 3 4] [4 5 6] [6 7 8] [7 8 9]], 2)", new Array<int>(new Shape(2, 2, 3), 2, 3, 4, 4, 5, 6, 6, 7, 8, 7, 8, 9) },
