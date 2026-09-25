@@ -91,6 +91,25 @@ public static partial class FunctionTests
             public void Min(string code, Value expected) =>
                 Assert.Equal(expected, Interpreter.Evaluate(code));
 
+            public static readonly TheoryData<string, Value> IndexTestData =
+                new()
+                {
+                    { "index([], 1)", Array<int>.Scalar(0) },
+                    { "index(1, 1)", Array<int>.Scalar(1) },
+                    { "index(2, 1)", Array<int>.Scalar(0) },
+                    { "index([3 2], 2)", Array<int>.Scalar(2) },
+                    { "index([3 2], 1)", Array<int>.Scalar(0) },
+                    { "index([3 2], [1 2 3])", Array<int>.Vector(0, 2, 1) },
+                    { "index([[2 3] [4 5]], 2)", Array<int>.Vector(1, 0) },
+                    { "index([[2 3] [4 5]], 2)", Array<int>.Vector(1, 0) },
+                    { "index([[2 3] [4 5]], [4 5])", Array<int>.Scalar(2) },
+                    { "index([[2 3] [4 5]], [5 5])", Array<int>.Scalar(0) },
+                };
+
+            [Theory, MemberData(nameof(IndexTestData))]
+            public void Index(string code, Value expected) =>
+                Assert.Equal(expected, Interpreter.Evaluate(code));
+
             public static readonly TheoryData<string, Value> ReduceTestData =
                 new()
                 {
