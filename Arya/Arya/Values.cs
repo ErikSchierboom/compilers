@@ -36,17 +36,6 @@ public sealed record Shape(params int[] Dimensions)
 
     public int Count => Dimensions.Aggregate(1, (count, dimension) => count * dimension);
     public int RowCount => Dimensions.FirstOrDefault(1);
-    public int RowLength => Dimensions.Skip(1).Aggregate(1, (count, dimension) => count * dimension);
-
-    /// <summary>
-    /// The shape that results from combining this shape with <paramref name="other"/>,
-    /// where a scalar operand is stretched to match the other operand.
-    /// </summary>
-    public Shape Broadcast(Shape other) =>
-        IsScalar ? other :
-        other.IsScalar ? this :
-        this == other ? this :
-        throw new InvalidOperationException("Cannot perform binary operations on arrays with different shapes");
 
     public Shape Prepend(int dimension) => new([dimension, .. Dimensions]);
     public Shape Replace(int dimension, int size) => new([.. Dimensions[..dimension], size, .. Dimensions[(dimension + 1)..]]);
@@ -110,7 +99,7 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
         if (Shape != other.Shape && !Shape.IsScalar && !other.Shape.IsScalar)
             throw new InvalidOperationException("Cannot compare arrays of different shapes");
 
-        var shape = Shape.Broadcast(other.Shape);
+        var shape = Shape.IsScalar ? other.Shape : Shape;
         return new Array<TOut>(shape, [.. Elements.Repeat().Zip(other.Elements.Repeat(), operation).Take(shape.Count)]);
     }
 
