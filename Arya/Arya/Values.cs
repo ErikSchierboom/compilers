@@ -124,8 +124,6 @@ public sealed record Array<T>(Shape Shape, params T[] Elements) : Value
             Shape.GetHashCode());
 
     public override string ToString() => ValueRenderer.Render(this);
-
-    public Array<int> Indices() => Array<int>.Vector([..Enumerable.Range(1, Shape.RowCount)]);
 }
 
 public abstract record Function : Value

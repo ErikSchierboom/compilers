@@ -180,13 +180,15 @@ public abstract record BuiltinFunction(string Name) : Function
             public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch
                 {
-                    Array<int> intArray   => intArray.Indices(),
-                    Array<bool> boolArray => boolArray.Indices(),
-                    Array<char> charArray => charArray.Indices(),
-                    Array<Box> boxArray   => boxArray.Indices(),
-                    Array<Any> anyArray   => anyArray.Indices(),
+                    Array<int> intArray   => Indices(intArray),
+                    Array<bool> boolArray => Indices(boolArray),
+                    Array<char> charArray => Indices(charArray),
+                    Array<Box> boxArray   => Indices(boxArray),
+                    Array<Any> anyArray   => Indices(anyArray),
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
+
+            private static Array<int> Indices<T>(Array<T> array) => Array<int>.Vector([..Enumerable.Range(1, array.Shape.RowCount)]);
         }
 
         public sealed record NotFunction() : UnaryFunction("not")
