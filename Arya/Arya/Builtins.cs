@@ -45,6 +45,7 @@ public abstract record BuiltinFunction(string Name) : Function
         new Binary.NotEqualFunction(),
         new Binary.ChunkFunction(),
         new Binary.PartitionFunction(),
+        new Binary.IndexFunction(),
     ];
 
     private static class Unary
@@ -679,6 +680,81 @@ public abstract record BuiltinFunction(string Name) : Function
                     .Prepend(newRows);
 
                 return new Array<T>(newShape, [..newElements]);
+            }
+        }
+
+        public sealed record IndexFunction() : BinaryFunction("index")
+        {
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
+                (arguments[0], arguments[1]) switch
+                {
+                    (Array<Any> _, _) or (_, Array<Any>) => Array<int>.Scalar(0),
+                    (Array<int> intArray, Array<int> findArray) => Index(intArray, findArray),
+                    (Array<bool> boolArray, Array<bool> findArray) => Index(boolArray, findArray),
+                    (Array<char> charArray, Array<char> findArray) => Index(charArray, findArray),
+                    (Array<Box> boxArray, var findArray) => boxArray.Zip(findArray.Boxes(), (a, b) => Invoke([a.Value, b.Value], keywords, interpreter, scope).Box()),
+                    _ => throw new InvalidOperationException("Invalid argument type")
+                };
+
+            private static Value Index<T>(Array<T> array, Array<T> findArray)
+            {
+                if (findArray.Shape.Dimensions.Length > array.Shape.Dimensions.Length)
+                    throw new InvalidOperationException("Can only find elements with equal or smaller dimensions");
+
+                if (findArray.Shape.IsScalar)
+                {
+                    if (array.Shape.IsScalar)
+                        return new Array<int>(findArray.Shape, findArray.Elements[0]!.Equals(array.Elements[0]) ? 1 : 0);
+
+                    if (array.Shape.IsVector)
+                        return new Array<int>(findArray.Shape, [..findArray.Elements.Select(findElement => Array.IndexOf(array.Elements, findElement) + 1)]);
+
+                    if (array.Shape.IsMatrix)
+                        return Array<int>.Vector(
+                            [..
+                            array.Rows()
+                                .Select(arrayRow => Array.IndexOf(arrayRow, findArray.Elements[0]!) + 1)]);
+                }
+
+                if (findArray.Shape.IsVector)
+                {
+                    // A vector whose length matches the array's row length is treated as a
+                    // single row to locate among the array's rows, returning a scalar position.
+                    if (array.Shape.IsMatrix && findArray.Elements.Length == array.Shape.Dimensions[^1])
+                        return Array<int>.Scalar(RowIndexOf(array.Rows(), findArray.Elements));
+
+                    if (array.Shape.IsMatrix)
+                        return new Array<int>(findArray.Shape, [..findArray.Elements.SelectMany(findElement =>
+                                array.Rows()
+                                    .Select(arrayRow => Array.IndexOf(arrayRow, findElement) + 1))]);
+
+                    // if (array.Shape.IsVector)
+                    return new Array<int>(findArray.Shape, [..findArray.Elements.Select(findElement => Array.IndexOf(array.Elements, findElement) + 1)]);
+                }
+
+                // A matrix whose rows have the same length as the array's rows is treated as a
+                // collection of rows, each searched for among the array's rows.
+                if (findArray.Shape.IsMatrix && array.Shape.IsMatrix && findArray.Shape.Dimensions[^1] == array.Shape.Dimensions[^1])
+                {
+                    var arrayRows = array.Rows();
+                    return Array<int>.Vector([..findArray.Rows().Select(findRow => RowIndexOf(arrayRows, findRow))]);
+                }
+
+                throw new NotImplementedException();
+            }
+
+            private static int RowIndexOf<T>(IEnumerable<T[]> rows, T[] findRow)
+            {
+                var position = 1;
+                foreach (var row in rows)
+                {
+                    if (row.SequenceEqual(findRow))
+                        return position;
+
+                    position++;
+                }
+
+                return 0;
             }
         }
     }
