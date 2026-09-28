@@ -120,11 +120,11 @@ public abstract record BuiltinFunction(string Name) : Function
                     throw new InvalidOperationException("Invalid argument type");
 
                 if (!intArray.Shape.IsScalar)
-                    throw new InvalidOperationException("Invalid argument type");
+                    throw new InvalidOperationException("Invalid range type");
 
                 var numberOfElements = intArray.Elements[0];
                 if (numberOfElements < 0)
-                    throw new InvalidOperationException("Invalid argument type");
+                    throw new InvalidOperationException("Invalid range value type");
 
                 if (numberOfElements == 0)
                     return Array<Any>.Empty;
@@ -263,7 +263,7 @@ public abstract record BuiltinFunction(string Name) : Function
                     _ => throw new InvalidOperationException("Invalid argument type")
                 };
 
-            private static Value Trim(Array<char> charArray)
+            private static Array<char> Trim(Array<char> charArray)
             {
                 if (charArray.Shape.IsScalar && char.IsWhiteSpace(charArray.Elements[0]))
                     return Array<char>.Empty;
