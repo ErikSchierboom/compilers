@@ -185,6 +185,7 @@ public static partial class FunctionTests
                     { "transpose([])", Array<Any>.Vector() },
                     { "transpose([-1 5])", Array<int>.Vector(-1, 5) },
                     { "transpose([[-4 -5 -6] [-6 -7 -8]])", Array<int>.Matrix([[-4, -6], [-5, -7], [-6, -8]]) },
+                    { "transpose([[[1] [2] [3]] [[5] [7] [9]]])", new Array<int>(new Shape(3, 1, 2),1, 5, 2, 7, 3, 9) },
                     { "transpose([@[-1] @[-2 -3]])", Array<Box>.Vector(Array<int>.Vector(-1).Box(), Array<int>.Vector(-2, -3).Box()) },
                     { "transpose(true)", Array<bool>.Scalar(true) },
                     { "transpose([true false])", Array<bool>.Vector(true, false) },

@@ -98,7 +98,7 @@ public abstract record BuiltinFunction(string Name) : Function
 
             private static Array<T> Transpose<T>(Array<T> array)
             {
-                if (array.Shape.IsScalar || array.Shape.IsVector)
+                if (array.Shape.Dimensions.Length < 2)
                     return array;
 
                 var newShape = new Shape([array.Shape.Dimensions[^1], ..array.Shape.Dimensions[..^1]]);
