@@ -213,7 +213,8 @@ public static partial class FunctionTests
                     { "reverse([])", Array<Any>.Empty },
                     { "reverse(1)", Array<int>.Scalar(1) },
                     { "reverse([4 5])", Array<int>.Vector(5, 4) },
-                    { "reverse([[7 2] [9 3]])", Array<int>.Matrix([[9, 3], [7, 2]]) },
+                    { "reverse([[7 2 1] [9 3 4]])", Array<int>.Matrix([[9, 3, 4], [7, 2, 1]]) },
+                    { "reverse([[[1] [2] [3]] [[9] [5] [7]]])", new Array<int>(new Shape(2, 3, 1), 9, 5, 7, 1, 2, 3) },
                 };
 
             [Theory, MemberData(nameof(ReverseTestData))]

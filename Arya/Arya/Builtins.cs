@@ -148,14 +148,21 @@ public abstract record BuiltinFunction(string Name) : Function
 
             private static Array<T> Reverse<T>(Array<T> array)
             {
-                if (array.Shape.IsScalar)
+                if (array.Elements.Length < 2)
                     return array;
 
-                if (array.Shape.IsVector)
-                    return Array<T>.Vector([.. array.Elements.Reverse()]);
+                // TODO: benchmark if using Span is better
+                var sortedElements = new T[array.Elements.Length];
 
-                var newElements = array.Rows().Reverse().SelectMany(element => element);
-                return array with { Elements = [..newElements] };
+                var rowSize = array.Elements.Length / array.Shape.RowCount;
+                for (var row = 0; row < array.Shape.RowCount; row++)
+                {
+                    var sourceIndex = array.Elements.Length - (row + 1) * rowSize;
+                    var destinationIndex = row * rowSize;
+                    Array.Copy(array.Elements, sourceIndex, sortedElements, destinationIndex, rowSize);
+                }
+
+                return array with { Elements = sortedElements };
             }
         }
 
