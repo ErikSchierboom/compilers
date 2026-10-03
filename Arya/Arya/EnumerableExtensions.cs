@@ -29,5 +29,28 @@ public static class EnumerableExtensions
                 }
             }
         }
+
+        /// <summary>
+        /// Rotate a sequence to the left.
+        /// </summary>
+        /// <remarks>
+        /// The first element becomes the last element.
+        /// All the other elements are shifted one position to the left.
+        /// </remarks>
+        /// <returns>The rotated sequence.</returns>
+        public IEnumerable<T> RotateLeft()
+        {
+            using var enumerator = enumerable.GetEnumerator();
+
+            if (!enumerator.MoveNext())
+                yield break;
+
+            var first = enumerator.Current;
+
+            while (enumerator.MoveNext())
+                yield return enumerator.Current;
+
+            yield return first;
+        }
     }
 }

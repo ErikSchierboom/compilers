@@ -98,17 +98,44 @@ public abstract record BuiltinFunction(string Name) : Function
 
             private static Array<T> Transpose<T>(Array<T> array)
             {
-                if (array.Shape.Dimensions.Length < 2)
+                var dims = array.Shape.Dimensions;
+                var rank = dims.Length;
+
+                if (rank < 2)
                     return array;
 
-                var newShape = new Shape([array.Shape.Dimensions[^1], ..array.Shape.Dimensions[..^1]]);
+                int[] newDims = [.. dims.RotateLeft()];
+                var newShape = new Shape(newDims);
+
+                var oldStrides = new int[dims.Length];
+                oldStrides[^1] = 1;
+                for (var i = dims.Length - 2; i >= 0; i--)
+                    oldStrides[i] = oldStrides[i + 1] * dims[i + 1];
+
+                var newStrides = new int[dims.Length];
+                newStrides[^1] = 1;
+                for (var i = dims.Length - 2; i >= 0; i--)
+                    newStrides[i] = newStrides[i + 1] * newDims[i + 1];
+
                 var newElements = new T[array.Elements.Length];
+                for (var newIndex = 0; newIndex < newElements.Length; newIndex++)
+                {
+                    var remainder = newIndex;
+                    var oldIndex = 0;
 
-                for (var y = 0; y < array.Shape.Dimensions[^1]; y++)
-                for (var x = 0; x < array.Shape.Dimensions[0]; x++)
-                    newElements[y * array.Shape.Dimensions[0] + x] = array.Elements[x * array.Shape.Dimensions[^1] + y];
+                    for (var k = 0; k < rank; k++)
+                    {
+                        var coord = remainder / newStrides[k];
+                        remainder %= newStrides[k];
 
-                return array with { Shape = newShape, Elements = [..newElements] };
+                        // Destination axis k maps back to original axis (k + 1) mod rank
+                        oldIndex += coord * oldStrides[(k + 1) % rank];
+                    }
+
+                    newElements[newIndex] = array.Elements[oldIndex];
+                }
+
+                return array with { Shape = newShape, Elements = newElements };
             }
         }
 
