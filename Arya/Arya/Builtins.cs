@@ -681,19 +681,12 @@ public abstract record BuiltinFunction(string Name) : Function
                 if (partitionArray.Elements.Length != array.Shape.RowCount)
                     throw new InvalidOperationException("Partition length must match array length");
 
-                var newElements = new List<T>();
-                var newRows = 0;
+                var groups = new List<List<T>>();
                 var previousPartitionValue = -1;
 
                 for (var i = 0; i < partitionArray.Elements.Length; i++)
                 {
                     var partitionValue = partitionArray.Elements[i];
-                    if (previousPartitionValue == -1 && partitionValue == 0)
-                    {
-                        previousPartitionValue = partitionValue;
-                        continue;
-                    }
-
                     if (partitionValue == 0)
                     {
                         previousPartitionValue = partitionValue;
@@ -701,21 +694,48 @@ public abstract record BuiltinFunction(string Name) : Function
                     }
 
                     if (previousPartitionValue != partitionValue)
-                        newRows++;
+                        groups.Add([]);
 
-                    newElements.Add(array.Elements[i]);
+                    groups[^1].Add(array.Elements[i]);
 
                     previousPartitionValue = partitionValue;
                 }
 
-                if (newRows == 0)
+                if (groups.Count == 0)
                     return Array<T>.Empty;
 
-                var newShape = array.Shape
-                    .SetFirst(newElements.Count / newRows)
-                    .Prepend(newRows);
+                if (keywords.TryGetValue("fill", out var fillValue))
+                {
+                    if (fillValue is not Array<T> fill || !fill.Shape.IsScalar)
+                        throw new InvalidOperationException("Fill value must be a scalar");
 
-                return new Array<T>(newShape, [..newElements]);
+                    var maxGroupSize = groups.Max(group => group.Count);
+                    var newElements = groups
+                        .SelectMany(group => group.Concat(Enumerable.Repeat(fill.Elements[0], maxGroupSize - group.Count)))
+                        .ToArray();
+                    var newShape = array.Shape.SetFirst(maxGroupSize).Prepend(groups.Count);
+
+                    return new Array<T>(newShape, newElements);
+                }
+
+                if (keywords.TryGetValue("box", out var boxValue))
+                {
+                    if (boxValue is not Array<bool> box || !box.Shape.IsScalar)
+                        throw new InvalidOperationException("Box value must be a boolean scalar");
+
+                    if (!box.Elements[0])
+                        throw new InvalidOperationException("Box value must be true");
+
+                    var boxedGroups = groups.Select(group => Array<T>.Vector([.. group]).Box());
+
+                    return Array<Box>.Vector([.. boxedGroups]);
+                }
+
+                var rowSize = groups[0].Count;
+                var allElements = groups.SelectMany(group => group).ToArray();
+                var shape = array.Shape.SetFirst(rowSize).Prepend(groups.Count);
+
+                return new Array<T>(shape, allElements);
             }
         }
 
