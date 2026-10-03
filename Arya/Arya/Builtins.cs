@@ -7,7 +7,7 @@ public abstract record BuiltinFunction(string Name) : Function
     public static readonly BuiltinFunction[] All =
     [
         new Unary.CountFunction(),
-        new Unary.LengthFunction(),
+        new Unary.RowsFunction(),
         new Unary.TransposeFunction(),
         new Unary.RangeFunction(),
         new Unary.AbsFunction(),
@@ -69,7 +69,7 @@ public abstract record BuiltinFunction(string Name) : Function
                 };
         }
 
-        public sealed record LengthFunction() : UnaryFunction("length")
+        public sealed record RowsFunction() : UnaryFunction("rows")
         {
             public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 arguments[0] switch

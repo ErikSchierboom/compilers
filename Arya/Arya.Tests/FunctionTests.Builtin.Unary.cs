@@ -146,20 +146,20 @@ public static partial class FunctionTests
             public void Trim(string code, Value expected) =>
                 Assert.Equal(expected, Interpreter.Evaluate(code));
 
-            public static readonly TheoryData<string, Value> LengthTestData =
+            public static readonly TheoryData<string, Value> RowsTestData =
                 new()
                 {
-                    { "length(2)", Array<int>.Scalar(1) },
-                    { "length([])", Array<int>.Scalar(0) },
-                    { "length([-1 5])", Array<int>.Scalar(2) },
-                    { "length([[-4 -5] [-6 -7] [3 3]])", Array<int>.Scalar(3) },
-                    { "length([@[-1] @[-2 -3]])", Array<int>.Scalar(2) },
-                    { "length(true)", Array<int>.Scalar(1) },
-                    { "length([true false])", Array<int>.Scalar(2) },
+                    { "rows(2)", Array<int>.Scalar(1) },
+                    { "rows([])", Array<int>.Scalar(0) },
+                    { "rows([-1 5])", Array<int>.Scalar(2) },
+                    { "rows([[-4 -5] [-6 -7] [3 3]])", Array<int>.Scalar(3) },
+                    { "rows([@[-1] @[-2 -3]])", Array<int>.Scalar(2) },
+                    { "rows(true)", Array<int>.Scalar(1) },
+                    { "rows([true false])", Array<int>.Scalar(2) },
                 };
 
-            [Theory, MemberData(nameof(LengthTestData))]
-            public void Length(string code, Value expected) =>
+            [Theory, MemberData(nameof(RowsTestData))]
+            public void Rows(string code, Value expected) =>
                 Assert.Equal(expected, Interpreter.Evaluate(code));
 
             public static readonly TheoryData<string, Value> CountTestData =
