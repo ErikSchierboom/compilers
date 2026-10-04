@@ -269,6 +269,34 @@ public static partial class FunctionTests
             [Theory, MemberData(nameof(StringTestData))]
             public void String(string code, Value expected) =>
                 Assert.Equal(expected, Interpreter.Evaluate(code));
+
+            public static readonly TheoryData<string, Value> ReadFileTestData =
+                new()
+                {
+                    { "", Array<char>.Vector([..""]) },
+                    { "abc", Array<char>.Vector([.."abc"]) },
+                    { "1\n2\n3\n", Array<char>.Vector([.."1\n2\n3\n"]) },
+                };
+
+            [Theory, MemberData(nameof(ReadFileTestData))]
+            public void ReadFile(string contents, Value expected)
+            {
+                var temporaryFile = Path.GetTempFileName();
+                File.WriteAllText(temporaryFile, contents);
+
+                try
+                {
+                    var code = $"""
+                                readFile("{temporaryFile}")
+                                """;
+                    var result = Interpreter.Evaluate(code);
+                    Assert.Equal(expected, result);
+                }
+                finally
+                {
+                    File.Delete(temporaryFile);
+                }
+            }
         }
     }
 }

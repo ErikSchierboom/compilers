@@ -21,6 +21,7 @@ public abstract record BuiltinFunction(string Name) : Function
         new Unary.MinusFunction(),
         new Unary.NotFunction(),
         new Unary.StringFunction(),
+        new Unary.ReadFileFunction(),
 
         new Binary.AppendFunction(),
         new Binary.ReshapeFunction(),
@@ -242,6 +243,21 @@ public abstract record BuiltinFunction(string Name) : Function
         {
             public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope) =>
                 Array<char>.Vector([..arguments[0].ToString()]);
+        }
+
+        public sealed record ReadFileFunction() : UnaryFunction("readFile")
+        {
+            public override Value Invoke(Value[] arguments, Dictionary<string, Value> keywords, Interpreter interpreter, Scope scope)
+            {
+                if (arguments[0] is not Array<char> fileName)
+                    throw new InvalidOperationException("Invalid argument type");
+
+                if (!fileName.Shape.IsVector)
+                    throw new InvalidOperationException("Can only read file using string");
+
+                var contents = File.ReadAllText(new string(fileName.Elements));
+                return Array<char>.Vector([.. contents]);
+            }
         }
 
         public abstract record UnaryIntegerFunction(string Name, Func<int, int> Operation) : BuiltinFunction(Name)
